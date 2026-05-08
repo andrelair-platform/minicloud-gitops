@@ -40,7 +40,9 @@ data:
     \ workload\"\n    tag: live\n    url: http://podinfo.10.0.0.200.nip.io\n    target:\
     \ _blank\n  - name: whoami\n    icon: fas fa-question-circle\n    subtitle: \"\
     Demo \\u2014 proves ArgoCD git-push deploy loop\"\n    tag: demo\n    url: http://whoami.10.0.0.200.nip.io\n\
-    \    target: _blank\n"
+    \    target: _blank\n  - name: platform-demo\n    icon: fas fa-rocket\n    subtitle:\
+    \ \"CI/CD pipeline demo (GHA \\u2192 ghcr.io \\u2192 ArgoCD)\"\n    tag: live\n\
+    \    url: http://platform-demo.10.0.0.200.nip.io\n    target: _blank\n"
 kind: ConfigMap
 metadata:
   name: homer-config
