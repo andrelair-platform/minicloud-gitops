@@ -1,7 +1,7 @@
 ---
 apiVersion: v1
 data:
-  config.yml: "title: \"Mini Cloud Platform\"\nsubtitle: \"Private Bare-Metal Infrastructure\"\
+  config.yml: "title: \"Mini Cloud Platform\"\nsubtitle: \"Private Bare-Metal Infrastructure \u2014 GitOps via ArgoCD\"\
     \n\nheader: true\nfooter: false\n\ncolors:\n  light:\n    highlight-primary: \"\
     #3367d6\"\n    highlight-secondary: \"#4285f4\"\n    highlight-hover: \"#5a95f5\"\
     \n    background: \"#f2f4f8\"\n    card-background: \"#ffffff\"\n    text: \"\
