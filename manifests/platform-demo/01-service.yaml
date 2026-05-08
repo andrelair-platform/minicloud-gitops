@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-demo
+  namespace: gitops-demo
+  labels:
+    app: platform-demo
+spec:
+  type: ClusterIP
+  selector:
+    app: platform-demo
+  ports:
+    - name: http
+      # Switches to port 8080 once the real platform-demo image is deployed
+      # via CI (the bootstrap podinfo image listens on 9898, the platform-demo
+      # Go server listens on 8080). The CI yq-bump only edits image:; the
+      # port may need a manual update on first real deploy.
+      port: 80
+      targetPort: http
+      protocol: TCP

@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platform-demo
+  namespace: gitops-demo
+  labels:
+    app: platform-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: platform-demo
+  template:
+    metadata:
+      labels:
+        app: platform-demo
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: platform-demo
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: platform-demo
+          # Bootstrap with a known-good public image so this Application
+          # syncs Healthy from the start. The CI workflow in
+          # andrelair-platform/platform-demo replaces this line on every
+          # push to main with the freshly built ghcr.io/.../<sha> image.
+          image: ghcr.io/stefanprodan/podinfo:6.11.2
+          ports:
+            - containerPort: 9898
+              name: http
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits:   { cpu: 100m, memory: 64Mi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            initialDelaySeconds: 1
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
