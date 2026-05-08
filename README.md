@@ -4,6 +4,16 @@ ArgoCD watches this repo and reconciles the cluster against it. Every commit
 that lands on `main` triggers a sync within ~3 minutes (the default ArgoCD
 reconciliation interval).
 
+**Live docs:** <https://andrelair-platform.github.io/minicloud-platform-docs/>
+— see Phase 12 (ArgoCD/GitOps) and Phase 13 (CI/CD pipeline) for the
+architectural reasoning.
+
+**Sibling repos in the [andrelair-platform](https://github.com/andrelair-platform) org:**
+[docs](https://github.com/andrelair-platform/minicloud-platform-docs) ·
+[ansible](https://github.com/andrelair-platform/minicloud-ansible) ·
+[opentofu](https://github.com/andrelair-platform/minicloud-opentofu) ·
+[platform-demo](https://github.com/andrelair-platform/platform-demo)
+
 ## Layout
 
 ```
