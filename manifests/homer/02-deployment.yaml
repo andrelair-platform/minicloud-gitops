@@ -19,7 +19,13 @@ spec:
   template:
     metadata:
       annotations:
-        kubectl.kubernetes.io/restartedAt: '2026-05-08T20:01:16+02:00'
+        # Bump this whenever 01-configmap.yaml changes — Homer mounts the
+        # ConfigMap with subPath, which Kubernetes does NOT auto-propagate.
+        # The annotation change makes the pod-template-hash differ and
+        # forces a rolling restart, picking up the new ConfigMap content.
+        # Production teams automate this via Reloader or kustomize
+        # configMapGenerator (which generates suffixed names).
+        config-checksum: "v2-gitops-callout"
       labels:
         app: homer
     spec:
