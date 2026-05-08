@@ -31,18 +31,18 @@ spec:
           # syncs Healthy from the start. The CI workflow in
           # andrelair-platform/platform-demo replaces this line on every
           # push to main with the freshly built ghcr.io/.../<sha> image.
-          image: ghcr.io/stefanprodan/podinfo:6.11.2
+          image: ghcr.io/andrelair-platform/platform-demo:c10a8e1
           ports:
             - containerPort: 9898
               name: http
           resources:
-            requests: { cpu: 10m, memory: 16Mi }
-            limits:   { cpu: 100m, memory: 64Mi }
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi}
           readinessProbe:
-            httpGet: { path: /readyz, port: http }
+            httpGet: {path: /readyz, port: http}
             initialDelaySeconds: 1
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /healthz, port: http }
+            httpGet: {path: /healthz, port: http}
             initialDelaySeconds: 5
             periodSeconds: 10
