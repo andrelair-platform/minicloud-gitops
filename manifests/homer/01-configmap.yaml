@@ -1,0 +1,53 @@
+---
+apiVersion: v1
+data:
+  config.yml: "title: \"Mini Cloud Platform\"\nsubtitle: \"Private Bare-Metal Infrastructure\"\
+    \n\nheader: true\nfooter: false\n\ncolors:\n  light:\n    highlight-primary: \"\
+    #3367d6\"\n    highlight-secondary: \"#4285f4\"\n    highlight-hover: \"#5a95f5\"\
+    \n    background: \"#f2f4f8\"\n    card-background: \"#ffffff\"\n    text: \"\
+    #363636\"\n    text-header: \"#ffffff\"\n    text-title: \"#303030\"\n    text-subtitle:\
+    \ \"#424242\"\n    card-shadow: rgba(0, 0, 0, 0.1)\n    link: \"#3273dc\"\n  \
+    \  link-hover: \"#363636\"\n  dark:\n    highlight-primary: \"#3367d6\"\n    highlight-secondary:\
+    \ \"#4285f4\"\n    highlight-hover: \"#5a95f5\"\n    background: \"#131313\"\n\
+    \    card-background: \"#2b2b2b\"\n    text: \"#eaeaea\"\n    text-header: \"\
+    #ffffff\"\n    text-title: \"#fafafa\"\n    text-subtitle: \"#f5f5f5\"\n    card-shadow:\
+    \ rgba(0, 0, 0, 0.4)\n    link: \"#3273dc\"\n    link-hover: \"#ffdd57\"\n\nservices:\n\
+    \  - name: \"Infrastructure\"\n    icon: \"fas fa-server\"\n    items:\n     \
+    \ - name: \"MAAS\"\n        icon: \"fas fa-network-wired\"\n        subtitle:\
+    \ \"Bare-metal provisioning\"\n        tag: \"infra\"\n        url: \"http://10.0.0.1:5240/MAAS\"\
+    \n        target: \"_blank\"\n\n      - name: \"set-hog\"\n        icon: \"fas\
+    \ fa-microchip\"\n        subtitle: \"Control plane \u2014 10.0.0.2\"\n      \
+    \  tag: \"k8s\"\n        url: \"http://10.0.0.1:5240/MAAS/r/machines\"\n     \
+    \   target: \"_blank\"\n\n      - name: \"fast-skunk\"\n        icon: \"fas fa-microchip\"\
+    \n        subtitle: \"Worker \u2014 10.0.0.4\"\n        tag: \"k8s\"\n       \
+    \ url: \"http://10.0.0.1:5240/MAAS/r/machines\"\n        target: \"_blank\"\n\n\
+    \      - name: \"fast-heron\"\n        icon: \"fas fa-microchip\"\n        subtitle:\
+    \ \"Worker \u2014 10.0.0.7\"\n        tag: \"k8s\"\n        url: \"http://10.0.0.1:5240/MAAS/r/machines\"\
+    \n        target: \"_blank\"\n\n  - name: \"Observability\"\n    icon: \"fas fa-chart-line\"\
+    \n    items:\n      - name: \"Grafana\"\n        icon: \"fas fa-chart-bar\"\n\
+    \        subtitle: \"Dashboards & metrics visualization\"\n        tag: \"live\"\
+    \n        url: \"http://grafana.10.0.0.200.nip.io\"\n        target: \"_blank\"\
+    \n\n      - name: \"Prometheus\"\n        icon: \"fas fa-fire\"\n        subtitle:\
+    \ \"Metrics \u2014 internal (kubectl port-forward svc/kps-prometheus -n monitoring\
+    \ 9090)\"\n        tag: \"internal\"\n        url: \"#\"\n        target: \"_blank\"\
+    \n\n      - name: \"Alertmanager\"\n        icon: \"fas fa-bell\"\n        subtitle:\
+    \ \"Alerts \u2014 internal (kubectl port-forward svc/kps-alertmanager -n monitoring\
+    \ 9093)\"\n        tag: \"internal\"\n        url: \"#\"\n        target: \"_blank\"\
+    \n\n  - name: \"DevOps\"\n    icon: \"fas fa-code-branch\"\n    items:\n     \
+    \ - name: \"ArgoCD\"\n        icon: \"fas fa-sync\"\n        subtitle: \"GitOps\
+    \ \u2014 Phase 12\"\n        tag: \"soon\"\n        url: \"http://10.0.0.2:8080\"\
+    \n        target: \"_blank\"\n\n      - name: \"GitLab\"\n        icon: \"fas\
+    \ fa-code\"\n        subtitle: \"CI/CD \u2014 Phase 13\"\n        tag: \"soon\"\
+    \n        url: \"http://10.0.0.2:80\"\n        target: \"_blank\"\n\n      - name:\
+    \ \"Harbor\"\n        icon: \"fas fa-anchor\"\n        subtitle: \"Private container\
+    \ registry + Trivy scanning\"\n        tag: \"live\"\n        url: \"http://harbor.10.0.0.200.nip.io\"\
+    \n        target: \"_blank\"\n\n  - name: \"Apps\"\n    icon: \"fas fa-cubes\"\
+    \n    items:\n      - name: \"podinfo\"\n        icon: \"fas fa-cube\"\n     \
+    \   subtitle: \"Demo Go web app \u2014 first integration workload\"\n        tag:\
+    \ \"live\"\n        url: \"http://podinfo.10.0.0.200.nip.io\"\n        target:\
+    \ \"_blank\"\n"
+kind: ConfigMap
+metadata:
+  name: homer-config
+  namespace: homer
+
