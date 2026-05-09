@@ -4,8 +4,14 @@ kind: Ingress
 metadata:
   name: platform-demo
   namespace: gitops-demo
+  annotations:
+    nginx.org/redirect-to-https: "true"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - platform-demo.10.0.0.200.nip.io
+      secretName: platform-demo-tls
   rules:
     - host: platform-demo.10.0.0.200.nip.io
       http:
