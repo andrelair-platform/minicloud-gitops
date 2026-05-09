@@ -1,0 +1,35 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: minicloud-gitops
+  description: |
+    Phase 12 — ArgoCD source-of-truth repo. Uses the App-of-Apps pattern
+    rooted at bootstrap/root-app.yaml. Currently manages 4 child
+    Applications: homer (migrated from raw kubectl), whoami (greenfield
+    Phase 12 demo), platform-demo (Phase 13 CI/CD demo), event-demo
+    (Phase 17 KEDA+NATS scale-to-zero demo). ArgoCD auto-syncs every
+    ~3min with prune+selfHeal+ServerSideApply.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: root
+  tags:
+    - argocd
+    - gitops
+    - phase-12
+  links:
+    - url: https://andrelair-platform.github.io/minicloud-platform-docs/platform-roadmap/phase-12-gitops
+      title: Phase 12 documentation
+      icon: docs
+    - url: https://argocd.10.0.0.200.nip.io/applications/root
+      title: ArgoCD root Application
+      icon: dashboard
+    - url: https://github.com/andrelair-platform/minicloud-gitops
+      title: Source code
+      icon: github
+spec:
+  type: tool
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
