@@ -18,7 +18,7 @@ spec:
   triggers:
     - type: nats-jetstream
       metadata:
-        natsServerMonitoringEndpoint: "nats.messaging:8222"
+        natsServerMonitoringEndpoint: "nats-monitor.messaging:8222"
         account: "$G"
         stream: JOBS
         consumer: echo-workers
