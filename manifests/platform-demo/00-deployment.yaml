@@ -25,20 +25,13 @@ spec:
                   matchLabels:
                     app: platform-demo
                 topologyKey: kubernetes.io/hostname
-      # Org-level policy on andrelair-platform forbids public ghcr packages,
-      # so kubelet authenticates with a narrow-scope read:packages PAT
-      # stored as a docker-registry Secret. The Secret is created out of
-      # band (kubectl create secret docker-registry) and never lives in git.
-      # Phase 15 will replace this with External Secrets Operator + Vault.
-      imagePullSecrets:
-        - name: ghcr-pull
       containers:
         - name: platform-demo
           # Bootstrap with a known-good public image so this Application
           # syncs Healthy from the start. The CI workflow in
           # andrelair-platform/platform-demo replaces this line on every
           # push to main with the freshly built ghcr.io/.../<sha> image.
-          image: ghcr.io/andrelair-platform/platform-demo:b44596e
+          image: harbor.10.0.0.200.nip.io/ghcr/andrelair-platform/platform-demo:b44596e
           ports:
             - containerPort: 9898
               name: http
