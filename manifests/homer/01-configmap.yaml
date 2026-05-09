@@ -49,7 +49,9 @@ data:
     \    url: https://nats.10.0.0.200.nip.io\n    target: _blank\n  - name: Backstage\n\
     \    icon: fas fa-th-large\n    subtitle: \"Internal Developer Portal \\u2014\
     \ service catalog (Phase 18)\"\n    tag: live\n    url: https://backstage.10.0.0.200.nip.io\n\
-    \    target: _blank\n"
+    \    target: _blank\n  - name: Chat\n    icon: fas fa-robot\n    subtitle: \"\
+    Open WebUI + Ollama (llama3.2:3b on CPU) \\u2014 Phase 19\"\n    tag: live\n \
+    \   url: https://chat.10.0.0.200.nip.io\n    target: _blank\n"
 kind: ConfigMap
 metadata:
   name: homer-config
