@@ -1,0 +1,26 @@
+---
+# KEDA ScaledObject: scales echo-worker between 0 and 5 replicas based on
+# the JetStream consumer's pending-message count. lagThreshold: 10 means
+# 1 worker per 10 pending messages (queue of 50 → 5 workers).
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: echo-worker
+  namespace: event-demo
+spec:
+  scaleTargetRef:
+    name: echo-worker
+  minReplicaCount: 0          # scale-to-zero on idle
+  maxReplicaCount: 5
+  pollingInterval: 5          # check every 5s (default 30 — too slow for demo)
+  cooldownPeriod: 60          # 60s after last activity, then scale to 0
+                              # (production default 300s; 60s for visible demo)
+  triggers:
+    - type: nats-jetstream
+      metadata:
+        natsServerMonitoringEndpoint: "nats.messaging:8222"
+        account: "$G"
+        stream: JOBS
+        consumer: echo-workers
+        lagThreshold: "10"
+        activationLagThreshold: "0"   # any message > 0 wakes from zero

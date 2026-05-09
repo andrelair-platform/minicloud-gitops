@@ -1,0 +1,52 @@
+---
+# echo-worker — pulls jobs from JetStream JOBS/echo-workers, prints, acks.
+# Image is pulled through Harbor's docker-hub proxy cache (Phase 16);
+# initial replicas: 0 — KEDA scales up when messages arrive (Phase 17
+# scale-to-zero demo).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo-worker
+  namespace: event-demo
+  labels:
+    app: echo-worker
+spec:
+  replicas: 0          # KEDA owns scaling; start at 0
+  selector:
+    matchLabels:
+      app: echo-worker
+  template:
+    metadata:
+      labels:
+        app: echo-worker
+    spec:
+      containers:
+        - name: worker
+          image: harbor.10.0.0.200.nip.io/docker-hub/natsio/nats-box:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              # Pull-and-process loop. `nats consumer next` with --ack and
+              # a long --wait blocks waiting for the next message (no busy
+              # spin). Sleep on error to avoid tight retry loops.
+              set -eu
+              SERVER="nats://nats.messaging:4222"
+              echo "[$(hostname)] starting echo-worker, server=$SERVER"
+              while true; do
+                nats --server "$SERVER" \
+                  consumer next JOBS echo-workers \
+                  --raw --ack --wait 30s 2>/dev/null \
+                  | { read -r MSG; \
+                      [ -n "${MSG:-}" ] && echo "[$(hostname)] processed: $MSG"; }
+                # Tiny sleep on empty/timeout to avoid hammering the API
+                sleep 0.5
+              done
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi

@@ -1,0 +1,7 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: event-demo
+  labels:
+    purpose: phase17-keda-nats-demo
