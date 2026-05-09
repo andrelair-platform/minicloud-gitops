@@ -46,7 +46,10 @@ data:
     \    url: https://platform-demo.10.0.0.200.nip.io\n    target: _blank\n  - name:\
     \ NATS\n    icon: fas fa-bolt\n    subtitle: \"Message broker (3-replica HA +\
     \ JetStream) \\u2014 KEDA scales workers\\\n      \\ from 0\"\n    tag: live\n\
-    \    url: https://nats.10.0.0.200.nip.io\n    target: _blank\n"
+    \    url: https://nats.10.0.0.200.nip.io\n    target: _blank\n  - name: Backstage\n\
+    \    icon: fas fa-th-large\n    subtitle: \"Internal Developer Portal \\u2014\
+    \ service catalog (Phase 18)\"\n    tag: live\n    url: https://backstage.10.0.0.200.nip.io\n\
+    \    target: _blank\n"
 kind: ConfigMap
 metadata:
   name: homer-config
