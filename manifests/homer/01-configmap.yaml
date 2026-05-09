@@ -22,27 +22,27 @@ data:
     \ \"Worker \\u2014 10.0.0.7\"\n    tag: k8s\n    url: http://10.0.0.1:5240/MAAS/r/machines\n\
     \    target: _blank\n- name: Observability\n  icon: fas fa-chart-line\n  items:\n\
     \  - name: Grafana\n    icon: fas fa-chart-bar\n    subtitle: Dashboards & metrics\
-    \ visualization\n    tag: live\n    url: http://grafana.10.0.0.200.nip.io\n  \
-    \  target: _blank\n  - name: Prometheus\n    icon: fas fa-fire\n    subtitle:\
+    \ visualization\n    tag: live\n    url: https://grafana.10.0.0.200.nip.io\n \
+    \   target: _blank\n  - name: Prometheus\n    icon: fas fa-fire\n    subtitle:\
     \ \"Metrics \\u2014 internal (kubectl port-forward svc/kps-prometheus -n\\\n \
     \     \\ monitoring 9090)\"\n    tag: internal\n    url: '#'\n    target: _blank\n\
     \  - name: Alertmanager\n    icon: fas fa-bell\n    subtitle: \"Alerts \\u2014\
     \ internal (kubectl port-forward svc/kps-alertmanager -n\\\n      \\ monitoring\
     \ 9093)\"\n    tag: internal\n    url: '#'\n    target: _blank\n- name: DevOps\n\
     \  icon: fas fa-code-branch\n  items:\n  - name: ArgoCD\n    icon: fas fa-sync\n\
-    \    subtitle: GitOps continuous reconciliation\n    tag: live\n    url: http://argocd.10.0.0.200.nip.io\n\
+    \    subtitle: GitOps continuous reconciliation\n    tag: live\n    url: https://argocd.10.0.0.200.nip.io\n\
     \    target: _blank\n  - name: GitLab\n    icon: fas fa-code\n    subtitle: \"\
     CI/CD \\u2014 Phase 13\"\n    tag: soon\n    url: http://10.0.0.2:80\n    target:\
     \ _blank\n  - name: Harbor\n    icon: fas fa-anchor\n    subtitle: Private container\
-    \ registry + Trivy scanning\n    tag: live\n    url: http://harbor.10.0.0.200.nip.io\n\
+    \ registry + Trivy scanning\n    tag: live\n    url: https://harbor.10.0.0.200.nip.io\n\
     \    target: _blank\n- name: Apps\n  icon: fas fa-cubes\n  items:\n  - name: podinfo\n\
     \    icon: fas fa-cube\n    subtitle: \"Demo Go web app \\u2014 first integration\
-    \ workload\"\n    tag: live\n    url: http://podinfo.10.0.0.200.nip.io\n    target:\
+    \ workload\"\n    tag: live\n    url: https://podinfo.10.0.0.200.nip.io\n    target:\
     \ _blank\n  - name: whoami\n    icon: fas fa-question-circle\n    subtitle: \"\
-    Demo \\u2014 proves ArgoCD git-push deploy loop\"\n    tag: demo\n    url: http://whoami.10.0.0.200.nip.io\n\
+    Demo \\u2014 proves ArgoCD git-push deploy loop\"\n    tag: demo\n    url: https://whoami.10.0.0.200.nip.io\n\
     \    target: _blank\n  - name: platform-demo\n    icon: fas fa-rocket\n    subtitle:\
     \ \"CI/CD pipeline demo (GHA \\u2192 ghcr.io \\u2192 ArgoCD)\"\n    tag: live\n\
-    \    url: http://platform-demo.10.0.0.200.nip.io\n    target: _blank\n"
+    \    url: https://platform-demo.10.0.0.200.nip.io\n    target: _blank\n"
 kind: ConfigMap
 metadata:
   name: homer-config
