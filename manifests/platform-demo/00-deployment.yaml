@@ -31,7 +31,7 @@ spec:
           # syncs Healthy from the start. The CI workflow in
           # andrelair-platform/platform-demo replaces this line on every
           # push to main with the freshly built ghcr.io/.../<sha> image.
-          image: harbor.10.0.0.200.nip.io/ghcr/andrelair-platform/platform-demo:b44596e
+          image: harbor.10.0.0.200.nip.io/ghcr/andrelair-platform/platform-demo:c2dd9cd
           ports:
             - containerPort: 9898
               name: http
