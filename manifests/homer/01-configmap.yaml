@@ -33,10 +33,11 @@ data:
     \    subtitle: GitOps continuous reconciliation\n    tag: live\n    url: https://argocd.10.0.0.200.nip.io\n\
     \    target: _blank\n  - name: GitLab\n    icon: fas fa-code\n    subtitle: \"\
     CI/CD \\u2014 Phase 13\"\n    tag: soon\n    url: http://10.0.0.2:80\n    target:\
-    \ _blank\n  - name: Harbor\n    icon: fas fa-anchor\n    subtitle: Private container\
-    \ registry + Trivy scanning\n    tag: live\n    url: https://harbor.10.0.0.200.nip.io\n\
-    \    target: _blank\n- name: Apps\n  icon: fas fa-cubes\n  items:\n  - name: podinfo\n\
-    \    icon: fas fa-cube\n    subtitle: \"Demo Go web app \\u2014 first integration\
+    \ _blank\n  - name: Harbor\n    icon: fas fa-anchor\n    subtitle: 'Sovereign\
+    \ registry: 4 proxy caches (docker-hub, ghcr, quay, k8s-registry)\n      + library\
+    \ project'\n    tag: live\n    url: https://harbor.10.0.0.200.nip.io\n    target:\
+    \ _blank\n- name: Apps\n  icon: fas fa-cubes\n  items:\n  - name: podinfo\n  \
+    \  icon: fas fa-cube\n    subtitle: \"Demo Go web app \\u2014 first integration\
     \ workload\"\n    tag: live\n    url: https://podinfo.10.0.0.200.nip.io\n    target:\
     \ _blank\n  - name: whoami\n    icon: fas fa-question-circle\n    subtitle: \"\
     Demo \\u2014 proves ArgoCD git-push deploy loop\"\n    tag: demo\n    url: https://whoami.10.0.0.200.nip.io\n\

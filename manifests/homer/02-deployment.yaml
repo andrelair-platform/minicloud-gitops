@@ -25,7 +25,7 @@ spec:
         # forces a rolling restart, picking up the new ConfigMap content.
         # Production teams automate this via Reloader or kustomize
         # configMapGenerator (which generates suffixed names).
-        config-checksum: "v5-tls-https-urls"
+        config-checksum: "v6-harbor-proxy-cache"
       labels:
         app: homer
     spec:
