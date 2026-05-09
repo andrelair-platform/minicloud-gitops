@@ -4,8 +4,15 @@ kind: Ingress
 metadata:
   name: whoami
   namespace: gitops-demo
+  annotations:
+    # F5 NGINX Ingress: HTTP -> HTTPS redirect at the edge.
+    nginx.org/redirect-to-https: "true"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - whoami.10.0.0.200.nip.io
+      secretName: whoami-tls         # produced by the Certificate resource
   rules:
     - host: whoami.10.0.0.200.nip.io
       http:

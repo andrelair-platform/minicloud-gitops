@@ -1,0 +1,19 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: whoami-tls
+  namespace: gitops-demo
+spec:
+  secretName: whoami-tls
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+    - whoami.10.0.0.200.nip.io
+  duration: 2160h            # 90 days
+  renewBefore: 720h          # renew at 30 days remaining
+  privateKey:
+    algorithm: ECDSA
+    size: 256
