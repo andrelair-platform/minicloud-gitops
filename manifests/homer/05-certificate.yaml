@@ -1,0 +1,19 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: homer-tls
+  namespace: homer
+spec:
+  secretName: homer-tls
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+    - homer.10.0.0.200.nip.io
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256

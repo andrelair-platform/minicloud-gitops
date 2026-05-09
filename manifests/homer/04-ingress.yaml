@@ -4,8 +4,14 @@ kind: Ingress
 metadata:
   name: homer
   namespace: homer
+  annotations:
+    nginx.org/redirect-to-https: "true"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - homer.10.0.0.200.nip.io
+      secretName: homer-tls
   rules:
   - host: homer.10.0.0.200.nip.io
     http:
@@ -17,4 +23,3 @@ spec:
               number: 8080
         path: /
         pathType: Prefix
-
