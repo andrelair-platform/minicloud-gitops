@@ -30,8 +30,10 @@ spec:
         app: homer
     spec:
       containers:
-      - image: b4bz/homer:latest
-        imagePullPolicy: Always
+      # Pinned 2026-06-15: was b4bz/homer:latest. Eliminates silent image drift
+      # on pod restart. v26.4.2 was newest published tag at pin time.
+      - image: b4bz/homer:v26.4.2
+        imagePullPolicy: IfNotPresent
         name: homer
         ports:
         - containerPort: 8080
