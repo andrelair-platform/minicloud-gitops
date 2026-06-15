@@ -25,7 +25,7 @@ spec:
         # forces a rolling restart, picking up the new ConfigMap content.
         # Production teams automate this via Reloader or kustomize
         # configMapGenerator (which generates suffixed names).
-        config-checksum: "v9-chat-tile"
+        config-checksum: "v10-minio-tile"
       labels:
         app: homer
     spec:

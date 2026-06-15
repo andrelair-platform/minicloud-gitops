@@ -1,58 +1,154 @@
 ---
 apiVersion: v1
-data:
-  config.yml: "title: Mini Cloud Platform\nsubtitle: \"Private Bare-Metal Infrastructure\
-    \ \\u2014 GitOps via ArgoCD\"\nheader: true\nfooter: false\ncolors:\n  light:\n\
-    \    highlight-primary: '#3367d6'\n    highlight-secondary: '#4285f4'\n    highlight-hover:\
-    \ '#5a95f5'\n    background: '#f2f4f8'\n    card-background: '#ffffff'\n    text:\
-    \ '#363636'\n    text-header: '#ffffff'\n    text-title: '#303030'\n    text-subtitle:\
-    \ '#424242'\n    card-shadow: rgba(0, 0, 0, 0.1)\n    link: '#3273dc'\n    link-hover:\
-    \ '#363636'\n  dark:\n    highlight-primary: '#3367d6'\n    highlight-secondary:\
-    \ '#4285f4'\n    highlight-hover: '#5a95f5'\n    background: '#131313'\n    card-background:\
-    \ '#2b2b2b'\n    text: '#eaeaea'\n    text-header: '#ffffff'\n    text-title:\
-    \ '#fafafa'\n    text-subtitle: '#f5f5f5'\n    card-shadow: rgba(0, 0, 0, 0.4)\n\
-    \    link: '#3273dc'\n    link-hover: '#ffdd57'\nservices:\n- name: Infrastructure\n\
-    \  icon: fas fa-server\n  items:\n  - name: MAAS\n    icon: fas fa-network-wired\n\
-    \    subtitle: Bare-metal provisioning\n    tag: infra\n    url: http://10.0.0.1:5240/MAAS\n\
-    \    target: _blank\n  - name: set-hog\n    icon: fas fa-microchip\n    subtitle:\
-    \ \"Control plane \\u2014 10.0.0.2\"\n    tag: k8s\n    url: http://10.0.0.1:5240/MAAS/r/machines\n\
-    \    target: _blank\n  - name: fast-skunk\n    icon: fas fa-microchip\n    subtitle:\
-    \ \"Worker \\u2014 10.0.0.4\"\n    tag: k8s\n    url: http://10.0.0.1:5240/MAAS/r/machines\n\
-    \    target: _blank\n  - name: fast-heron\n    icon: fas fa-microchip\n    subtitle:\
-    \ \"Worker \\u2014 10.0.0.7\"\n    tag: k8s\n    url: http://10.0.0.1:5240/MAAS/r/machines\n\
-    \    target: _blank\n- name: Observability\n  icon: fas fa-chart-line\n  items:\n\
-    \  - name: Grafana\n    icon: fas fa-chart-bar\n    subtitle: Dashboards & metrics\
-    \ visualization\n    tag: live\n    url: https://grafana.10.0.0.200.nip.io\n \
-    \   target: _blank\n  - name: Prometheus\n    icon: fas fa-fire\n    subtitle:\
-    \ \"Metrics \\u2014 internal (kubectl port-forward svc/kps-prometheus -n\\\n \
-    \     \\ monitoring 9090)\"\n    tag: internal\n    url: '#'\n    target: _blank\n\
-    \  - name: Alertmanager\n    icon: fas fa-bell\n    subtitle: \"Alerts \\u2014\
-    \ internal (kubectl port-forward svc/kps-alertmanager -n\\\n      \\ monitoring\
-    \ 9093)\"\n    tag: internal\n    url: '#'\n    target: _blank\n- name: DevOps\n\
-    \  icon: fas fa-code-branch\n  items:\n  - name: ArgoCD\n    icon: fas fa-sync\n\
-    \    subtitle: GitOps continuous reconciliation\n    tag: live\n    url: https://argocd.10.0.0.200.nip.io\n\
-    \    target: _blank\n  - name: GitLab\n    icon: fas fa-code\n    subtitle: \"\
-    CI/CD \\u2014 Phase 13\"\n    tag: soon\n    url: http://10.0.0.2:80\n    target:\
-    \ _blank\n  - name: Harbor\n    icon: fas fa-anchor\n    subtitle: 'Sovereign\
-    \ registry: 4 proxy caches (docker-hub, ghcr, quay, k8s-registry)\n      + library\
-    \ project'\n    tag: live\n    url: https://harbor.10.0.0.200.nip.io\n    target:\
-    \ _blank\n- name: Apps\n  icon: fas fa-cubes\n  items:\n  - name: podinfo\n  \
-    \  icon: fas fa-cube\n    subtitle: \"Demo Go web app \\u2014 first integration\
-    \ workload\"\n    tag: live\n    url: https://podinfo.10.0.0.200.nip.io\n    target:\
-    \ _blank\n  - name: whoami\n    icon: fas fa-question-circle\n    subtitle: \"\
-    Demo \\u2014 proves ArgoCD git-push deploy loop\"\n    tag: demo\n    url: https://whoami.10.0.0.200.nip.io\n\
-    \    target: _blank\n  - name: platform-demo\n    icon: fas fa-rocket\n    subtitle:\
-    \ \"CI/CD pipeline demo (GHA \\u2192 ghcr.io \\u2192 ArgoCD)\"\n    tag: live\n\
-    \    url: https://platform-demo.10.0.0.200.nip.io\n    target: _blank\n  - name:\
-    \ NATS\n    icon: fas fa-bolt\n    subtitle: \"Message broker (3-replica HA +\
-    \ JetStream) \\u2014 KEDA scales workers\\\n      \\ from 0\"\n    tag: live\n\
-    \    url: https://nats.10.0.0.200.nip.io\n    target: _blank\n  - name: Backstage\n\
-    \    icon: fas fa-th-large\n    subtitle: \"Internal Developer Portal \\u2014\
-    \ service catalog (Phase 18)\"\n    tag: live\n    url: https://backstage.10.0.0.200.nip.io\n\
-    \    target: _blank\n  - name: Chat\n    icon: fas fa-robot\n    subtitle: \"\
-    Open WebUI + Ollama (llama3.2:3b on CPU) \\u2014 Phase 19\"\n    tag: live\n \
-    \   url: https://chat.10.0.0.200.nip.io\n    target: _blank\n"
 kind: ConfigMap
 metadata:
   name: homer-config
   namespace: homer
+data:
+  config.yml: |
+    title: Mini Cloud Platform
+    subtitle: "Private Bare-Metal Infrastructure — GitOps via ArgoCD"
+    header: true
+    footer: false
+    colors:
+      light:
+        highlight-primary: '#3367d6'
+        highlight-secondary: '#4285f4'
+        highlight-hover: '#5a95f5'
+        background: '#f2f4f8'
+        card-background: '#ffffff'
+        text: '#363636'
+        text-header: '#ffffff'
+        text-title: '#303030'
+        text-subtitle: '#424242'
+        card-shadow: rgba(0, 0, 0, 0.1)
+        link: '#3273dc'
+        link-hover: '#363636'
+      dark:
+        highlight-primary: '#3367d6'
+        highlight-secondary: '#4285f4'
+        highlight-hover: '#5a95f5'
+        background: '#131313'
+        card-background: '#2b2b2b'
+        text: '#eaeaea'
+        text-header: '#ffffff'
+        text-title: '#fafafa'
+        text-subtitle: '#f5f5f5'
+        card-shadow: rgba(0, 0, 0, 0.4)
+        link: '#3273dc'
+        link-hover: '#ffdd57'
+    services:
+    - name: Infrastructure
+      icon: fas fa-server
+      items:
+      - name: MAAS
+        icon: fas fa-network-wired
+        subtitle: Bare-metal provisioning
+        tag: infra
+        url: http://10.0.0.1:5240/MAAS
+        target: _blank
+      - name: set-hog
+        icon: fas fa-microchip
+        subtitle: "Control plane — 10.0.0.2"
+        tag: k8s
+        url: http://10.0.0.1:5240/MAAS/r/machines
+        target: _blank
+      - name: fast-skunk
+        icon: fas fa-microchip
+        subtitle: "Worker — 10.0.0.4"
+        tag: k8s
+        url: http://10.0.0.1:5240/MAAS/r/machines
+        target: _blank
+      - name: fast-heron
+        icon: fas fa-microchip
+        subtitle: "Worker — 10.0.0.7"
+        tag: k8s
+        url: http://10.0.0.1:5240/MAAS/r/machines
+        target: _blank
+    - name: Observability
+      icon: fas fa-chart-line
+      items:
+      - name: Grafana
+        icon: fas fa-chart-bar
+        subtitle: Dashboards & metrics visualization
+        tag: live
+        url: https://grafana.10.0.0.200.nip.io
+        target: _blank
+      - name: Prometheus
+        icon: fas fa-fire
+        subtitle: "Metrics — internal (kubectl port-forward svc/kps-prometheus -n monitoring 9090)"
+        tag: internal
+        url: '#'
+        target: _blank
+      - name: Alertmanager
+        icon: fas fa-bell
+        subtitle: "Alerts — internal (kubectl port-forward svc/kps-alertmanager -n monitoring 9093)"
+        tag: internal
+        url: '#'
+        target: _blank
+    - name: DevOps
+      icon: fas fa-code-branch
+      items:
+      - name: ArgoCD
+        icon: fas fa-sync
+        subtitle: GitOps continuous reconciliation
+        tag: live
+        url: https://argocd.10.0.0.200.nip.io
+        target: _blank
+      - name: GitLab
+        icon: fas fa-code
+        subtitle: "CI/CD — Phase 13"
+        tag: soon
+        url: http://10.0.0.2:80
+        target: _blank
+      - name: Harbor
+        icon: fas fa-anchor
+        subtitle: 'Sovereign registry: 4 proxy caches (docker-hub, ghcr, quay, k8s-registry) + library project'
+        tag: live
+        url: https://harbor.10.0.0.200.nip.io
+        target: _blank
+      - name: MinIO
+        icon: fas fa-database
+        subtitle: "S3 object store — Velero backup target (Phase 14)"
+        tag: live
+        url: http://100.88.123.8:9001
+        target: _blank
+    - name: Apps
+      icon: fas fa-cubes
+      items:
+      - name: podinfo
+        icon: fas fa-cube
+        subtitle: "Demo Go web app — first integration workload"
+        tag: live
+        url: https://podinfo.10.0.0.200.nip.io
+        target: _blank
+      - name: whoami
+        icon: fas fa-question-circle
+        subtitle: "Demo — proves ArgoCD git-push deploy loop"
+        tag: demo
+        url: https://whoami.10.0.0.200.nip.io
+        target: _blank
+      - name: platform-demo
+        icon: fas fa-rocket
+        subtitle: "CI/CD pipeline demo (GHA → ghcr.io → ArgoCD)"
+        tag: live
+        url: https://platform-demo.10.0.0.200.nip.io
+        target: _blank
+      - name: NATS
+        icon: fas fa-bolt
+        subtitle: "Message broker (3-replica HA + JetStream) — KEDA scales workers from 0"
+        tag: live
+        url: https://nats.10.0.0.200.nip.io
+        target: _blank
+      - name: Backstage
+        icon: fas fa-th-large
+        subtitle: "Internal Developer Portal — service catalog (Phase 18)"
+        tag: live
+        url: https://backstage.10.0.0.200.nip.io
+        target: _blank
+      - name: Chat
+        icon: fas fa-robot
+        subtitle: "Open WebUI + Ollama (llama3.2:3b on CPU) — Phase 19"
+        tag: live
+        url: https://chat.10.0.0.200.nip.io
+        target: _blank
