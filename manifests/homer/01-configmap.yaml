@@ -95,11 +95,11 @@ data:
         tag: live
         url: https://argocd.10.0.0.200.nip.io
         target: _blank
-      - name: GitLab
-        icon: fas fa-code
-        subtitle: "CI/CD — Phase 13"
-        tag: soon
-        url: http://10.0.0.2:80
+      - name: GitHub
+        icon: fab fa-github
+        subtitle: "Source of truth — andrelair-platform org (5 repos: docs, ansible, opentofu, gitops, platform-demo)"
+        tag: live
+        url: https://github.com/orgs/andrelair-platform/repositories
         target: _blank
       - name: Harbor
         icon: fas fa-anchor
