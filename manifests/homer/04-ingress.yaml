@@ -12,7 +12,7 @@ metadata:
     # Auth flow: unauth -> 302 to auth.10.0.0.200.nip.io login -> 302 back with cookie.
     nginx.org/server-snippets: |
       location /outpost.goauthentik.io {
-          proxy_pass              http://authentik-server.authentik.svc.cluster.local:9000/outpost.goauthentik.io;
+          proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
           proxy_set_header        Host $host;
           proxy_set_header        X-Original-URL $scheme://$http_host$request_uri;
           add_header              Set-Cookie $auth_cookie;
