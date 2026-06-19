@@ -70,8 +70,8 @@ data:
       items:
       - name: Grafana
         icon: fas fa-chart-bar
-        subtitle: Dashboards & metrics visualization
-        tag: live
+        subtitle: "Dashboards & metrics visualization — OIDC via Authentik"
+        tag: SSO
         url: https://grafana.10.0.0.200.nip.io
         target: _blank
       - name: Prometheus
@@ -86,13 +86,22 @@ data:
         tag: internal
         url: '#'
         target: _blank
+    - name: Identity
+      icon: fas fa-id-badge
+      items:
+      - name: Authentik
+        icon: fas fa-key
+        subtitle: "Phase 23 — SSO + IAM (OIDC for ArgoCD/Grafana/Harbor/MinIO/Chat, forward-auth for the rest)"
+        tag: SSO
+        url: https://auth.10.0.0.200.nip.io
+        target: _blank
     - name: DevOps
       icon: fas fa-code-branch
       items:
       - name: ArgoCD
         icon: fas fa-sync
-        subtitle: GitOps continuous reconciliation
-        tag: live
+        subtitle: "GitOps continuous reconciliation — OIDC via Authentik"
+        tag: SSO
         url: https://argocd.10.0.0.200.nip.io
         target: _blank
       - name: GitHub
@@ -103,14 +112,14 @@ data:
         target: _blank
       - name: Harbor
         icon: fas fa-anchor
-        subtitle: 'Sovereign registry: 4 proxy caches (docker-hub, ghcr, quay, k8s-registry) + library project'
-        tag: live
+        subtitle: "Sovereign registry: 4 proxy caches + library project — OIDC via Authentik"
+        tag: SSO
         url: https://harbor.10.0.0.200.nip.io
         target: _blank
       - name: MinIO
         icon: fas fa-database
-        subtitle: "S3 object store — Velero backup target (Phase 14)"
-        tag: live
+        subtitle: "S3 object store — Velero backup target — OIDC via Authentik"
+        tag: SSO
         url: http://100.88.123.8:9001
         target: _blank
     - name: Apps
@@ -118,37 +127,37 @@ data:
       items:
       - name: podinfo
         icon: fas fa-cube
-        subtitle: "Demo Go web app — first integration workload"
-        tag: live
+        subtitle: "Demo Go web app — first integration workload — forward-auth via Authentik"
+        tag: SSO
         url: https://podinfo.10.0.0.200.nip.io
         target: _blank
       - name: whoami
         icon: fas fa-question-circle
-        subtitle: "Demo — proves ArgoCD git-push deploy loop"
-        tag: demo
+        subtitle: "Demo — proves ArgoCD git-push deploy loop — forward-auth via Authentik"
+        tag: SSO
         url: https://whoami.10.0.0.200.nip.io
         target: _blank
       - name: platform-demo
         icon: fas fa-rocket
-        subtitle: "CI/CD pipeline demo (GHA → ghcr.io → ArgoCD)"
-        tag: live
+        subtitle: "CI/CD pipeline demo (GHA → ghcr.io → ArgoCD) — forward-auth via Authentik"
+        tag: SSO
         url: https://platform-demo.10.0.0.200.nip.io
         target: _blank
       - name: NATS
         icon: fas fa-bolt
-        subtitle: "Message broker (3-replica HA + JetStream) — KEDA scales workers from 0"
-        tag: live
+        subtitle: "Message broker (3-replica HA + JetStream) — KEDA scales workers from 0 — forward-auth via Authentik"
+        tag: SSO
         url: https://nats.10.0.0.200.nip.io
         target: _blank
       - name: Backstage
         icon: fas fa-th-large
-        subtitle: "Internal Developer Portal — service catalog (Phase 18)"
+        subtitle: "Internal Developer Portal — guest auth (custom-image OIDC deferred to Phase 24)"
         tag: live
         url: https://backstage.10.0.0.200.nip.io
         target: _blank
       - name: Chat
         icon: fas fa-robot
-        subtitle: "Open WebUI + Ollama (llama3.2:3b on CPU) — Phase 19"
-        tag: live
+        subtitle: "Open WebUI + Ollama (llama3.2:3b on CPU) — OIDC via Authentik"
+        tag: SSO
         url: https://chat.10.0.0.200.nip.io
         target: _blank
