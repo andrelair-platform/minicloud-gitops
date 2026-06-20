@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ktayl-solution-web
+  namespace: ktayl-web
+  labels:
+    app: ktayl-solution-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ktayl-solution-web
+  template:
+    metadata:
+      labels:
+        app: ktayl-solution-web
+        backstage.io/kubernetes-id: ktayl-solution-web
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: ktayl-solution-web
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: web
+          # CI bumps this tag on every push to main
+          image: harbor.10.0.0.200.nip.io/library/ktayl-solution-web:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits:  {cpu: 100m, memory: 64Mi}
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /, port: http}
+            initialDelaySeconds: 5
+            periodSeconds: 15

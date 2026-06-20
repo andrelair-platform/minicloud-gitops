@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ktayl-solution-web
+  namespace: ktayl-web
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - ktayl.10.0.0.200.nip.io
+      secretName: ktayl-web-tls
+  rules:
+    - host: ktayl.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ktayl-solution-web
+                port:
+                  number: 80

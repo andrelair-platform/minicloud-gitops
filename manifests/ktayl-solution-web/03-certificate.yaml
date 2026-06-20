@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ktayl-web-tls
+  namespace: ktayl-web
+spec:
+  secretName: ktayl-web-tls
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - ktayl.10.0.0.200.nip.io

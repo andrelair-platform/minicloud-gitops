@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ktayl-solution-web
+  namespace: ktayl-web
+spec:
+  selector:
+    app: ktayl-solution-web
+  ports:
+    - port: 80
+      targetPort: http

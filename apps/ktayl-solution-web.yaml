@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ktayl-solution-web
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops
+    targetRevision: HEAD
+    path: manifests/ktayl-solution-web
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ktayl-web
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
