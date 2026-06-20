@@ -15,6 +15,7 @@ spec:
     metadata:
       labels:
         app: whoami
+        backstage.io/kubernetes-id: whoami
     spec:
       affinity:
         # Soft anti-affinity: spread across both workers when possible.

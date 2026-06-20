@@ -28,6 +28,7 @@ spec:
         config-checksum: "v12-sso-tiles"
       labels:
         app: homer
+        backstage.io/kubernetes-id: homer
     spec:
       containers:
       # Pinned 2026-06-15: was b4bz/homer:latest. Eliminates silent image drift

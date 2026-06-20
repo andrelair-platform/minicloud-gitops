@@ -15,6 +15,7 @@ spec:
     metadata:
       labels:
         app: platform-demo
+        backstage.io/kubernetes-id: platform-demo
     spec:
       affinity:
         podAntiAffinity:

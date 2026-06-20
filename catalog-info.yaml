@@ -33,3 +33,94 @@ spec:
   lifecycle: production
   owner: andrelair-platform
   system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: homer
+  description: |
+    Homer dashboard — internal service catalog and quick-links page for all
+    minicloud platform apps. Deployed via ArgoCD (Phase 12) with a
+    ConfigMap-driven config.yml listing every app with icon, URL, and tag.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: homer
+    backstage.io/kubernetes-id: homer
+  tags:
+    - dashboard
+    - phase-12
+  links:
+    - url: https://homer.10.0.0.200.nip.io
+      title: Live Homer dashboard
+      icon: web
+    - url: https://argocd.10.0.0.200.nip.io/applications/homer
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: website
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: whoami
+  description: |
+    Traefik whoami service — Phase 12 GitOps demo workload. Returns request
+    headers, client IP, and TLS info as plain text. Deployed via ArgoCD
+    with 2 replicas spread across workers using soft anti-affinity.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: whoami
+    backstage.io/kubernetes-id: whoami
+  tags:
+    - demo
+    - phase-12
+  links:
+    - url: https://whoami.10.0.0.200.nip.io
+      title: Live whoami service
+      icon: web
+    - url: https://argocd.10.0.0.200.nip.io/applications/whoami
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: event-demo
+  description: |
+    KEDA + NATS JetStream scale-to-zero demo (Phase 17). The echo-worker
+    Deployment starts at 0 replicas; KEDA scales it up when messages land
+    in the JOBS/echo-workers consumer and back to 0 when the queue drains.
+    End-to-end latency from publish to pod-ready is ~8 s at 0 replicas.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: event-demo
+    backstage.io/kubernetes-id: echo-worker
+  tags:
+    - keda
+    - nats
+    - demo
+    - phase-17
+    - scale-to-zero
+  links:
+    - url: https://argocd.10.0.0.200.nip.io/applications/event-demo
+      title: ArgoCD Application
+      icon: dashboard
+    - url: https://andrelair-platform.github.io/minicloud-platform-docs/platform-roadmap/phase-17-keda
+      title: Phase 17 documentation
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform

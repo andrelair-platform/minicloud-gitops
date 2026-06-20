@@ -19,6 +19,7 @@ spec:
     metadata:
       labels:
         app: echo-worker
+        backstage.io/kubernetes-id: echo-worker
     spec:
       containers:
         - name: worker
