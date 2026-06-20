@@ -50,3 +50,13 @@ spec:
                 name: platform-demo
                 port:
                   name: http
+    - host: demo.devandre.sbs
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: platform-demo
+                port:
+                  name: http

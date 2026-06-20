@@ -53,3 +53,13 @@ spec:
               number: 8080
         path: /
         pathType: Prefix
+  - host: homer.devandre.sbs
+    http:
+      paths:
+      - backend:
+          service:
+            name: homer
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
