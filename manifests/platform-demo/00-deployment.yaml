@@ -4,6 +4,10 @@ kind: ServiceAccount
 metadata:
   name: platform-demo
   namespace: gitops-demo
+spec:
+  template:
+    spec:
+      containers: []
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -49,7 +53,7 @@ spec:
           # syncs Healthy from the start. The CI workflow in
           # andrelair-platform/platform-demo replaces this line on every
           # push to main with the freshly built ghcr.io/.../<sha> image.
-          image: harbor.10.0.0.200.nip.io/ghcr/andrelair-platform/platform-demo:01cac9b
+          image: harbor.10.0.0.200.nip.io/ghcr/andrelair-platform/platform-demo:dc9b66b
           ports:
             - containerPort: 9898
               name: http
