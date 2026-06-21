@@ -11,6 +11,9 @@ spec:
     - hosts:
         - ktayl.10.0.0.200.nip.io
       secretName: ktayl-web-tls
+    - hosts:
+        - ktayl.devandre.sbs
+      secretName: ktayl-web-tls
   rules:
     - host: ktayl.10.0.0.200.nip.io
       http:

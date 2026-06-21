@@ -42,6 +42,9 @@ spec:
     - hosts:
         - homer.10.0.0.200.nip.io
       secretName: homer-tls
+    - hosts:
+        - homer.devandre.sbs
+      secretName: homer-tls
   rules:
   - host: homer.10.0.0.200.nip.io
     http:

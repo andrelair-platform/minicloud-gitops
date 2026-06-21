@@ -39,6 +39,9 @@ spec:
     - hosts:
         - platform-demo.10.0.0.200.nip.io
       secretName: platform-demo-tls
+    - hosts:
+        - demo.devandre.sbs
+      secretName: platform-demo-tls
   rules:
     - host: platform-demo.10.0.0.200.nip.io
       http:
