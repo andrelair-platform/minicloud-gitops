@@ -74,18 +74,6 @@ data:
         tag: SSO
         url: https://grafana.devandre.sbs
         target: _blank
-      - name: Prometheus
-        icon: fas fa-fire
-        subtitle: "Metrics — internal (kubectl port-forward svc/kps-prometheus -n monitoring 9090)"
-        tag: internal
-        url: '#'
-        target: _blank
-      - name: Alertmanager
-        icon: fas fa-bell
-        subtitle: "Alerts — internal (kubectl port-forward svc/kps-alertmanager -n monitoring 9093)"
-        tag: internal
-        url: '#'
-        target: _blank
     - name: Identity
       icon: fas fa-id-badge
       items:
