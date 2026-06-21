@@ -1,4 +1,10 @@
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: platform-demo
+  namespace: gitops-demo
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,7 +22,18 @@ spec:
       labels:
         app: platform-demo
         backstage.io/kubernetes-id: platform-demo
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "platform-demo"
+        vault.hashicorp.com/agent-inject-secret-config: "secret/data/platform-demo/config"
+        vault.hashicorp.com/agent-inject-template-config: |
+          {{- with secret "secret/data/platform-demo/config" -}}
+          API_KEY={{ .Data.data.api_key }}
+          ENVIRONMENT={{ .Data.data.environment }}
+          LOG_LEVEL={{ .Data.data.log_level }}
+          {{- end }}
     spec:
+      serviceAccountName: platform-demo
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
