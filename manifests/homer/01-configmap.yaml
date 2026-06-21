@@ -74,6 +74,18 @@ data:
         tag: SSO
         url: https://grafana.devandre.sbs
         target: _blank
+      - name: Prometheus
+        icon: fas fa-fire
+        subtitle: "Metrics — Tailscale only"
+        tag: internal
+        url: https://prometheus.10.0.0.200.nip.io
+        target: _blank
+      - name: Alertmanager
+        icon: fas fa-bell
+        subtitle: "Alerts — Tailscale only"
+        tag: internal
+        url: https://alertmanager.10.0.0.200.nip.io
+        target: _blank
     - name: Identity
       icon: fas fa-id-badge
       items:
