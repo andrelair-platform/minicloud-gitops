@@ -1,0 +1,38 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequireresourcelimits
+  annotations:
+    metadata.gatekeeper.sh/title: "Require Resource Limits"
+    metadata.gatekeeper.sh/description: "All containers must declare CPU and memory limits to prevent resource starvation."
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequireResourceLimits
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequireresourcelimits
+
+        # Pod: containers at spec.containers
+        containers[c] {
+          c := input.review.object.spec.containers[_]
+        }
+
+        # Deployment/StatefulSet/DaemonSet: containers at spec.template.spec.containers
+        containers[c] {
+          c := input.review.object.spec.template.spec.containers[_]
+        }
+
+        violation[{"msg": msg}] {
+          container := containers[_]
+          not container.resources.limits.cpu
+          msg := sprintf("Container '%v' must set resources.limits.cpu", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := containers[_]
+          not container.resources.limits.memory
+          msg := sprintf("Container '%v' must set resources.limits.memory", [container.name])
+        }

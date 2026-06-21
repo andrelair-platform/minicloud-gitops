@@ -1,0 +1,30 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequireResourceLimits
+metadata:
+  name: require-resource-limits
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet"]
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            - gitops-demo
+            - podinfo
+            - homer
+            - monitoring
+            - observability
+            - argocd
+            - harbor
+            - backstage
+            - vault
+            - authentik
+            - keda
+            - messaging
+            - event-demo
+            - ai
+            - ktayl-web

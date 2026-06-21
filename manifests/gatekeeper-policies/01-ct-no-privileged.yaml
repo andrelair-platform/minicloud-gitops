@@ -1,0 +1,28 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8snoprivilegedcontainers
+  annotations:
+    metadata.gatekeeper.sh/title: "No Privileged Containers"
+    metadata.gatekeeper.sh/description: "Blocks containers that run with privileged: true."
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sNoPrivilegedContainers
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8snoprivilegedcontainers
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          container.securityContext.privileged == true
+          msg := sprintf("Container '%v' must not run as privileged", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.initContainers[_]
+          container.securityContext.privileged == true
+          msg := sprintf("initContainer '%v' must not run as privileged", [container.name])
+        }
