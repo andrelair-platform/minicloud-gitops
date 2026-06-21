@@ -11,20 +11,17 @@ spec:
     namespaceSelector:
       matchExpressions:
         - key: kubernetes.io/metadata.name
-          operator: In
+          operator: NotIn
           values:
-            - gitops-demo
-            - podinfo
-            - homer
-            - monitoring
-            - observability
-            - argocd
-            - harbor
-            - backstage
-            - vault
-            - authentik
-            - keda
-            - messaging
-            - event-demo
-            - ai
-            - ktayl-web
+            - kube-system
+            - kube-public
+            - kube-node-lease
+            - gatekeeper-system
+            - cert-manager
+            - longhorn-system
+            - monitoring       # prometheus-operator sidecars don't set limits by design
+            - observability    # loki/tempo infra
+            - metallb-system
+            - ingress
+            - chaos-mesh
+            - velero
