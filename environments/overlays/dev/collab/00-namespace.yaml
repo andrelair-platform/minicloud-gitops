@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: collab-dev
+  labels:
+    env: dev
+    team: collab
+    kubernetes.io/metadata.name: collab-dev

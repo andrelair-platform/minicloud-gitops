@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: dev-quota
+  namespace: insurance-dev
+spec:
+  hard:
+    requests.cpu: "500m"
+    requests.memory: "1Gi"
+    limits.cpu: "2"
+    limits.memory: "4Gi"
+    pods: "10"
+    persistentvolumeclaims: "5"
+    requests.storage: "20Gi"

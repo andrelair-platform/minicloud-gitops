@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: environments
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - env: dev
+                - env: staging
+                - env: prod
+          - list:
+              elements:
+                - app: insurance
+                - app: collab
+  template:
+    metadata:
+      name: "{{ .app }}-{{ .env }}"
+      labels:
+        env: "{{ .env }}"
+        team: "{{ .app }}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+        targetRevision: main
+        path: "environments/overlays/{{ .env }}/{{ .app }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ .app }}-{{ .env }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
