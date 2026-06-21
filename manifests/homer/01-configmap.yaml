@@ -43,27 +43,27 @@ data:
       items:
       - name: MAAS
         icon: fas fa-network-wired
-        subtitle: Bare-metal provisioning
-        tag: infra
-        url: http://10.0.0.1:5240/MAAS
+        subtitle: "Bare-metal provisioning — Tailscale only"
+        tag: internal
+        url: http://100.88.123.8:5240/MAAS
         target: _blank
       - name: set-hog
         icon: fas fa-microchip
         subtitle: "Control plane — 10.0.0.2"
         tag: k8s
-        url: http://10.0.0.1:5240/MAAS/r/machines
+        url: http://100.88.123.8:5240/MAAS/r/machines
         target: _blank
       - name: fast-skunk
         icon: fas fa-microchip
         subtitle: "Worker — 10.0.0.4"
         tag: k8s
-        url: http://10.0.0.1:5240/MAAS/r/machines
+        url: http://100.88.123.8:5240/MAAS/r/machines
         target: _blank
       - name: fast-heron
         icon: fas fa-microchip
         subtitle: "Worker — 10.0.0.7"
         tag: k8s
-        url: http://10.0.0.1:5240/MAAS/r/machines
+        url: http://100.88.123.8:5240/MAAS/r/machines
         target: _blank
     - name: Observability
       icon: fas fa-chart-line
@@ -72,7 +72,7 @@ data:
         icon: fas fa-chart-bar
         subtitle: "Dashboards & metrics visualization — OIDC via Authentik"
         tag: SSO
-        url: https://grafana.10.0.0.200.nip.io
+        url: https://grafana.devandre.sbs
         target: _blank
       - name: Prometheus
         icon: fas fa-fire
@@ -91,9 +91,9 @@ data:
       items:
       - name: Authentik
         icon: fas fa-key
-        subtitle: "Phase 23 — SSO + IAM (OIDC for ArgoCD/Grafana/Harbor/MinIO/Chat, forward-auth for the rest)"
+        subtitle: "SSO + IAM — OIDC for ArgoCD/Grafana/Harbor/MinIO/Chat, forward-auth for the rest"
         tag: SSO
-        url: https://auth.10.0.0.200.nip.io
+        url: https://auth.devandre.sbs
         target: _blank
     - name: DevOps
       icon: fas fa-code-branch
@@ -102,11 +102,11 @@ data:
         icon: fas fa-sync
         subtitle: "GitOps continuous reconciliation — OIDC via Authentik"
         tag: SSO
-        url: https://argocd.10.0.0.200.nip.io
+        url: https://argocd.devandre.sbs
         target: _blank
       - name: GitHub
         icon: fab fa-github
-        subtitle: "Source of truth — andrelair-platform org (5 repos: docs, ansible, opentofu, gitops, platform-demo)"
+        subtitle: "Source of truth — andrelair-platform org (7 repos)"
         tag: live
         url: https://github.com/orgs/andrelair-platform/repositories
         target: _blank
@@ -114,50 +114,62 @@ data:
         icon: fas fa-anchor
         subtitle: "Sovereign registry: 4 proxy caches + library project — OIDC via Authentik"
         tag: SSO
-        url: https://harbor.10.0.0.200.nip.io
+        url: https://harbor.devandre.sbs
         target: _blank
       - name: MinIO
         icon: fas fa-database
-        subtitle: "S3 object store — Velero backup target — OIDC via Authentik"
-        tag: SSO
+        subtitle: "S3 object store — Velero backup target — Tailscale only"
+        tag: internal
         url: http://100.88.123.8:9001
         target: _blank
     - name: Apps
       icon: fas fa-cubes
       items:
-      - name: podinfo
-        icon: fas fa-cube
-        subtitle: "Demo Go web app — first integration workload — forward-auth via Authentik"
-        tag: SSO
-        url: https://podinfo.10.0.0.200.nip.io
-        target: _blank
-      - name: whoami
-        icon: fas fa-question-circle
-        subtitle: "Demo — proves ArgoCD git-push deploy loop — forward-auth via Authentik"
-        tag: SSO
-        url: https://whoami.10.0.0.200.nip.io
-        target: _blank
       - name: platform-demo
         icon: fas fa-rocket
         subtitle: "CI/CD pipeline demo (GHA → ghcr.io → ArgoCD) — forward-auth via Authentik"
         tag: SSO
-        url: https://platform-demo.10.0.0.200.nip.io
-        target: _blank
-      - name: NATS
-        icon: fas fa-bolt
-        subtitle: "Message broker (3-replica HA + JetStream) — KEDA scales workers from 0 — forward-auth via Authentik"
-        tag: SSO
-        url: https://nats.10.0.0.200.nip.io
+        url: https://demo.devandre.sbs
         target: _blank
       - name: Backstage
         icon: fas fa-th-large
-        subtitle: "Internal Developer Portal — guest auth (custom-image OIDC deferred to Phase 24)"
-        tag: live
-        url: https://backstage.10.0.0.200.nip.io
+        subtitle: "Internal Developer Portal — OIDC via Authentik"
+        tag: SSO
+        url: https://backstage.devandre.sbs
         target: _blank
       - name: Chat
         icon: fas fa-robot
         subtitle: "Open WebUI + Ollama (llama3.2:3b on CPU) — OIDC via Authentik"
         tag: SSO
-        url: https://chat.10.0.0.200.nip.io
+        url: https://chat.devandre.sbs
+        target: _blank
+      - name: NATS
+        icon: fas fa-bolt
+        subtitle: "Message broker (3-replica HA + JetStream) — KEDA scales workers from 0"
+        tag: live
+        url: https://nats.devandre.sbs
+        target: _blank
+      - name: Vault
+        icon: fas fa-lock
+        subtitle: "Secrets management — HashiCorp Vault"
+        tag: live
+        url: https://vault.devandre.sbs
+        target: _blank
+      - name: ktayl-solution
+        icon: fas fa-briefcase
+        subtitle: "Insurance consulting showcase — 7 Lines of Business (Astro + Tailwind)"
+        tag: live
+        url: https://ktayl.devandre.sbs
+        target: _blank
+      - name: podinfo
+        icon: fas fa-cube
+        subtitle: "Demo Go web app — internal only (Tailscale)"
+        tag: internal
+        url: https://podinfo.10.0.0.200.nip.io
+        target: _blank
+      - name: whoami
+        icon: fas fa-question-circle
+        subtitle: "Debug workload — internal only (Tailscale)"
+        tag: internal
+        url: https://whoami.10.0.0.200.nip.io
         target: _blank
