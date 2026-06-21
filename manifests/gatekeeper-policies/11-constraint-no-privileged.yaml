@@ -26,3 +26,4 @@ spec:
             - ingress-nginx
             - chaos-mesh
             - velero
+            - falco
