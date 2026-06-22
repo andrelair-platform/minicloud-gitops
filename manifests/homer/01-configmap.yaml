@@ -149,6 +149,12 @@ data:
         tag: live
         url: https://nats.devandre.sbs
         target: _blank
+      - name: Nextcloud
+        icon: fas fa-cloud
+        subtitle: "Document collaboration & file sharing — OIDC via Authentik"
+        tag: SSO
+        url: https://cloud.devandre.sbs
+        target: _blank
       - name: Vault
         icon: fas fa-lock
         subtitle: "Secrets management — HashiCorp Vault"

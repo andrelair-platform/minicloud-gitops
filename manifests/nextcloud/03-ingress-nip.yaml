@@ -1,0 +1,31 @@
+---
+# Supplemental Ingress for internal nip.io access via Tailscale
+# The Helm chart only creates one ingress rule (cloud.devandre.sbs).
+# NGINX IC needs a separate server block for cloud.10.0.0.200.nip.io.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextcloud-nip
+  namespace: nextcloud
+  annotations:
+    nginx.org/proxy-connect-timeout: "300"
+    nginx.org/proxy-read-timeout: "300"
+    nginx.org/proxy-send-timeout: "300"
+    nginx.org/client-max-body-size: "10g"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: cloud.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nextcloud
+                port:
+                  number: 8080
+  tls:
+    - hosts:
+        - cloud.10.0.0.200.nip.io
+      secretName: nextcloud-tls
