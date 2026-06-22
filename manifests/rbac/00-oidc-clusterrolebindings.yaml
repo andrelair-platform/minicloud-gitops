@@ -1,0 +1,45 @@
+---
+# Direction IT group → cluster-admin (full kubectl access)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oidc-cluster-admin
+subjects:
+  - kind: Group
+    name: "oidc:Direction IT"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Cybersécurité + Audit groups → read-only across all namespaces
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oidc-cluster-viewer
+subjects:
+  - kind: Group
+    name: "oidc:Cybersécurité"
+    apiGroup: rbac.authorization.k8s.io
+  - kind: Group
+    name: "oidc:Audit"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: view
+  apiGroup: rbac.authorization.k8s.io
+---
+# kanmegnea admin user → cluster-admin (individual binding as break-glass-oidc)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oidc-cluster-admin-kanmegnea
+subjects:
+  - kind: User
+    name: "oidc:kanmegnea"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
