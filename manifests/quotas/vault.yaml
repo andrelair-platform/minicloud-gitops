@@ -1,0 +1,33 @@
+---
+# Actual peak: ~5m CPU / 65Mi memory (vault-0: 1m/54Mi, agent-injector: 4m/11Mi)
+# Vault is intentionally lean; quota still allows headroom for unsealing and raft sync
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: vault-quota
+  namespace: vault
+spec:
+  hard:
+    requests.cpu: 500m
+    limits.cpu: "1"
+    requests.memory: 256Mi
+    limits.memory: 512Mi
+    count/pods: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: vault-limits
+  namespace: vault
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 100m
+        memory: 128Mi
+      defaultRequest:
+        cpu: 10m
+        memory: 64Mi
+      max:
+        cpu: "1"
+        memory: 512Mi

@@ -1,0 +1,80 @@
+---
+# Block all ingress to the harbor namespace by default
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: harbor
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Harbor components talk to each other (core → registry, core → database, core → redis, trivy → core)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: harbor
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+---
+# NGINX ingress controller proxies browser/API traffic to harbor-portal (port 8080)
+# and to harbor-core for the registry API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-nginx
+  namespace: harbor
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+---
+# Prometheus scrapes harbor-core metrics (port 8001)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-scrape
+  namespace: harbor
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+---
+# Cluster nodes (kubelets) pull images from harbor.10.0.0.200.nip.io.
+# Kubelet runs on the node itself (not a pod), so traffic appears as node IP.
+# Allow from the entire cluster subnet (10.0.0.0/24).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kubelet-image-pull
+  namespace: harbor
+spec:
+  podSelector:
+    matchLabels:
+      app: harbor
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 10.0.0.0/24

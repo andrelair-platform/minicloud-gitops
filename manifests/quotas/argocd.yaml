@@ -1,0 +1,34 @@
+---
+# Actual peak: ~21m CPU / 515Mi memory (5 pods)
+# Quota at ~10x to allow ArgoCD to scale without consuming the whole cluster
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: argocd-quota
+  namespace: argocd
+spec:
+  hard:
+    requests.cpu: "2"
+    limits.cpu: "4"
+    requests.memory: 1Gi
+    limits.memory: 3Gi
+    count/pods: "20"
+---
+# LimitRange injects defaults so pods without explicit resource specs count against the quota
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: argocd-limits
+  namespace: argocd
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 10m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 2Gi

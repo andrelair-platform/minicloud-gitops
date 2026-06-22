@@ -1,0 +1,79 @@
+---
+# Block all ingress to the monitoring namespace by default.
+# Note: Prometheus scrapes OTHER namespaces (outbound connections from monitoring)
+# — those are unaffected by this policy. This policy controls what can reach
+# Prometheus/Grafana/Alertmanager FROM outside.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Monitoring components talk to each other (Grafana → Prometheus, Alertmanager → Prometheus)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+---
+# NGINX ingress controller proxies browser traffic to Grafana (port 3000)
+# and to Prometheus/Alertmanager if exposed via ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-nginx
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+---
+# kube-system pods push metrics to Prometheus pushgateway and expose metrics
+# that the kube-prometheus-stack scrapes (kube-state-metrics, node-exporter)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kube-system
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+---
+# observability namespace (Loki) reads from Prometheus for dashboards
+# and Grafana reads Loki datasource cross-namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-observability
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability

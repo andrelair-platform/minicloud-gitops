@@ -1,0 +1,33 @@
+---
+# Actual peak: ~85m CPU / 670Mi memory (Loki 22m/241Mi, 3x Promtail DaemonSet ~63m/423Mi)
+# Promtail is a DaemonSet — one pod per node; quota covers 3 nodes + Loki
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: observability-quota
+  namespace: observability
+spec:
+  hard:
+    requests.cpu: "1"
+    limits.cpu: "2"
+    requests.memory: 1Gi
+    limits.memory: 3Gi
+    count/pods: "15"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: observability-limits
+  namespace: observability
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 100m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 10m
+        memory: 64Mi
+      max:
+        cpu: "1"
+        memory: 2Gi

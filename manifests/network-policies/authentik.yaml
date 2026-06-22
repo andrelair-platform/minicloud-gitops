@@ -1,0 +1,84 @@
+---
+# Block all ingress to the authentik namespace by default
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: authentik
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Authentik components talk to each other (server ↔ worker ↔ redis ↔ postgresql)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: authentik
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+---
+# NGINX ingress controller proxies login/OIDC traffic to authentik-server (port 9000)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-nginx
+  namespace: authentik
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+---
+# Prometheus scrapes authentik metrics; Promtail tails authentik logs
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-scrape
+  namespace: authentik
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+---
+# In-cluster OIDC clients (ArgoCD, Backstage, Nextcloud, Vault) call Authentik
+# for token validation and discovery. All platform namespaces need access to
+# auth.10.0.0.200.nip.io which goes through NGINX — but direct pod-to-pod
+# access is allowed here for resilience.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-oidc-clients
+  namespace: authentik
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - port: 9000
+          protocol: TCP
+        - port: 9443
+          protocol: TCP
