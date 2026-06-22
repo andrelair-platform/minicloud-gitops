@@ -1,0 +1,20 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-tls
+  namespace: vault
+spec:
+  secretName: vault-tls
+  duration: 2160h
+  renewBefore: 720h
+  issuerRef:
+    kind: ClusterIssuer
+    name: minicloud-ca
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - vault.10.0.0.200.nip.io
+    - vault.devandre.sbs
