@@ -3,6 +3,7 @@ kind: ConstraintTemplate
 metadata:
   name: k8snoprivilegeescalation
   annotations:
+    argocd.argoproj.io/sync-wave: "0"
     metadata.gatekeeper.sh/title: "No Privilege Escalation"
     metadata.gatekeeper.sh/description: "All containers must set allowPrivilegeEscalation:false to prevent setuid/setgid escalation."
 spec:

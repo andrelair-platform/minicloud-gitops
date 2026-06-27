@@ -3,6 +3,7 @@ kind: ConstraintTemplate
 metadata:
   name: k8sblocklatesttag
   annotations:
+    argocd.argoproj.io/sync-wave: "0"
     metadata.gatekeeper.sh/title: "Block Latest Image Tag"
     metadata.gatekeeper.sh/description: "Requires container images to specify an explicit version tag (not :latest)."
 spec:

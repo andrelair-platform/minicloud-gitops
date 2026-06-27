@@ -1,6 +1,8 @@
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
   name: k8sallowedregistries
   annotations:
     description: "Require container images to come from approved registries"

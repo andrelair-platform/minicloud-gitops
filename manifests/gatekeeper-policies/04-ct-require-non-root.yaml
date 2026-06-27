@@ -3,6 +3,7 @@ kind: ConstraintTemplate
 metadata:
   name: k8srequirenonroot
   annotations:
+    argocd.argoproj.io/sync-wave: "0"
     metadata.gatekeeper.sh/title: "Require Non-Root Containers"
     metadata.gatekeeper.sh/description: "Containers must not run as root. Either pod-level runAsNonRoot:true or a non-zero runAsUser must be set."
 spec:

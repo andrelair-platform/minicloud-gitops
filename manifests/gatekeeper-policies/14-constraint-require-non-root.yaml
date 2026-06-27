@@ -1,6 +1,8 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sRequireNonRoot
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
   name: require-non-root
 spec:
   enforcementAction: warn
