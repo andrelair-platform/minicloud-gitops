@@ -44,6 +44,11 @@ spec:
                 # Tiny sleep on empty/timeout to avoid hammering the API
                 sleep 0.5
               done
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               cpu: 25m

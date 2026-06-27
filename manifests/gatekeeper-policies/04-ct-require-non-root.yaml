@@ -1,0 +1,58 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequirenonroot
+  annotations:
+    metadata.gatekeeper.sh/title: "Require Non-Root Containers"
+    metadata.gatekeeper.sh/description: "Containers must not run as root. Either pod-level runAsNonRoot:true or a non-zero runAsUser must be set."
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequireNonRoot
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequirenonroot
+
+        # Collect containers from both Pod and Deployment/StatefulSet/DaemonSet paths.
+        containers[c] {
+          c := input.review.object.spec.containers[_]
+        }
+        containers[c] {
+          c := input.review.object.spec.template.spec.containers[_]
+        }
+        containers[c] {
+          c := input.review.object.spec.initContainers[_]
+        }
+        containers[c] {
+          c := input.review.object.spec.template.spec.initContainers[_]
+        }
+
+        pod_spec := input.review.object.spec
+        pod_spec_t := input.review.object.spec.template.spec
+
+        pod_nonroot {
+          pod_spec.securityContext.runAsNonRoot == true
+        }
+        pod_nonroot {
+          pod_spec_t.securityContext.runAsNonRoot == true
+        }
+
+        container_safe(c) {
+          c.securityContext.runAsNonRoot == true
+        }
+        container_safe(c) {
+          c.securityContext.runAsUser > 0
+        }
+        container_safe(c) {
+          pod_nonroot
+          not c.securityContext.runAsNonRoot == false
+          not c.securityContext.runAsUser == 0
+        }
+
+        violation[{"msg": msg}] {
+          c := containers[_]
+          not container_safe(c)
+          msg := sprintf("Container '%v' must not run as root: set runAsNonRoot:true or a non-zero runAsUser", [c.name])
+        }

@@ -32,8 +32,14 @@ spec:
           ENVIRONMENT={{ .Data.data.environment }}
           LOG_LEVEL={{ .Data.data.log_level }}
           {{- end }}
+        vault.hashicorp.com/agent-run-as-non-root: "true"
+        vault.hashicorp.com/agent-run-as-user: "1000"
     spec:
       serviceAccountName: platform-demo
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -53,6 +59,11 @@ spec:
           ports:
             - containerPort: 9898
               name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests: {cpu: 10m, memory: 16Mi}
             limits: {cpu: 100m, memory: 64Mi}
