@@ -38,6 +38,7 @@ spec:
       serviceAccountName: platform-demo
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65532
         seccompProfile:
           type: RuntimeDefault
       affinity:
