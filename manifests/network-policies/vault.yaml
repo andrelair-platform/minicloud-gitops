@@ -78,6 +78,27 @@ spec:
         - port: 8200
           protocol: TCP
 ---
+# Vault-agent sidecars injected into pods across all namespaces need to reach
+# vault:8200 to authenticate and fetch secrets. Allowing all namespaces here
+# mirrors the pre-NetworkPolicy state — vault is the cluster secrets backend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-vault-agent-clients
+  namespace: vault
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: vault
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - port: 8200
+          protocol: TCP
+---
 # kube-apiserver calls vault-agent-injector MutatingWebhook (port 8080).
 # kube-apiserver runs on the cluster nodes (10.0.0.0/24) — not as a pod.
 apiVersion: networking.k8s.io/v1
