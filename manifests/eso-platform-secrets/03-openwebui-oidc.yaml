@@ -1,0 +1,22 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: openwebui-oidc
+  namespace: ai
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: openwebui-oidc
+    creationPolicy: Owner
+  data:
+    - secretKey: OAUTH_CLIENT_ID
+      remoteRef:
+        key: platform/openwebui-oidc
+        property: OAUTH_CLIENT_ID
+    - secretKey: OAUTH_CLIENT_SECRET
+      remoteRef:
+        key: platform/openwebui-oidc
+        property: OAUTH_CLIENT_SECRET
