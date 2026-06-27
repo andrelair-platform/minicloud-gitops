@@ -32,6 +32,6 @@ spec:
 
         violation[{"msg": msg}] {
           c := containers[_]
-          c.securityContext.allowPrivilegeEscalation != false
+          not c.securityContext.allowPrivilegeEscalation == false
           msg := sprintf("Container '%v' must set allowPrivilegeEscalation:false", [c.name])
         }
