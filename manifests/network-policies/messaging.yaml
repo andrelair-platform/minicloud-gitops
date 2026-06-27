@@ -1,25 +1,36 @@
 ---
-# Block all ingress to the backstage namespace by default
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: default-deny-ingress
-  namespace: backstage
+  namespace: messaging
 spec:
   podSelector: {}
   policyTypes:
     - Ingress
 ---
-# NGINX ingress controller proxies browser traffic to backstage app (port 7007)
+# NATS cluster peers communicate internally on ports 6222 (cluster) and 4222 (client)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: messaging
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+---
+# External NATS access via Ingress (nats.devandre.sbs)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-ingress-nginx
-  namespace: backstage
+  namespace: messaging
 spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: backstage
+  podSelector: {}
   policyTypes:
     - Ingress
   ingress:
@@ -28,35 +39,33 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
 ---
-# PostgreSQL only accepts connections from the backstage app pods on port 5432.
-# This isolates the DB so no other namespace or pod can reach it directly.
+# Any in-cluster client (platform-demo, event-demo, etc.) may publish/subscribe.
+# NATS is a shared message bus — restrict by publisher identity at the NATS auth
+# level, not at the NetworkPolicy level.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-postgres-from-backstage
-  namespace: backstage
+  name: allow-cluster-clients
+  namespace: messaging
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: postgresql
-      app.kubernetes.io/instance: backstage
+      app.kubernetes.io/name: nats
   policyTypes:
     - Ingress
   ingress:
     - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: backstage
+        - ipBlock:
+            cidr: 10.42.0.0/16
       ports:
-        - port: 5432
+        - port: 4222
           protocol: TCP
 ---
-# Prometheus scrapes backstage metrics
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-monitoring-scrape
-  namespace: backstage
+  namespace: messaging
 spec:
   podSelector: {}
   policyTypes:
