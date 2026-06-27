@@ -16,6 +16,12 @@ spec:
         app: ktayl-solution-web
         backstage.io/kubernetes-id: ktayl-solution-web
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -28,13 +34,16 @@ spec:
       containers:
         - name: web
           # CI bumps this tag on every push to main
-          image: harbor.10.0.0.200.nip.io/library/ktayl-solution-web:5724488
+          image: harbor.10.0.0.200.nip.io/library/ktayl-solution-web:5724488-unprivileged
           imagePullPolicy: Always
           ports:
-            - containerPort: 80
+            - containerPort: 8080
               name: http
           securityContext:
             allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests: {cpu: 10m, memory: 16Mi}
             limits:  {cpu: 100m, memory: 64Mi}
