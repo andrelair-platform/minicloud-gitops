@@ -4,7 +4,7 @@ metadata:
   name: gatekeeper-policies
   namespace: argocd
 spec:
-  project: default
+  project: minicloud-platform
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main

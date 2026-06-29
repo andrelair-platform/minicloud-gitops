@@ -2,19 +2,19 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: rbac
+  name: argocd-project
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: minicloud-platform
+  project: default
   source:
-    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops
     targetRevision: main
-    path: manifests/rbac
+    path: manifests/argocd-project
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true

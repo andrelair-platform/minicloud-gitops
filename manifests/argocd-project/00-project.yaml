@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: minicloud-platform
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Minicloud platform — source-restricted to andrelair-platform repos"
+
+  sourceRepos:
+    - https://github.com/andrelair-platform/minicloud-gitops
+    - https://github.com/andrelair-platform/minicloud-gitops.git
+    - https://github.com/andrelair-platform/minicloud-ansible.git
+    - https://charts.external-secrets.io
+    - https://helm.releases.hashicorp.com
+    - https://nextcloud.github.io/helm/
+
+  destinations:
+    - namespace: "*"
+      server: https://kubernetes.default.svc
+
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRole
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRoleBinding
+    - group: "apiextensions.k8s.io"
+      kind: CustomResourceDefinition
+    - group: "admissionregistration.k8s.io"
+      kind: ValidatingWebhookConfiguration
+    - group: "admissionregistration.k8s.io"
+      kind: MutatingWebhookConfiguration
+    - group: "external-secrets.io"
+      kind: ClusterSecretStore
+    - group: "templates.gatekeeper.sh"
+      kind: ConstraintTemplate
+    - group: "constraints.gatekeeper.sh"
+      kind: "*"
+
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
