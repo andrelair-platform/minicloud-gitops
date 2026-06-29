@@ -12,6 +12,7 @@ spec:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
     path: manifests/network-policies
+    verifySignature: true
   destination:
     server: https://kubernetes.default.svc
     namespace: default

@@ -9,6 +9,7 @@ spec:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops
     targetRevision: HEAD
     path: manifests/ktayl-solution-web
+    verifySignature: true
   destination:
     server: https://kubernetes.default.svc
     namespace: ktayl-web
