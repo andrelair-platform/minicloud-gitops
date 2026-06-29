@@ -1,0 +1,16 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: authentik-env-secrets
+  namespace: authentik
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: authentik-env-secrets
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: platform/authentik-env
