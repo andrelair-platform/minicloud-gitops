@@ -5,7 +5,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
   name: allowed-registries
 spec:
-  enforcementAction: warn
+  enforcementAction: deny
   match:
     kinds:
       - apiGroups: [""]
@@ -17,9 +17,11 @@ spec:
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
+            # k8s system
             - kube-system
             - kube-public
             - kube-node-lease
+            # platform infrastructure — use upstream registries, excluded from deny
             - gatekeeper-system
             - metallb-system
             - longhorn-system
@@ -29,7 +31,26 @@ spec:
             - chaos-mesh
             - velero
             - falco
+            - argocd
+            - authentik
+            - monitoring
+            - harbor
+            - vault
+            - external-secrets
+            - keda
+            - ai
+            - messaging
+            - nextcloud
+            - observability
   parameters:
     registries:
+      # Private registry — platform images
       - "harbor.10.0.0.200.nip.io/"
       - "harbor.devandre.sbs/"
+      # Curated public registries — known trusted sources only
+      - "docker.io/"
+      - "ghcr.io/"
+      - "quay.io/"
+      - "registry.k8s.io/"
+      - "oci.external-secrets.io/"
+      - "ecr-public.aws.com/"
