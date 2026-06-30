@@ -33,7 +33,7 @@ spec:
       containers:
       # Pinned 2026-06-15: was b4bz/homer:latest. Eliminates silent image drift
       # on pod restart. v26.4.2 was newest published tag at pin time.
-      - image: b4bz/homer:v26.4.2
+      - image: docker.io/b4bz/homer:v26.4.2
         imagePullPolicy: IfNotPresent
         name: homer
         ports:

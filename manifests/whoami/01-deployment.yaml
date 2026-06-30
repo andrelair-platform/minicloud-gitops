@@ -29,7 +29,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: whoami
-          image: traefik/whoami:v1.10.4
+          image: docker.io/traefik/whoami:v1.10.4
           args:
             - --port=80
           ports:
