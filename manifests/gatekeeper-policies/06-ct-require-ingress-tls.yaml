@@ -19,5 +19,5 @@ spec:
         violation[{"msg": msg}] {
           ing := input.review.object
           not count(ing.spec.tls) > 0
-          msg := sprintf("Ingress '%v/%v' must set spec.tls with at least one entry — plaintext ingress is not allowed", [ing.metadata.namespace, ing.metadata.name])
+          msg := sprintf("Ingress '%v/%v' must set spec.tls with at least one entry - plaintext ingress is not allowed", [ing.metadata.namespace, ing.metadata.name])
         }
