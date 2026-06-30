@@ -38,3 +38,4 @@ spec:
             - nfs-provisioner  # nfs-subdir-external-provisioner
             - backstage        # backstage-backend (upstream Backstage image)
             - gitops-demo      # whoami (scratch image, no USER directive)
+            - event-demo       # echo-worker (nats-box image, runs as root)
