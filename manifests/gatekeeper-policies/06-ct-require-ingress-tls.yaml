@@ -1,0 +1,23 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequireingresstls
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    metadata.gatekeeper.sh/title: "Require Ingress TLS"
+    metadata.gatekeeper.sh/description: "All Ingress objects must configure spec.tls with at least one entry."
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequireIngressTLS
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequireingresstls
+
+        violation[{"msg": msg}] {
+          ing := input.review.object
+          not count(ing.spec.tls) > 0
+          msg := sprintf("Ingress '%v/%v' must set spec.tls with at least one entry — plaintext ingress is not allowed", [ing.metadata.namespace, ing.metadata.name])
+        }

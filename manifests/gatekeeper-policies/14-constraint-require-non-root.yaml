@@ -5,7 +5,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
   name: require-non-root
 spec:
-  enforcementAction: warn
+  enforcementAction: deny
   match:
     kinds:
       - apiGroups: ["apps"]
@@ -17,9 +17,11 @@ spec:
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
+            # k8s system
             - kube-system
             - kube-public
             - kube-node-lease
+            # platform infrastructure
             - gatekeeper-system
             - metallb-system
             - longhorn-system
@@ -27,3 +29,12 @@ spec:
             - falco
             - velero
             - observability
+            # third-party Helm charts that run as root — cannot override securityContext
+            - authentik        # authentik-server + authentik-worker
+            - messaging        # nats, nats-box, prom-exporter, reloader
+            - nextcloud        # nextcloud, postgresql-isready init
+            - ai               # open-webui (+ init containers), ollama
+            - monitoring       # grafana init-chown-data, alert-webhook-logger
+            - nfs-provisioner  # nfs-subdir-external-provisioner
+            - backstage        # backstage-backend (upstream Backstage image)
+            - gitops-demo      # whoami (scratch image, no USER directive)
