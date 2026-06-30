@@ -1,0 +1,23 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8snolbindev
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    metadata.gatekeeper.sh/title: "No LoadBalancer in Dev Namespaces"
+    metadata.gatekeeper.sh/description: "Services of type LoadBalancer are not allowed in dev namespaces. Use ClusterIP or NodePort."
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sNoLBInDev
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8snolbindev
+
+        violation[{"msg": msg}] {
+          svc := input.review.object
+          svc.spec.type == "LoadBalancer"
+          msg := sprintf("Service '%v/%v' must not use type LoadBalancer in dev namespaces. Use ClusterIP or NodePort instead.", [svc.metadata.namespace, svc.metadata.name])
+        }

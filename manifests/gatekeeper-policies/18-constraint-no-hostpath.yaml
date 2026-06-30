@@ -1,0 +1,33 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sNoHostPath
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: no-host-path
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet"]
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            # k8s system
+            - kube-system
+            - kube-public
+            - kube-node-lease
+            # Gatekeeper itself
+            - gatekeeper-system
+            # Infrastructure — legitimately require host-level access
+            - chaos-mesh        # chaos-daemon: containerd socket, /sys, /lib/modules
+            - falco             # eBPF/syscall monitoring: /boot, /proc, /sys, sockets
+            - longhorn-system   # CSI driver: /var/lib/kubelet, /dev, /
+            - metallb-system
+            - monitoring        # node-exporter: /proc, /sys, /
+            - observability     # promtail: /var/log/pods, /var/lib/docker/containers
+            - velero            # node-agent: /var/lib/kubelet/pods

@@ -1,0 +1,32 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8snohostpath
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    metadata.gatekeeper.sh/title: "No hostPath Volumes"
+    metadata.gatekeeper.sh/description: "Pods must not mount hostPath volumes. Use PVC, emptyDir, or ConfigMap."
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sNoHostPath
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8snohostpath
+
+        # Volumes from bare Pod
+        volumes[v] {
+          v := input.review.object.spec.volumes[_]
+        }
+        # Volumes from Deployment/StatefulSet/DaemonSet pod template
+        volumes[v] {
+          v := input.review.object.spec.template.spec.volumes[_]
+        }
+
+        violation[{"msg": msg}] {
+          v := volumes[_]
+          v.hostPath
+          msg := sprintf("Volume '%v' in '%v/%v' uses hostPath '%v' — hostPath is not allowed. Use PVC, emptyDir, or ConfigMap.", [v.name, input.review.object.metadata.namespace, input.review.object.metadata.name, v.hostPath.path])
+        }

@@ -1,0 +1,19 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sNoLBInDev
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: no-loadbalancer-in-dev
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Service"]
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            - insurance-dev
+            - collab-dev
