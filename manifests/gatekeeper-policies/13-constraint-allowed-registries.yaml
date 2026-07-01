@@ -42,6 +42,7 @@ spec:
             - messaging
             - nextcloud
             - observability
+            - polaris
   parameters:
     registries:
       # Private registry — platform images
