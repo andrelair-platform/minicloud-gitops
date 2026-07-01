@@ -1,0 +1,51 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: backup-dr
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: backup-dr
+      rules:
+        - alert: VeleroBackupFailed
+          expr: |
+            increase(velero_backup_failure_total{schedule="velero-daily-full"}[26h]) > 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Velero daily backup failed"
+            description: "The velero-daily-full schedule produced a failed backup in the last 26 hours. Check MinIO disk space and velero pod logs."
+
+        - alert: VeleroNoRecentBackup
+          expr: |
+            (time() - velero_backup_last_successful_timestamp{schedule="velero-daily-full"}) / 3600 > 25
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "No successful Velero backup in 25+ hours"
+            description: "Last successful velero-daily-full backup was {{ $value | printf \"%.1f\" }} hours ago. Expected cadence: every 24h at 03:00 UTC."
+
+        - alert: VeleroBackupStorageLocationUnavailable
+          expr: |
+            velero_backup_location_status_gauge == 0
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Velero BackupStorageLocation unavailable"
+            description: "BackupStorageLocation {{ $labels.backup_storage_location }} is unavailable. MinIO may be down or disk full."
+
+        - alert: MinioDiskFull
+          expr: |
+            (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.10
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Controller disk < 10% free — backups at risk"
+            description: "Root filesystem on {{ $labels.instance }} has {{ $value | printf \"%.1f\" }}% free. Velero/MinIO backups will fail below MinIO's minimum free threshold."
