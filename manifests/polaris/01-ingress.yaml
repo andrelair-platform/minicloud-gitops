@@ -1,0 +1,26 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: polaris-dashboard
+  namespace: polaris
+  annotations:
+    cert-manager.io/cluster-issuer: minicloud-ca-issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: polaris.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: polaris
+                port:
+                  number: 8080
+  tls:
+    - secretName: polaris-tls
+      hosts:
+        - polaris.10.0.0.200.nip.io
