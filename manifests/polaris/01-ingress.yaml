@@ -5,7 +5,7 @@ metadata:
   name: polaris-dashboard
   namespace: polaris
   annotations:
-    cert-manager.io/cluster-issuer: minicloud-ca-issuer
+    cert-manager.io/cluster-issuer: minicloud-ca
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
