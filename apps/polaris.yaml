@@ -1,0 +1,31 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: polaris
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  sources:
+    - repoURL: https://charts.fairwinds.com/stable
+      chart: polaris
+      targetRevision: "5.*"
+      helm:
+        releaseName: polaris
+        valueFiles:
+          - $values/helm-values/polaris-values.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-ansible.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: polaris
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

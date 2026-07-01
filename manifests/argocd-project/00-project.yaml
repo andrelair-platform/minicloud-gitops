@@ -15,6 +15,7 @@ spec:
     - https://charts.external-secrets.io
     - https://helm.releases.hashicorp.com
     - https://nextcloud.github.io/helm/
+    - https://charts.fairwinds.com/stable
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
@@ -77,6 +78,8 @@ spec:
     - namespace: observability
       server: https://kubernetes.default.svc
     - namespace: podinfo
+      server: https://kubernetes.default.svc
+    - namespace: polaris
       server: https://kubernetes.default.svc
     - namespace: vault
       server: https://kubernetes.default.svc
