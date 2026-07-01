@@ -17,9 +17,9 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: polaris
+                name: polaris-dashboard
                 port:
-                  number: 8080
+                  number: 80
   tls:
     - secretName: polaris-tls
       hosts:
