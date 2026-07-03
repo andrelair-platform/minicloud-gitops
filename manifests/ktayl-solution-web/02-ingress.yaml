@@ -4,7 +4,10 @@ metadata:
   name: ktayl-solution-web
   namespace: ktayl-web
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/location-snippets: |
+      limit_req zone=public_ratelimit burst=30 nodelay;
+      limit_req_status 429;
 spec:
   ingressClassName: nginx
   tls:
