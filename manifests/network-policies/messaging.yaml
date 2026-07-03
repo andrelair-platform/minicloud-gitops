@@ -61,6 +61,28 @@ spec:
         - port: 4222
           protocol: TCP
 ---
+# KEDA operator scrapes the NATS monitoring endpoint (port 8222) to read
+# JetStream consumer lag for the echo-worker ScaledObject trigger.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-keda-monitor
+  namespace: messaging
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: keda
+      ports:
+        - port: 8222
+          protocol: TCP
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
