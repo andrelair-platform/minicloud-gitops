@@ -5,7 +5,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
   name: no-privilege-escalation
 spec:
-  enforcementAction: warn
+  enforcementAction: deny
   match:
     kinds:
       - apiGroups: ["apps"]
@@ -26,3 +26,7 @@ spec:
             - chaos-mesh
             - falco
             - velero
+            - monitoring      # node-exporter needs host process namespace — cannot set allowPrivilegeEscalation: false
+            - nextcloud       # Bitnami chart init containers run as root
+            - nfs-provisioner # NFS provisioner requires elevated privileges
+            - authentik       # Bitnami chart init containers
