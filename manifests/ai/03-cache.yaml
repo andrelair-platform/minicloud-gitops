@@ -17,6 +17,13 @@ spec:
       labels:
         app: litellm-cache
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: valkey
           image: docker.io/valkey/valkey:8.1-alpine
@@ -38,6 +45,7 @@ spec:
               memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
             capabilities:
               drop: ["ALL"]
           volumeMounts:
