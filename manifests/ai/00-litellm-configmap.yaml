@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: ai
+data:
+  config.yaml: |
+    model_list:
+      # phi3-financial on primary Ollama (fast-heron)
+      - model_name: phi3-financial
+        litellm_params:
+          model: ollama/phi3-financial
+          api_base: http://ollama.ai.svc.cluster.local:11434
+      # phi3-financial on secondary Ollama (star-kitten)
+      - model_name: phi3-financial
+        litellm_params:
+          model: ollama/phi3-financial
+          api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+      # llama3.2:3b on primary Ollama — standard/quality tier
+      - model_name: llama3.2:3b
+        litellm_params:
+          model: ollama/llama3.2:3b
+          api_base: http://ollama.ai.svc.cluster.local:11434
+      # llama3.2:3b on secondary Ollama
+      - model_name: llama3.2:3b
+        litellm_params:
+          model: ollama/llama3.2:3b
+          api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+      # llama3.2:1b on primary Ollama — fast tier (commercial, rh, services)
+      - model_name: llama3.2:1b
+        litellm_params:
+          model: ollama/llama3.2:1b
+          api_base: http://ollama.ai.svc.cluster.local:11434
+      # llama3.2:1b on secondary Ollama
+      - model_name: llama3.2:1b
+        litellm_params:
+          model: ollama/llama3.2:1b
+          api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+
+    router_settings:
+      routing_strategy: least-busy
+      num_retries: 2
+      timeout: 120
+
+    general_settings:
+      store_model_in_db: true
