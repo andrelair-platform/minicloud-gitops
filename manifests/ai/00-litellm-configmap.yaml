@@ -6,41 +6,91 @@ metadata:
 data:
   config.yaml: |
     model_list:
-      # phi3-financial on primary Ollama (fast-heron)
+      # ── LOCAL MODELS (data stays on-premise) ──────────────────────────────
+      # phi3-financial: restricted to financial domain. Local-only — sensitive
+      # data must never leave the cluster for this model.
       - model_name: phi3-financial
         litellm_params:
           model: ollama/phi3-financial
           api_base: http://ollama.ai.svc.cluster.local:11434
-      # phi3-financial on secondary Ollama (star-kitten)
       - model_name: phi3-financial
         litellm_params:
           model: ollama/phi3-financial
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
-      # llama3.2:3b on primary Ollama — standard/quality tier
+
+      # llama3.2:3b — standard quality tier, local primary + Groq cloud fallback
       - model_name: llama3.2:3b
         litellm_params:
           model: ollama/llama3.2:3b
           api_base: http://ollama.ai.svc.cluster.local:11434
-      # llama3.2:3b on secondary Ollama
       - model_name: llama3.2:3b
         litellm_params:
           model: ollama/llama3.2:3b
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
-      # llama3.2:1b on primary Ollama — fast tier (commercial, rh, services)
+
+      # llama3.2:1b — fast tier, local primary + Groq cloud fallback
       - model_name: llama3.2:1b
         litellm_params:
           model: ollama/llama3.2:1b
           api_base: http://ollama.ai.svc.cluster.local:11434
-      # llama3.2:1b on secondary Ollama
       - model_name: llama3.2:1b
         litellm_params:
           model: ollama/llama3.2:1b
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
 
+      # ── CLOUD FALLBACK (activates only when local Ollama exhausts retries) ─
+      - model_name: groq-fallback
+        litellm_params:
+          model: groq/llama-3.1-8b-instant
+          api_key: os.environ/GROQ_API_KEY
+
+      # ── CLOUD MODELS (premium + standard tiers via virtual key allowlist) ──
+      # OpenAI GPT-4o — premium reasoning, long context
+      - model_name: gpt-4o
+        litellm_params:
+          model: openai/gpt-4o
+          api_key: os.environ/OPENAI_API_KEY
+
+      # OpenAI GPT-4o-mini — cost-effective tier for standard departments
+      - model_name: gpt-4o-mini
+        litellm_params:
+          model: openai/gpt-4o-mini
+          api_key: os.environ/OPENAI_API_KEY
+
+      # Google Gemini 2.0 Flash — fast multimodal (standard+)
+      - model_name: gemini-2.0-flash
+        litellm_params:
+          model: gemini/gemini-2.0-flash
+          api_key: os.environ/GEMINI_API_KEY
+
+      # Google Gemini 1.5 Pro — long context, complex reasoning (premium only)
+      - model_name: gemini-1.5-pro
+        litellm_params:
+          model: gemini/gemini-1.5-pro
+          api_key: os.environ/GEMINI_API_KEY
+
     router_settings:
       routing_strategy: least-busy
       num_retries: 2
       timeout: 120
+      # Groq activates only when both local Ollama backends exhaust retries
+      fallbacks:
+        - llama3.2:3b:
+            - groq-fallback
+        - llama3.2:1b:
+            - groq-fallback
+
+    litellm_settings:
+      # Exact-match prompt caching — skips inference for identical prompts
+      cache: true
+      cache_params:
+        type: redis
+        host: litellm-cache.ai.svc.cluster.local
+        port: 6379
+        ttl: 600
+        namespace: litellm
+      # Pre-call guardrail: blocks prompts containing credentials, API keys, tokens
+      callbacks: ["detect_secrets"]
 
     general_settings:
       store_model_in_db: true

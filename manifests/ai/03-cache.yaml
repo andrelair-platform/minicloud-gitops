@@ -1,0 +1,73 @@
+---
+# Valkey (Redis-compatible) cache for LiteLLM exact-match prompt caching.
+# Single-node, no auth — internal cluster service only, not exposed externally.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: litellm-cache
+  namespace: ai
+spec:
+  serviceName: litellm-cache
+  replicas: 1
+  selector:
+    matchLabels:
+      app: litellm-cache
+  template:
+    metadata:
+      labels:
+        app: litellm-cache
+    spec:
+      containers:
+        - name: valkey
+          image: docker.io/valkey/valkey:8.1-alpine
+          args:
+            - valkey-server
+            - --maxmemory
+            - 400mb
+            - --maxmemory-policy
+            - allkeys-lru
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command: ["valkey-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm-cache
+  namespace: ai
+spec:
+  selector:
+    app: litellm-cache
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: redis
+  clusterIP: None
