@@ -30,3 +30,4 @@ spec:
             - nextcloud       # Bitnami chart init containers run as root
             - nfs-provisioner # NFS provisioner requires elevated privileges
             - authentik       # Bitnami chart init containers
+            - langfuse        # Langfuse v3 + ClickHouse/Zookeeper/Valkey bitnami images
