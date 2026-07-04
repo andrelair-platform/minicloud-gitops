@@ -57,16 +57,18 @@ data:
           model: openai/gpt-4o-mini
           api_key: os.environ/OPENAI_API_KEY
 
-      # Google Gemini 2.0 Flash — fast multimodal (standard+)
+      # Google Gemini 2.5 Flash — fast multimodal (standard+)
+      # model_name kept as gemini-2.0-flash for dept key allowlist compatibility
       - model_name: gemini-2.0-flash
         litellm_params:
-          model: gemini/gemini-2.0-flash
+          model: gemini/gemini-2.5-flash
           api_key: os.environ/GEMINI_API_KEY
 
-      # Google Gemini 1.5 Pro — long context, complex reasoning (premium only)
+      # Google Gemini 2.5 Flash (premium variant) — premium departments only
+      # model_name kept as gemini-1.5-pro for dept key allowlist compatibility
       - model_name: gemini-1.5-pro
         litellm_params:
-          model: gemini/gemini-1.5-pro
+          model: gemini/gemini-2.5-flash
           api_key: os.environ/GEMINI_API_KEY
 
     router_settings:
@@ -89,10 +91,11 @@ data:
         port: 6379
         ttl: 600
         namespace: litellm
-      # Pre-call guardrail: blocks prompts containing credentials, API keys, tokens
-      callbacks: ["detect_secrets"]
 
     general_settings:
       store_model_in_db: true
       success_callback: ["langfuse"]
       langfuse_host: "http://langfuse-web.langfuse.svc.cluster.local:3000"
+      # Pre-call secret scanning: blocks prompts containing API keys, tokens, credentials.
+      # Uses the detect-secrets library (pre-installed in the venv).
+      detect_secrets_on_all_keys: true
