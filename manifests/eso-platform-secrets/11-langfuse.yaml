@@ -45,3 +45,36 @@ spec:
       remoteRef:
         key: platform/langfuse
         property: salt
+---
+# langfuse-oidc-env — mapped as env vars via additionalEnvFrom.
+# Key names match NextAuth env var names directly.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: langfuse-oidc-env
+  namespace: langfuse
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: langfuse-oidc-env
+    creationPolicy: Owner
+  data:
+    - secretKey: AUTH_CUSTOM_CLIENT_ID
+      remoteRef:
+        key: platform/langfuse
+        property: oidc-client-id
+    - secretKey: AUTH_CUSTOM_CLIENT_SECRET
+      remoteRef:
+        key: platform/langfuse
+        property: oidc-client-secret
+    - secretKey: LANGFUSE_INIT_PROJECT_PUBLIC_KEY
+      remoteRef:
+        key: platform/langfuse
+        property: project-public-key
+    - secretKey: LANGFUSE_INIT_PROJECT_SECRET_KEY
+      remoteRef:
+        key: platform/langfuse
+        property: project-secret-key
