@@ -1,0 +1,52 @@
+---
+# PostgreSQL credentials for the ai namespace (Open WebUI + LiteLLM).
+# Vault KV path: platform/ai-postgresql
+# Keys: postgres-password (superuser), password (aiplatform user)
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ai-postgresql-secret
+  namespace: ai
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: ai-postgresql-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: postgres-password
+      remoteRef:
+        key: platform/ai-postgresql
+        property: postgres-password
+    - secretKey: password
+      remoteRef:
+        key: platform/ai-postgresql
+        property: password
+---
+# LiteLLM master key — used by Open WebUI as OPENAI_API_KEY.
+# Vault KV path: platform/litellm
+# Keys: master-key
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: litellm-credentials
+  namespace: ai
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: litellm-credentials
+    creationPolicy: Owner
+  data:
+    - secretKey: master-key
+      remoteRef:
+        key: platform/litellm
+        property: master-key
+    - secretKey: database-url
+      remoteRef:
+        key: platform/litellm
+        property: database-url
