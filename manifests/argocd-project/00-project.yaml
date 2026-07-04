@@ -16,6 +16,7 @@ spec:
     - https://helm.releases.hashicorp.com
     - https://nextcloud.github.io/helm/
     - https://charts.fairwinds.com/stable
+    - https://langfuse.github.io/langfuse-k8s
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
@@ -64,6 +65,8 @@ spec:
     - namespace: keda
       server: https://kubernetes.default.svc
     - namespace: ktayl-web
+      server: https://kubernetes.default.svc
+    - namespace: langfuse
       server: https://kubernetes.default.svc
     - namespace: messaging
       server: https://kubernetes.default.svc

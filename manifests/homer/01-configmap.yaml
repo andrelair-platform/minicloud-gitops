@@ -139,9 +139,15 @@ data:
         target: _blank
       - name: Chat
         icon: fas fa-robot
-        subtitle: "Open WebUI + Ollama (llama3.2:3b on CPU) — OIDC via Authentik"
+        subtitle: "Open WebUI + LiteLLM AI Gateway (phi3-financial, llama3.2:3b/1b) — OIDC via Authentik"
         tag: SSO
         url: https://chat.devandre.sbs
+        target: _blank
+      - name: Langfuse
+        icon: fas fa-chart-line
+        subtitle: "LLM observability — traces, evaluations, prompt management"
+        tag: AI
+        url: https://langfuse.devandre.sbs
         target: _blank
       - name: NATS
         icon: fas fa-bolt
