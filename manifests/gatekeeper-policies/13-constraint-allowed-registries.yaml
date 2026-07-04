@@ -43,6 +43,7 @@ spec:
             - nextcloud
             - observability
             - polaris
+            - langfuse
   parameters:
     registries:
       # Private registry — platform images

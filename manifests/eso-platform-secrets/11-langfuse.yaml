@@ -1,0 +1,43 @@
+---
+# Langfuse secrets — deployed to the langfuse namespace.
+# Vault KV path: platform/langfuse
+# Keys: db-password, nextauth-secret, encryption-key, clickhouse-password,
+#        minio-access-key, minio-secret-key
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: langfuse-secrets
+  namespace: langfuse
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: langfuse-secrets
+    creationPolicy: Owner
+  data:
+    - secretKey: db-password
+      remoteRef:
+        key: platform/langfuse
+        property: db-password
+    - secretKey: nextauth-secret
+      remoteRef:
+        key: platform/langfuse
+        property: nextauth-secret
+    - secretKey: encryption-key
+      remoteRef:
+        key: platform/langfuse
+        property: encryption-key
+    - secretKey: clickhouse-password
+      remoteRef:
+        key: platform/langfuse
+        property: clickhouse-password
+    - secretKey: s3-access-key-id
+      remoteRef:
+        key: platform/langfuse
+        property: minio-access-key
+    - secretKey: s3-secret-access-key
+      remoteRef:
+        key: platform/langfuse
+        property: minio-secret-key

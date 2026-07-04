@@ -1,0 +1,37 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: langfuse-ingress
+  namespace: langfuse
+  annotations:
+    nginx.org/proxy-read-timeout: "120"
+    nginx.org/proxy-connect-timeout: "30"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - langfuse.10.0.0.200.nip.io
+        - langfuse.devandre.sbs
+      secretName: langfuse-tls
+  rules:
+    - host: langfuse.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: langfuse
+                port:
+                  number: 3000
+    - host: langfuse.devandre.sbs
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: langfuse
+                port:
+                  number: 3000
