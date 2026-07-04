@@ -47,6 +47,18 @@ spec:
               value: "INFO"
             - name: HOME
               value: /tmp
+            - name: LANGFUSE_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: langfuse-public-key
+            - name: LANGFUSE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: langfuse-secret-key
+            - name: LANGFUSE_HOST
+              value: "http://langfuse-web.langfuse.svc.cluster.local:3000"
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml

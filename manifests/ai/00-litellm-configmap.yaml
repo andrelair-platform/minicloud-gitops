@@ -44,3 +44,5 @@ data:
 
     general_settings:
       store_model_in_db: true
+      success_callback: ["langfuse"]
+      langfuse_host: "http://langfuse-web.langfuse.svc.cluster.local:3000"

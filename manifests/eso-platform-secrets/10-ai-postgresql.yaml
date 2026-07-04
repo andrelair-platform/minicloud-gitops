@@ -50,3 +50,11 @@ spec:
       remoteRef:
         key: platform/litellm
         property: database-url
+    - secretKey: langfuse-public-key
+      remoteRef:
+        key: platform/litellm
+        property: langfuse-public-key
+    - secretKey: langfuse-secret-key
+      remoteRef:
+        key: platform/litellm
+        property: langfuse-secret-key
