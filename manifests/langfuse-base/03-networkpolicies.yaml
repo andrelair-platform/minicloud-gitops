@@ -61,6 +61,26 @@ spec:
         - port: 9090
         - port: 3000
 ---
+# Allow LiteLLM (ai namespace) to call Langfuse web API for tracing
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-litellm-tracing
+  namespace: langfuse
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: langfuse
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ai
+      ports:
+        - port: 3000
+---
 # Allow kube-apiserver webhook calls (flannel VTEP 10.42.0.0/24 for worker nodes)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
