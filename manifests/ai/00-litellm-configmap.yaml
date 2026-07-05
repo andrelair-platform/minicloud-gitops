@@ -72,15 +72,19 @@ data:
           model: openai/gpt-4o-mini
           api_key: os.environ/OPENAI_API_KEY
 
-      # Hugging Face Serverless Inference (free tier)
-      - model_name: hf-zephyr
+      # Hugging Face Serverless Inference via featherless-ai provider (free tier)
+      # api-inference.huggingface.co is retired; router.huggingface.co/featherless-ai
+      # is the OpenAI-compatible free-tier endpoint — use openai/ provider type
+      - model_name: hf-qwen
         litellm_params:
-          model: huggingface/HuggingFaceH4/zephyr-7b-beta
+          model: openai/Qwen/Qwen2.5-1.5B-Instruct
+          api_base: https://router.huggingface.co/featherless-ai/v1
           api_key: os.environ/HUGGINGFACE_API_KEY
 
-      - model_name: hf-phi3-mini
+      - model_name: hf-gemma
         litellm_params:
-          model: huggingface/microsoft/Phi-3-mini-4k-instruct
+          model: openai/google/gemma-2-2b-it
+          api_base: https://router.huggingface.co/featherless-ai/v1
           api_key: os.environ/HUGGINGFACE_API_KEY
 
       # Anthropic Claude — claude-sonnet (premium) + claude-haiku (standard+)
