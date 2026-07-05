@@ -40,14 +40,25 @@ data:
         litellm_params:
           model: ollama/phi4-mini
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+      - model_name: phi4-mini
+        litellm_params:
+          model: ollama/phi4-mini
+          api_base: http://ollama-tertiary.ai.svc.cluster.local:11434
 
-      # deepseek-r1:7b — reasoning specialist (math, code, logic)
-      # Thinks before answering; higher quality for structured problems.
+      # deepseek-r1:7b — cloud-first reasoning specialist.
+      # DeepSeek R1 API: 5–8 s vs 40+ s on CPU, frees Ollama slots for chat.
+      # Local fallback activates only if DeepSeek API is unavailable.
       - model_name: deepseek-r1:7b
+        litellm_params:
+          model: deepseek/deepseek-reasoner
+          api_key: os.environ/DEEPSEEK_API_KEY
+
+      # deepseek-r1:7b-local — fallback when DeepSeek cloud is down
+      - model_name: deepseek-r1:7b-local
         litellm_params:
           model: ollama/deepseek-r1:7b
           api_base: http://ollama.ai.svc.cluster.local:11434
-      - model_name: deepseek-r1:7b
+      - model_name: deepseek-r1:7b-local
         litellm_params:
           model: ollama/deepseek-r1:7b
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
@@ -61,6 +72,10 @@ data:
         litellm_params:
           model: ollama/llama3.2:1b
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+      - model_name: llama3.2:1b
+        litellm_params:
+          model: ollama/llama3.2:1b
+          api_base: http://ollama-tertiary.ai.svc.cluster.local:11434
 
       # ── EMBEDDINGS (for RAG pipelines and vector search) ────────────────
       # nomic-embed-text — 274MB, 768-dim vectors, best-in-class for CPU RAG
@@ -73,6 +88,10 @@ data:
         litellm_params:
           model: ollama/nomic-embed-text
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+      - model_name: nomic-embed-text
+        litellm_params:
+          model: ollama/nomic-embed-text
+          api_base: http://ollama-tertiary.ai.svc.cluster.local:11434
 
       # ── VISION / MULTIMODAL (image description, OCR, scene understanding) ──
       # moondream — 1.7B vision model, fast on CPU, basic OCR + image description
@@ -178,8 +197,11 @@ data:
       # Prevents a slow/hung Ollama from draining the retry budget on every request.
       cooldown_time: 60
       allowed_fails: 3
-      # Groq then DeepSeek activate only when both local Ollama backends exhaust retries
+      # deepseek-r1:7b falls back to local Ollama if DeepSeek cloud is down.
+      # qwen3.5:4b / phi4-mini / llama3.2:1b fall back to Groq then DeepSeek chat.
       fallbacks:
+        - deepseek-r1:7b:
+            - deepseek-r1:7b-local
         - qwen3.5:4b:
             - groq-fallback
             - deepseek-chat
