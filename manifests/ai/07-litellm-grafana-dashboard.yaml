@@ -14,198 +14,141 @@ data:
       "tags": ["ai", "litellm"],
       "timezone": "browser",
       "schemaVersion": 39,
-      "version": 1,
-      "refresh": "1m",
-      "templating": {
-        "list": [
-          {
-            "current": {},
-            "hide": 0,
-            "includeAll": false,
-            "name": "datasource",
-            "options": [],
-            "query": "prometheus",
-            "refresh": 1,
-            "type": "datasource",
-            "label": "Data source"
-          }
-        ]
-      },
+      "version": 2,
+      "refresh": "5m",
+      "time": {"from": "now-30d", "to": "now"},
       "panels": [
         {
           "type": "stat",
           "id": 1,
-          "title": "Total Spend (USD) — all time",
+          "title": "Total Spend — last 24 h (USD)",
           "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {"type": "postgres", "uid": "litellm-postgres"},
           "fieldConfig": {
             "defaults": {
               "unit": "currencyUSD",
-              "decimals": 4,
+              "decimals": 6,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {"color": "green", "value": null},
-                  {"color": "yellow", "value": 50},
-                  {"color": "red", "value": 200}
+                  {"color": "yellow", "value": 10},
+                  {"color": "red", "value": 50}
                 ]
               },
               "color": {"mode": "thresholds"}
             }
           },
-          "options": {
-            "reduceOptions": {"calcs": ["lastNotNull"]},
-            "graphMode": "none",
-            "colorMode": "background"
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "sum(litellm_spend_metric)",
-              "legendFormat": "Total"
-            }
-          ]
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none", "colorMode": "background"},
+          "targets": [{
+            "datasource": {"type": "postgres", "uid": "litellm-postgres"},
+            "rawSql": "SELECT NOW() as time, COALESCE(SUM(spend), 0) as \"Spend\" FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\" >= NOW() - INTERVAL '24 hours'",
+            "format": "time_series",
+            "refId": "A"
+          }]
         },
         {
           "type": "stat",
           "id": 2,
-          "title": "Requests (last 24 h)",
+          "title": "Total Tokens — last 24 h",
           "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {"type": "postgres", "uid": "litellm-postgres"},
           "fieldConfig": {
             "defaults": {
               "unit": "short",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [{"color": "blue", "value": null}]
-              },
+              "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]},
               "color": {"mode": "thresholds"}
             }
           },
-          "options": {
-            "reduceOptions": {"calcs": ["lastNotNull"]},
-            "graphMode": "none",
-            "colorMode": "background"
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "sum(increase(litellm_requests_metric[24h]))",
-              "legendFormat": "Requests"
-            }
-          ]
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none", "colorMode": "background"},
+          "targets": [{
+            "datasource": {"type": "postgres", "uid": "litellm-postgres"},
+            "rawSql": "SELECT NOW() as time, COALESCE(SUM(total_tokens), 0) as \"Tokens\" FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\" >= NOW() - INTERVAL '24 hours'",
+            "format": "time_series",
+            "refId": "A"
+          }]
         },
         {
           "type": "stat",
           "id": 3,
-          "title": "Failed Requests (last 24 h)",
+          "title": "Requests — last 24 h",
           "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {"type": "postgres", "uid": "litellm-postgres"},
           "fieldConfig": {
             "defaults": {
               "unit": "short",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "yellow", "value": 1},
-                  {"color": "red", "value": 10}
-                ]
-              },
+              "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]},
               "color": {"mode": "thresholds"}
             }
           },
-          "options": {
-            "reduceOptions": {"calcs": ["lastNotNull"]},
-            "graphMode": "none",
-            "colorMode": "background"
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "sum(increase(litellm_llm_api_failed_requests_metric[24h]))",
-              "legendFormat": "Failures"
-            }
-          ]
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none", "colorMode": "background"},
+          "targets": [{
+            "datasource": {"type": "postgres", "uid": "litellm-postgres"},
+            "rawSql": "SELECT NOW() as time, COUNT(*) as \"Requests\" FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\" >= NOW() - INTERVAL '24 hours'",
+            "format": "time_series",
+            "refId": "A"
+          }]
         },
         {
           "type": "stat",
           "id": 4,
-          "title": "Total Tokens (last 24 h)",
+          "title": "Active Departments (any spend)",
           "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {"type": "postgres", "uid": "litellm-postgres"},
           "fieldConfig": {
             "defaults": {
               "unit": "short",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [{"color": "purple", "value": null}]
-              },
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
               "color": {"mode": "thresholds"}
             }
           },
-          "options": {
-            "reduceOptions": {"calcs": ["lastNotNull"]},
-            "graphMode": "none",
-            "colorMode": "background"
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "sum(increase(litellm_total_tokens[24h]))",
-              "legendFormat": "Tokens"
-            }
-          ]
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none", "colorMode": "background"},
+          "targets": [{
+            "datasource": {"type": "postgres", "uid": "litellm-postgres"},
+            "rawSql": "SELECT NOW() as time, COUNT(DISTINCT vt.key_alias) as \"Depts\" FROM \"LiteLLM_SpendLogs\" sl JOIN \"LiteLLM_VerificationToken\" vt ON sl.api_key = vt.token WHERE sl.\"startTime\" >= NOW() - INTERVAL '30 days' AND vt.key_alias LIKE 'direction-%'",
+            "format": "time_series",
+            "refId": "A"
+          }]
         },
         {
-          "type": "bargauge",
+          "type": "table",
           "id": 5,
-          "title": "Spend by Department (USD) — all time",
-          "description": "Budget limits: Premium (IT/Data/Actuariat/Transformation) $100/30d · Standard (Cyber/Audit/Finance/Reinsurance/Juridique/Souscription/Commercial) $30/30d · Basic (Sinistres/Ops/RH/SG) $5/30d",
-          "gridPos": {"h": 10, "w": 12, "x": 0, "y": 4},
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "title": "Department Budget Utilisation (30-day rolling)",
+          "description": "Tiers — Premium (IT/Data/Actuariat/Transformation): $100 · Standard (Cyber/Audit/Finance/Reinsurance/Juridique/Souscription/Commercial): $30 · Basic (Sinistres/Ops/RH/SG): $5",
+          "gridPos": {"h": 12, "w": 14, "x": 0, "y": 4},
+          "datasource": {"type": "postgres", "uid": "litellm-postgres"},
           "fieldConfig": {
-            "defaults": {
-              "unit": "currencyUSD",
-              "decimals": 4,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "yellow", "value": 20},
-                  {"color": "red", "value": 80}
+            "defaults": {"custom": {"displayMode": "auto"}},
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "Spend (USD)"}, "properties": [{"id": "unit", "value": "currencyUSD"}, {"id": "decimals", "value": 6}]},
+              {"matcher": {"id": "byName", "options": "Budget (USD)"}, "properties": [{"id": "unit", "value": "currencyUSD"}]},
+              {
+                "matcher": {"id": "byName", "options": "Used %"},
+                "properties": [
+                  {"id": "unit", "value": "percent"},
+                  {"id": "custom.displayMode", "value": "color-background"},
+                  {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}}
                 ]
-              },
-              "color": {"mode": "thresholds"}
-            }
+              }
+            ]
           },
-          "options": {
-            "orientation": "horizontal",
-            "reduceOptions": {"calcs": ["lastNotNull"]},
-            "displayMode": "gradient",
-            "valueMode": "color"
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "sum by(api_key_alias) (litellm_spend_metric)",
-              "legendFormat": "{{api_key_alias}}"
-            }
-          ]
+          "options": {"sortBy": [{"displayName": "Spend (USD)", "desc": true}]},
+          "targets": [{
+            "datasource": {"type": "postgres", "uid": "litellm-postgres"},
+            "rawSql": "SELECT key_alias as \"Department\", ROUND(spend::numeric, 6) as \"Spend (USD)\", max_budget as \"Budget (USD)\", budget_duration as \"Period\", CASE WHEN max_budget > 0 THEN ROUND((spend / max_budget * 100)::numeric, 1) ELSE 0 END as \"Used %\" FROM \"LiteLLM_VerificationToken\" WHERE key_alias LIKE 'direction-%' ORDER BY spend DESC",
+            "format": "table",
+            "refId": "A"
+          }]
         },
         {
           "type": "bargauge",
           "id": 6,
-          "title": "Token Usage by Model (last 24 h)",
-          "gridPos": {"h": 10, "w": 12, "x": 12, "y": 4},
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "title": "Token Usage by Model — last 30 d",
+          "gridPos": {"h": 12, "w": 10, "x": 14, "y": 4},
+          "datasource": {"type": "postgres", "uid": "litellm-postgres"},
           "fieldConfig": {
             "defaults": {
               "unit": "short",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [{"color": "blue", "value": null}]
-              },
               "color": {"mode": "palette-classic"}
             }
           },
@@ -215,62 +158,49 @@ data:
             "displayMode": "gradient",
             "valueMode": "color"
           },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "sum by(model) (increase(litellm_total_tokens[24h]))",
-              "legendFormat": "{{model}}"
-            }
-          ]
+          "targets": [{
+            "datasource": {"type": "postgres", "uid": "litellm-postgres"},
+            "rawSql": "SELECT model as \"metric\", SUM(total_tokens) as \"Tokens\" FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\" >= NOW() - INTERVAL '30 days' GROUP BY model ORDER BY \"Tokens\" DESC LIMIT 12",
+            "format": "table",
+            "refId": "A"
+          }]
         },
         {
-          "type": "timeseries",
+          "type": "table",
           "id": 7,
-          "title": "Request Rate by Department (req/min)",
-          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 14},
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "title": "Requests by Model — last 30 d",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+          "datasource": {"type": "postgres", "uid": "litellm-postgres"},
           "fieldConfig": {
-            "defaults": {
-              "unit": "reqpm",
-              "custom": {"lineWidth": 2, "fillOpacity": 10}
-            }
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "Spend (USD)"}, "properties": [{"id": "unit", "value": "currencyUSD"}, {"id": "decimals", "value": 6}]}
+            ]
           },
-          "options": {
-            "legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "max"]},
-            "tooltip": {"mode": "multi", "sort": "desc"}
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "sum by(api_key_alias) (rate(litellm_requests_metric[5m])) * 60",
-              "legendFormat": "{{api_key_alias}}"
-            }
-          ]
+          "options": {"sortBy": [{"displayName": "Requests", "desc": true}]},
+          "targets": [{
+            "datasource": {"type": "postgres", "uid": "litellm-postgres"},
+            "rawSql": "SELECT model as \"Model\", COUNT(*) as \"Requests\", SUM(total_tokens) as \"Tokens\", ROUND(SUM(spend)::numeric, 6) as \"Spend (USD)\" FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\" >= NOW() - INTERVAL '30 days' GROUP BY model ORDER BY \"Requests\" DESC",
+            "format": "table",
+            "refId": "A"
+          }]
         },
         {
-          "type": "timeseries",
+          "type": "table",
           "id": 8,
-          "title": "Failed Requests by Model",
-          "gridPos": {"h": 7, "w": 24, "x": 0, "y": 22},
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "title": "Recent Requests (last 50)",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+          "datasource": {"type": "postgres", "uid": "litellm-postgres"},
           "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "color": {"mode": "fixed", "fixedColor": "red"},
-              "custom": {"lineWidth": 2, "fillOpacity": 20}
-            }
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "spend"}, "properties": [{"id": "unit", "value": "currencyUSD"}, {"id": "decimals", "value": 6}]}
+            ]
           },
-          "options": {
-            "legend": {"displayMode": "list", "placement": "bottom"},
-            "tooltip": {"mode": "multi", "sort": "desc"}
-          },
-          "targets": [
-            {
-              "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "sum by(model) (rate(litellm_llm_api_failed_requests_metric[5m])) * 60",
-              "legendFormat": "{{model}}"
-            }
-          ]
+          "targets": [{
+            "datasource": {"type": "postgres", "uid": "litellm-postgres"},
+            "rawSql": "SELECT sl.\"startTime\" as \"Time\", vt.key_alias as \"Department\", sl.model as \"Model\", sl.total_tokens as \"Tokens\", sl.spend as \"Spend\" FROM \"LiteLLM_SpendLogs\" sl LEFT JOIN \"LiteLLM_VerificationToken\" vt ON sl.api_key = vt.token ORDER BY sl.\"startTime\" DESC LIMIT 50",
+            "format": "table",
+            "refId": "A"
+          }]
         }
       ]
     }
