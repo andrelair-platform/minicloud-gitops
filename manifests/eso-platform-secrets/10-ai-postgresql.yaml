@@ -82,3 +82,7 @@ spec:
       remoteRef:
         key: platform/cloud-providers
         property: anthropic-api-key
+    - secretKey: hf-token
+      remoteRef:
+        key: platform/cloud-providers
+        property: hf-token

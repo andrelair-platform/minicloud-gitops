@@ -89,6 +89,11 @@ spec:
                 secretKeyRef:
                   name: litellm-credentials
                   key: anthropic-api-key
+            - name: HUGGINGFACE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: hf-token
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml
