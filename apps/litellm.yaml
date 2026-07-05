@@ -23,5 +23,6 @@ spec:
   ignoreDifferences:
     - group: apps
       kind: StatefulSet
-      jqPathExpressions:
-        - .spec.volumeClaimTemplates[].spec.volumeMode
+      jsonPointers:
+        - /spec/volumeClaimTemplates/0/spec/volumeMode
+        - /spec/updateStrategy/rollingUpdate
