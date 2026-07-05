@@ -1,0 +1,276 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-cost-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  litellm-cost-dashboard.json: |
+    {
+      "id": null,
+      "uid": "litellm-cost-dept",
+      "title": "LiteLLM — Spend & Usage by Department",
+      "tags": ["ai", "litellm"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "1m",
+      "templating": {
+        "list": [
+          {
+            "current": {},
+            "hide": 0,
+            "includeAll": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "type": "datasource",
+            "label": "Data source"
+          }
+        ]
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "id": 1,
+          "title": "Total Spend (USD) — all time",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "decimals": 4,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 50},
+                  {"color": "red", "value": 200}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "graphMode": "none",
+            "colorMode": "background"
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "sum(litellm_spend_metric)",
+              "legendFormat": "Total"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "id": 2,
+          "title": "Requests (last 24 h)",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{"color": "blue", "value": null}]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "graphMode": "none",
+            "colorMode": "background"
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "sum(increase(litellm_requests_metric[24h]))",
+              "legendFormat": "Requests"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "id": 3,
+          "title": "Failed Requests (last 24 h)",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 10}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "graphMode": "none",
+            "colorMode": "background"
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "sum(increase(litellm_llm_api_failed_requests_metric[24h]))",
+              "legendFormat": "Failures"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "id": 4,
+          "title": "Total Tokens (last 24 h)",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{"color": "purple", "value": null}]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "graphMode": "none",
+            "colorMode": "background"
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "sum(increase(litellm_total_tokens[24h]))",
+              "legendFormat": "Tokens"
+            }
+          ]
+        },
+        {
+          "type": "bargauge",
+          "id": 5,
+          "title": "Spend by Department (USD) — all time",
+          "description": "Budget limits: Premium (IT/Data/Actuariat/Transformation) $100/30d · Standard (Cyber/Audit/Finance/Reinsurance/Juridique/Souscription/Commercial) $30/30d · Basic (Sinistres/Ops/RH/SG) $5/30d",
+          "gridPos": {"h": 10, "w": 12, "x": 0, "y": 4},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "decimals": 4,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 20},
+                  {"color": "red", "value": 80}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "options": {
+            "orientation": "horizontal",
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "displayMode": "gradient",
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "sum by(api_key_alias) (litellm_spend_metric)",
+              "legendFormat": "{{api_key_alias}}"
+            }
+          ]
+        },
+        {
+          "type": "bargauge",
+          "id": 6,
+          "title": "Token Usage by Model (last 24 h)",
+          "gridPos": {"h": 10, "w": 12, "x": 12, "y": 4},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{"color": "blue", "value": null}]
+              },
+              "color": {"mode": "palette-classic"}
+            }
+          },
+          "options": {
+            "orientation": "horizontal",
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "displayMode": "gradient",
+            "valueMode": "color"
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "sum by(model) (increase(litellm_total_tokens[24h]))",
+              "legendFormat": "{{model}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "id": 7,
+          "title": "Request Rate by Department (req/min)",
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 14},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqpm",
+              "custom": {"lineWidth": 2, "fillOpacity": 10}
+            }
+          },
+          "options": {
+            "legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "max"]},
+            "tooltip": {"mode": "multi", "sort": "desc"}
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "sum by(api_key_alias) (rate(litellm_requests_metric[5m])) * 60",
+              "legendFormat": "{{api_key_alias}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "id": 8,
+          "title": "Failed Requests by Model",
+          "gridPos": {"h": 7, "w": 24, "x": 0, "y": 22},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {"mode": "fixed", "fixedColor": "red"},
+              "custom": {"lineWidth": 2, "fillOpacity": 20}
+            }
+          },
+          "options": {
+            "legend": {"displayMode": "list", "placement": "bottom"},
+            "tooltip": {"mode": "multi", "sort": "desc"}
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "sum by(model) (rate(litellm_llm_api_failed_requests_metric[5m])) * 60",
+              "legendFormat": "{{model}}"
+            }
+          ]
+        }
+      ]
+    }

@@ -116,6 +116,10 @@ data:
       routing_strategy: least-busy
       num_retries: 2
       timeout: 120
+      # Circuit breaker: after 3 consecutive failures, mark backend as degraded for 60s.
+      # Prevents a slow/hung Ollama from draining the retry budget on every request.
+      cooldown_time: 60
+      allowed_fails: 3
       # Groq then DeepSeek activate only when both local Ollama backends exhaust retries
       fallbacks:
         - llama3.2:3b:
@@ -151,7 +155,8 @@ data:
 
     general_settings:
       store_model_in_db: true
-      success_callback: ["langfuse"]
+      success_callback: ["langfuse", "prometheus"]
+      failure_callback: ["prometheus"]
       langfuse_host: "http://langfuse-web.langfuse.svc.cluster.local:3000"
       # Pre-call secret scanning: blocks prompts containing API keys, tokens, credentials.
       # Uses the detect-secrets library (pre-installed in the venv).
