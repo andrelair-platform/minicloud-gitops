@@ -146,7 +146,7 @@ data:
           mode: pre_call
           output_parse_pii: true
           presidio_analyzer_api_base: "http://presidio-analyzer.ai.svc.cluster.local:3000"
-          presidio_anonymizer_api_base: "http://presidio-anonymizer.ai.svc.cluster.local:5001"
+          presidio_anonymizer_api_base: "http://presidio-anonymizer.ai.svc.cluster.local:3000"
           default_on: true
 
     general_settings:
