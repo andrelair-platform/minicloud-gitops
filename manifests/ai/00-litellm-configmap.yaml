@@ -44,6 +44,11 @@ data:
           model: groq/llama-3.1-8b-instant
           api_key: os.environ/GROQ_API_KEY
 
+      - model_name: deepseek-chat
+        litellm_params:
+          model: deepseek/deepseek-chat
+          api_key: os.environ/DEEPSEEK_API_KEY
+
       # ── CLOUD MODELS (premium + standard tiers via virtual key allowlist) ──
       # OpenAI GPT-4o — premium reasoning, long context
       - model_name: gpt-4o
@@ -75,12 +80,14 @@ data:
       routing_strategy: least-busy
       num_retries: 2
       timeout: 120
-      # Groq activates only when both local Ollama backends exhaust retries
+      # Groq then DeepSeek activate only when both local Ollama backends exhaust retries
       fallbacks:
         - llama3.2:3b:
             - groq-fallback
+            - deepseek-chat
         - llama3.2:1b:
             - groq-fallback
+            - deepseek-chat
 
     litellm_settings:
       # Exact-match prompt caching — skips inference for identical prompts
