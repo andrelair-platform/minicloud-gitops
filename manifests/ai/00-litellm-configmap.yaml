@@ -229,12 +229,13 @@ data:
     # phi3-financial is local-only (no cloud risk) but Ollama models with cloud fallbacks
     # (llama3.2:3b → Groq/DeepSeek) are also protected. Fail-open: if Presidio is
     # temporarily unavailable, requests pass through rather than blocking all AI access.
+    # output_parse_pii removed: anonymizing LLM responses garbles sports/geo content
+    # (France → <LOCATION>, player names → <PERSON>). Input-only protection is sufficient.
     guardrails:
       - guardrail_name: "presidio-pii-masking"
         litellm_params:
           guardrail: presidio
           mode: pre_call
-          output_parse_pii: true
           presidio_analyzer_api_base: "http://presidio-analyzer.ai.svc.cluster.local:3000"
           presidio_anonymizer_api_base: "http://presidio-anonymizer.ai.svc.cluster.local:3000"
           default_on: true
