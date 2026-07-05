@@ -62,6 +62,7 @@ spec:
       spec:
         accessModes: ["ReadWriteOnce"]
         storageClassName: local-path
+        volumeMode: Filesystem
         resources:
           requests:
             storage: 1Gi
