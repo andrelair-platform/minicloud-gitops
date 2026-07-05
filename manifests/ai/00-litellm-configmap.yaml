@@ -135,6 +135,20 @@ data:
         ttl: 600
         namespace: litellm
 
+    # PII / DLP guardrail — anonymizes prompts before they reach any cloud provider API.
+    # phi3-financial is local-only (no cloud risk) but Ollama models with cloud fallbacks
+    # (llama3.2:3b → Groq/DeepSeek) are also protected. Fail-open: if Presidio is
+    # temporarily unavailable, requests pass through rather than blocking all AI access.
+    guardrails:
+      - guardrail_name: "presidio-pii-masking"
+        litellm_params:
+          guardrail: presidio
+          mode: pre_call
+          output_parse_pii: true
+          presidio_analyzer_api_base: "http://presidio-analyzer.ai.svc.cluster.local:3000"
+          presidio_anonymizer_api_base: "http://presidio-anonymizer.ai.svc.cluster.local:5001"
+          default_on: true
+
     general_settings:
       store_model_in_db: true
       success_callback: ["langfuse"]
