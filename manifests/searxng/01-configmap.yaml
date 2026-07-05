@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng-config
+  namespace: searxng
+data:
+  settings.yml: |
+    use_default_settings: true
+
+    general:
+      instance_name: "minicloud-search"
+      privacypolicy_url: false
+      donation_url: false
+      contact_url: false
+      enable_metrics: false
+
+    search:
+      safe_search: 0
+      autocomplete: ""
+      default_lang: "auto"
+      formats:
+        - html
+        - json
+
+    server:
+      # Secret key — regenerated on pod restart, fine for API-only use
+      secret_key: "minicloud-searxng-secret-key-2026"
+      limiter: false
+      image_proxy: false
+      http_protocol_version: "1.1"
+      method: "GET"
+
+    ui:
+      static_use_hash: true
+      default_locale: "en"
+      query_in_title: false
+      infinite_scroll: false
+      center_alignment: false
+      default_color_scheme: auto
+      theme_args:
+        simple_style: auto
+
+    # Engines: keep fast, reliable sources that respond quickly from EU
+    engines:
+      - name: google
+        engine: google
+        shortcut: g
+        disabled: false
+      - name: bing
+        engine: bing
+        shortcut: b
+        disabled: false
+      - name: duckduckgo
+        engine: duckduckgo
+        shortcut: d
+        disabled: false
+      - name: wikipedia
+        engine: wikipedia
+        shortcut: w
+        disabled: false
+      - name: startpage
+        engine: startpage
+        shortcut: sp
+        disabled: true
+      - name: brave
+        engine: brave
+        shortcut: br
+        disabled: true
