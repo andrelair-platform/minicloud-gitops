@@ -18,17 +18,41 @@ data:
           model: ollama/phi3-financial
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
 
-      # llama3.2:3b — standard quality tier, local primary + Groq cloud fallback
-      - model_name: llama3.2:3b
+      # qwen3.5:4b — primary smart tier (replaces llama3.2:3b)
+      # Higher intelligence than llama3.2:3b at the same parameter scale.
+      # Native tool calling, large context window.
+      - model_name: qwen3.5:4b
         litellm_params:
-          model: ollama/llama3.2:3b
+          model: ollama/qwen3.5:4b
           api_base: http://ollama.ai.svc.cluster.local:11434
-      - model_name: llama3.2:3b
+      - model_name: qwen3.5:4b
         litellm_params:
-          model: ollama/llama3.2:3b
+          model: ollama/qwen3.5:4b
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
 
-      # llama3.2:1b — fast tier, local primary + Groq cloud fallback
+      # phi4-mini — Microsoft CPU-optimised 3.8B (replaces phi3.5)
+      # Better instruction following and technical accuracy than phi3.5.
+      - model_name: phi4-mini
+        litellm_params:
+          model: ollama/phi4-mini
+          api_base: http://ollama.ai.svc.cluster.local:11434
+      - model_name: phi4-mini
+        litellm_params:
+          model: ollama/phi4-mini
+          api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+
+      # deepseek-r1:7b — reasoning specialist (math, code, logic)
+      # Thinks before answering; higher quality for structured problems.
+      - model_name: deepseek-r1:7b
+        litellm_params:
+          model: ollama/deepseek-r1:7b
+          api_base: http://ollama.ai.svc.cluster.local:11434
+      - model_name: deepseek-r1:7b
+        litellm_params:
+          model: ollama/deepseek-r1:7b
+          api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+
+      # llama3.2:1b — ultra-fast tier, local primary + Groq cloud fallback
       - model_name: llama3.2:1b
         litellm_params:
           model: ollama/llama3.2:1b
@@ -36,6 +60,28 @@ data:
       - model_name: llama3.2:1b
         litellm_params:
           model: ollama/llama3.2:1b
+          api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+
+      # ── VISION / MULTIMODAL (image description, OCR, scene understanding) ──
+      # moondream — 1.7B vision model, fast on CPU, basic OCR + image description
+      - model_name: moondream
+        litellm_params:
+          model: ollama/moondream
+          api_base: http://ollama.ai.svc.cluster.local:11434
+      - model_name: moondream
+        litellm_params:
+          model: ollama/moondream
+          api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+
+      # llava-phi3 — 3.8B vision-language model, better quality than moondream
+      # Good for detailed image analysis, document reading, structured OCR.
+      - model_name: llava-phi3
+        litellm_params:
+          model: ollama/llava-phi3
+          api_base: http://ollama.ai.svc.cluster.local:11434
+      - model_name: llava-phi3
+        litellm_params:
+          model: ollama/llava-phi3
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
 
       # ── CLOUD FALLBACK (activates only when local Ollama exhausts retries) ─
@@ -122,7 +168,10 @@ data:
       allowed_fails: 3
       # Groq then DeepSeek activate only when both local Ollama backends exhaust retries
       fallbacks:
-        - llama3.2:3b:
+        - qwen3.5:4b:
+            - groq-fallback
+            - deepseek-chat
+        - phi4-mini:
             - groq-fallback
             - deepseek-chat
         - llama3.2:1b:
