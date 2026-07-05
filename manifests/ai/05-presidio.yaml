@@ -1,0 +1,180 @@
+---
+# Presidio Analyzer — NLP-based PII entity detection (en_core_web_lg model pre-baked in image)
+# Receives text from LiteLLM, returns detected PII entity spans (PERSON, EMAIL, PHONE, etc.)
+# No internet egress required — all NLP models are inside the container image.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: presidio-analyzer
+  namespace: ai
+  labels:
+    app: presidio-analyzer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: presidio-analyzer
+  template:
+    metadata:
+      labels:
+        app: presidio-analyzer
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: presidio-analyzer
+          image: mcr.microsoft.com/presidio-analyzer:2.2.362
+          ports:
+            - containerPort: 3000
+          env:
+            - name: ANALYZER_DEFAULT_SCORE_THRESHOLD
+              value: "0.5"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: presidio-analyzer
+  namespace: ai
+spec:
+  selector:
+    app: presidio-analyzer
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+# Presidio Anonymizer — replaces detected PII spans with typed placeholders
+# "Jean Dupont" → "<PERSON>", "+33 1 23 45 67 89" → "<PHONE_NUMBER>", etc.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: presidio-anonymizer
+  namespace: ai
+  labels:
+    app: presidio-anonymizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: presidio-anonymizer
+  template:
+    metadata:
+      labels:
+        app: presidio-anonymizer
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: presidio-anonymizer
+          image: mcr.microsoft.com/presidio-anonymizer:2.2.362
+          ports:
+            - containerPort: 5001
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: presidio-anonymizer
+  namespace: ai
+spec:
+  selector:
+    app: presidio-anonymizer
+  ports:
+    - port: 5001
+      targetPort: 5001
+---
+# NetworkPolicy: allow LiteLLM → presidio-analyzer (ai namespace has default-deny ingress)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-litellm-to-presidio-analyzer
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels:
+      app: presidio-analyzer
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: litellm
+      ports:
+        - port: 3000
+          protocol: TCP
+  policyTypes:
+    - Ingress
+---
+# NetworkPolicy: allow LiteLLM → presidio-anonymizer
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-litellm-to-presidio-anonymizer
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels:
+      app: presidio-anonymizer
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: litellm
+      ports:
+        - port: 5001
+          protocol: TCP
+  policyTypes:
+    - Ingress
