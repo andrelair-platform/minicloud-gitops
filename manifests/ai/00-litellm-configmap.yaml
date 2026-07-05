@@ -62,6 +62,18 @@ data:
           model: ollama/llama3.2:1b
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
 
+      # ── EMBEDDINGS (for RAG pipelines and vector search) ────────────────
+      # nomic-embed-text — 274MB, 768-dim vectors, best-in-class for CPU RAG
+      # Used by Open WebUI RAG and accessible via /v1/embeddings for API users.
+      - model_name: nomic-embed-text
+        litellm_params:
+          model: ollama/nomic-embed-text
+          api_base: http://ollama.ai.svc.cluster.local:11434
+      - model_name: nomic-embed-text
+        litellm_params:
+          model: ollama/nomic-embed-text
+          api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+
       # ── VISION / MULTIMODAL (image description, OCR, scene understanding) ──
       # moondream — 1.7B vision model, fast on CPU, basic OCR + image description
       - model_name: moondream
