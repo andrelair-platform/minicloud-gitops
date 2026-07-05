@@ -74,6 +74,11 @@ spec:
                 secretKeyRef:
                   name: litellm-credentials
                   key: gemini-api-key
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: deepseek-api-key
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml

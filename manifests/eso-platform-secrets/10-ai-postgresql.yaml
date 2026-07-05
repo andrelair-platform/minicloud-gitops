@@ -70,3 +70,7 @@ spec:
       remoteRef:
         key: platform/cloud-providers
         property: gemini-api-key
+    - secretKey: deepseek-api-key
+      remoteRef:
+        key: platform/cloud-providers
+        property: deepseek-api-key
