@@ -74,3 +74,11 @@ spec:
       remoteRef:
         key: platform/cloud-providers
         property: deepseek-api-key
+    - secretKey: mistral-api-key
+      remoteRef:
+        key: platform/cloud-providers
+        property: mistral-api-key
+    - secretKey: anthropic-api-key
+      remoteRef:
+        key: platform/cloud-providers
+        property: anthropic-api-key
