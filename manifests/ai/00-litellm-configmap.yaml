@@ -72,6 +72,17 @@ data:
           model: openai/gpt-4o-mini
           api_key: os.environ/OPENAI_API_KEY
 
+      # Hugging Face Serverless Inference (free tier)
+      - model_name: hf-zephyr
+        litellm_params:
+          model: huggingface/HuggingFaceH4/zephyr-7b-beta
+          api_key: os.environ/HUGGINGFACE_API_KEY
+
+      - model_name: hf-phi3-mini
+        litellm_params:
+          model: huggingface/microsoft/Phi-3-mini-4k-instruct
+          api_key: os.environ/HUGGINGFACE_API_KEY
+
       # Anthropic Claude — claude-sonnet (premium) + claude-haiku (standard+)
       - model_name: claude-sonnet
         litellm_params:
