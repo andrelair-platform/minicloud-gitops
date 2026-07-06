@@ -94,6 +94,11 @@ spec:
                 secretKeyRef:
                   name: litellm-credentials
                   key: hf-token
+            - name: NVIDIA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: nvidia-api-key
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml
