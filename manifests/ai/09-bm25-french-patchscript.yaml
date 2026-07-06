@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bm25-french-patchscript
+  namespace: ai
+data:
+  patch_bm25_french.py: |
+    """
+    Patches Open WebUI's BM25Retriever to use a French-aware tokenizer.
+
+    Applied at pod start by the patch-bm25-french init container.
+    The patched utils.py is written to /patched/utils.py and mounted
+    over the original via subPath so the main container uses it.
+
+    What this does:
+    - Replaces the default BM25Retriever tokenizer (whitespace split)
+      with a French Snowball stemmer + stop-word filter.
+    - "sinistres" and "sinistre" → same stem (sinistr)
+    - "réassurance" and "réassurer" → same stem (réassur)
+    - Common French prepositions / articles removed before scoring
+    - Accent-aware regex captures é è ê à â ü ç etc.
+    """
+    import re
+
+    path = '/patched/utils.py'
+
+    with open(path) as f:
+        src = f.read()
+
+    if '_french_bm25_preprocess' in src:
+        print('bm25-french-patch: already applied, skipping')
+    else:
+        french_fn = (
+            '\n'
+            '# French BM25 preprocessor — injected at pod startup\n'
+            '_bm25_fr_stemmer = None\n'
+            '\n'
+            '\n'
+            'def _french_bm25_preprocess(text):\n'
+            '    """Tokenise French text for BM25: lowercase, stem, drop stop words."""\n'
+            '    import re as _re\n'
+            '    from nltk.stem.snowball import SnowballStemmer as _S\n'
+            '    global _bm25_fr_stemmer\n'
+            '    if _bm25_fr_stemmer is None:\n'
+            '        _bm25_fr_stemmer = _S(\'french\')\n'
+            '    _STOP = {\n'
+            '        \'le\', \'la\', \'les\', \'de\', \'du\', \'des\', \'un\', \'une\',\n'
+            '        \'et\', \'en\', \'au\', \'aux\', \'ce\', \'se\', \'sa\', \'son\', \'ses\',\n'
+            '        \'il\', \'elle\', \'ils\', \'elles\', \'je\', \'tu\', \'nous\', \'vous\', \'on\',\n'
+            '        \'que\', \'qui\', \'dont\', \'ou\', \'est\', \'sont\',\n'
+            '        \'par\', \'pour\', \'sur\', \'sous\', \'dans\', \'avec\', \'sans\',\n'
+            '        \'mais\', \'ni\', \'si\', \'ne\', \'pas\', \'plus\', \'aussi\', \'comme\',\n'
+            '        \'tout\', \'tous\', \'cette\', \'cet\', \'ces\', \'y\', \'qu\', \'ca\',\n'
+            '    }\n'
+            '    tokens = _re.findall(\n'
+            '        r\'[a-zàâäéèêë\'\n'
+            '        r\'îïôùûüç]+\',\n'
+            '        text.lower(),\n'
+            '    )\n'
+            '    return [\n'
+            '        _bm25_fr_stemmer.stem(t)\n'
+            '        for t in tokens\n'
+            '        if t not in _STOP and len(t) > 2\n'
+            '    ]\n'
+            '\n'
+            '\n'
+        )
+
+        # Insert function after the BM25Retriever import line
+        src = src.replace(
+            'from langchain_community.retrievers import BM25Retriever\n',
+            'from langchain_community.retrievers import BM25Retriever\n' + french_fn,
+        )
+
+        # Add preprocess_func to the BM25Retriever.from_texts call
+        src = src.replace(
+            '        bm25_retriever = BM25Retriever.from_texts(\n'
+            '            texts=bm25_texts,\n'
+            '            metadatas=bm25_metadatas,\n'
+            '        )',
+            '        bm25_retriever = BM25Retriever.from_texts(\n'
+            '            texts=bm25_texts,\n'
+            '            metadatas=bm25_metadatas,\n'
+            '            preprocess_func=_french_bm25_preprocess,\n'
+            '        )',
+        )
+
+        with open(path, 'w') as f:
+            f.write(src)
+
+        print('bm25-french-patch: patched utils.py with French BM25 preprocessor')
