@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: markitdown-proxy
+  namespace: ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: markitdown-proxy
+  template:
+    metadata:
+      labels:
+        app: markitdown-proxy
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: markitdown-proxy
+          image: harbor.10.0.0.200.nip.io/library/markitdown-proxy:fd8b5f7-amd64
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DOCLING_URL
+              value: "http://docling.ai.svc.cluster.local:5001"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: markitdown-proxy
+  namespace: ai
+spec:
+  selector:
+    app: markitdown-proxy
+  ports:
+    - port: 8000
+      targetPort: 8000
