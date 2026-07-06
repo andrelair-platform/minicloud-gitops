@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-ingest
+  namespace: ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rag-ingest
+  template:
+    metadata:
+      labels:
+        app: rag-ingest
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: rag-ingest
+          image: harbor.10.0.0.200.nip.io/library/rag-ingest:58e9bc1-amd64
+          ports:
+            - containerPort: 8001
+          env:
+            - name: PROXY_URL
+              value: "http://markitdown-proxy.ai.svc.cluster.local:8000"
+            - name: OLLAMA_URL
+              value: "http://ollama.ai.svc.cluster.local:11434"
+            - name: PG_HOST
+              value: "postgresql-ai.ai.svc.cluster.local"
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-postgresql-secret
+                  key: password
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-ingest
+  namespace: ai
+spec:
+  selector:
+    app: rag-ingest
+  ports:
+    - port: 8001
+      targetPort: 8001
