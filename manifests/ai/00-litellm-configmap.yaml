@@ -189,6 +189,31 @@ data:
           model: gemini/gemini-2.5-flash
           api_key: os.environ/GEMINI_API_KEY
 
+      # ── NVIDIA NIM (build.nvidia.com — OpenAI-compatible, free inference tier) ─
+      # Base URL: https://integrate.api.nvidia.com/v1
+      # Uses openai/ provider type — NVIDIA's API is OpenAI-compatible.
+
+      # nvidia-nemotron-70b — NVIDIA-optimised Llama 70B, strong instruction following
+      - model_name: nvidia-nemotron-70b
+        litellm_params:
+          model: openai/nvidia/llama-3.1-nemotron-70b-instruct
+          api_base: https://integrate.api.nvidia.com/v1
+          api_key: os.environ/NVIDIA_API_KEY
+
+      # nvidia-llama-8b — fast 8B tier on NVIDIA GPU infra
+      - model_name: nvidia-llama-8b
+        litellm_params:
+          model: openai/meta/llama-3.1-8b-instruct
+          api_base: https://integrate.api.nvidia.com/v1
+          api_key: os.environ/NVIDIA_API_KEY
+
+      # nvidia-deepseek-r1 — DeepSeek R1 on NVIDIA infra (backup to DeepSeek API)
+      - model_name: nvidia-deepseek-r1
+        litellm_params:
+          model: openai/deepseek-ai/deepseek-r1
+          api_base: https://integrate.api.nvidia.com/v1
+          api_key: os.environ/NVIDIA_API_KEY
+
     router_settings:
       routing_strategy: least-busy
       num_retries: 2

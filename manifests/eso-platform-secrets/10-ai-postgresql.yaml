@@ -86,3 +86,7 @@ spec:
       remoteRef:
         key: platform/cloud-providers
         property: hf-token
+    - secretKey: nvidia-api-key
+      remoteRef:
+        key: platform/cloud-providers
+        property: nvidia-api-key
