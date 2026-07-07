@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: SERVICE_NAME-staging
+resources:
+  - ../../base
+# Promoted manually: PR bumping newTag after dev is validated.
+images:
+  - name: harbor.10.0.0.200.nip.io/library/SERVICE_NAME
+    newTag: "latest"
+patches:
+  - path: patch-resources.yaml

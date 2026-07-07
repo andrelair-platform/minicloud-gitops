@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - service.yaml
+# images: block is intentionally absent from base.
+# Each overlay pins its own image tag so that a CI push to main
+# only promotes the dev overlay — staging and prod require explicit PRs.
