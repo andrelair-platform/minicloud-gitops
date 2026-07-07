@@ -1,0 +1,38 @@
+---
+# RBAC Accepted Risk Register
+# Reviewed 2026-07-07. Two cluster-admin grants exist for third-party operators
+# that cannot be scoped down without forking their Helm charts.
+# Each entry documents the justification and compensating controls.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rbac-accepted-risks
+  namespace: default
+  labels:
+    app.kubernetes.io/component: security-audit
+data:
+  longhorn-support-bundle: |
+    ClusterRoleBinding: longhorn-support-bundle -> cluster-admin
+    Chart: longhorn/longhorn v1.6.0 (upstream design)
+    Justification: Support bundle collection needs cluster-wide read access to
+      gather diagnostics from all namespaces. Longhorn grants cluster-admin for
+      simplicity; this SA is only active when a support bundle is explicitly
+      triggered via the Longhorn UI.
+    Compensating controls:
+      - Longhorn UI is behind Authentik forward-auth (not publicly accessible)
+      - Support bundle pods are ephemeral (terminated after collection)
+      - No standing running pod — token is not continuously exposed
+      - Cluster nodes are not internet-accessible; access requires Tailscale
+    Review: Accept until Longhorn v1.7+ introduces a scoped support bundle role.
+  velero-server: |
+    ClusterRoleBinding: velero-server -> cluster-admin
+    Chart: vmware-tanzu/velero
+    Justification: Velero requires read+write access across all namespaces and
+      resource types to perform backup and cross-namespace restore. Restricting
+      to a subset of resources breaks partial restore functionality.
+    Compensating controls:
+      - Velero namespace has default-deny NetworkPolicy (no inbound except ingress-nginx)
+      - velero-server SA is used only by the Velero controller pod
+      - BackupStorageLocation credentials are stored in a dedicated Secret
+      - Velero itself is not exposed via Ingress; management is kubectl-only
+    Review: Accept as industry-standard for backup tools.

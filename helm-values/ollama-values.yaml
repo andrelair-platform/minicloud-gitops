@@ -18,6 +18,9 @@ image:
 podLabels:
   backstage.io/kubernetes-id: ollama
 
+serviceAccount:
+  automount: false
+
 ollama:
   port: 11434
   gpu:

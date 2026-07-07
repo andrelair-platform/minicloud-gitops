@@ -8,6 +8,9 @@ image:
   repository: ollama/ollama
   tag: "0.23.2"
 
+serviceAccount:
+  automount: false
+
 ollama:
   port: 11434
   gpu:
