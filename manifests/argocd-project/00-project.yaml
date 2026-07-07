@@ -11,11 +11,31 @@ spec:
   sourceRepos:
     - https://github.com/andrelair-platform/minicloud-gitops
     - https://github.com/andrelair-platform/minicloud-gitops.git
+    # Third-party Helm chart repos
+    - https://argoproj.github.io/argo-helm
+    - https://charts.goauthentik.io
+    - https://backstage.github.io/charts
+    - https://charts.bitnami.com/bitnami
+    - https://charts.chaos-mesh.org
     - https://charts.external-secrets.io
-    - https://helm.releases.hashicorp.com
-    - https://nextcloud.github.io/helm/
     - https://charts.fairwinds.com/stable
+    - https://charts.jetstack.io
+    - https://falcosecurity.github.io/charts
+    - https://grafana.github.io/helm-charts
+    - https://helm.goharbor.io
+    - https://helm.nginx.com/stable
+    - https://helm.openwebui.com
+    - https://helm.releases.hashicorp.com
+    - https://kedacore.github.io/charts
+    - https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
     - https://langfuse.github.io/langfuse-k8s
+    - https://nats-io.github.io/k8s/helm/charts/
+    - https://nextcloud.github.io/helm/
+    - https://open-policy-agent.github.io/gatekeeper/charts
+    - https://otwld.github.io/ollama-helm/
+    - https://prometheus-community.github.io/helm-charts
+    - https://stefanprodan.github.io/podinfo
+    - https://vmware-tanzu.github.io/helm-charts
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
@@ -109,6 +129,8 @@ spec:
       kind: MutatingWebhookConfiguration
     - group: "external-secrets.io"
       kind: ClusterSecretStore
+    - group: "storage.k8s.io"
+      kind: StorageClass
     - group: "templates.gatekeeper.sh"
       kind: ConstraintTemplate
     - group: "constraints.gatekeeper.sh"
@@ -158,4 +180,7 @@ spec:
     - group: "appprotect.f5.com"
       kind: "*"
     - group: "appprotectdos.f5.com"
+      kind: "*"
+    # Velero backup CRs (namespace-scoped in velero ns)
+    - group: "velero.io"
       kind: "*"

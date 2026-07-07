@@ -1,0 +1,28 @@
+chaosDaemon:
+  hostNetwork: false
+  runtime: containerd
+  socketPath: /run/k3s/containerd/containerd.sock
+controllerManager:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+dashboard:
+  create: true
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  securityMode: true
+  serviceType: ClusterIP
+dnsServer:
+  create: false
+webhook:
+  certManager:
+    enabled: false

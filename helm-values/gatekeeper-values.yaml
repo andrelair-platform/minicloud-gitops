@@ -1,0 +1,3 @@
+auditInterval: 60
+constraintViolationsLimit: 100
+replicas: 1

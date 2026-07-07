@@ -1,0 +1,6 @@
+nfs:
+  path: /srv/nfs/data
+  server: 10.0.0.2
+storageClass:
+  defaultClass: false
+  name: nfs
