@@ -36,3 +36,7 @@ spec:
       namespace: harbor
       jsonPointers:
         - /data/HARBOR_ADMIN_PASSWORD
+    - kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec/volumeName
+        - /spec/volumeMode
