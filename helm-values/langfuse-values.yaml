@@ -83,12 +83,12 @@ langfuse:
     - name: NODE_EXTRA_CA_CERTS
       value: "/etc/ssl/minicloud/ca.crt"
 
-  additionalVolumes:
+  extraVolumes:
     - name: minicloud-ca
       configMap:
         name: minicloud-ca
 
-  additionalVolumeMounts:
+  extraVolumeMounts:
     - name: minicloud-ca
       mountPath: /etc/ssl/minicloud
       readOnly: true
