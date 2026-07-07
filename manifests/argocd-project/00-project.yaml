@@ -87,6 +87,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: keda
       server: https://kubernetes.default.svc
+    - namespace: kube-system
+      server: https://kubernetes.default.svc
     - namespace: ktayl-web
       server: https://kubernetes.default.svc
     - namespace: langfuse
@@ -131,6 +133,10 @@ spec:
       kind: ClusterSecretStore
     - group: "storage.k8s.io"
       kind: StorageClass
+    - group: "networking.k8s.io"
+      kind: IngressClass
+    - group: "apiregistration.k8s.io"
+      kind: APIService
     - group: "templates.gatekeeper.sh"
       kind: ConstraintTemplate
     - group: "constraints.gatekeeper.sh"
