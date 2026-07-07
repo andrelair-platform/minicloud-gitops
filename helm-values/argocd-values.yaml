@@ -168,8 +168,8 @@ server:
 
 repoServer:
   resources:
-    requests: { cpu: 50m,  memory: 128Mi }
-    limits:   { cpu: 500m, memory: 512Mi }
+    requests: { cpu: 50m,  memory: 256Mi }
+    limits:   { cpu: 1000m, memory: 1500Mi }
 
 controller:
   resources:
