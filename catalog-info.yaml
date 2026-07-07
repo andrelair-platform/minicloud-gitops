@@ -312,3 +312,101 @@ spec:
   lifecycle: production
   owner: andrelair-platform
   system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: markitdown-proxy
+  description: |
+    Custom document conversion service. Mimics the Docling /v1/convert/file
+    API so Open WebUI can use DOCLING_SERVER_URL without config changes.
+    Routes PDFs and images to Docling (layout+OCR), Office files to
+    MarkItDown in-pod. Used by rag-ingest and Open WebUI paperclip uploads.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-markitdown-proxy
+    github.com/project-slug: andrelair-platform/minicloud-markitdown-proxy
+    argocd/app-name: ai-manifests
+    backstage.io/kubernetes-id: markitdown-proxy
+  tags:
+    - ai
+    - rag
+    - custom
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: rag-ingest
+  description: |
+    Custom RAG ingestion pipeline. Accepts file uploads, converts via
+    markitdown-proxy, splits on French insurance structural boundaries
+    (article/section headings), embeds with bge-m3 via Ollama, and inserts
+    directly into ragdb (pgvector). Eliminates the need for Mac-side tools.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-rag-ingest
+    github.com/project-slug: andrelair-platform/minicloud-rag-ingest
+    argocd/app-name: ai-manifests
+    backstage.io/kubernetes-id: rag-ingest
+  tags:
+    - ai
+    - rag
+    - custom
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: postgresql-noavx512
+  description: |
+    Bitnami PostgreSQL with pgvector recompiled without AVX-512 SIMD
+    instructions. Required because upstream pgvector 0.8.4 includes
+    EVEX-encoded paths that SIGILL on i7-8565U and i7-10510U CPUs.
+    Rebuilt with -mno-avx512f/bw/vl/dq. Used by ragdb for HNSW vector
+    search (0.31ms scan latency).
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-postgresql-noavx512
+    github.com/project-slug: andrelair-platform/minicloud-postgresql-noavx512
+    argocd/app-name: postgresql-ai
+    backstage.io/kubernetes-id: postgresql-ai
+  tags:
+    - database
+    - pgvector
+    - custom
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: litellm-custom
+  description: |
+    LiteLLM AI Gateway with custom patches: Prisma cache permissions fixed
+    for non-root Kubernetes execution, libatomic added for Node.js Prisma
+    CLI, google-generativeai package added. Multi-provider routing to Groq,
+    OpenAI, Gemini, DeepSeek, Mistral, Claude, HuggingFace, and 3 local
+    Ollama instances. 16 department keys, Langfuse tracing.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-litellm-custom
+    github.com/project-slug: andrelair-platform/minicloud-litellm-custom
+    argocd/app-name: ai-manifests
+    backstage.io/kubernetes-id: litellm
+  tags:
+    - ai
+    - gateway
+    - custom
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
