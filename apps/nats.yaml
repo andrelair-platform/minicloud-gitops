@@ -39,3 +39,6 @@ spec:
         - /spec/podManagementPolicy
         - /spec/persistentVolumeClaimRetentionPolicy
         - /spec/updateStrategy/rollingUpdate/partition
+        - /spec/revisionHistoryLimit
+        - /spec/volumeClaimTemplates/0/spec/volumeMode
+        - /spec/volumeClaimTemplates/0/status
