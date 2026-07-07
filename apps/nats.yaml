@@ -29,3 +29,13 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: nats
+      namespace: messaging
+      jsonPointers:
+        - /spec/podManagementPolicy
+        - /spec/persistentVolumeClaimRetentionPolicy
+        - /spec/updateStrategy/rollingUpdate/partition
