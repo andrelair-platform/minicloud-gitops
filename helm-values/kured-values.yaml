@@ -1,0 +1,33 @@
+configuration:
+  # All-day reboot window — portfolio cluster, no business-hours restriction
+  startTime: "0:00"
+  endTime: "23:59"
+  timeZone: "Europe/Paris"
+  # Check for /var/run/reboot-required every hour
+  period: 1h
+  # Drain timeout per node
+  drainTimeout: 120s
+  # Skip pods with these labels during drain (critical platform pods)
+  # Leave empty — let Kubernetes eviction handle it
+  skipWaitForDeleteTimeoutSeconds: 0
+
+# Tolerate control-plane taint so kured runs on set-hog too
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+# kured needs hostPID to nsenter into host PID 1 for systemctl reboot
+hostPID: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+podAnnotations:
+  # Disable vault-agent injection — kured has no secrets to fetch
+  vault.hashicorp.com/agent-inject: "false"
