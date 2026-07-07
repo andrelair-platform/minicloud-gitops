@@ -1,6 +1,6 @@
 ---
-# Actual peak: ~13m CPU / 233Mi memory (7 pods: core, db, jobservice, portal, redis, registry, trivy)
-# Quota allows for image builds and vulnerability scanning spikes
+# Actual steady-state: 1Gi requests / 3Gi limits across 8 pods
+# Bumped requests.memory 1Gi→2Gi to allow rolling updates (old + new pod overlap)
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -10,8 +10,8 @@ spec:
   hard:
     requests.cpu: "2"
     limits.cpu: "4"
-    requests.memory: 1Gi
-    limits.memory: 3Gi
+    requests.memory: 2Gi
+    limits.memory: 6Gi
     count/pods: "20"
 ---
 apiVersion: v1
