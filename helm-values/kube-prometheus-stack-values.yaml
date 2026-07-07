@@ -1,0 +1,289 @@
+fullnameOverride: kps
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 100Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+prometheus:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.org/redirect-to-https: "true"
+      cert-manager.io/cluster-issuer: minicloud-ca
+      cert-manager.io/duration: "2160h"
+      cert-manager.io/renew-before: "720h"
+      nginx.org/server-snippets: |
+        location /outpost.goauthentik.io {
+            proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
+            proxy_set_header        Host $host;
+            proxy_set_header        X-Original-URL $scheme://$http_host$request_uri;
+            add_header              Set-Cookie $auth_cookie;
+            auth_request_set        $auth_cookie $upstream_http_set_cookie;
+            proxy_pass_request_body off;
+            proxy_set_header        Content-Length "";
+        }
+        location @goauthentik_proxy_signin {
+            internal;
+            add_header Set-Cookie $auth_cookie;
+            return 302 /outpost.goauthentik.io/start?rd=$request_uri;
+        }
+      nginx.org/location-snippets: |
+        auth_request     /outpost.goauthentik.io/auth/nginx;
+        error_page       401 = @goauthentik_proxy_signin;
+        auth_request_set $auth_cookie $upstream_http_set_cookie;
+        add_header       Set-Cookie $auth_cookie;
+        auth_request_set $authentik_username $upstream_http_x_authentik_username;
+        auth_request_set $authentik_groups   $upstream_http_x_authentik_groups;
+        auth_request_set $authentik_email    $upstream_http_x_authentik_email;
+        proxy_set_header X-authentik-username $authentik_username;
+        proxy_set_header X-authentik-groups   $authentik_groups;
+        proxy_set_header X-authentik-email    $authentik_email;
+    hosts:
+      - prometheus.10.0.0.200.nip.io
+    tls:
+      - hosts:
+          - prometheus.10.0.0.200.nip.io
+        secretName: prometheus-tls
+  prometheusSpec:
+    retention: 10d
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 1000m
+        memory: 4Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 15Gi
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.org/redirect-to-https: "true"
+      cert-manager.io/cluster-issuer: minicloud-ca
+      cert-manager.io/duration: "2160h"
+      cert-manager.io/renew-before: "720h"
+      nginx.org/server-snippets: |
+        location /outpost.goauthentik.io {
+            proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
+            proxy_set_header        Host $host;
+            proxy_set_header        X-Original-URL $scheme://$http_host$request_uri;
+            add_header              Set-Cookie $auth_cookie;
+            auth_request_set        $auth_cookie $upstream_http_set_cookie;
+            proxy_pass_request_body off;
+            proxy_set_header        Content-Length "";
+        }
+        location @goauthentik_proxy_signin {
+            internal;
+            add_header Set-Cookie $auth_cookie;
+            return 302 /outpost.goauthentik.io/start?rd=$request_uri;
+        }
+      nginx.org/location-snippets: |
+        auth_request     /outpost.goauthentik.io/auth/nginx;
+        error_page       401 = @goauthentik_proxy_signin;
+        auth_request_set $auth_cookie $upstream_http_set_cookie;
+        add_header       Set-Cookie $auth_cookie;
+        auth_request_set $authentik_username $upstream_http_x_authentik_username;
+        auth_request_set $authentik_groups   $upstream_http_x_authentik_groups;
+        auth_request_set $authentik_email    $upstream_http_x_authentik_email;
+        proxy_set_header X-authentik-username $authentik_username;
+        proxy_set_header X-authentik-groups   $authentik_groups;
+        proxy_set_header X-authentik-email    $authentik_email;
+    hosts:
+      - alertmanager.10.0.0.200.nip.io
+    tls:
+      - hosts:
+          - alertmanager.10.0.0.200.nip.io
+        secretName: alertmanager-tls
+  config:
+    global:
+      resolve_timeout: 5m
+    inhibit_rules:
+      - source_matchers: ['severity = critical']
+        target_matchers: ['severity =~ "warning|info"']
+        equal: [namespace, alertname]
+      - source_matchers: ['severity = warning']
+        target_matchers: ['severity = info']
+        equal: [namespace, alertname]
+    route:
+      group_by: [alertname, namespace]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: webhook-default
+      routes:
+        - matchers: ['alertname = "Watchdog"']
+          receiver: "null"
+        - matchers: ['alertname =~ "KubeProxyDown|KubeControllerManagerDown|KubeSchedulerDown"']
+          receiver: "null"
+        - matchers: ['severity = critical']
+          receiver: webhook-critical
+          continue: false
+        - matchers: ['severity = warning']
+          receiver: webhook-default
+          continue: false
+        - matchers: ['severity = info']
+          receiver: "null"
+    receivers:
+      - name: "null"
+      - name: webhook-default
+        webhook_configs:
+          - url: http://alert-webhook-logger.monitoring.svc:80/
+            send_resolved: true
+      - name: webhook-critical
+        webhook_configs:
+          - url: http://alert-webhook-logger.monitoring.svc:80/
+            send_resolved: true
+    templates:
+      - /etc/alertmanager/config/*.tmpl
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 1Gi
+
+grafana:
+  admin:
+    existingSecret: grafana-admin-credentials
+    userKey: admin-user
+    passwordKey: admin-password
+  # Phase 33 — department RBAC. Group claim → Grafana role:
+  #   GrafanaAdmin: authentik Admins, Platform Admins, Direction IT, Cybersécurité, Data & Analytics
+  #   Viewer:       Direction Transformation, Actuariat, Souscription, Sinistres, Finance,
+  #                 Réassurance, Juridique, Opérations, Audit
+  #   (no access):  Direction Commercial, RH, Services Généraux — blocked at Authentik binding layer
+  # Local admin account (~/.grafana-admin) preserved as emergency fallback.
+  grafana.ini:
+    server:
+      root_url: https://grafana.devandre.sbs
+    auth.generic_oauth:
+      enabled: true
+      name: Authentik
+      icon: signin
+      allow_sign_up: true
+      auto_login: false
+      # client_id + client_secret injected via env vars from the
+      # grafana-oidc Secret (see envFromSecret below).
+      auth_url: https://auth.10.0.0.200.nip.io/application/o/authorize/
+      token_url: https://auth.10.0.0.200.nip.io/application/o/token/
+      api_url: https://auth.10.0.0.200.nip.io/application/o/userinfo/
+      tls_skip_verify_insecure: true
+      scopes: openid profile email groups
+      use_pkce: true
+      allow_assign_grafana_admin: true
+      role_attribute_path: >-
+        contains(groups[*], 'authentik Admins') && 'GrafanaAdmin'
+        || contains(groups[*], 'Platform Admins') && 'GrafanaAdmin'
+        || contains(groups[*], 'Direction IT / SI') && 'GrafanaAdmin'
+        || contains(groups[*], 'Direction Cybersécurité') && 'GrafanaAdmin'
+        || contains(groups[*], 'Direction Data & Analytics') && 'GrafanaAdmin'
+        || 'Viewer'
+      role_attribute_strict: false
+  envFromSecret: grafana-oidc
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+  sidecar:
+    dashboards:
+      resources:
+        requests: {cpu: 50m, memory: 64Mi}
+        limits: {cpu: 100m, memory: 128Mi}
+    datasources:
+      resources:
+        requests: {cpu: 50m, memory: 64Mi}
+        limits: {cpu: 100m, memory: 128Mi}
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: longhorn
+    accessModes: [ReadWriteOnce]
+    size: 5Gi
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.org/redirect-to-https: "true"
+    hosts:
+      - grafana.10.0.0.200.nip.io
+      - grafana.devandre.sbs
+    path: /
+    pathType: Prefix
+    tls:
+      - hosts:
+          - grafana.10.0.0.200.nip.io
+        secretName: grafana-tls
+      - hosts:
+          - grafana.devandre.sbs
+        secretName: grafana-tls
+  # Phase 21: Loki added as a second datasource (alongside the
+  # Prometheus datasource the chart provisions automatically).
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.observability.svc:3100
+      isDefault: false
+      editable: false
+      jsonData:
+        maxLines: 1000
+        timeout: 60
+
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      # 100m caused 38-69% CPU throttling on each node — node-exporter
+      # bursts well above 100m during scrape intervals. 250m gives
+      # headroom for scrape bursts without making it a CPU hog.
+      cpu: 250m
+      memory: 128Mi

@@ -1,0 +1,155 @@
+# Langfuse v3 values for minicloud-platform.
+# PostgreSQL: external (postgresql-ai-0 in ai namespace)
+# ClickHouse: internal single-node (minimal resources)
+# Redis/Valkey: internal standalone (minimal resources)
+# MinIO/S3: external (controller Docker MinIO at http://10.0.0.1:9000)
+
+global:
+  security:
+    allowInsecureImages: true
+
+langfuse:
+  logging:
+    level: info
+    format: json
+
+  # Salt for API key hashing — required, stored in Vault
+  salt:
+    secretKeyRef:
+      name: langfuse-secrets
+      key: salt
+
+  features:
+    telemetryEnabled: false
+    signUpDisabled: true
+
+  nodeEnv: production
+
+  serviceAccount:
+    automountServiceAccountToken: false
+
+  nextauth:
+    url: https://langfuse.devandre.sbs
+    secret:
+      secretKeyRef:
+        name: langfuse-secrets
+        key: nextauth-secret
+
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse-secrets
+      key: encryption-key
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1500m
+      memory: 2Gi
+
+  # Authentik OIDC — inject via environment variables (additionalEnvFrom)
+  # AUTH_CUSTOM_* env vars configure NextAuth.js custom OIDC provider
+  additionalEnvFrom:
+    - secretRef:
+        name: langfuse-oidc-env
+
+  # Pre-provision org, project, and API keys on first startup
+  additionalEnv:
+    - name: AUTH_CUSTOM_NAME
+      value: "Authentik"
+    - name: AUTH_CUSTOM_SCOPE
+      value: "openid email profile"
+    - name: AUTH_CUSTOM_ISSUER
+      value: "https://auth.devandre.sbs/application/o/langfuse/"
+    - name: AUTH_CUSTOM_ALLOW_ACCOUNT_LINKING
+      value: "true"
+    - name: AUTH_CUSTOM_ADMIN_EMAILS
+      value: "kanmegnea@gmail.com"
+    - name: LANGFUSE_INIT_ORG_NAME
+      value: "minicloud-platform"
+    - name: LANGFUSE_INIT_PROJECT_NAME
+      value: "ai-gateway"
+
+# External PostgreSQL (postgresql-ai-0 in ai namespace)
+postgresql:
+  deploy: false
+  host: postgresql-ai.ai.svc.cluster.local
+  port: 5432
+  auth:
+    username: langfuse
+    database: langfuse
+    existingSecret: langfuse-secrets
+    existingSecretKey:
+      userPasswordKey: password
+
+# ClickHouse — single-node (no HA, no Zookeeper)
+clickhouse:
+  deploy: true
+  clusterEnabled: false
+  replicaCount: 1
+  shards: 1
+  resourcesPreset: "medium"
+  auth:
+    username: default
+    existingSecret: langfuse-secrets
+    existingSecretKey: clickhouse-password
+  image:
+    repository: bitnamilegacy/clickhouse
+  zookeeper:
+    image:
+      repository: bitnamilegacy/zookeeper
+
+# Redis/Valkey — internal standalone, no auth (Langfuse connects without password)
+redis:
+  deploy: true
+  architecture: standalone
+  image:
+    repository: bitnamilegacy/valkey
+  auth:
+    enabled: false
+    password: ""
+  primary:
+    extraFlags:
+      - "--maxmemory-policy noeviction"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# MinIO S3 — use existing controller MinIO (http://10.0.0.1:9000)
+s3:
+  deploy: false
+  storageProvider: s3
+  bucket: langfuse-blobs
+  region: auto
+  endpoint: http://10.0.0.1:9000
+  forcePathStyle: true
+  accessKeyId:
+    secretKeyRef:
+      name: langfuse-secrets
+      key: s3-access-key-id
+  secretAccessKey:
+    secretKeyRef:
+      name: langfuse-secrets
+      key: s3-secret-access-key
+  eventUpload:
+    bucket: langfuse-events
+    endpoint: http://10.0.0.1:9000
+    forcePathStyle: true
+    region: auto
+    accessKeyId:
+      secretKeyRef:
+        name: langfuse-secrets
+        key: s3-access-key-id
+    secretAccessKey:
+      secretKeyRef:
+        name: langfuse-secrets
+        key: s3-secret-access-key
+
+# Disable bundled ingress — managed by langfuse-base ArgoCD app
+ingress:
+  enabled: false

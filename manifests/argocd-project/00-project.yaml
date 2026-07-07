@@ -11,7 +11,6 @@ spec:
   sourceRepos:
     - https://github.com/andrelair-platform/minicloud-gitops
     - https://github.com/andrelair-platform/minicloud-gitops.git
-    - https://github.com/andrelair-platform/minicloud-ansible.git
     - https://charts.external-secrets.io
     - https://helm.releases.hashicorp.com
     - https://nextcloud.github.io/helm/

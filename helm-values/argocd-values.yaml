@@ -1,0 +1,195 @@
+global:
+  domain: argocd.10.0.0.200.nip.io
+
+# Phase 15: TLS terminated at the NGINX Ingress, cert from cert-manager.
+# Keep server.insecure: true so argocd-server speaks plain HTTP internally
+# (the cluster traffic Ingress -> argocd-server stays inside the cluster);
+# the public-facing TLS handshake happens at the Ingress.
+configs:
+  params:
+    server.insecure: true
+  cm:
+    # Enable resource exclusions / inclusions later if needed
+    timeout.reconciliation: 180s
+    # Disable local admin — OIDC (Authentik) is the only login path.
+    # Break-glass: kubectl --context minicloud-break-glass + kubectl exec into argocd-server.
+    admin.enabled: "false"
+    # GPG commit signature verification — key FD6D39D681DEFA34 (AndreLiar, expires 2028-06-28)
+    gpg.enabled: "true"
+  gpg:
+    keys:
+      FD6D39D681DEFA34: |
+        -----BEGIN PGP PUBLIC KEY BLOCK-----
+
+        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
+        M2mMjJ3qbW+Rcd7w8+xVSUtRvvZ1465W
+        =rsN/
+        -----END PGP PUBLIC KEY BLOCK-----
+    # Phase 23 Stage 3 — Authentik OIDC integration
+    url: https://argocd.devandre.sbs
+    oidc.config: |
+      name: Authentik
+      issuer: https://auth.10.0.0.200.nip.io/application/o/argo-cd/
+      clientID: gKTS6lKgXhvP2t2rlUu8QhkzFo2itrY8c3szNv9M
+      clientSecret: $argocd-oidc:clientSecret
+      requestedScopes: ["openid", "profile", "email", "groups"]
+      requestedIDTokenClaims:
+        groups:
+          essential: true
+      rootCA: |
+        -----BEGIN CERTIFICATE-----
+        MIICAzCCAaigAwIBAgIUXS8lZg8k9yh42Gyd7EBDeQpvrnAwCgYIKoZIzj0EAwIw
+        XzEbMBkGA1UEChMSYW5kcmVsYWlyLXBsYXRmb3JtMRswGQYDVQQLExJtaW5pY2xv
+        dWQgcGxhdGZvcm0xIzAhBgNVBAMTGm1pbmljbG91ZCBJbnRlcm5hbCBSb290IENB
+        MB4XDTI2MDUwOTExNTY0NloXDTM2MDUwNjExNTY0NlowXzEbMBkGA1UEChMSYW5k
+        cmVsYWlyLXBsYXRmb3JtMRswGQYDVQQLExJtaW5pY2xvdWQgcGxhdGZvcm0xIzAh
+        BgNVBAMTGm1pbmljbG91ZCBJbnRlcm5hbCBSb290IENBMFkwEwYHKoZIzj0CAQYI
+        KoZIzj0DAQcDQgAEIYSIb9sazO1MO/DE8TFIpQYnlPmh+mVpe7p+lBl7gouSefd/
+        SUAJd0t7xNMqWqmgnyaMiiw0TohHA3sh1YcHNKNCMEAwDgYDVR0PAQH/BAQDAgKk
+        MA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFACl2vBxhgRX0PvqGapck0sM4efd
+        MAoGCCqGSM49BAMCA0kAMEYCIQCApyHzARqV3RlzFR5uIdpwyyUyGJugM89NXvWv
+        bEJ7gQIhAJq5mnZKS/EJTMPYzkuq33K4g+FJp2zt+VpUkg24ETKO
+        -----END CERTIFICATE-----
+  rbac:
+    # Group claim -> ArgoCD role mapping (Phase 33 — department RBAC).
+    # policy.default: deny — unrecognised groups get no access at all.
+    # Local admin account disabled (admin.enabled: false above).
+    policy.default: role:''
+    policy.csv: |
+      g, authentik Admins, role:admin
+      g, Platform Admins, role:admin
+      g, Direction IT / SI, role:admin
+      g, Direction Cybersécurité, role:readonly
+      g, Direction Audit Interne, role:readonly
+    scopes: '[groups]'
+
+server:
+  # F5 NGINX Ingress gets confused when the chart's default Service has both
+  # http (port 80 -> 8080) and https (port 443 -> 8080) — duplicate
+  # targetPorts make endpointslice resolution fail with "no endpointslices
+  # for target port 8080". Override service to expose only the http port.
+  service:
+    type: ClusterIP
+    servicePortHttp: 80
+    servicePortHttpName: http
+    servicePortHttps: 443
+    servicePortHttpsName: https
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: argocd.10.0.0.200.nip.io
+    # NB: do not add `nginx.org/proxy-buffer-size: "16k"` — it conflicts
+    # with the default proxy_buffers config and makes nginx -s reload fail
+    # with "proxy_busy_buffers_size must be less than the size of all
+    # proxy_buffers minus one buffer". Keeps every Ingress in the cluster
+    # broken until removed.
+    annotations:
+      nginx.org/redirect-to-https: "true"
+    tls: true            # chart auto-creates a tls section using the secretName below
+    extraTls:
+      - hosts:
+          - argocd.10.0.0.200.nip.io
+        secretName: argocd-tls
+      - hosts:
+          - argocd.devandre.sbs
+        secretName: argocd-tls
+    extraRules:
+      - host: argocd.devandre.sbs
+        http:
+          paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: argo-cd-argocd-server
+                  port:
+                    number: 80
+  resources:
+    requests: { cpu: 50m,  memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+repoServer:
+  resources:
+    requests: { cpu: 50m,  memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+controller:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 1000m, memory: 1Gi }
+
+applicationSet:
+  resources:
+    requests: { cpu: 25m,  memory: 64Mi }
+    limits:   { cpu: 250m, memory: 256Mi }
+
+# Disable Dex (no OIDC yet — Phase 15 will add Keycloak)
+dex:
+  enabled: false
+
+# Disable notifications controller — Phase 21 territory
+notifications:
+  enabled: false
+
+redis:
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits:   { cpu: 250m, memory: 128Mi }

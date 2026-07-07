@@ -1,0 +1,192 @@
+# Backstage values for minicloud Phase 18.
+# Off-the-shelf image (ghcr.io/backstage/backstage:latest), Postgres
+# subchart enabled in standalone mode, app-config inlined as a ConfigMap.
+
+backstage:
+  replicas: 1
+  strategy:
+    type: Recreate
+
+  image:
+    # Phase 24 custom image — built from andrelair-platform/minicloud-backstage
+    registry: harbor.10.0.0.200.nip.io
+    repository: library/backstage
+    # git SHA: bcec03f — built 2026-06-20
+    tag: "bcec03f-amd64"
+
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits:   { cpu: 1000m, memory: 1Gi }
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+
+  # Backstage's port (default 7007 in the off-the-shelf image)
+  containerPorts:
+    backend: 7007
+
+  # Inline app-config — guest auth + 5 catalog locations targeting our
+  # GitHub repos. Each repo has a catalog-info.yaml at its root.
+  appConfig:
+    app:
+      title: minicloud platform
+      baseUrl: https://backstage.10.0.0.200.nip.io
+    organization:
+      name: andrelair-platform
+    backend:
+      baseUrl: https://backstage.10.0.0.200.nip.io
+      listen:
+        port: 7007
+      cors:
+        origin: https://backstage.10.0.0.200.nip.io
+        methods: [GET, POST, PUT, DELETE]
+        credentials: true
+      # URL whitelist for catalog locations and other reading. Without
+      # this, raw.githubusercontent.com is blocked by default policy.
+      reading:
+        allow:
+          - host: raw.githubusercontent.com
+          - host: github.com
+      database:
+        client: pg
+        connection:
+          host: ${POSTGRES_HOST}
+          port: ${POSTGRES_PORT}
+          user: ${POSTGRES_USER}
+          password: ${POSTGRES_PASSWORD}
+      auth:
+        # Backend-to-frontend auth secret. The chart auto-generates one
+        # if not provided; we let it.
+        keys: []
+    auth:
+      environment: production
+      providers:
+        oidc:
+          production:
+            metadataUrl: https://auth.10.0.0.200.nip.io/application/o/backstage/.well-known/openid-configuration
+            clientId: ${AUTH_OIDC_CLIENT_ID}
+            clientSecret: ${AUTH_OIDC_CLIENT_SECRET}
+            callbackUrl: https://backstage.10.0.0.200.nip.io/api/auth/oidc/handler/frame
+            additionalScopes: []
+            signIn:
+              resolvers:
+                - resolver: emailMatchingUserEntityProfileEmail
+                - resolver: emailLocalPartMatchingUserEntityName
+    catalog:
+      rules:
+        - allow: [Component, System, API, Resource, Location]
+      locations:
+        # Use raw.githubusercontent.com for direct (anonymous, no rate-limit
+        # surprises) file fetches. Backstage's `url` location reader handles
+        # this URL pattern natively without needing the GitHub integration.
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/catalog-info.yaml
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-ansible/main/catalog-info.yaml
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-opentofu/main/catalog-info.yaml
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-gitops/main/catalog-info.yaml
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/platform-demo/main/catalog-info.yaml
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/catalog-info.yaml
+    grafana:
+      domain: https://grafana.10.0.0.200.nip.io
+    kubernetes:
+      serviceLocatorMethod:
+        type: 'multiTenant'
+      clusterLocatorMethods:
+        - type: 'config'
+          clusters:
+            - name: minicloud
+              url: https://10.0.0.2:6443
+              authProvider: 'serviceAccount'
+              serviceAccountToken: ${K8S_SA_TOKEN}
+              caData: ${K8S_CA_DATA}
+              skipTLSVerify: false
+    argocd:
+      username: ${ARGOCD_USERNAME}
+      password: ${ARGOCD_PASSWORD}
+      appLocatorMethods:
+        - type: 'config'
+          instances:
+            - name: minicloud
+              url: https://argocd.10.0.0.200.nip.io
+
+  extraEnvVars:
+    - name: POSTGRES_HOST
+      value: backstage-postgresql
+    - name: POSTGRES_PORT
+      value: "5432"
+    - name: POSTGRES_USER
+      value: bn_backstage
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: backstage-postgres-secret
+          key: password
+    - name: K8S_SA_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: backstage-phase24-secret
+          key: k8s-sa-token
+    - name: K8S_CA_DATA
+      valueFrom:
+        secretKeyRef:
+          name: backstage-phase24-secret
+          key: k8s-ca-data
+    - name: AUTH_OIDC_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: backstage-phase24-secret
+          key: auth-oidc-client-id
+    - name: AUTH_OIDC_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: backstage-phase24-secret
+          key: auth-oidc-client-secret
+    - name: ARGOCD_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: backstage-phase24-secret
+          key: argocd-username
+    - name: ARGOCD_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: backstage-phase24-secret
+          key: argocd-password
+
+# Disable the chart's Ingress — we'll add our own with cert-manager TLS.
+ingress:
+  enabled: false
+
+# Postgres subchart, standalone, on Longhorn
+postgresql:
+  enabled: true
+  # Workaround for the bitnami chart 35164 image migration (chart default
+  # but we make it explicit for portfolio clarity)
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/postgresql
+
+  architecture: standalone
+
+  auth:
+    username: bn_backstage
+    database: backstage_plugin_catalog
+    existingSecret: backstage-postgres-secret
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: password
+
+  primary:
+    persistence:
+      enabled: true
+      storageClass: longhorn
+      size: 1Gi
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits:   { cpu: 500m, memory: 512Mi }

@@ -1,0 +1,46 @@
+driver:
+  kind: modern_ebpf
+
+falco:
+  json_output: true
+  json_include_output_property: true
+  log_stderr: true
+  log_syslog: false
+  log_level: info
+  priority: debug
+  watch_config_files: false
+
+falcoctl:
+  artifact:
+    install:
+      env:
+        - name: HTTPS_PROXY
+          value: http://10.0.0.1:8000
+        - name: HTTP_PROXY
+          value: http://10.0.0.1:8000
+        - name: NO_PROXY
+          value: 10.0.0.0/8,127.0.0.1,localhost,.svc,.cluster.local
+    follow:
+      enabled: false
+
+falcosidekick:
+  enabled: true
+  config:
+    alertmanager:
+      hostport: "http://kps-alertmanager.monitoring.svc.cluster.local:9093"
+      minimumpriority: "warning"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
