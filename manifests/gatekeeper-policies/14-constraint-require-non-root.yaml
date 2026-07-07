@@ -40,3 +40,4 @@ spec:
             - gitops-demo      # whoami (scratch image, no USER directive)
             - event-demo       # echo-worker (nats-box image, runs as root)
             - langfuse         # Langfuse v3 + ClickHouse/Zookeeper/Valkey bitnami images
+            - kured            # kured DaemonSet runs as root to nsenter into host PID 1

@@ -31,3 +31,4 @@ spec:
             - nfs-provisioner # NFS provisioner requires elevated privileges
             - authentik       # Bitnami chart init containers
             - langfuse        # Langfuse v3 + ClickHouse/Zookeeper/Valkey bitnami images
+            - kured           # kured DaemonSet requires privilege escalation for nsenter reboot
