@@ -11,6 +11,9 @@ injector:
       memory: 128Mi
 
 server:
+  extraLabels:
+    backstage.io/kubernetes-id: vault
+
   resources:
     requests:
       cpu: 250m
