@@ -38,11 +38,14 @@ spec:
     - kind: Service
       name: nginx-ingress-controller
       namespace: ingress-nginx
-      jsonPointers:
-        - /spec/clusterIP
-        - /spec/clusterIPs
-        - /spec/ipFamilies
-        - /spec/ipFamilyPolicy
-        - /spec/allocateLoadBalancerNodePorts
-        - /spec/internalTrafficPolicy
-        - /spec/healthCheckNodePort
+      jqPathExpressions:
+        - .spec.clusterIP
+        - .spec.clusterIPs
+        - .spec.ipFamilies
+        - .spec.ipFamilyPolicy
+        - .spec.allocateLoadBalancerNodePorts
+        - .spec.internalTrafficPolicy
+        - .spec.healthCheckNodePort
+        - .spec.sessionAffinity
+        - .spec.sessionAffinityConfig
+        - .spec.ports[].nodePort
