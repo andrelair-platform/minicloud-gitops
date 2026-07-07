@@ -77,6 +77,21 @@ langfuse:
       value: "0017fadd-e515-400b-8a19-41a96422caec"
     - name: LANGFUSE_INIT_PROJECT_NAME
       value: "ai-gateway"
+    # Node.js reads this file and adds it to the TLS trust store at startup.
+    # Required so NextAuth can call auth.devandre.sbs (signed by minicloud-ca)
+    # during the OIDC token exchange without SSL verification failures.
+    - name: NODE_EXTRA_CA_CERTS
+      value: "/etc/ssl/minicloud/ca.crt"
+
+  additionalVolumes:
+    - name: minicloud-ca
+      configMap:
+        name: minicloud-ca
+
+  additionalVolumeMounts:
+    - name: minicloud-ca
+      mountPath: /etc/ssl/minicloud
+      readOnly: true
 
 # External PostgreSQL (postgresql-ai-0 in ai namespace)
 postgresql:
