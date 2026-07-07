@@ -5,11 +5,13 @@ configuration:
   timeZone: "Europe/Paris"
   # Check for /var/run/reboot-required every hour
   period: 1h
-  # Drain timeout per node
-  drainTimeout: 120s
-  # Skip pods with these labels during drain (critical platform pods)
-  # Leave empty — let Kubernetes eviction handle it
-  skipWaitForDeleteTimeoutSeconds: 0
+  # drainTimeout: 0 = unlimited wait. Longhorn PDB blocks eviction until
+  # Longhorn rebalances replicas off the draining node (typically 60-120s).
+  # Gatekeeper PDB does the same. With a hard timeout kured gives up and
+  # retries in 1h; with 0 it just waits until PDBs are satisfied.
+  drainTimeout: 0
+  # Use pod's own terminationGracePeriodSeconds — don't cut it short
+  drainGracePeriod: -1
 
 # Tolerate control-plane taint so kured runs on set-hog too
 tolerations:
