@@ -73,6 +73,8 @@ langfuse:
       value: "262cdedf-edcc-45fc-ab91-da935eb34d57"
     - name: LANGFUSE_INIT_ORG_NAME
       value: "minicloud-platform"
+    - name: LANGFUSE_INIT_PROJECT_ID
+      value: "0017fadd-e515-400b-8a19-41a96422caec"
     - name: LANGFUSE_INIT_PROJECT_NAME
       value: "ai-gateway"
 
