@@ -64,7 +64,7 @@ langfuse:
     - name: AUTH_CUSTOM_SCOPE
       value: "openid email profile"
     - name: AUTH_CUSTOM_ISSUER
-      value: "https://auth.devandre.sbs/application/o/langfuse/"
+      value: "https://auth.devandre.sbs/application/o/langfuse"
     - name: AUTH_CUSTOM_ALLOW_ACCOUNT_LINKING
       value: "true"
     - name: AUTH_CUSTOM_ADMIN_EMAILS
