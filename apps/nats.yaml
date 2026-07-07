@@ -39,5 +39,7 @@ spec:
         - .spec.revisionHistoryLimit
         - .spec.persistentVolumeClaimRetentionPolicy
         - .spec.updateStrategy
+        - .spec.volumeClaimTemplates[].apiVersion
+        - .spec.volumeClaimTemplates[].kind
         - .spec.volumeClaimTemplates[].spec.volumeMode
         - .spec.volumeClaimTemplates[].status
