@@ -117,17 +117,6 @@ backstage:
               url: https://argocd.10.0.0.200.nip.io
 
   extraEnvVars:
-    - name: POSTGRES_HOST
-      value: backstage-postgresql
-    - name: POSTGRES_PORT
-      value: "5432"
-    - name: POSTGRES_USER
-      value: bn_backstage
-    - name: POSTGRES_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: backstage-postgres-secret
-          key: password
     - name: K8S_SA_TOKEN
       valueFrom:
         secretKeyRef:

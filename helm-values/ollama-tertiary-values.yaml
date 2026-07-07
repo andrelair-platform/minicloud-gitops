@@ -1,6 +1,4 @@
 extraEnv:
-- name: OLLAMA_HOST
-  value: 0.0.0.0:11434
 - name: OLLAMA_NUM_PARALLEL
   value: "6"
 - name: OLLAMA_NUM_THREADS

@@ -48,8 +48,6 @@ nodeSelector:
 # KV_CACHE_TYPE=q8_0: quantize KV cache — cuts memory, speeds long contexts.
 # NUM_CTX=4096: cap context window; 4096 covers RAG use case.
 extraEnv:
-  - name: OLLAMA_HOST
-    value: "0.0.0.0:11434"
   - name: OLLAMA_NUM_PARALLEL
     value: "4"
   - name: OLLAMA_NUM_THREADS

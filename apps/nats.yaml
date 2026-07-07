@@ -35,10 +35,9 @@ spec:
       kind: StatefulSet
       name: nats
       namespace: messaging
-      jsonPointers:
-        - /spec/podManagementPolicy
-        - /spec/persistentVolumeClaimRetentionPolicy
-        - /spec/updateStrategy/rollingUpdate/partition
-        - /spec/revisionHistoryLimit
-        - /spec/volumeClaimTemplates/0/spec/volumeMode
-        - /spec/volumeClaimTemplates/0/status
+      jqPathExpressions:
+        - .spec.revisionHistoryLimit
+        - .spec.persistentVolumeClaimRetentionPolicy
+        - .spec.updateStrategy
+        - .spec.volumeClaimTemplates[].spec.volumeMode
+        - .spec.volumeClaimTemplates[].status
