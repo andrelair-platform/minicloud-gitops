@@ -1,5 +1,5 @@
 ---
-# Actual peak: ~195m CPU / 1700Mi memory (Prometheus 184m/1280Mi, Grafana 7m/413Mi)
+# Actual steady-state: ~3.5/4 CPU limits (10 pods). Bumped limits.cpu 4→6 for rolling updates headroom.
 # Prometheus is memory-heavy; quota set at ~3-4x to allow retention growth
 # 12Gi: ArgoCD-managed kps uses 7744Mi + admission hook needs 512Mi = 8256Mi; bumped for headroom
 apiVersion: v1
@@ -10,7 +10,7 @@ metadata:
 spec:
   hard:
     requests.cpu: "2"
-    limits.cpu: "4"
+    limits.cpu: "6"
     requests.memory: 6Gi
     limits.memory: 12Gi
     count/pods: "30"
