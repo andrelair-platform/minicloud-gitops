@@ -12,7 +12,7 @@ spec:
     name: backstage-postgres-secret
     creationPolicy: Owner
   data:
-    - secretKey: password
+    - secretKey: postgres-password
       remoteRef:
         key: platform/backstage-postgres
         property: password
