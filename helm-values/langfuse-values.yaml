@@ -79,6 +79,10 @@ langfuse:
       value: "0017fadd-e515-400b-8a19-41a96422caec"
     - name: LANGFUSE_INIT_PROJECT_NAME
       value: "ai-gateway"
+    - name: LANGFUSE_INIT_USER_EMAIL
+      value: "kanmegnea@gmail.com"
+    - name: LANGFUSE_INIT_USER_NAME
+      value: "AndreLiar"
     # Node.js reads this file and adds it to the TLS trust store at startup.
     # Required so NextAuth can call auth.devandre.sbs (signed by minicloud-ca)
     # during the OIDC token exchange without SSL verification failures.
