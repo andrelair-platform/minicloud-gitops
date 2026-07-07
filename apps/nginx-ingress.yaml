@@ -35,3 +35,12 @@ spec:
       kind: ValidatingWebhookConfiguration
       jsonPointers:
         - /webhooks/0/clientConfig/caBundle
+    - kind: Service
+      name: nginx-ingress-controller
+      namespace: ingress-nginx
+      jsonPointers:
+        - /spec/clusterIP
+        - /spec/clusterIPs
+        - /spec/ipFamilies
+        - /spec/ipFamilyPolicy
+        - /spec/allocateLoadBalancerNodePorts
