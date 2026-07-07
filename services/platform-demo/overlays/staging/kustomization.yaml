@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: platform-demo-staging
+resources:
+  - ../../base
+# Tag promoted manually: after dev is validated, open a PR bumping newTag here.
+images:
+  - name: harbor.10.0.0.200.nip.io/ghcr/andrelair-platform/platform-demo
+    newTag: "0b7cb75"
+patches:
+  - path: patch-resources.yaml

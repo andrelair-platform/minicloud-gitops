@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: platform-demo
+  name: platform-demo-staging
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,14 +10,13 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: services/platform-demo/overlays/prod
+    path: services/platform-demo/overlays/staging
   destination:
     server: https://kubernetes.default.svc
-    namespace: gitops-demo
+    namespace: platform-demo-staging
   syncPolicy:
-    # Production sync is intentionally manual — no automated promotion.
-    # To deploy: bump newTag in overlays/prod/kustomization.yaml via PR,
-    # then click Sync in ArgoCD UI or run: argocd app sync platform-demo
+    # Staging sync is manual — promote by opening a PR bumping the tag in
+    # overlays/staging/kustomization.yaml, then sync in ArgoCD UI.
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true

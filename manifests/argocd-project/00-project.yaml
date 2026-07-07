@@ -50,6 +50,10 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: gitops-demo
       server: https://kubernetes.default.svc
+    - namespace: platform-demo-dev
+      server: https://kubernetes.default.svc
+    - namespace: platform-demo-staging
+      server: https://kubernetes.default.svc
     - namespace: harbor
       server: https://kubernetes.default.svc
     - namespace: homer
