@@ -1,0 +1,34 @@
+# harborAdminPassword intentionally omitted — stored at ~/.harbor-admin on controller (mode 600).
+# Harbor stores the admin password in its database; omitting prevents ArgoCD from resetting it.
+# ArgoCD ignoreDifferences in apps/harbor.yaml covers the HARBOR_ADMIN_PASSWORD Secret field.
+expose:
+  ingress:
+    annotations:
+      nginx.org/client-max-body-size: "0"
+      nginx.org/redirect-to-https: "true"
+    className: nginx
+    controller: default
+    hosts:
+      core: harbor.10.0.0.200.nip.io
+  tls:
+    certSource: secret
+    enabled: true
+    secret:
+      secretName: harbor-tls-cert
+  type: ingress
+externalURL: https://harbor.10.0.0.200.nip.io
+persistence:
+  persistentVolumeClaim:
+    database:
+      storageClass: longhorn
+    jobservice:
+      storageClass: longhorn
+    redis:
+      storageClass: longhorn
+    registry:
+      size: 20Gi
+      storageClass: longhorn
+    trivy:
+      storageClass: longhorn
+trivy:
+  enabled: true

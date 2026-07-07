@@ -1,0 +1,78 @@
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: podinfo
+        topologyKey: kubernetes.io/hostname
+      weight: 100
+hpa:
+  cpu: 50
+  enabled: true
+  maxReplicas: 5
+image:
+  pullPolicy: IfNotPresent
+  repository: ghcr.io/stefanprodan/podinfo
+  tag: 6.11.2
+ingress:
+  annotations:
+    nginx.org/location-snippets: |
+      auth_request     /outpost.goauthentik.io/auth/nginx;
+      error_page       401 = @goauthentik_proxy_signin;
+      auth_request_set $auth_cookie $upstream_http_set_cookie;
+      add_header       Set-Cookie $auth_cookie;
+      auth_request_set $authentik_username $upstream_http_x_authentik_username;
+      auth_request_set $authentik_groups   $upstream_http_x_authentik_groups;
+      auth_request_set $authentik_email    $upstream_http_x_authentik_email;
+      proxy_set_header X-authentik-username $authentik_username;
+      proxy_set_header X-authentik-groups   $authentik_groups;
+      proxy_set_header X-authentik-email    $authentik_email;
+    nginx.org/redirect-to-https: "true"
+    nginx.org/server-snippets: |
+      location /outpost.goauthentik.io {
+          proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
+          proxy_set_header        Host $host;
+          proxy_set_header        X-Original-URL $scheme://$http_host$request_uri;
+          add_header              Set-Cookie $auth_cookie;
+          auth_request_set        $auth_cookie $upstream_http_set_cookie;
+          proxy_pass_request_body off;
+          proxy_set_header        Content-Length "";
+      }
+      location @goauthentik_proxy_signin {
+          internal;
+          add_header Set-Cookie $auth_cookie;
+          return 302 /outpost.goauthentik.io/start?rd=$request_uri;
+      }
+  className: nginx
+  enabled: true
+  hosts:
+  - host: podinfo.10.0.0.200.nip.io
+    paths:
+    - path: /
+      pathType: Prefix
+  tls:
+  - hosts:
+    - podinfo.10.0.0.200.nip.io
+    secretName: podinfo-tls
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 100
+  seccompProfile:
+    type: RuntimeDefault
+replicaCount: 2
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+serviceMonitor:
+  enabled: true
+  interval: 15s

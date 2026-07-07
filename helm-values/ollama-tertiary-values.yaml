@@ -1,0 +1,46 @@
+extraEnv:
+- name: OLLAMA_HOST
+  value: 0.0.0.0:11434
+- name: OLLAMA_NUM_PARALLEL
+  value: "6"
+- name: OLLAMA_NUM_THREADS
+  value: "6"
+- name: OLLAMA_MAX_LOADED_MODELS
+  value: "2"
+- name: OLLAMA_FLASH_ATTENTION
+  value: "1"
+- name: OLLAMA_KV_CACHE_TYPE
+  value: q8_0
+- name: OLLAMA_NUM_CTX
+  value: "4096"
+image:
+  registry: docker.io
+  repository: ollama/ollama
+  tag: 0.23.2
+nodeSelector:
+  kubernetes.io/hostname: fast-skunk
+ollama:
+  gpu:
+    enabled: false
+  port: 11434
+persistentVolume:
+  accessModes:
+  - ReadWriteOnce
+  enabled: true
+  size: 10Gi
+  storageClass: local-path
+resources:
+  limits:
+    cpu: "4"
+    memory: 6Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+service:
+  port: 11434
+  type: ClusterIP
