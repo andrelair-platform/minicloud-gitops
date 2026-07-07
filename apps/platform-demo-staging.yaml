@@ -21,3 +21,11 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - ServerSideDiff=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: platform-demo
+      namespace: platform-demo-staging
+      jqPathExpressions:
+        - .spec.replicas

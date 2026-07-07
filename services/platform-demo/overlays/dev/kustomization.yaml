@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: platform-demo-dev
 resources:
   - ../../base
+  - scaledobject.yaml
 # CI updates newTag here on every push to main (overlays/dev only).
 # Staging and prod tags are promoted manually via PRs.
 images:
