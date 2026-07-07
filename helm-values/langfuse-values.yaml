@@ -24,7 +24,7 @@ langfuse:
 
   features:
     telemetryEnabled: false
-    signUpDisabled: true
+    signUpDisabled: false
 
   nodeEnv: production
 
@@ -59,6 +59,8 @@ langfuse:
 
   # Pre-provision org, project, and API keys on first startup
   additionalEnv:
+    - name: AUTH_DISABLE_USERNAME_PASSWORD
+      value: "true"
     - name: AUTH_CUSTOM_NAME
       value: "Authentik"
     - name: AUTH_CUSTOM_SCOPE
