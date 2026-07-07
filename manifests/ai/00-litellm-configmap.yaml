@@ -270,6 +270,7 @@ data:
       success_callback: ["langfuse", "prometheus"]
       failure_callback: ["prometheus"]
       langfuse_host: "http://langfuse-web.langfuse.svc.cluster.local:3000"
-      # Pre-call secret scanning: blocks prompts containing API keys, tokens, credentials.
-      # Uses the detect-secrets library (pre-installed in the venv).
-      detect_secrets_on_all_keys: true
+      # detect_secrets disabled: LiteLLM injects api_key into the scanned body, causing
+      # every non-master-key request to false-positive as a "secret". Presidio PII masking
+      # already covers the real DLP requirement on all pre-call messages.
+      detect_secrets_on_all_keys: false
