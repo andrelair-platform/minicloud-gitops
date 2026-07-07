@@ -1,0 +1,37 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: litellm-ingress
+  namespace: ai
+  annotations:
+    nginx.org/proxy-read-timeout: "120"
+    nginx.org/proxy-connect-timeout: "30"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - litellm.10.0.0.200.nip.io
+        - litellm.devandre.sbs
+      secretName: litellm-tls
+  rules:
+    - host: litellm.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: litellm
+                port:
+                  number: 4000
+    - host: litellm.devandre.sbs
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: litellm
+                port:
+                  number: 4000
