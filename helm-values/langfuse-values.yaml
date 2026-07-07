@@ -69,6 +69,8 @@ langfuse:
       value: "true"
     - name: AUTH_CUSTOM_ADMIN_EMAILS
       value: "kanmegnea@gmail.com"
+    - name: LANGFUSE_INIT_ORG_ID
+      value: "262cdedf-edcc-45fc-ab91-da935eb34d57"
     - name: LANGFUSE_INIT_ORG_NAME
       value: "minicloud-platform"
     - name: LANGFUSE_INIT_PROJECT_NAME
