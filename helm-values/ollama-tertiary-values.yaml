@@ -1,3 +1,6 @@
+serviceAccount:
+  automount: false
+
 extraEnv:
 - name: OLLAMA_NUM_PARALLEL
   value: "6"
