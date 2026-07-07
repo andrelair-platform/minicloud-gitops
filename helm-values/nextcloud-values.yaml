@@ -1,0 +1,130 @@
+image:
+  tag: 33.0.5-apache
+
+nextcloud:
+  host: cloud.devandre.sbs
+  username: admin
+  existingSecret:
+    enabled: true
+    secretName: nextcloud-secrets
+    usernameKey: nextcloud-admin-username
+    passwordKey: nextcloud-admin-password
+    smtpUsernameKey: ""
+    smtpPasswordKey: smtp-password
+
+  # Trusted domains: nip.io internal + devandre.sbs public
+  trustedDomains:
+    - cloud.10.0.0.200.nip.io
+    - cloud.devandre.sbs
+
+  # Nextcloud config.php extras
+  configs:
+    custom.config.php: |-
+      <?php
+      $CONFIG = array (
+        'overwrite.cli.url' => 'https://cloud.devandre.sbs',
+        'overwriteprotocol' => 'https',
+        'trusted_proxies' => ['10.42.0.0/16'],
+        'default_phone_region' => 'FR',
+        'maintenance_window_start' => 1,
+        // Allow Nextcloud HTTP client to reach in-cluster private IPs (Authentik OIDC discovery)
+        'allow_local_remote_servers' => true,
+      );
+
+  # Mail via Zoho SMTP (filled in after Zoho is configured)
+  mail:
+    enabled: false
+
+persistence:
+  enabled: true
+  storageClass: longhorn
+  accessMode: ReadWriteOnce
+  size: 50Gi
+
+# PostgreSQL (Bitnami sub-chart)
+postgresql:
+  enabled: true
+  global:
+    postgresql:
+      auth:
+        username: nextcloud
+        database: nextcloud
+        existingSecret: nextcloud-secrets
+        secretKeys:
+          userPasswordKey: nextcloud-db-password
+  primary:
+    persistence:
+      enabled: true
+      storageClass: longhorn
+      size: 10Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# Redis for caching + session locking (prevents file corruption on concurrent writes)
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.org/redirect-to-https: "true"
+    nginx.org/proxy-connect-timeout: "300"
+    nginx.org/proxy-read-timeout: "300"
+    nginx.org/proxy-send-timeout: "300"
+    nginx.org/client-max-body-size: "10g"
+  tls:
+    - hosts:
+        - cloud.10.0.0.200.nip.io
+        - cloud.devandre.sbs
+      secretName: nextcloud-tls
+
+# Nginx config for large file uploads
+nginx:
+  enabled: false
+
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 120
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 5
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 15
+  timeoutSeconds: 10
+  failureThreshold: 5
+
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30

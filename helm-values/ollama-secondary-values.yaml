@@ -1,0 +1,57 @@
+# Ollama secondary instance — pinned to star-kitten (10.0.0.8).
+# Deployed as part of AI Gateway / parallel inference phase.
+# LiteLLM proxy load-balances between ollama (fast-heron) and
+# ollama-secondary (star-kitten) using least-busy routing.
+
+image:
+  registry: docker.io
+  repository: ollama/ollama
+  tag: "0.23.2"
+
+ollama:
+  port: 11434
+  gpu:
+    enabled: false
+
+service:
+  type: ClusterIP
+  port: 11434
+
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "4"
+    memory: 8Gi
+
+nodeSelector:
+  kubernetes.io/hostname: star-kitten
+
+extraEnv:
+  - name: OLLAMA_HOST
+    value: "0.0.0.0:11434"
+  - name: OLLAMA_NUM_PARALLEL
+    value: "4"
+  - name: OLLAMA_NUM_THREADS
+    value: "6"
+  - name: OLLAMA_MAX_LOADED_MODELS
+    value: "2"
+  - name: OLLAMA_FLASH_ATTENTION
+    value: "1"
+  - name: OLLAMA_KV_CACHE_TYPE
+    value: "q8_0"
+  - name: OLLAMA_NUM_CTX
+    value: "4096"
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+persistentVolume:
+  enabled: true
+  storageClass: local-path
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce

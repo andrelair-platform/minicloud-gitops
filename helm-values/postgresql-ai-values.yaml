@@ -1,0 +1,42 @@
+# PostgreSQL for the ai namespace — serves Open WebUI (openwebui DB)
+# and LiteLLM AI Gateway (litellm DB).
+# Credentials injected from Vault via ESO ExternalSecret ai-postgresql-secret.
+# Two databases created via initdb scripts.
+
+global:
+  security:
+    allowInsecureImages: true
+
+image:
+  registry: harbor.10.0.0.200.nip.io
+  repository: library/postgresql
+  tag: "18.4.0-noavx512"  # rebuilt from source with -mno-avx512f/bw/vl/dq — HNSW SIGILL fix for i7-8565U/i7-10510U
+
+auth:
+  existingSecret: ai-postgresql-secret
+  secretKeys:
+    adminPasswordKey: postgres-password
+    userPasswordKey: password
+  username: aiplatform
+  database: openwebui
+
+primary:
+  initdb:
+    scripts:
+      02-create-litellm-db.sql: |
+        CREATE DATABASE litellm;
+        GRANT ALL PRIVILEGES ON DATABASE litellm TO aiplatform;
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    storageClass: longhorn
+    size: 5Gi
+
+metrics:
+  enabled: false

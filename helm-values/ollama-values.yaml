@@ -1,0 +1,76 @@
+# Ollama values for minicloud Phase 19 (updated Phase 65/#64 2026-06-25).
+# CPU-only inference (no NVIDIA GPUs on the ThinkPads), 1 replica.
+# Pinned to fast-heron with local-path storage — model weights are static
+# re-downloadable assets; Longhorn replication adds network overhead with
+# no benefit. local-path gives ~zero-latency local NVMe reads on load.
+
+image:
+  registry: docker.io
+  repository: ollama/ollama
+  # Routed through Phase 16 Harbor docker-hub proxy via the cluster's
+  # registries.yaml mirror — first pull populates the cache.
+  # Pinned 2026-06-15: was "latest". Locks in the exact version that's
+  # been validated with llama3.2:3b + Open WebUI. ollama -v reported
+  # 0.23.2 at pin time. Upstream is 0.30.x; upgrade is a separate
+  # deliberate PR, never combined with a pin.
+  tag: "0.23.2"
+
+ollama:
+  port: 11434
+  gpu:
+    enabled: false   # CPU-only — no NVIDIA GPUs on the ThinkPads
+
+# Internal Service only — Phase 19 deliberately keeps the LLM API
+# cluster-internal. External access goes through the authenticated
+# Open WebUI Ingress (chat.10.0.0.200.nip.io).
+service:
+  type: ClusterIP
+  port: 11434
+
+# Resource sizing for CPU inference of a 3B parameter model.
+# 3B at q4_K_M quant is ~2 GiB on disk and similar in RAM once loaded.
+# Generous headroom for the model + KV cache + Go runtime.
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "4"
+    memory: 8Gi
+
+nodeSelector:
+  kubernetes.io/hostname: fast-heron
+
+# Inference tuning — CPU-only path on Intel i7-8565U (8 threads, AVX2).
+# NUM_PARALLEL=4: serve 4 concurrent requests (8 threads / 2 per worker).
+# NUM_THREADS=6: leave 2 threads for k8s/OS housekeeping.
+# FLASH_ATTENTION=1: reduced memory bandwidth on CPU path (Ollama 0.23+).
+# KV_CACHE_TYPE=q8_0: quantize KV cache — cuts memory, speeds long contexts.
+# NUM_CTX=4096: cap context window; 4096 covers RAG use case.
+extraEnv:
+  - name: OLLAMA_HOST
+    value: "0.0.0.0:11434"
+  - name: OLLAMA_NUM_PARALLEL
+    value: "4"
+  - name: OLLAMA_NUM_THREADS
+    value: "6"
+  - name: OLLAMA_MAX_LOADED_MODELS
+    value: "2"
+  - name: OLLAMA_FLASH_ATTENTION
+    value: "1"
+  - name: OLLAMA_KV_CACHE_TYPE
+    value: "q8_0"
+  - name: OLLAMA_NUM_CTX
+    value: "4096"
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+persistentVolume:
+  enabled: true
+  storageClass: local-path
+  size: 10Gi          # llama3.2:3b is ~2 GiB; room for a 7B follow-up
+  accessModes:
+    - ReadWriteOnce

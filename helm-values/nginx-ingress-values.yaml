@@ -1,0 +1,26 @@
+controller:
+  enableSnippets: true
+  ingressClass:
+    setAsDefaultIngress: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    httpPort:
+      enable: true
+      port: 80
+    httpsPort:
+      enable: true
+      port: 443
+    type: LoadBalancer
+  config:
+    entries:
+      server-snippets: |
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+      http-snippets: |
+        limit_req_zone $binary_remote_addr zone=public_ratelimit:10m rate=20r/s;
+        limit_req_zone $binary_remote_addr zone=auth_ratelimit:10m rate=5r/s;

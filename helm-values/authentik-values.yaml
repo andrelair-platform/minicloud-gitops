@@ -1,0 +1,91 @@
+# Authentik values for minicloud Phase 23 — SSO + IAM.
+# Single-replica server + worker, Postgres on Longhorn.
+#
+# Secrets injected via envFrom from ESO-managed k8s Secrets (backed by Vault KV).
+# The chart creates the `authentik` Secret from these values, but the
+# `authentik-env-secrets` envFrom entry (listed last) overrides duplicate keys.
+# Two secret values NOT set here (injected via envFrom instead):
+#   AUTHENTIK_SECRET_KEY         ← secret/platform/authentik-env in Vault
+#   AUTHENTIK_POSTGRESQL__PASSWORD ← secret/platform/authentik-env in Vault
+#
+# Image source: ghcr.io/goauthentik/server — routed through Phase 16
+# Harbor ghcr proxy automatically via the cluster's registries.yaml mirror.
+# Authentik 2026.5.x has no Redis subchart (embedded cache).
+
+authentik:
+  log_level: info
+
+  # secret_key and postgresql.password are intentionally omitted here.
+  # They are injected at runtime via envFrom: authentik-env-secrets (ESO → Vault).
+  # DO NOT add secret_key back — changing it invalidates all active sessions.
+
+  postgresql:
+    host: "authentik-postgresql"
+    name: "authentik"
+    user: "authentik"
+    port: 5432
+
+  error_reporting:
+    enabled: false   # portfolio: no telemetry to upstream
+
+# Authentik server (HTTP API + admin UI). 1 replica fine for portfolio scale.
+server:
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits:   { cpu: 1000m, memory: 768Mi }
+  ingress:
+    enabled: false   # we add our own with cert-manager TLS — see ../../authentik-ingress.yaml
+  # Bootstrap admin (one-time use; rotate to MFA-enrolled account after first login).
+  # The authentik-bootstrap Secret is created out-of-band:
+  #   kubectl -n authentik create secret generic authentik-bootstrap \
+  #     --from-literal=AUTHENTIK_BOOTSTRAP_PASSWORD="$(cat ~/.authentik-bootstrap-password)" \
+  #     --from-literal=AUTHENTIK_BOOTSTRAP_TOKEN="$(cat ~/.authentik-bootstrap-token)" \
+  #     --from-literal=AUTHENTIK_BOOTSTRAP_EMAIL="kanmegnea@gmail.com"
+  envFrom:
+    - secretRef:
+        name: authentik-bootstrap
+    - secretRef:
+        name: authentik-env-secrets   # ESO → Vault platform/authentik-env (overrides chart-set values)
+
+# Authentik worker (background tasks: blueprint apply, email, periodic policies)
+worker:
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 50m,  memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  envFrom:
+    - secretRef:
+        name: authentik-bootstrap
+    - secretRef:
+        name: authentik-env-secrets   # ESO → Vault platform/authentik-env (overrides chart-set values)
+
+# Bitnami PostgreSQL subchart. Chart default uses library/postgres,
+# NOT bitnami/postgresql — so no AGPL licensing gotcha.
+postgresql:
+  enabled: true
+  global:
+    security:
+      allowInsecureImages: true
+  auth:
+    # Out-of-band Secret carrying postgres-password + password keys.
+    # Created via:
+    #   kubectl -n authentik create secret generic authentik-postgres-secret \
+    #     --from-literal=postgres-password="$(cat ~/.authentik-postgres)" \
+    #     --from-literal=password="$(cat ~/.authentik-postgres)"
+    existingSecret: authentik-postgres-secret
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: password
+    username: authentik
+    database: authentik
+  primary:
+    persistence:
+      enabled: true
+      storageClass: longhorn
+      size: 1Gi
+    resources:
+      requests: { cpu: 50m,  memory: 128Mi }
+      limits:   { cpu: 500m, memory: 512Mi }

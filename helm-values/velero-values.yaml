@@ -1,0 +1,72 @@
+configuration:
+  backupStorageLocation:
+    - bucket: velero
+      config:
+        publicUrl: http://10.0.0.1:9000
+        region: minio
+        s3ForcePathStyle: "true"
+        s3Url: http://10.0.0.1:9000
+      default: true
+      name: default
+      provider: aws
+  defaultBackupStorageLocation: default
+  defaultVolumesToFsBackup: true
+  volumeSnapshotLocation: []
+
+credentials:
+  existingSecret: velero-credentials
+  useSecret: true
+
+deployNodeAgent: true
+
+initContainers:
+  - image: velero/velero-plugin-for-aws:v1.13.0
+    imagePullPolicy: IfNotPresent
+    name: velero-plugin-for-aws
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    additionalLabels:
+      release: kube-prometheus-stack
+    enabled: true
+
+nodeAgent:
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+schedules:
+  daily-full:
+    disabled: false
+    schedule: "0 3 * * *"
+    template:
+      ttl: 168h
+      includedNamespaces:
+        - "*"
+      excludedNamespaces:
+        - velero
+        - kube-system
+        - kube-public
+        - kube-node-lease
+        - backup-test
+        # Expendable PV data — large Kopia repos, not needed for DR:
+        # Prometheus: ephemeral metrics, rebuilt automatically on restart
+        # Harbor: container images, re-pushable from source registries
+        - monitoring
+        - harbor

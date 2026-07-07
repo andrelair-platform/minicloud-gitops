@@ -1,0 +1,89 @@
+injector:
+  enabled: true
+  agentImage:
+    repository: docker.io/hashicorp/vault
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+server:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  serviceAccount:
+    create: true
+
+  extraEnvironmentVars:
+    AWS_REGION: eu-west-1
+
+  extraSecretEnvironmentVars:
+    - envName: AWS_ACCESS_KEY_ID
+      secretName: vault-kms-credentials
+      secretKey: AWS_ACCESS_KEY_ID
+    - envName: AWS_SECRET_ACCESS_KEY
+      secretName: vault-kms-credentials
+      secretKey: AWS_SECRET_ACCESS_KEY
+
+  standalone:
+    enabled: true
+    config: |
+      ui = true
+
+      listener "tcp" {
+        tls_disable = 1
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+
+      seal "awskms" {
+        region     = "eu-west-1"
+        kms_key_id = "arn:aws:kms:eu-west-1:625830750465:key/a562e4a3-3708-4656-b2f9-365a073f6457"
+      }
+
+      storage "raft" {
+        path    = "/vault/data"
+        node_id = "vault-0"
+      }
+
+      service_registration "kubernetes" {}
+
+  ha:
+    enabled: false
+
+  dataStorage:
+    enabled: true
+    size: 5Gi
+    storageClass: longhorn
+    accessMode: ReadWriteOnce
+
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.org/proxy-connect-timeout: "30s"
+      nginx.org/proxy-read-timeout: "30s"
+    hosts:
+      - host: vault.10.0.0.200.nip.io
+        paths:
+          - /
+      - host: vault.devandre.sbs
+        paths:
+          - /
+    tls:
+      - hosts:
+          - vault.10.0.0.200.nip.io
+          - vault.devandre.sbs
+        secretName: vault-tls
+
+ui:
+  enabled: true
+  serviceType: ClusterIP
