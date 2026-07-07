@@ -16,3 +16,7 @@ spec:
       remoteRef:
         key: platform/backstage-postgres
         property: password
+    - secretKey: password
+      remoteRef:
+        key: platform/backstage-postgres
+        property: password
