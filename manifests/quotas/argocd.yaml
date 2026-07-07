@@ -1,6 +1,7 @@
 ---
 # Actual peak: ~21m CPU / 515Mi memory (5 pods)
-# Quota at ~10x to allow ArgoCD to scale without consuming the whole cluster
+# 5Gi: repo-server bumped to 1500Mi (was OOMKilled at 512Mi with 54 Helm apps
+# concurrent chart processing); controller 1Gi + others ~1Gi → 3.5Gi total
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -9,9 +10,9 @@ metadata:
 spec:
   hard:
     requests.cpu: "2"
-    limits.cpu: "4"
-    requests.memory: 1Gi
-    limits.memory: 3Gi
+    limits.cpu: "6"
+    requests.memory: 2Gi
+    limits.memory: 5Gi
     count/pods: "20"
 ---
 # LimitRange injects defaults so pods without explicit resource specs count against the quota
