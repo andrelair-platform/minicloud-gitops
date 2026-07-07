@@ -122,6 +122,8 @@ configs:
     scopes: '[groups]'
 
 server:
+  podLabels:
+    backstage.io/kubernetes-id: argocd
   # F5 NGINX Ingress gets confused when the chart's default Service has both
   # http (port 80 -> 8080) and https (port 443 -> 8080) — duplicate
   # targetPorts make endpointslice resolution fail with "no endpointslices

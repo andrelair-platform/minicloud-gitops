@@ -9,6 +9,9 @@ global:
     allowInsecureImages: true
 
 langfuse:
+  labels:
+    backstage.io/kubernetes-id: langfuse
+
   logging:
     level: info
     format: json

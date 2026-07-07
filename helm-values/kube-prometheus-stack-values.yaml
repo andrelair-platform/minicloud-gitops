@@ -171,6 +171,8 @@ alertmanager:
               storage: 1Gi
 
 grafana:
+  podLabels:
+    backstage.io/kubernetes-id: grafana
   admin:
     existingSecret: grafana-admin-credentials
     userKey: admin-user

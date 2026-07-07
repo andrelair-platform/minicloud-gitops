@@ -124,3 +124,191 @@ spec:
   lifecycle: production
   owner: andrelair-platform
   system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: vault
+  description: |
+    HashiCorp Vault — secrets management and PKI for the platform.
+    Stores all platform secrets (OIDC credentials, DB passwords, cloud
+    provider keys). Auto-unseals via AWS KMS. ESO ClusterSecretStore
+    pulls secrets into Kubernetes namespaces on demand.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: vault
+    backstage.io/kubernetes-id: vault
+  tags:
+    - secrets
+    - pki
+    - vault
+  links:
+    - url: https://vault.10.0.0.200.nip.io
+      title: Vault UI
+      icon: web
+    - url: https://argocd.10.0.0.200.nip.io/applications/vault
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: grafana
+  description: |
+    Grafana — observability dashboards for the platform. Covers cluster
+    metrics (kube-prometheus-stack), Loki logs, Langfuse LLM traces,
+    cost dashboards, and cert-manager certificate expiry. OIDC login
+    via Authentik with department-based role assignment.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: kube-prometheus-stack
+    backstage.io/kubernetes-id: grafana
+  tags:
+    - observability
+    - dashboards
+    - grafana
+  links:
+    - url: https://grafana.10.0.0.200.nip.io
+      title: Grafana dashboards
+      icon: web
+    - url: https://argocd.10.0.0.200.nip.io/applications/kube-prometheus-stack
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: argocd
+  description: |
+    ArgoCD — GitOps engine for the platform. Manages 54 Applications
+    via the app-of-apps pattern rooted at bootstrap/root-app.yaml.
+    All Helm and Kustomize deployments are reconciled continuously
+    from minicloud-gitops. Self-manages its own deployment.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: argo-cd
+    backstage.io/kubernetes-id: argocd
+  tags:
+    - gitops
+    - argocd
+    - platform
+  links:
+    - url: https://argocd.10.0.0.200.nip.io
+      title: ArgoCD UI
+      icon: web
+    - url: https://argocd.10.0.0.200.nip.io/applications/argo-cd
+      title: ArgoCD Application (self-managed)
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: open-webui
+  description: |
+    Open WebUI — AI chat interface for the platform. Routes all
+    inference through the LiteLLM AI Gateway (Groq, OpenAI, DeepSeek,
+    Claude, Ollama local models). OIDC login via Authentik. Supports
+    RAG (bge-m3 embeddings, hybrid BM25 + HNSW search), web search
+    via SearXNG, and multi-model selection.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: open-webui
+    backstage.io/kubernetes-id: open-webui
+  tags:
+    - ai
+    - chat
+    - rag
+  links:
+    - url: https://chat.10.0.0.200.nip.io
+      title: Open WebUI (internal)
+      icon: web
+    - url: https://chat.devandre.sbs
+      title: Open WebUI (public)
+      icon: web
+    - url: https://argocd.10.0.0.200.nip.io/applications/open-webui
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: website
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ollama
+  description: |
+    Ollama — local LLM inference server. Three instances: primary
+    (fast-heron, 9 models including qwen3.5:4b, phi4-mini, deepseek-r1),
+    secondary (star-kitten, same models), tertiary (fast-skunk, light
+    models). Serves the LiteLLM AI Gateway. CPU-only inference on
+    i7-8565U / i7-10510U ThinkPads.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: ollama
+    backstage.io/kubernetes-id: ollama
+  tags:
+    - ai
+    - llm
+    - inference
+  links:
+    - url: https://argocd.10.0.0.200.nip.io/applications/ollama
+      title: ArgoCD Application (primary)
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: langfuse
+  description: |
+    Langfuse — LLM observability platform. Traces all AI Gateway
+    (LiteLLM) requests: model, latency, token usage, cost per
+    department key. ClickHouse backend for analytics. OIDC login
+    via Authentik.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: langfuse
+    backstage.io/kubernetes-id: langfuse
+  tags:
+    - ai
+    - observability
+    - llm
+  links:
+    - url: https://langfuse.10.0.0.200.nip.io
+      title: Langfuse UI
+      icon: web
+    - url: https://argocd.10.0.0.200.nip.io/applications/langfuse
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform

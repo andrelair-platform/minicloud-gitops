@@ -15,6 +15,9 @@ image:
   # deliberate PR, never combined with a pin.
   tag: "0.23.2"
 
+podLabels:
+  backstage.io/kubernetes-id: ollama
+
 ollama:
   port: 11434
   gpu:
