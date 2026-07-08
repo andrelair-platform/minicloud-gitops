@@ -139,13 +139,20 @@ extraEnvVars:
     value: "pgvector"
   - name: PGVECTOR_DB_URL
     value: "postgresql://aiplatform:$(PG_PASSWORD)@postgresql-ai.ai.svc.cluster.local:5432/ragdb"
-  # Embedding model: bge-m3 via Ollama (1024-dim, 100+ languages, strong French/multilingual).
+  # Embedding: text-embedding-3-small via LiteLLM AI gateway (1536-dim, OpenAI cloud).
+  # Replaces bge-m3 on Ollama CPU — 359 chunks embed in ~3s vs 14 min.
+  # Query embeddings also go through LiteLLM so Langfuse traces the full RAG pipeline.
   - name: RAG_EMBEDDING_ENGINE
-    value: "ollama"
+    value: "openai"
   - name: RAG_EMBEDDING_MODEL
-    value: "bge-m3"
-  - name: RAG_OLLAMA_BASE_URL
-    value: "http://ollama.ai.svc.cluster.local:11434"
+    value: "text-embedding-3-small"
+  - name: RAG_OPENAI_API_BASE_URL
+    value: "http://litellm.ai.svc.cluster.local:4000"
+  - name: RAG_OPENAI_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: litellm-credentials
+        key: master-key
   - name: CHUNK_SIZE
     value: "500"
   - name: CHUNK_OVERLAP
@@ -173,9 +180,9 @@ extraEnvVars:
   - name: RAG_TOP_K_RERANKER
     value: "3"
   - name: VECTOR_LENGTH
-    value: "1024"
+    value: "1536"
   - name: PGVECTOR_INITIALIZE_MAX_VECTOR_LENGTH
-    value: "1024"
+    value: "1536"
   - name: PGVECTOR_INDEX_METHOD
     value: "hnsw"
   - name: PGVECTOR_HNSW_M

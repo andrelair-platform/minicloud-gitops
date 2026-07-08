@@ -98,10 +98,7 @@ data:
           model: ollama/nomic-embed-text
           api_base: http://ollama-tertiary.ai.svc.cluster.local:11434
 
-      # bge-m3 — 1024-dim multilingual embedding model (100+ languages)
-      # Used by rag-ingest for French insurance document ingestion.
-      # Routed through LiteLLM so embedding latency appears in Langfuse traces
-      # alongside generation latency — unified observability for the full RAG pipeline.
+      # bge-m3 — kept for Open WebUI fallback; rag-ingest now uses text-embedding-3-small
       - model_name: bge-m3
         litellm_params:
           model: ollama/bge-m3
@@ -110,6 +107,14 @@ data:
         litellm_params:
           model: ollama/bge-m3
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+
+      # text-embedding-3-small — OpenAI 1536-dim cloud embedding model.
+      # Replaces bge-m3 for rag-ingest: 359 chunks embed in ~3s vs 14 min on CPU.
+      # Routed through LiteLLM so cost + latency appear in Langfuse traces.
+      - model_name: text-embedding-3-small
+        litellm_params:
+          model: openai/text-embedding-3-small
+          api_key: os.environ/OPENAI_API_KEY
 
       # ── VISION / MULTIMODAL (image description, OCR, scene understanding) ──
       # moondream — 1.7B vision model, fast on CPU, basic OCR + image description
