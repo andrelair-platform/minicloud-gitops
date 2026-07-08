@@ -106,6 +106,9 @@ spec:
             - name: config
               mountPath: /app/config.yaml
               subPath: config.yaml
+            - name: prompt-handler
+              mountPath: /app/langfuse_prompt_handler.py
+              subPath: handler.py
           resources:
             requests:
               cpu: 200m
@@ -137,3 +140,6 @@ spec:
         - name: config
           configMap:
             name: litellm-config
+        - name: prompt-handler
+          configMap:
+            name: langfuse-prompt-handler
