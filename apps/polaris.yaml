@@ -11,7 +11,7 @@ spec:
   sources:
     - repoURL: https://charts.fairwinds.com/stable
       chart: polaris
-      targetRevision: "6.*"
+      targetRevision: "6.0.0"
       helm:
         releaseName: polaris
         valueFiles:

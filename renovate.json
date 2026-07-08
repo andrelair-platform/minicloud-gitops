@@ -1,0 +1,70 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+
+  "timezone": "Europe/Paris",
+  "schedule": ["every weekend"],
+
+  "labels": ["dependencies", "renovate"],
+  "assignees": ["AndreLiar"],
+
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+
+  "commitMessagePrefix": "chore(deps):",
+  "commitMessageAction": "bump",
+
+  "argocd": {
+    "fileMatch": ["^apps/.*\\.yaml$"]
+  },
+
+  "helm-values": {
+    "fileMatch": ["^helm-values/.*\\.yaml$"]
+  },
+
+  "packageRules": [
+    {
+      "description": "Group all Helm chart updates into a single weekly PR",
+      "matchManagers": ["argocd"],
+      "groupName": "helm charts",
+      "groupSlug": "helm-charts",
+      "automerge": false
+    },
+    {
+      "description": "Group all container image updates in helm-values",
+      "matchManagers": ["helm-values"],
+      "groupName": "container images (helm-values)",
+      "automerge": false
+    },
+    {
+      "description": "Patch-only updates for critical infrastructure — safer to automerge",
+      "matchManagers": ["argocd"],
+      "matchUpdateTypes": ["patch"],
+      "matchPackageNames": [
+        "cert-manager",
+        "external-secrets",
+        "nginx-ingress"
+      ],
+      "automerge": false,
+      "labels": ["dependencies", "renovate", "patch"]
+    },
+    {
+      "description": "Never auto-update Vault, ArgoCD, or Authentik — require manual review",
+      "matchPackageNames": ["vault", "argo-cd", "authentik"],
+      "enabled": true,
+      "automerge": false,
+      "labels": ["dependencies", "renovate", "manual-review-required"]
+    },
+    {
+      "description": "Open WebUI — label for memory/feature default change risk",
+      "matchPackageNames": ["open-webui"],
+      "labels": ["dependencies", "renovate", "check-default-changes"]
+    }
+  ],
+
+  "ignorePaths": [
+    "manifests/**",
+    "services/**",
+    "bootstrap/**"
+  ]
+}
