@@ -8,6 +8,10 @@ metadata:
     nginx.org/redirect-to-https: "true"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - harbor.devandre.sbs
+      secretName: harbor-tls-cert
   rules:
     - host: harbor.devandre.sbs
       http:
