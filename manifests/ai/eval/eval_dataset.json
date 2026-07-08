@@ -1,0 +1,16 @@
+[
+  {
+    "id": "bnp-cet1-ratio-2024-01",
+    "query": "Quel est le ratio CET1 de BNP Paribas Fortis en 2024 ?",
+    "ground_truth": "14.0%",
+    "source_doc": "BNP Paribas Fortis Annual Report 2024",
+    "domain": "regulatory_capital"
+  },
+  {
+    "id": "bnp-cet1-capital-2024-02",
+    "query": "Quel est le montant du capital CET1 de BNP Paribas Fortis en 2024 ?",
+    "ground_truth": "27895",
+    "source_doc": "BNP Paribas Fortis Annual Report 2024",
+    "domain": "regulatory_capital"
+  }
+]

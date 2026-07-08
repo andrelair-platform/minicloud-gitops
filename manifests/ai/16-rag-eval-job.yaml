@@ -1,0 +1,106 @@
+---
+# Offline eval ConfigMap and Job.
+# The Job is also an ArgoCD PostSync hook: it fires automatically after every sync
+# of the ai ArgoCD app, running a 10-sample fast eval as a CI gate.
+# Manual full run: kubectl create job rag-eval-manual --from=cronjob/rag-eval-offline -n ai
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rag-eval-postsync
+  namespace: ai
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: rag-eval
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: rag-eval
+          image: harbor.10.0.0.200.nip.io/library/rag-eval:latest-amd64
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          env:
+            - name: EVAL_MODE
+              value: offline
+            - name: EVAL_FAST_MODE
+              value: "true"
+            - name: JUDGE_MODEL
+              value: gpt-4o
+            - name: GENERATION_MODEL
+              value: phi3-financial
+            - name: FAITHFULNESS_THRESHOLD
+              value: "0.70"
+            - name: HIT_RATE_THRESHOLD
+              value: "0.80"
+            - name: LITELLM_BASE_URL
+              value: "http://litellm.ai.svc.cluster.local:4000"
+            - name: OPENWEBUI_BASE_URL
+              value: "http://open-webui.ai.svc.cluster.local:80"
+            - name: LANGFUSE_HOST
+              value: "http://langfuse-web.langfuse.svc.cluster.local:3000"
+            - name: EVAL_DATASET_PATH
+              value: /config/eval_dataset.json
+            - name: LITELLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-eval-credentials
+                  key: litellm-api-key
+            - name: OPENWEBUI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-eval-credentials
+                  key: openwebui-api-key
+            - name: LANGFUSE_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-eval-credentials
+                  key: langfuse-public-key
+            - name: LANGFUSE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-eval-credentials
+                  key: langfuse-secret-key
+            - name: RAG_COLLECTION_UUID
+              valueFrom:
+                configMapKeyRef:
+                  name: rag-eval-config
+                  key: collection-uuid
+          volumeMounts:
+            - name: eval-dataset
+              mountPath: /config
+      volumes:
+        - name: eval-dataset
+          configMap:
+            name: rag-eval-dataset
+---
+# Config for project-specific values (collection UUID set after knowledge base creation)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rag-eval-config
+  namespace: ai
+data:
+  # Set this to the Finance d'entreprise knowledge base UUID from Open WebUI
+  # Settings → Workspace → Knowledge → copy the collection UUID
+  collection-uuid: "REPLACE_WITH_COLLECTION_UUID"

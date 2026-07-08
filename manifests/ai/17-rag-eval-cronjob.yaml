@@ -1,0 +1,85 @@
+---
+# Online sampling: every 15 min, score 5% of recent phi3-financial production traces.
+# Scores appear in Langfuse → Scores tab as "online_faithfulness".
+# Configure drift alerting in Langfuse UI: online_faithfulness 7-day p50 < 0.70
+# → webhook → http://kps-alertmanager.monitoring.svc.cluster.local:9093/api/v1/alerts
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rag-eval-online
+  namespace: ai
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 1800
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app: rag-eval-online
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: rag-eval-online
+              image: harbor.10.0.0.200.nip.io/library/rag-eval:latest-amd64
+              imagePullPolicy: Always
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              env:
+                - name: EVAL_MODE
+                  value: online
+                - name: SAMPLE_RATE
+                  value: "0.05"
+                - name: SAMPLING_WINDOW_MINUTES
+                  value: "15"
+                - name: JUDGE_MODEL
+                  value: gpt-4o
+                - name: LITELLM_BASE_URL
+                  value: "http://litellm.ai.svc.cluster.local:4000"
+                - name: OPENWEBUI_BASE_URL
+                  value: "http://open-webui.ai.svc.cluster.local:80"
+                - name: LANGFUSE_HOST
+                  value: "http://langfuse-web.langfuse.svc.cluster.local:3000"
+                - name: LITELLM_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rag-eval-credentials
+                      key: litellm-api-key
+                - name: OPENWEBUI_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rag-eval-credentials
+                      key: openwebui-api-key
+                - name: LANGFUSE_PUBLIC_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rag-eval-credentials
+                      key: langfuse-public-key
+                - name: LANGFUSE_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rag-eval-credentials
+                      key: langfuse-secret-key
+                - name: RAG_COLLECTION_UUID
+                  valueFrom:
+                    configMapKeyRef:
+                      name: rag-eval-config
+                      key: collection-uuid
