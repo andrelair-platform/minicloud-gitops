@@ -22,49 +22,66 @@
     "fileMatch": ["^helm-values/.*\\.yaml$"]
   },
 
-  "packageRules": [
-    {
-      "description": "Group all Helm chart updates into a single weekly PR",
-      "matchManagers": ["argocd"],
-      "groupName": "helm charts",
-      "groupSlug": "helm-charts",
-      "automerge": false
-    },
-    {
-      "description": "Group all container image updates in helm-values",
-      "matchManagers": ["helm-values"],
-      "groupName": "container images (helm-values)",
-      "automerge": false
-    },
-    {
-      "description": "Patch-only updates for critical infrastructure — safer to automerge",
-      "matchManagers": ["argocd"],
-      "matchUpdateTypes": ["patch"],
-      "matchPackageNames": [
-        "cert-manager",
-        "external-secrets",
-        "nginx-ingress"
-      ],
-      "automerge": false,
-      "labels": ["dependencies", "renovate", "patch"]
-    },
-    {
-      "description": "Never auto-update Vault, ArgoCD, or Authentik — require manual review",
-      "matchPackageNames": ["vault", "argo-cd", "authentik"],
-      "enabled": true,
-      "automerge": false,
-      "labels": ["dependencies", "renovate", "manual-review-required"]
-    },
-    {
-      "description": "Open WebUI — label for memory/feature default change risk",
-      "matchPackageNames": ["open-webui"],
-      "labels": ["dependencies", "renovate", "check-default-changes"]
-    }
-  ],
-
   "ignorePaths": [
     "manifests/**",
     "services/**",
     "bootstrap/**"
+  ],
+
+  "packageRules": [
+    {
+      "description": "Ignore private Harbor registry — unreachable from Mend cloud (internal cluster network)",
+      "matchDatasources": ["docker"],
+      "matchPackagePatterns": ["^harbor\\.10\\.0\\.0\\.200\\.nip\\.io/"],
+      "enabled": false
+    },
+
+    {
+      "description": "Group all minor/patch Helm chart updates into one weekly PR",
+      "matchManagers": ["argocd"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "helm charts",
+      "groupSlug": "helm-charts",
+      "dependencyDashboardApproval": false,
+      "automerge": false
+    },
+    {
+      "description": "Major Helm chart updates require explicit approval — breaking changes likely",
+      "matchManagers": ["argocd"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "helm charts (major)",
+      "groupSlug": "helm-charts-major",
+      "dependencyDashboardApproval": true,
+      "labels": ["dependencies", "renovate", "major", "manual-review-required"]
+    },
+
+    {
+      "description": "Group all container image updates in helm-values into one weekly PR",
+      "matchManagers": ["helm-values"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "container images (helm-values)",
+      "dependencyDashboardApproval": false,
+      "automerge": false
+    },
+    {
+      "description": "Major image version bumps require explicit approval",
+      "matchManagers": ["helm-values"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "labels": ["dependencies", "renovate", "major", "manual-review-required"]
+    },
+
+    {
+      "description": "Vault, ArgoCD, Authentik — always require manual approval regardless of update type",
+      "matchPackageNames": ["vault", "argo-cd", "authentik"],
+      "dependencyDashboardApproval": true,
+      "automerge": false,
+      "labels": ["dependencies", "renovate", "manual-review-required"]
+    },
+    {
+      "description": "Open WebUI — remind reviewer to check for default env var changes",
+      "matchPackageNames": ["open-webui"],
+      "labels": ["dependencies", "renovate", "check-default-changes"]
+    }
   ]
 }
