@@ -30,7 +30,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: rag-eval-online
-              image: harbor.10.0.0.200.nip.io/library/rag-eval:latest-amd64
+              image: ghcr.io/andrelair-platform/minicloud-rag-eval:latest-amd64
               imagePullPolicy: Always
               securityContext:
                 allowPrivilegeEscalation: false
