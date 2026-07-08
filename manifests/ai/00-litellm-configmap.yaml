@@ -9,19 +9,19 @@ data:
       # ── LOCAL MODELS (data stays on-premise) ──────────────────────────────
       # phi3-financial: restricted to financial domain. Local-only — sensitive
       # data must never leave the cluster for this model.
-      # system_prompt is fetched at runtime from the phi3-financial-prompt ConfigMap
-      # (env var PHI3_FINANCIAL_SYSTEM_PROMPT) — Langfuse is the source of truth.
-      # Rollback: update Langfuse label → run scripts/sync_prompt_to_litellm.py → ArgoCD deploys.
+      # System prompt is injected at request time by LangfusePromptHandler
+      # (general_settings.callbacks) — fetched from Langfuse label="production",
+      # cached 5 min per worker, fails open to PHI3_FINANCIAL_SYSTEM_PROMPT env var.
+      # Rollback: flip "production" label to an older version in Langfuse UI → instant,
+      # zero redeployment (next request after cache TTL uses the rolled-back prompt).
       - model_name: phi3-financial
         litellm_params:
           model: ollama/phi4-mini
           api_base: http://ollama.ai.svc.cluster.local:11434
-          system_prompt: "os.environ['PHI3_FINANCIAL_SYSTEM_PROMPT']"
       - model_name: phi3-financial
         litellm_params:
           model: ollama/phi4-mini
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
-          system_prompt: "os.environ['PHI3_FINANCIAL_SYSTEM_PROMPT']"
 
       # qwen3.5:4b — primary smart tier (replaces llama3.2:3b)
       # Higher intelligence than llama3.2:3b at the same parameter scale.
@@ -272,6 +272,10 @@ data:
 
     general_settings:
       store_model_in_db: true
+      # LangfusePromptHandler: intercepts phi3-financial requests and injects the
+      # production-labelled system prompt fetched from Langfuse (cached 5 min).
+      # The handler is in /app/langfuse_prompt_handler.py (baked into the custom image).
+      callbacks: ["langfuse_prompt_handler.LangfusePromptHandler"]
       success_callback: ["langfuse", "prometheus"]
       failure_callback: ["prometheus"]
       langfuse_host: "http://langfuse-web.langfuse.svc.cluster.local:3000"
