@@ -86,6 +86,14 @@ extraEnvVars:
     value: "true"
   - name: USER_PERMISSIONS_WORKSPACE_MODELS_ACCESS
     value: "true"
+  # ── Memory (persistent cross-conversation context) ───────────────────
+  # Memories extracted from conversations are stored in PostgreSQL and
+  # injected into future sessions automatically. Declared explicitly so
+  # upgrades cannot silently change the default.
+  - name: ENABLE_MEMORY_FEATURE
+    value: "true"
+  - name: USER_PERMISSIONS_MEMORY_ENABLED
+    value: "true"
   - name: WEBUI_URL
     value: "https://chat.devandre.sbs"
   - name: ENABLE_OAUTH_SIGNUP
