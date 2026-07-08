@@ -240,7 +240,7 @@ data:
     router_settings:
       routing_strategy: least-busy
       num_retries: 2
-      timeout: 120
+      timeout: 300
       # Circuit breaker: after 3 consecutive failures, mark backend as degraded for 60s.
       # Prevents a slow/hung Ollama from draining the retry budget on every request.
       cooldown_time: 60
