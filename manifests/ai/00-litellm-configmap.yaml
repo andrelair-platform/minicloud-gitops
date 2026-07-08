@@ -282,6 +282,11 @@ data:
     # temporarily unavailable, requests pass through rather than blocking all AI access.
     # output_parse_pii removed: anonymizing LLM responses garbles sports/geo content
     # (France → <LOCATION>, player names → <PERSON>). Input-only protection is sufficient.
+    # pii_entities_config: explicit allow-list drives Presidio Analyzer entity detection.
+    # Entities NOT listed here are never sent to the analyzer and thus never masked.
+    # DATE_TIME excluded: financial analysis requires years/dates/quarters (2024, Q3 2024).
+    # LOCATION excluded: country/city references are essential for geographic financial data.
+    # URL excluded: legitimate URLs appear in financial documents and should not be masked.
     guardrails:
       - guardrail_name: "presidio-pii-masking"
         litellm_params:
@@ -290,6 +295,18 @@ data:
           presidio_analyzer_api_base: "http://presidio-analyzer.ai.svc.cluster.local:3000"
           presidio_anonymizer_api_base: "http://presidio-anonymizer.ai.svc.cluster.local:3000"
           default_on: true
+          pii_entities_config:
+            CREDIT_CARD: MASK
+            CRYPTO: MASK
+            EMAIL_ADDRESS: MASK
+            IBAN_CODE: MASK
+            IP_ADDRESS: MASK
+            NRP: MASK
+            PERSON: MASK
+            PHONE_NUMBER: MASK
+            US_SSN: MASK
+            US_ITIN: MASK
+            US_PASSPORT: MASK
 
     general_settings:
       store_model_in_db: true
