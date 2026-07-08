@@ -103,4 +103,4 @@ metadata:
 data:
   # Set this to the Finance d'entreprise knowledge base UUID from Open WebUI
   # Settings → Workspace → Knowledge → copy the collection UUID
-  collection-uuid: "REPLACE_WITH_COLLECTION_UUID"
+  collection-uuid: "898707f0-d1de-4ebc-9d28-7caa816d7ffe"
