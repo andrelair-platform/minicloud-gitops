@@ -2,6 +2,15 @@
 # Routes through LiteLLM proxy (OpenAI-compatible) instead of direct Ollama.
 # Backed by PostgreSQL (ai namespace) instead of SQLite.
 
+# Image pinned by digest — tag alone is mutable (same tag can be rebuilt).
+# Digest sha256:172e... is the immutable fingerprint of open-webui:0.9.4.
+# To upgrade: bump tag + digest together (use: crane digest ghcr.io/open-webui/open-webui:<new-tag>)
+image:
+  repository: ghcr.io/open-webui/open-webui
+  tag: "0.9.4"
+  digest: "sha256:172e1fe0e89af2a07f42f2b1d943f30c8ddd7b9c2e182f3678b4790cdb83abea"
+  pullPolicy: IfNotPresent
+
 ollama:
   enabled: false
 
@@ -182,7 +191,7 @@ extraEnvFrom:
 
 extraInitContainers:
   - name: inject-minicloud-ca
-    image: ghcr.io/open-webui/open-webui:0.9.4
+    image: ghcr.io/open-webui/open-webui:0.9.4@sha256:172e1fe0e89af2a07f42f2b1d943f30c8ddd7b9c2e182f3678b4790cdb83abea
     command: ["/bin/sh", "-c"]
     args:
       - cat /etc/ssl/certs/ca-certificates.crt /minicloud-ca/ca.crt > /ca-bundle/bundle.crt
@@ -199,7 +208,7 @@ extraInitContainers:
   # writes result to patched-retrieval emptyDir. Main container mounts it
   # via subPath, shadowing the original file.
   - name: patch-bm25-french
-    image: ghcr.io/open-webui/open-webui:0.9.4
+    image: ghcr.io/open-webui/open-webui:0.9.4@sha256:172e1fe0e89af2a07f42f2b1d943f30c8ddd7b9c2e182f3678b4790cdb83abea
     command: ["/bin/sh", "-c"]
     args:
       - |

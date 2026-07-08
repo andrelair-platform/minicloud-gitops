@@ -11,7 +11,7 @@ spec:
   sources:
     - repoURL: https://kubereboot.github.io/charts
       chart: kured
-      targetRevision: "5.*"
+      targetRevision: "5.12.1"
       helm:
         releaseName: kured
         valueFiles:
