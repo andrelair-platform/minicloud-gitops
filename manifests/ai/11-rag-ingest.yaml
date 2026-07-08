@@ -20,14 +20,12 @@ spec:
           type: RuntimeDefault
       containers:
         - name: rag-ingest
-          image: harbor.10.0.0.200.nip.io/library/rag-ingest:58e9bc1-amd64
+          image: harbor.10.0.0.200.nip.io/library/rag-ingest:86df9f7-amd64
           ports:
             - containerPort: 8001
           env:
             - name: PROXY_URL
               value: "http://markitdown-proxy.ai.svc.cluster.local:8000"
-            - name: OLLAMA_URL
-              value: "http://ollama.ai.svc.cluster.local:11434"
             - name: LITELLM_BASE_URL
               value: "http://litellm.ai.svc.cluster.local:4000"
             - name: LITELLM_API_KEY
@@ -65,6 +63,7 @@ spec:
               port: 8001
             initialDelaySeconds: 10
             periodSeconds: 30
+            failureThreshold: 20
 ---
 apiVersion: v1
 kind: Service
