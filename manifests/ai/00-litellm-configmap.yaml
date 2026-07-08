@@ -9,14 +9,19 @@ data:
       # ── LOCAL MODELS (data stays on-premise) ──────────────────────────────
       # phi3-financial: restricted to financial domain. Local-only — sensitive
       # data must never leave the cluster for this model.
+      # system_prompt is fetched at runtime from the phi3-financial-prompt ConfigMap
+      # (env var PHI3_FINANCIAL_SYSTEM_PROMPT) — Langfuse is the source of truth.
+      # Rollback: update Langfuse label → run scripts/sync_prompt_to_litellm.py → ArgoCD deploys.
       - model_name: phi3-financial
         litellm_params:
-          model: ollama/phi3-financial
+          model: ollama/phi4-mini
           api_base: http://ollama.ai.svc.cluster.local:11434
+          system_prompt: "os.environ['PHI3_FINANCIAL_SYSTEM_PROMPT']"
       - model_name: phi3-financial
         litellm_params:
-          model: ollama/phi3-financial
+          model: ollama/phi4-mini
           api_base: http://ollama-secondary.ai.svc.cluster.local:11434
+          system_prompt: "os.environ['PHI3_FINANCIAL_SYSTEM_PROMPT']"
 
       # qwen3.5:4b — primary smart tier (replaces llama3.2:3b)
       # Higher intelligence than llama3.2:3b at the same parameter scale.

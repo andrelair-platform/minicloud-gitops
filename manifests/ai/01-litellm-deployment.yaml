@@ -99,6 +99,9 @@ spec:
                 secretKeyRef:
                   name: litellm-credentials
                   key: nvidia-api-key
+          envFrom:
+            - configMapRef:
+                name: phi3-financial-prompt
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml
