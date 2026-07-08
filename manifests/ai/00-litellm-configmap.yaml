@@ -259,6 +259,9 @@ data:
       # Prometheus scrapes /metrics without auth — safe: NetworkPolicy restricts
       # port 4000 ingress to the monitoring namespace only.
       require_auth_for_metrics_endpoint: false
+      # Drop params unsupported by a backend (e.g. encoding_format=base64 → Ollama)
+      # rather than failing the request. Needed for OpenAI client default behaviour.
+      drop_params: true
       # Exact-match prompt caching — skips inference for identical prompts
       cache: true
       cache_params:

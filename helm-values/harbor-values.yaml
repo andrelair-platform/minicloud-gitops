@@ -16,7 +16,7 @@ expose:
     secret:
       secretName: harbor-tls-cert
   type: ingress
-externalURL: https://harbor.10.0.0.200.nip.io
+externalURL: https://harbor.devandre.sbs
 persistence:
   persistentVolumeClaim:
     database:
