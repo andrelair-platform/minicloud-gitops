@@ -108,7 +108,7 @@ data:
           "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none", "colorMode": "background"},
           "targets": [{
             "datasource": {"type": "postgres", "uid": "litellm-postgres"},
-            "rawSql": "SELECT NOW() as time, COUNT(DISTINCT vt.key_alias) as \"Depts\" FROM \"LiteLLM_SpendLogs\" sl JOIN \"LiteLLM_VerificationToken\" vt ON sl.api_key = vt.token WHERE sl.\"startTime\" >= NOW() - INTERVAL '30 days' AND vt.key_alias LIKE 'dept-%'",
+            "rawSql": "SELECT NOW() as time, COUNT(DISTINCT vt.key_alias) as \"Depts\" FROM \"LiteLLM_SpendLogs\" sl JOIN \"LiteLLM_VerificationToken\" vt ON sl.api_key = vt.token WHERE sl.\"startTime\" >= NOW() - INTERVAL '30 days' AND vt.key_alias LIKE 'direction-%'",
             "rawQuery": true,
             "format": "time_series",
             "refId": "A"
@@ -139,7 +139,7 @@ data:
           "options": {"sortBy": [{"displayName": "Spend (USD)", "desc": true}]},
           "targets": [{
             "datasource": {"type": "postgres", "uid": "litellm-postgres"},
-            "rawSql": "SELECT key_alias as \"Department\", ROUND(spend::numeric, 6) as \"Spend (USD)\", max_budget as \"Budget (USD)\", budget_duration as \"Period\", CASE WHEN max_budget > 0 THEN ROUND((spend / max_budget * 100)::numeric, 1) ELSE 0 END as \"Used %\" FROM \"LiteLLM_VerificationToken\" WHERE key_alias LIKE 'dept-%' ORDER BY spend DESC",
+            "rawSql": "SELECT key_alias as \"Department\", ROUND(spend::numeric, 6) as \"Spend (USD)\", max_budget as \"Budget (USD)\", budget_duration as \"Period\", CASE WHEN max_budget > 0 THEN ROUND((spend / max_budget * 100)::numeric, 1) ELSE 0 END as \"Used %\" FROM \"LiteLLM_VerificationToken\" WHERE key_alias LIKE 'direction-%' ORDER BY spend DESC",
             "rawQuery": true,
             "format": "table",
             "refId": "A"
