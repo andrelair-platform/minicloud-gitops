@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: litellm
-          image: ghcr.io/andrelair-platform/minicloud-litellm-custom:1.90.3-prisma-v4
+          image: ghcr.io/andrelair-platform/minicloud-litellm-custom:1.90.3-prisma-v5
           args:
             - "--config"
             - "/app/config.yaml"
