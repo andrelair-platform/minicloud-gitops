@@ -1,3 +1,6 @@
+# AUTO-GENERATED — do not edit directly.
+# Source of truth: minicloud-litellm-custom/config/litellm-config.yaml
+# Changes pushed to that file trigger this sync via CI.
 apiVersion: v1
 kind: ConfigMap
 metadata:

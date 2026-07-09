@@ -1,14 +1,16 @@
+# AUTO-GENERATED — do not edit directly.
+# Source of truth: minicloud-litellm-custom/langfuse_prompt_handler.py
+# Changes pushed to that file trigger this sync via CI.
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: langfuse-prompt-handler
   namespace: ai
   annotations:
-    # This ConfigMap is mounted into the LiteLLM pod at /app/langfuse_prompt_handler.py
+    # Mounted into the LiteLLM pod at /app/langfuse_prompt_handler.py
     # (see manifests/ai/01-litellm-deployment.yaml volumeMount subPath: handler.py).
     # Updating this ConfigMap + restarting the LiteLLM deployment is all that is needed
     # to change the handler logic — no image rebuild required.
-    # Source of truth: minicloud-litellm-custom/langfuse_prompt_handler.py
 data:
   handler.py: |
     """
