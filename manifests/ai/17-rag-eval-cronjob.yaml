@@ -33,7 +33,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: rag-eval-online
-              image: ghcr.io/andrelair-platform/minicloud-rag-eval:99c4f2b-amd64
+              image: ghcr.io/andrelair-platform/minicloud-rag-eval:5322c32-amd64
               imagePullPolicy: Always
               securityContext:
                 allowPrivilegeEscalation: false
