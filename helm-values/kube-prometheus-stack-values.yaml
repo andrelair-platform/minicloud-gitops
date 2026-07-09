@@ -275,13 +275,13 @@ grafana:
       type: postgres
       access: proxy
       url: postgresql-ai.ai.svc.cluster.local:5432
-      database: litellm
       user: aiplatform
       isDefault: false
       editable: false
       secureJsonData:
         password: "${GF_LITELLM_PG_PASSWORD}"
       jsonData:
+        database: litellm
         sslmode: disable
         postgresVersion: 1400
 
