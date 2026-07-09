@@ -214,6 +214,11 @@ grafana:
         || 'Viewer'
       role_attribute_strict: false
   envFromSecret: grafana-oidc
+  envValueFrom:
+    GF_LITELLM_PG_PASSWORD:
+      secretKeyRef:
+        name: grafana-litellm-db
+        key: password
   resources:
     requests:
       cpu: 100m
@@ -265,6 +270,20 @@ grafana:
       jsonData:
         maxLines: 1000
         timeout: 60
+    - name: LiteLLM PostgreSQL
+      uid: litellm-postgres
+      type: postgres
+      access: proxy
+      url: postgresql-ai.ai.svc.cluster.local:5432
+      database: litellm
+      user: aiplatform
+      isDefault: false
+      editable: false
+      secureJsonData:
+        password: "${GF_LITELLM_PG_PASSWORD}"
+      jsonData:
+        sslmode: disable
+        postgresVersion: 1400
 
 kubeEtcd:
   enabled: false
