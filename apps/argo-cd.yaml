@@ -32,3 +32,10 @@ spec:
       kind: MutatingWebhookConfiguration
       jsonPointers:
         - /webhooks/0/clientConfig/caBundle
+    - group: ""
+      kind: ConfigMap
+      name: argocd-cm
+      namespace: argocd
+      jqPathExpressions:
+        - '.data["oidc.config"]'
+        - '.data["url"]'
