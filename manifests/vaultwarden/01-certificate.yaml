@@ -1,0 +1,16 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vaultwarden-tls
+  namespace: vaultwarden
+spec:
+  secretName: vaultwarden-tls
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+  duration: 2160h
+  renewBefore: 720h
+  dnsNames:
+    - vault-pw.10.0.0.200.nip.io
+    - vault-pw.devandre.sbs

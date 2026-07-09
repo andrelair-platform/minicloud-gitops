@@ -1,0 +1,39 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+  annotations:
+    nginx.org/proxy-read-timeout: "3600"
+    nginx.org/proxy-send-timeout: "3600"
+    nginx.org/websocket-services: "vaultwarden"
+    cert-manager.io/cluster-issuer: minicloud-ca
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - vault-pw.10.0.0.200.nip.io
+        - vault-pw.devandre.sbs
+      secretName: vaultwarden-tls
+  rules:
+    - host: vault-pw.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vaultwarden
+                port:
+                  name: http
+    - host: vault-pw.devandre.sbs
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vaultwarden
+                port:
+                  name: http

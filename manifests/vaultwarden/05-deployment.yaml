@@ -1,0 +1,122 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vaultwarden
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: vaultwarden
+    spec:
+      serviceAccountName: default
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      initContainers:
+        - name: ca-bundle
+          image: docker.io/vaultwarden/server:1.32.0
+          command:
+            - sh
+            - -c
+            - "cat /etc/ssl/certs/ca-certificates.crt /ca-input/ca.crt > /ca-bundle/bundle.crt"
+          volumeMounts:
+            - name: minicloud-ca
+              mountPath: /ca-input
+              readOnly: true
+            - name: ca-bundle
+              mountPath: /ca-bundle
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      containers:
+        - name: vaultwarden
+          image: docker.io/vaultwarden/server:1.32.0
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: DOMAIN
+              value: "https://vault-pw.devandre.sbs"
+            - name: ROCKET_PORT
+              value: "8080"
+            - name: SIGNUPS_ALLOWED
+              value: "false"
+            - name: INVITATIONS_ALLOWED
+              value: "true"
+            - name: WEBSOCKET_ENABLED
+              value: "true"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: SSO_ENABLED
+              value: "true"
+            - name: SSO_CLIENT_ID
+              value: "vaultwarden"
+            - name: SSO_AUTHORITY
+              value: "https://auth.devandre.sbs/application/o/vaultwarden/"
+            - name: SSL_CERT_FILE
+              value: "/ca-bundle/bundle.crt"
+            - name: DATA_FOLDER
+              value: "/data"
+          envFrom:
+            - secretRef:
+                name: vaultwarden-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: ca-bundle
+              mountPath: /ca-bundle
+              readOnly: true
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /alive
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: vaultwarden-data
+        - name: minicloud-ca
+          configMap:
+            name: minicloud-ca
+        - name: ca-bundle
+          emptyDir: {}
