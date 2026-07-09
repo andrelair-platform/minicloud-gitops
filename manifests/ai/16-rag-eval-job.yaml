@@ -52,7 +52,9 @@ spec:
             - name: JUDGE_MODEL
               value: gpt-4o
             - name: GENERATION_MODEL
-              value: phi3-financial
+              value: gpt-4o-mini
+            - name: EVAL_WORKERS
+              value: "5"
             - name: FAITHFULNESS_THRESHOLD
               value: "0.70"
             - name: HIT_RATE_THRESHOLD
