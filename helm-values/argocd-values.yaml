@@ -16,6 +16,31 @@ configs:
     admin.enabled: "false"
     # GPG commit signature verification — key FD6D39D681DEFA34 (AndreLiar, expires 2028-06-28)
     gpg.enabled: "true"
+    # Phase 23 Stage 3 — Authentik OIDC integration
+    url: https://argocd.devandre.sbs
+    oidc.config: |
+      name: Authentik
+      issuer: https://auth.10.0.0.200.nip.io/application/o/argo-cd/
+      clientID: gKTS6lKgXhvP2t2rlUu8QhkzFo2itrY8c3szNv9M
+      clientSecret: $argocd-oidc:clientSecret
+      requestedScopes: ["openid", "profile", "email", "groups"]
+      requestedIDTokenClaims:
+        groups:
+          essential: true
+      rootCA: |
+        -----BEGIN CERTIFICATE-----
+        MIICAzCCAaigAwIBAgIUXS8lZg8k9yh42Gyd7EBDeQpvrnAwCgYIKoZIzj0EAwIw
+        XzEbMBkGA1UEChMSYW5kcmVsYWlyLXBsYXRmb3JtMRswGQYDVQQLExJtaW5pY2xv
+        dWQgcGxhdGZvcm0xIzAhBgNVBAMTGm1pbmljbG91ZCBJbnRlcm5hbCBSb290IENB
+        MB4XDTI2MDUwOTExNTY0NloXDTM2MDUwNjExNTY0NlowXzEbMBkGA1UEChMSYW5k
+        cmVsYWlyLXBsYXRmb3JtMRswGQYDVQQLExJtaW5pY2xvdWQgcGxhdGZvcm0xIzAh
+        BgNVBAMTGm1pbmljbG91ZCBJbnRlcm5hbCBSb290IENBMFkwEwYHKoZIzj0CAQYI
+        KoZIzj0DAQcDQgAEIYSIb9sazO1MO/DE8TFIpQYnlPmh+mVpe7p+lBl7gouSefd/
+        SUAJd0t7xNMqWqmgnyaMiiw0TohHA3sh1YcHNKNCMEAwDgYDVR0PAQH/BAQDAgKk
+        MA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFACl2vBxhgRX0PvqGapck0sM4efd
+        MAoGCCqGSM49BAMCA0kAMEYCIQCApyHzARqV3RlzFR5uIdpwyyUyGJugM89NXvWv
+        bEJ7gQIhAJq5mnZKS/EJTMPYzkuq33K4g+FJp2zt+VpUkg24ETKO
+        -----END CERTIFICATE-----
   gpg:
     keys:
       FD6D39D681DEFA34: |
@@ -83,31 +108,6 @@ configs:
         M2mMjJ3qbW+Rcd7w8+xVSUtRvvZ1465W
         =rsN/
         -----END PGP PUBLIC KEY BLOCK-----
-    # Phase 23 Stage 3 — Authentik OIDC integration
-    url: https://argocd.devandre.sbs
-    oidc.config: |
-      name: Authentik
-      issuer: https://auth.10.0.0.200.nip.io/application/o/argo-cd/
-      clientID: gKTS6lKgXhvP2t2rlUu8QhkzFo2itrY8c3szNv9M
-      clientSecret: $argocd-oidc:clientSecret
-      requestedScopes: ["openid", "profile", "email", "groups"]
-      requestedIDTokenClaims:
-        groups:
-          essential: true
-      rootCA: |
-        -----BEGIN CERTIFICATE-----
-        MIICAzCCAaigAwIBAgIUXS8lZg8k9yh42Gyd7EBDeQpvrnAwCgYIKoZIzj0EAwIw
-        XzEbMBkGA1UEChMSYW5kcmVsYWlyLXBsYXRmb3JtMRswGQYDVQQLExJtaW5pY2xv
-        dWQgcGxhdGZvcm0xIzAhBgNVBAMTGm1pbmljbG91ZCBJbnRlcm5hbCBSb290IENB
-        MB4XDTI2MDUwOTExNTY0NloXDTM2MDUwNjExNTY0NlowXzEbMBkGA1UEChMSYW5k
-        cmVsYWlyLXBsYXRmb3JtMRswGQYDVQQLExJtaW5pY2xvdWQgcGxhdGZvcm0xIzAh
-        BgNVBAMTGm1pbmljbG91ZCBJbnRlcm5hbCBSb290IENBMFkwEwYHKoZIzj0CAQYI
-        KoZIzj0DAQcDQgAEIYSIb9sazO1MO/DE8TFIpQYnlPmh+mVpe7p+lBl7gouSefd/
-        SUAJd0t7xNMqWqmgnyaMiiw0TohHA3sh1YcHNKNCMEAwDgYDVR0PAQH/BAQDAgKk
-        MA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFACl2vBxhgRX0PvqGapck0sM4efd
-        MAoGCCqGSM49BAMCA0kAMEYCIQCApyHzARqV3RlzFR5uIdpwyyUyGJugM89NXvWv
-        bEJ7gQIhAJq5mnZKS/EJTMPYzkuq33K4g+FJp2zt+VpUkg24ETKO
-        -----END CERTIFICATE-----
   rbac:
     # Group claim -> ArgoCD role mapping (Phase 33 — department RBAC).
     # policy.default: deny — unrecognised groups get no access at all.
