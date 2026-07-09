@@ -26,7 +26,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: ca-bundle
-          image: docker.io/vaultwarden/server:1.32.0
+          image: ghcr.io/timshel/vaultwarden:latest
           command:
             - sh
             - -c
@@ -54,7 +54,7 @@ spec:
               memory: 64Mi
       containers:
         - name: vaultwarden
-          image: docker.io/vaultwarden/server:1.32.0
+          image: ghcr.io/timshel/vaultwarden:latest
           ports:
             - containerPort: 8080
               name: http
