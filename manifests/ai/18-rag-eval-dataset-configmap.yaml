@@ -9,43 +9,43 @@ data:
       {
         "id": "bnp-cet1-ratio-2024-01",
         "query": "Quel est le ratio CET1 de BNP Paribas Fortis en 2024 ?",
-        "ground_truth": "14.0",
+        "ground_truth": "14.0%",
         "source_doc": "BNP Paribas Fortis Annual Report 2024",
         "domain": "regulatory_capital"
       },
       {
         "id": "bnp-cet1-capital-2024-02",
         "query": "Quel est le montant du capital CET1 de BNP Paribas Fortis en 2024 ?",
-        "ground_truth": "27,895",
+        "ground_truth": "24,227",
         "source_doc": "BNP Paribas Fortis Annual Report 2024",
         "domain": "regulatory_capital"
       },
       {
         "id": "basel3-cet1-min-01",
         "query": "Quel est le ratio CET1 minimum requis par les règles de Bâle III ?",
-        "ground_truth": "4.5",
+        "ground_truth": "4.5%",
         "source_doc": "Basel III Regulatory Framework",
         "domain": "regulatory_capital"
       },
       {
-        "id": "basel3-total-capital-01",
-        "query": "Quel est le ratio de fonds propres total minimum exigé par Bâle III ?",
-        "ground_truth": "8",
-        "source_doc": "Basel III Regulatory Framework",
+        "id": "bnp-total-capital-ratio-2024-01",
+        "query": "Quel est le ratio de capital total de BNP Paribas Fortis au 31 décembre 2024 ?",
+        "ground_truth": "18.96%",
+        "source_doc": "BNP Paribas Fortis Annual Report 2024",
         "domain": "regulatory_capital"
       },
       {
-        "id": "basel3-lcr-01",
-        "query": "Quel est le ratio LCR minimum requis par les accords de Bâle III ?",
-        "ground_truth": "100",
-        "source_doc": "Basel III Regulatory Framework",
+        "id": "bnp-customer-deposits-2024-01",
+        "query": "Quel est le montant des dépôts clients de BNP Paribas Fortis en 2024 ?",
+        "ground_truth": "213 billion",
+        "source_doc": "BNP Paribas Fortis Annual Report 2024",
         "domain": "liquidity"
       },
       {
-        "id": "basel3-nsfr-01",
-        "query": "Quel est le ratio NSFR minimum selon Bâle III ?",
-        "ground_truth": "100",
-        "source_doc": "Basel III Regulatory Framework",
+        "id": "bnp-customer-loans-2024-01",
+        "query": "Quel est le montant des prêts clients de BNP Paribas Fortis en 2024 ?",
+        "ground_truth": "229 billion",
+        "source_doc": "BNP Paribas Fortis Annual Report 2024",
         "domain": "liquidity"
       },
       {
@@ -58,14 +58,14 @@ data:
       {
         "id": "lvmh-profit-2023-01",
         "query": "Quel est le résultat net part du groupe de LVMH en 2023 ?",
-        "ground_truth": "8,961",
+        "ground_truth": "15,174",
         "source_doc": "LVMH Annual Report 2023",
         "domain": "profitability"
       },
       {
-        "id": "lvmh-fashion-2023-01",
-        "query": "Quelle est la branche d'activité la plus rentable de LVMH en 2023 ?",
-        "ground_truth": "Mode et Maroquinerie",
+        "id": "lvmh-fashion-revenue-2023-01",
+        "query": "Quel était le chiffre d'affaires de la division Mode et Maroquinerie de LVMH en 2023 ?",
+        "ground_truth": "42,169",
         "source_doc": "LVMH Annual Report 2023",
         "domain": "lvmh"
       },
