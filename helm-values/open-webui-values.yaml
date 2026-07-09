@@ -195,6 +195,8 @@ extraEnvVars:
 extraEnvFrom:
   - secretRef:
       name: openwebui-oidc
+  - secretRef:
+      name: openwebui-secret-key
 
 extraInitContainers:
   - name: inject-minicloud-ca
