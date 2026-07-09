@@ -43,7 +43,7 @@
   },
   {
     "id": "lvmh-revenue-2023-01",
-    "query": "Quel est le chiffre d'affaires total de LVMH en 2023 ?",
+    "query": "What is LVMH total revenue for fiscal year 2023 in EUR millions?",
     "ground_truth": "86,153",
     "source_doc": "LVMH Annual Report 2023",
     "domain": "profitability"
@@ -57,7 +57,7 @@
   },
   {
     "id": "lvmh-fashion-revenue-2023-01",
-    "query": "Quel était le chiffre d'affaires de la division Mode et Maroquinerie de LVMH en 2023 ?",
+    "query": "What is LVMH Fashion and Leather Goods revenue in 2023?",
     "ground_truth": "42,169",
     "source_doc": "LVMH Annual Report 2023",
     "domain": "lvmh"
