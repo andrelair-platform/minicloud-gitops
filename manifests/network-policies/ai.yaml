@@ -105,6 +105,27 @@ spec:
         - ipBlock:
             cidr: 10.0.0.0/8
 ---
+# Vaultwarden uses postgresql-ai as its database backend (separate vaultwarden DB)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-vaultwarden-postgresql
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: vaultwarden
+      ports:
+        - port: 5432
+          protocol: TCP
+---
 # Open WebUI web search: allow fetching full page content from search result URLs.
 # SearXNG returns titles + snippets (cluster-internal, already covered above).
 # This policy additionally lets Open WebUI retrieve full page HTML for richer context.

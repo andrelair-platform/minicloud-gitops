@@ -95,6 +95,12 @@ data:
         tag: SSO
         url: https://auth.devandre.sbs
         target: _blank
+      - name: Vaultwarden
+        icon: fas fa-shield-alt
+        subtitle: "Password & credential manager — OIDC via Authentik (Bitwarden-compatible)"
+        tag: SSO
+        url: https://vault-pw.devandre.sbs
+        target: _blank
     - name: DevOps
       icon: fas fa-code-branch
       items:
@@ -142,6 +148,12 @@ data:
         subtitle: "Open WebUI + LiteLLM AI Gateway (phi3-financial, llama3.2:3b/1b) — OIDC via Authentik"
         tag: SSO
         url: https://chat.devandre.sbs
+        target: _blank
+      - name: LiteLLM Admin
+        icon: fas fa-sliders-h
+        subtitle: "AI Gateway admin panel — manage virtual keys, budgets, model routing"
+        tag: admin
+        url: https://litellm.devandre.sbs/ui
         target: _blank
       - name: Langfuse
         icon: fas fa-chart-line
