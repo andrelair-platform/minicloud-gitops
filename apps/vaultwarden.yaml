@@ -20,3 +20,9 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideDiff=true
+  ignoreDifferences:
+    # ESO ExternalSecret status is managed by the controller; ArgoCD should not track it
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jsonPointers:
+        - /status
