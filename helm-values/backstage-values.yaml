@@ -34,6 +34,11 @@ backstage:
     app:
       title: minicloud platform
       baseUrl: https://backstage.devandre.sbs
+      # Map the catalog page to the root so the user lands on /catalog after login
+      extensions:
+        - page:catalog:
+            config:
+              path: /
     organization:
       name: andrelair-platform
     backend:
