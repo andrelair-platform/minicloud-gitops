@@ -8,7 +8,7 @@ resources:
 # Tag promoted manually: after staging is validated, open a PR bumping newTag here.
 # ArgoCD syncPolicy.automated is disabled for prod — requires manual sync click.
 images:
-  - name: harbor.10.0.0.200.nip.io/ghcr/andrelair-platform/platform-demo
+  - name: harbor.10.0.0.200.nip.io/library/platform-demo
     newTag: "0b7cb75"
 patches:
   - path: patch-resources.yaml
