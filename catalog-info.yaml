@@ -331,6 +331,13 @@ metadata:
     - ai
     - rag
     - custom
+  links:
+    - url: https://github.com/andrelair-platform/minicloud-markitdown-proxy
+      title: Source Repository
+      icon: github
+    - url: https://argocd.devandre.sbs/applications/ai-manifests
+      title: ArgoCD Application
+      icon: dashboard
 spec:
   type: service
   lifecycle: production
@@ -355,6 +362,13 @@ metadata:
     - ai
     - rag
     - custom
+  links:
+    - url: https://github.com/andrelair-platform/minicloud-rag-ingest
+      title: Source Repository
+      icon: github
+    - url: https://argocd.devandre.sbs/applications/ai-manifests
+      title: ArgoCD Application
+      icon: dashboard
 spec:
   type: service
   lifecycle: production
@@ -380,6 +394,13 @@ metadata:
     - database
     - pgvector
     - custom
+  links:
+    - url: https://github.com/andrelair-platform/minicloud-postgresql-noavx512
+      title: Source Repository
+      icon: github
+    - url: https://argocd.devandre.sbs/applications/postgresql-ai
+      title: ArgoCD Application
+      icon: dashboard
 spec:
   type: service
   lifecycle: production
