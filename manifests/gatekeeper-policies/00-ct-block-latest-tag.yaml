@@ -33,3 +33,15 @@ spec:
           not contains(container.image, ":")
           msg := sprintf("Container '%v' has no image tag — pin to an explicit version (image: %v)", [container.name, container.image])
         }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          endswith(container.image, ":placeholder")
+          msg := sprintf("Container '%v' uses ':placeholder' tag — CI must push a real image before this manifest can be applied (image: %v)", [container.name, container.image])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.initContainers[_]
+          endswith(container.image, ":placeholder")
+          msg := sprintf("initContainer '%v' uses ':placeholder' tag — CI must push a real image before this manifest can be applied (image: %v)", [container.name, container.image])
+        }
