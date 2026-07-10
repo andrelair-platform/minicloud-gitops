@@ -423,3 +423,28 @@ spec:
   lifecycle: production
   owner: andrelair-platform
   system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: andrelair-platform
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+spec:
+  type: team
+  profile:
+    displayName: andrelair-platform
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: kanmegnea
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+spec:
+  profile:
+    displayName: AndreLiar
+    email: kanmegnea@gmail.com
+  memberOf:
+    - andrelair-platform
