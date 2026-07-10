@@ -66,7 +66,7 @@ backstage:
       providers:
         oidc:
           production:
-            metadataUrl: https://auth.10.0.0.200.nip.io/application/o/backstage/.well-known/openid-configuration
+            metadataUrl: https://auth.devandre.sbs/application/o/backstage/.well-known/openid-configuration
             clientId: ${AUTH_OIDC_CLIENT_ID}
             clientSecret: ${AUTH_OIDC_CLIENT_SECRET}
             callbackUrl: https://backstage.devandre.sbs/api/auth/oidc/handler/frame
