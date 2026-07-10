@@ -1,0 +1,299 @@
+{
+  "quadrants": [
+    { "id": "infrastructure", "name": "Infrastructure & GitOps" },
+    { "id": "ai-ml",          "name": "AI & ML" },
+    { "id": "security",       "name": "Security & Identity" },
+    { "id": "languages",      "name": "Languages & Frameworks" }
+  ],
+  "rings": [
+    { "id": "adopt",  "name": "ADOPT",  "color": "#93c47d" },
+    { "id": "trial",  "name": "TRIAL",  "color": "#93d2c2" },
+    { "id": "assess", "name": "ASSESS", "color": "#fbdb84" },
+    { "id": "hold",   "name": "HOLD",   "color": "#efafa9" }
+  ],
+  "entries": [
+    {
+      "id": "k3s",
+      "title": "k3s",
+      "quadrant": "infrastructure",
+      "description": "Lightweight Kubernetes on 4 ThinkPad laptops. Control plane on set-hog, 3 workers. Upgraded to v1.36.1.",
+      "url": "https://k3s.io",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "argocd",
+      "title": "ArgoCD",
+      "quadrant": "infrastructure",
+      "description": "App-of-apps GitOps engine. 56 Applications all Synced. Self-manages its own deployment.",
+      "url": "https://argocd.devops.tools",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "helm",
+      "title": "Helm",
+      "quadrant": "infrastructure",
+      "description": "All third-party charts deployed via ArgoCD multi-source Helm apps with values in minicloud-gitops.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "kustomize",
+      "title": "Kustomize",
+      "quadrant": "infrastructure",
+      "description": "Combo-1 base+overlays for own services. CI updates overlays/dev/ image tag; staging/prod require PRs.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "opentofu",
+      "title": "OpenTofu",
+      "quadrant": "infrastructure",
+      "description": "MAAS bare-metal IaC. Provisions 4 ThinkPad machines with PXE + cloud-init.",
+      "url": "https://opentofu.org",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "longhorn",
+      "title": "Longhorn",
+      "quadrant": "infrastructure",
+      "description": "Distributed block storage for stateful workloads (Vault, Backstage DB, Langfuse). Ollama uses local-path instead.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "metallb",
+      "title": "MetalLB",
+      "quadrant": "infrastructure",
+      "description": "L2 LoadBalancer providing 10.0.0.200 VIP for NGINX ingress.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "cert-manager",
+      "title": "cert-manager",
+      "quadrant": "infrastructure",
+      "description": "19 TLS certificates auto-issued from minicloud-ca ClusterIssuer. ACME deferred.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "velero",
+      "title": "Velero + Kopia",
+      "quadrant": "infrastructure",
+      "description": "Daily full cluster backups to MinIO S3. 7-day TTL. Restore tested.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "keda",
+      "title": "KEDA",
+      "quadrant": "infrastructure",
+      "description": "Event-driven autoscaling. Scale-to-zero on NATS JetStream queue depth. Cron schedules for dev/staging.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "cloudflare-tunnel",
+      "title": "Cloudflare Tunnel",
+      "quadrant": "infrastructure",
+      "description": "Zero-trust ingress for devandre.sbs public URLs. No open ports on residential IP.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "ollama",
+      "title": "Ollama",
+      "quadrant": "ai-ml",
+      "description": "3 instances (primary/secondary/tertiary). 9 models including qwen3.5:4b, phi4-mini, deepseek-r1:7b, bge-m3. 18 concurrent slots.",
+      "url": "https://ollama.ai",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "litellm",
+      "title": "LiteLLM AI Gateway",
+      "quadrant": "ai-ml",
+      "description": "Multi-provider routing: Groq, OpenAI, Gemini, DeepSeek, Mistral, Claude, HuggingFace, 3 Ollama instances. 16 dept keys, circuit breaker, cost dashboard.",
+      "url": "https://litellm.ai",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "open-webui",
+      "title": "Open WebUI",
+      "quadrant": "ai-ml",
+      "description": "AI chat interface with RAG, web search, multi-model. OIDC via Authentik. phi3-financial for financial domain.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "pgvector",
+      "title": "pgvector",
+      "quadrant": "ai-ml",
+      "description": "1024-dim HNSW vector index in ragdb. Custom noavx512 build required for i7 CPUs lacking AVX-512.",
+      "url": "https://github.com/pgvector/pgvector",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "langfuse",
+      "title": "Langfuse",
+      "quadrant": "ai-ml",
+      "description": "LLM observability: traces, scores, cost per dept key. v3.201.1 + ClickHouse + OIDC. Ragas scores posted per trace.",
+      "url": "https://langfuse.com",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "rag-pipeline",
+      "title": "RAG Pipeline",
+      "quadrant": "ai-ml",
+      "description": "bge-m3 (1024-dim) + hybrid BM25/HNSW + French stemmer + cross-encoder re-ranker. 911 insurance chunks. Ragas eval CI gate.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-06-01" }]
+    },
+    {
+      "id": "searxng",
+      "title": "SearXNG",
+      "quadrant": "ai-ml",
+      "description": "Self-hosted meta-search engine wired into Open WebUI globe icon for real-time web search.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-07-01" }]
+    },
+    {
+      "id": "ragas",
+      "title": "Ragas",
+      "quadrant": "ai-ml",
+      "description": "RAG evaluation framework. Faithfulness + hit_rate + MRR + answer_relevancy. GPT-4o judge. CI PostSync gate on ai app sync.",
+      "timeline": [{ "moved": 0, "ringId": "trial", "date": "2026-07-09" }]
+    },
+    {
+      "id": "docling",
+      "title": "Docling",
+      "quadrant": "ai-ml",
+      "description": "PDF layout analysis + OCR for RAG ingestion. 4.4 GB CPU image. Routes via markitdown-proxy.",
+      "timeline": [{ "moved": 0, "ringId": "trial", "date": "2026-07-06" }]
+    },
+    {
+      "id": "nvidia-nim",
+      "title": "NVIDIA NIM",
+      "quadrant": "ai-ml",
+      "description": "3 NVIDIA models in AI Gateway (nemotron-70b, llama-8b, deepseek-r1). API key in Vault. Assessing latency vs cost.",
+      "timeline": [{ "moved": 0, "ringId": "assess", "date": "2026-07-07" }]
+    },
+    {
+      "id": "vault",
+      "title": "HashiCorp Vault",
+      "quadrant": "security",
+      "description": "KV secrets for all platform credentials. Auto-unseal via AWS KMS. ESO pulls secrets into namespaces. PKI deferred.",
+      "url": "https://vaultproject.io",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "authentik",
+      "title": "Authentik",
+      "quadrant": "security",
+      "description": "Identity provider for all platform apps. OIDC + TOTP MFA. 16 dept groups, 16 demo users. Forward-auth on Prometheus/Alertmanager.",
+      "url": "https://goauthentik.io",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "gatekeeper",
+      "title": "OPA/Gatekeeper",
+      "quadrant": "security",
+      "description": "9/9 admission policies in deny mode, 0 violations. Blocks: latest tag, privileged, no limits, no TLS ingress, unapproved registry.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "eso",
+      "title": "External Secrets Operator",
+      "quadrant": "security",
+      "description": "13 ExternalSecrets syncing Vault KV into k8s Secrets. ClusterSecretStore with Kubernetes auth.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-06-01" }]
+    },
+    {
+      "id": "cosign",
+      "title": "Cosign (keyless)",
+      "quadrant": "security",
+      "description": "All 7 custom images signed via GitHub OIDC → Sigstore Fulcio. SBOM attached as OCI referrer via Syft.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-06-01" }]
+    },
+    {
+      "id": "falco",
+      "title": "Falco + Sidekick",
+      "quadrant": "security",
+      "description": "Runtime security. Sidekick routes events to Alertmanager. Covers: privileged pod, new cluster-admin, failed logins.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-07-01" }]
+    },
+    {
+      "id": "network-policy",
+      "title": "NetworkPolicy (default-deny)",
+      "quadrant": "security",
+      "description": "Default-deny ingress on all 23 namespaces. Explicit allow rules per namespace. Flannel VTEP (10.42.0.0/24) webhook gotcha documented.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-06-01" }]
+    },
+    {
+      "id": "vaultwarden",
+      "title": "Vaultwarden",
+      "quadrant": "security",
+      "description": "Self-hosted Bitwarden-compatible password manager. Timshel fork for SSO button. 15 platform credentials migrated.",
+      "timeline": [{ "moved": 0, "ringId": "trial", "date": "2026-07-10" }]
+    },
+    {
+      "id": "go",
+      "title": "Go",
+      "quadrant": "languages",
+      "description": "platform-demo service. Chi router, structured logging. 3-branch CI with cosign + SBOM.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "python",
+      "title": "Python",
+      "quadrant": "languages",
+      "description": "All custom AI services: rag-ingest, markitdown-proxy, rag-eval. FastAPI + uvicorn. Ragas + LangChain for eval.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "typescript",
+      "title": "TypeScript",
+      "quadrant": "languages",
+      "description": "Backstage (React + Node.js backend). Strict tsc. New frontend system with createApp.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "fastapi",
+      "title": "FastAPI",
+      "quadrant": "languages",
+      "description": "Micro-framework for rag-ingest and markitdown-proxy. Auto-generates OpenAPI spec used in Backstage API docs.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "astro",
+      "title": "Astro",
+      "quadrant": "languages",
+      "description": "Static site generator for ktayl-solution-web (insurance consulting portfolio). Tailwind CSS, 7 LOBs.",
+      "url": "https://astro.build",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-06-01" }]
+    },
+    {
+      "id": "prometheus",
+      "title": "Prometheus + Grafana",
+      "quadrant": "languages",
+      "description": "kube-prometheus-stack. 40+ dashboards. Cert expiry alerts, Velero backup alerts, cost dashboard via LiteLLM PG queries.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "loki",
+      "title": "Loki + Promtail",
+      "quadrant": "languages",
+      "description": "Cluster-wide log aggregation. Queryable in Grafana Explore.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "postgresql",
+      "title": "PostgreSQL",
+      "quadrant": "languages",
+      "description": "AI stack: openwebui DB, ragdb (pgvector), LiteLLM DB. Platform: Backstage, Langfuse (ClickHouse for analytics).",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "nats",
+      "title": "NATS JetStream",
+      "quadrant": "languages",
+      "description": "Message broker for event-demo KEDA scale-to-zero. JetStream durable consumers.",
+      "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
+    },
+    {
+      "id": "cilium",
+      "title": "Cilium / Hubble",
+      "quadrant": "languages",
+      "description": "Runbook authored. Execution deferred to fresh cluster rebuild — flannel replacement adds complexity during live ops.",
+      "timeline": [{ "moved": 0, "ringId": "hold", "date": "2026-06-01" }]
+    }
+  ]
+}
