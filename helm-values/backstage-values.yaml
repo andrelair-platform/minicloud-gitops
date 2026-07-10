@@ -77,7 +77,7 @@ backstage:
                 - resolver: emailLocalPartMatchingUserEntityName
     catalog:
       rules:
-        - allow: [Component, System, API, Resource, Location]
+        - allow: [Component, System, API, Resource, Location, User, Group]
       locations:
         # Use raw.githubusercontent.com for direct (anonymous, no rate-limit
         # surprises) file fetches. Backstage's `url` location reader handles
