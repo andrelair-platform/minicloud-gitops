@@ -34,7 +34,7 @@ spec:
       containers:
         - name: web
           # CI bumps this tag on every push to main
-          image: harbor.10.0.0.200.nip.io/library/ktayl-solution-web:5724488-unprivileged
+          image: harbor.10.0.0.200.nip.io/library/ktayl-solution-web:2e1419d
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
