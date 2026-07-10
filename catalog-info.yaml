@@ -405,6 +405,19 @@ metadata:
     - ai
     - gateway
     - custom
+  links:
+    - url: https://litellm.devandre.sbs/
+      title: LiteLLM Admin UI (public)
+      icon: web
+    - url: https://litellm.10.0.0.200.nip.io/
+      title: LiteLLM Admin UI (internal)
+      icon: web
+    - url: https://github.com/andrelair-platform/minicloud-litellm-custom
+      title: Source Repository
+      icon: github
+    - url: https://argocd.10.0.0.200.nip.io/applications/ai-manifests
+      title: ArgoCD Application
+      icon: dashboard
 spec:
   type: service
   lifecycle: production
