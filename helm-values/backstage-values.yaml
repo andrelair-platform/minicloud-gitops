@@ -188,7 +188,7 @@ postgresql:
   # but we make it explicit for portfolio clarity)
   image:
     registry: docker.io
-    repository: bitnami/postgresql
+    repository: bitnamilegacy/postgresql
 
   architecture: standalone
 
