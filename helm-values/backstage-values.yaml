@@ -11,8 +11,8 @@ backstage:
     # Phase 24 custom image — built from andrelair-platform/minicloud-backstage
     registry: harbor.10.0.0.200.nip.io
     repository: library/backstage
-    # git SHA: d1e427c — adds OIDC sign-in page (Authentik button + Guest)
-    tag: "d1e427c-amd64"
+    # git SHA: 81e320f — OIDC sign-in page, ApiBlueprint callback form fix
+    tag: "81e320f-amd64"
 
   resources:
     requests: { cpu: 100m, memory: 384Mi }
