@@ -21,6 +21,9 @@ auth:
   database: openwebui
 
 primary:
+  podLabels:
+    backstage.io/kubernetes-id: postgresql-ai
+
   initdb:
     scripts:
       02-create-litellm-db.sql: |
