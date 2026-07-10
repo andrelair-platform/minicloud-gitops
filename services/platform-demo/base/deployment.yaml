@@ -52,7 +52,7 @@ spec:
           # Image tag is not set here — each overlay pins its own tag via
           # the images: block in kustomization.yaml. This prevents a single
           # CI push from promoting to staging and prod simultaneously.
-          image: harbor.10.0.0.200.nip.io/ghcr/andrelair-platform/platform-demo:placeholder
+          image: harbor.10.0.0.200.nip.io/library/platform-demo:placeholder
           ports:
             - containerPort: 9898
               name: http
