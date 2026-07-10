@@ -11,9 +11,8 @@ backstage:
     # Phase 24 custom image — built from andrelair-platform/minicloud-backstage
     registry: harbor.10.0.0.200.nip.io
     repository: library/backstage
-    # git SHA: c43b8d1 — built 2026-07-10, fixes NotificationsSidebarItem crash
-    # c43b8d1-fix-amd64: rebuilt with correct bundle (8ec384e2), same SHA different tag to bypass IfNotPresent cache
-    tag: "c43b8d1-fix-amd64"
+    # git SHA: d1e427c — adds OIDC sign-in page (Authentik button + Guest)
+    tag: "d1e427c-amd64"
 
   resources:
     requests: { cpu: 100m, memory: 384Mi }
