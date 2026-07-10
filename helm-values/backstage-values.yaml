@@ -124,7 +124,28 @@ backstage:
             - name: minicloud
               url: https://argocd.10.0.0.200.nip.io
 
+  extraAppConfig:
+    - filename: app-config.session.yaml
+      configMapRef: backstage-session-config
+
+  extraVolumes:
+    - name: minicloud-ca
+      configMap:
+        name: minicloud-ca
+
+  extraVolumeMounts:
+    - name: minicloud-ca
+      mountPath: /ca
+      readOnly: true
+
   extraEnvVars:
+    - name: NODE_EXTRA_CA_CERTS
+      value: /ca/ca.crt
+    - name: SESSION_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: backstage-phase24-secret
+          key: session-secret
     - name: K8S_SA_TOKEN
       valueFrom:
         secretKeyRef:
