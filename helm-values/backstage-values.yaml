@@ -187,8 +187,8 @@ postgresql:
   # Workaround for the bitnami chart 35164 image migration (chart default
   # but we make it explicit for portfolio clarity)
   image:
-    registry: harbor.10.0.0.200.nip.io
-    repository: library/backstage
+    registry: docker.io
+    repository: bitnami/postgresql
 
   architecture: standalone
 
