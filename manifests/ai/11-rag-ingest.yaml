@@ -12,6 +12,7 @@ spec:
     metadata:
       labels:
         app: rag-ingest
+        backstage.io/kubernetes-id: rag-ingest
     spec:
       securityContext:
         runAsNonRoot: true

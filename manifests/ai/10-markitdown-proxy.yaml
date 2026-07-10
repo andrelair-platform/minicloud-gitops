@@ -12,6 +12,7 @@ spec:
     metadata:
       labels:
         app: markitdown-proxy
+        backstage.io/kubernetes-id: markitdown-proxy
     spec:
       securityContext:
         runAsNonRoot: true

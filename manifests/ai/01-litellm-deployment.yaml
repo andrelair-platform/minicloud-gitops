@@ -19,6 +19,7 @@ spec:
     metadata:
       labels:
         app: litellm
+        backstage.io/kubernetes-id: litellm
     spec:
       securityContext:
         runAsNonRoot: true

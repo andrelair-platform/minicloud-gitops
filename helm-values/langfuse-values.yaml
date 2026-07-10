@@ -12,6 +12,16 @@ langfuse:
   labels:
     backstage.io/kubernetes-id: langfuse
 
+  web:
+    pod:
+      labels:
+        backstage.io/kubernetes-id: langfuse
+
+  worker:
+    pod:
+      labels:
+        backstage.io/kubernetes-id: langfuse
+
   logging:
     level: info
     format: json
