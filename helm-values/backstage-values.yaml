@@ -11,7 +11,7 @@ backstage:
     # Phase 24 custom image — built from andrelair-platform/minicloud-backstage
     registry: harbor.10.0.0.200.nip.io
     repository: library/backstage
-    # git SHA: 4a705b4 — built 2026-07-10 by CI
+    # git SHA: 4a705b4 — built 2026-07-10 by CI — baseUrl fixed to devandre.sbs
     tag: "4a705b4-amd64"
 
   resources:
@@ -27,20 +27,21 @@ backstage:
   containerPorts:
     backend: 7007
 
-  # Inline app-config — guest auth + 5 catalog locations targeting our
+  # Inline app-config — OIDC via Authentik + catalog locations targeting our
   # GitHub repos. Each repo has a catalog-info.yaml at its root.
+  # Primary URL is devandre.sbs (public via Cloudflare Tunnel).
   appConfig:
     app:
       title: minicloud platform
-      baseUrl: https://backstage.10.0.0.200.nip.io
+      baseUrl: https://backstage.devandre.sbs
     organization:
       name: andrelair-platform
     backend:
-      baseUrl: https://backstage.10.0.0.200.nip.io
+      baseUrl: https://backstage.devandre.sbs
       listen:
         port: 7007
       cors:
-        origin: https://backstage.10.0.0.200.nip.io
+        origin: https://backstage.devandre.sbs
         methods: [GET, POST, PUT, DELETE]
         credentials: true
       # URL whitelist for catalog locations and other reading. Without
@@ -68,7 +69,7 @@ backstage:
             metadataUrl: https://auth.10.0.0.200.nip.io/application/o/backstage/.well-known/openid-configuration
             clientId: ${AUTH_OIDC_CLIENT_ID}
             clientSecret: ${AUTH_OIDC_CLIENT_SECRET}
-            callbackUrl: https://backstage.10.0.0.200.nip.io/api/auth/oidc/handler/frame
+            callbackUrl: https://backstage.devandre.sbs/api/auth/oidc/handler/frame
             additionalScopes: []
             signIn:
               resolvers:
