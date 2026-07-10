@@ -55,6 +55,8 @@ backstage:
         allow:
           - host: raw.githubusercontent.com
           - host: github.com
+      csp:
+        connect-src: ["'self'", 'https://raw.githubusercontent.com']
       database:
         client: pg
         connection:
