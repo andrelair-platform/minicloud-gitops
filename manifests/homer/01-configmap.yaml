@@ -65,6 +65,12 @@ data:
         tag: k8s
         url: http://100.88.123.8:5240/MAAS/r/machines
         target: _blank
+      - name: star-kitten
+        icon: fas fa-microchip
+        subtitle: "Worker — 10.0.0.8"
+        tag: k8s
+        url: http://100.88.123.8:5240/MAAS/r/machines
+        target: _blank
     - name: Observability
       icon: fas fa-chart-line
       items:
@@ -85,6 +91,12 @@ data:
         subtitle: "Alerts — Tailscale only"
         tag: internal
         url: https://alertmanager.10.0.0.200.nip.io
+        target: _blank
+      - name: Polaris
+        icon: fas fa-star
+        subtitle: "Workload quality scorer — resource limits, security context, best practices"
+        tag: internal
+        url: https://polaris.10.0.0.200.nip.io
         target: _blank
     - name: Identity
       icon: fas fa-id-badge
@@ -133,7 +145,7 @@ data:
       items:
       - name: platform-demo
         icon: fas fa-rocket
-        subtitle: "CI/CD pipeline demo (GHA → ghcr.io → ArgoCD) — forward-auth via Authentik"
+        subtitle: "CI/CD pipeline demo (GHA → Harbor → ArgoCD) — forward-auth via Authentik"
         tag: SSO
         url: https://demo.devandre.sbs
         target: _blank
@@ -145,7 +157,7 @@ data:
         target: _blank
       - name: Chat
         icon: fas fa-robot
-        subtitle: "Open WebUI + LiteLLM AI Gateway (phi3-financial, llama3.2:3b/1b) — OIDC via Authentik"
+        subtitle: "Open WebUI + LiteLLM AI Gateway — 7 models, RAG, web search — OIDC via Authentik"
         tag: SSO
         url: https://chat.devandre.sbs
         target: _blank
