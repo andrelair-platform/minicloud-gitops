@@ -128,7 +128,7 @@ backstage:
         - type: 'config'
           instances:
             - name: minicloud
-              url: https://argocd.10.0.0.200.nip.io
+              url: https://argocd.devandre.sbs
 
   extraAppConfig:
     - filename: app-config.session.yaml
