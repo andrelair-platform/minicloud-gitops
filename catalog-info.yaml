@@ -22,7 +22,7 @@ metadata:
     - url: https://andrelair-platform.github.io/minicloud-platform-docs/platform-roadmap/phase-12-gitops
       title: Phase 12 documentation
       icon: docs
-    - url: https://argocd.10.0.0.200.nip.io/applications/root
+    - url: https://argocd.devandre.sbs/applications/root
       title: ArgoCD root Application
       icon: dashboard
     - url: https://github.com/andrelair-platform/minicloud-gitops
@@ -54,7 +54,7 @@ metadata:
     - url: https://homer.10.0.0.200.nip.io
       title: Live Homer dashboard
       icon: web
-    - url: https://argocd.10.0.0.200.nip.io/applications/homer
+    - url: https://argocd.devandre.sbs/applications/homer
       title: ArgoCD Application
       icon: dashboard
 spec:
@@ -83,7 +83,7 @@ metadata:
     - url: https://whoami.10.0.0.200.nip.io
       title: Live whoami service
       icon: web
-    - url: https://argocd.10.0.0.200.nip.io/applications/whoami
+    - url: https://argocd.devandre.sbs/applications/whoami
       title: ArgoCD Application
       icon: dashboard
 spec:
@@ -113,7 +113,7 @@ metadata:
     - phase-17
     - scale-to-zero
   links:
-    - url: https://argocd.10.0.0.200.nip.io/applications/event-demo
+    - url: https://argocd.devandre.sbs/applications/event-demo
       title: ArgoCD Application
       icon: dashboard
     - url: https://andrelair-platform.github.io/minicloud-platform-docs/platform-roadmap/phase-17-keda
@@ -147,7 +147,7 @@ metadata:
     - url: https://vault.10.0.0.200.nip.io
       title: Vault UI
       icon: web
-    - url: https://argocd.10.0.0.200.nip.io/applications/vault
+    - url: https://argocd.devandre.sbs/applications/vault
       title: ArgoCD Application
       icon: dashboard
 spec:
@@ -178,7 +178,7 @@ metadata:
     - url: https://grafana.10.0.0.200.nip.io
       title: Grafana dashboards
       icon: web
-    - url: https://argocd.10.0.0.200.nip.io/applications/kube-prometheus-stack
+    - url: https://argocd.devandre.sbs/applications/kube-prometheus-stack
       title: ArgoCD Application
       icon: dashboard
 spec:
@@ -206,10 +206,10 @@ metadata:
     - argocd
     - platform
   links:
-    - url: https://argocd.10.0.0.200.nip.io
+    - url: https://argocd.devandre.sbs
       title: ArgoCD UI
       icon: web
-    - url: https://argocd.10.0.0.200.nip.io/applications/argo-cd
+    - url: https://argocd.devandre.sbs/applications/argo-cd
       title: ArgoCD Application (self-managed)
       icon: dashboard
 spec:
@@ -244,7 +244,7 @@ metadata:
     - url: https://chat.devandre.sbs
       title: Open WebUI (public)
       icon: web
-    - url: https://argocd.10.0.0.200.nip.io/applications/open-webui
+    - url: https://argocd.devandre.sbs/applications/open-webui
       title: ArgoCD Application
       icon: dashboard
 spec:
@@ -273,7 +273,7 @@ metadata:
     - llm
     - inference
   links:
-    - url: https://argocd.10.0.0.200.nip.io/applications/ollama
+    - url: https://argocd.devandre.sbs/applications/ollama
       title: ArgoCD Application (primary)
       icon: dashboard
 spec:
@@ -304,7 +304,7 @@ metadata:
     - url: https://langfuse.10.0.0.200.nip.io
       title: Langfuse UI
       icon: web
-    - url: https://argocd.10.0.0.200.nip.io/applications/langfuse
+    - url: https://argocd.devandre.sbs/applications/langfuse
       title: ArgoCD Application
       icon: dashboard
 spec:
@@ -415,7 +415,7 @@ metadata:
     - url: https://github.com/andrelair-platform/minicloud-litellm-custom
       title: Source Repository
       icon: github
-    - url: https://argocd.10.0.0.200.nip.io/applications/ai-manifests
+    - url: https://argocd.devandre.sbs/applications/ai-manifests
       title: ArgoCD Application
       icon: dashboard
 spec:
