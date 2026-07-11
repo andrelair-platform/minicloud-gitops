@@ -6,9 +6,8 @@
 # Digest sha256:172e... is the immutable fingerprint of open-webui:0.9.4.
 # To upgrade: bump tag + digest together (use: crane digest ghcr.io/open-webui/open-webui:<new-tag>)
 image:
-  repository: ghcr.io/open-webui/open-webui
-  tag: "0.9.4"
-  digest: "sha256:172e1fe0e89af2a07f42f2b1d943f30c8ddd7b9c2e182f3678b4790cdb83abea"
+  repository: harbor.10.0.0.200.nip.io/library/open-webui
+  tag: "7fa29c3-amd64"
   pullPolicy: IfNotPresent
 
 ollama:
