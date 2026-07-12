@@ -57,6 +57,10 @@ schedules:
     schedule: "0 3 * * *"
     template:
       ttl: 168h
+      # Default itemOperationTimeout is 4h — langfuse ClickHouse PV (~4.5 GB)
+      # was consistently timing out and canceling the backup. 8h gives kopia
+      # enough time to complete the incremental snapshot.
+      itemOperationTimeout: 8h
       includedNamespaces:
         - "*"
       excludedNamespaces:
