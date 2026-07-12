@@ -70,6 +70,13 @@ prometheus:
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
+    additionalScrapeConfigs:
+      - job_name: controller-node
+        static_configs:
+          - targets: ['10.0.0.1:9100']
+            labels:
+              instance: controller
+              node: ktayl-ThinkPad-X390
 
 alertmanager:
   ingress:

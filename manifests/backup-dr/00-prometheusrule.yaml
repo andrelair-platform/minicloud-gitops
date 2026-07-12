@@ -49,3 +49,23 @@ spec:
           annotations:
             summary: "Controller disk < 10% free — backups at risk"
             description: "Root filesystem on {{ $labels.instance }} has {{ $value | printf \"%.1f\" }}% free. Velero/MinIO backups will fail below MinIO's minimum free threshold."
+
+        - alert: ControllerDiskWarning
+          expr: |
+            (1 - node_filesystem_avail_bytes{instance="controller", mountpoint="/"} / node_filesystem_size_bytes{instance="controller", mountpoint="/"}) > 0.85
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Controller disk > 85% used"
+            description: "Controller root filesystem is {{ $value | humanizePercentage }} used. Free up k3s snapshots or journal before MinIO goes down (happens at ~94%)."
+
+        - alert: ControllerDiskCritical
+          expr: |
+            (1 - node_filesystem_avail_bytes{instance="controller", mountpoint="/"} / node_filesystem_size_bytes{instance="controller", mountpoint="/"}) > 0.90
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Controller disk > 90% used — MinIO at risk"
+            description: "Controller root filesystem is {{ $value | humanizePercentage }} used. MinIO will stop accepting writes and its systemd service may crash. Delete k3s snapshots immediately: ls /srv/backups/k3s/ | sort | head -n -5 | xargs -I{} rm /srv/backups/k3s/{}"
