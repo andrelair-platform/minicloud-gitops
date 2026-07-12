@@ -1,3 +1,10 @@
+# Disable the velero-upgrade-crds pre-upgrade Job hook.
+# The Job pod completes successfully but the k3s v1.36.1 Job controller
+# never registers completion (uncountedTerminatedPods stays empty), which
+# blocks every ArgoCD sync indefinitely. CRDs are already at the correct
+# version for chart 12.0.1 — re-enable when upgrading the chart version.
+upgradeCRDs: false
+
 configuration:
   backupStorageLocation:
     - bucket: velero
