@@ -14,6 +14,7 @@ spec:
       targetRevision: "12.0.1"
       helm:
         releaseName: velero
+        skipCrds: true
         valueFiles:
           - $values/helm-values/velero-values.yaml
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
