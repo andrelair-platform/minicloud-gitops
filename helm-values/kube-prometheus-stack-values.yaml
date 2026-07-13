@@ -52,6 +52,7 @@ prometheus:
         secretName: prometheus-tls
   prometheusSpec:
     retention: 10d
+    retentionSize: 27GB
     resources:
       requests:
         cpu: 500m
@@ -66,7 +67,7 @@ prometheus:
           accessModes: [ReadWriteOnce]
           resources:
             requests:
-              storage: 15Gi
+              storage: 30Gi
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
