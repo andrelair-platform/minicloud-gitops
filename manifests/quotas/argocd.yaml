@@ -1,7 +1,6 @@
 ---
 # Actual peak: ~21m CPU / 515Mi memory (5 pods)
-# 5Gi: repo-server bumped to 1500Mi (was OOMKilled at 512Mi with 54 Helm apps
-# concurrent chart processing); controller 1Gi + others ~1Gi → 3.5Gi total
+# 6Gi: repo-server raised to 2500Mi (OOMKilling with 55+ apps); controller 1Gi + others ~1Gi → 4.5Gi total
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -12,7 +11,7 @@ spec:
     requests.cpu: "2"
     limits.cpu: "6"
     requests.memory: 2Gi
-    limits.memory: 5Gi
+    limits.memory: 6Gi
     count/pods: "20"
 ---
 # LimitRange injects defaults so pods without explicit resource specs count against the quota
@@ -32,4 +31,4 @@ spec:
         memory: 64Mi
       max:
         cpu: "2"
-        memory: 2Gi
+        memory: 3Gi
