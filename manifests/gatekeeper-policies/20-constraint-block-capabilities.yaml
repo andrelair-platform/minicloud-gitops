@@ -31,5 +31,6 @@ spec:
             - velero
             - falco
             - kured
+            - productivity
   parameters:
     allowedCapabilities: []

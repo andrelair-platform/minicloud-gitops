@@ -31,3 +31,4 @@ spec:
             - velero
             - falco
             - kured
+            - productivity
