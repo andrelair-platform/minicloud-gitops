@@ -21,7 +21,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: configure
-          image: bitnami/kubectl:1.30
+          image: alpine/k8s:1.36.1
           env:
             - name: JWT_SECRET
               valueFrom:
