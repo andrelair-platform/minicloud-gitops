@@ -1,0 +1,96 @@
+---
+# PostSync hook: installs and configures the Nextcloud onlyoffice app via occ.
+# Runs after every ArgoCD sync (all occ commands are idempotent).
+# DocumentServerUrl   = public URL (browser → OnlyOffice via Cloudflare)
+# DocumentServerInternalUrl = cluster DNS (Nextcloud server → OnlyOffice health check)
+# StorageUrl          = public Nextcloud URL (OnlyOffice → Nextcloud for doc fetch/save)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: onlyoffice-configure
+  namespace: nextcloud
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 600
+  template:
+    spec:
+      serviceAccountName: onlyoffice-configurator
+      restartPolicy: OnFailure
+      containers:
+        - name: configure
+          image: bitnami/kubectl:1.31
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: nextcloud-secrets
+                  key: onlyoffice-jwt-secret
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+
+              echo "[1/5] Waiting for Nextcloud to be ready..."
+              kubectl wait --for=condition=ready pod \
+                -l app.kubernetes.io/name=nextcloud \
+                -n nextcloud --timeout=300s
+
+              echo "[2/5] Waiting for OnlyOffice to be ready..."
+              kubectl wait --for=condition=ready pod \
+                -l app.kubernetes.io/name=onlyoffice \
+                -n nextcloud --timeout=300s
+
+              NC_POD=$(kubectl get pod -n nextcloud \
+                -l app.kubernetes.io/name=nextcloud \
+                -o jsonpath='{.items[0].metadata.name}')
+              echo "[3/5] Nextcloud pod: $NC_POD"
+
+              echo "[4/5] Installing/enabling onlyoffice app..."
+              kubectl exec -n nextcloud "$NC_POD" -- \
+                php /var/www/html/occ app:install onlyoffice 2>/dev/null \
+                || kubectl exec -n nextcloud "$NC_POD" -- \
+                   php /var/www/html/occ app:enable onlyoffice
+
+              echo "[5/5] Configuring OnlyOffice connection..."
+              # URL the browser uses to reach OnlyOffice (Cloudflare public)
+              kubectl exec -n nextcloud "$NC_POD" -- \
+                php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl \
+                --value="https://onlyoffice.devandre.sbs/"
+
+              # URL the Nextcloud server uses for internal health checks
+              kubectl exec -n nextcloud "$NC_POD" -- \
+                php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl \
+                --value="http://onlyoffice.nextcloud.svc.cluster.local/"
+
+              # URL OnlyOffice uses to fetch/save documents back to Nextcloud
+              kubectl exec -n nextcloud "$NC_POD" -- \
+                php /var/www/html/occ config:app:set onlyoffice StorageUrl \
+                --value="https://cloud.devandre.sbs/"
+
+              # JWT auth between Nextcloud and OnlyOffice
+              kubectl exec -n nextcloud "$NC_POD" -- \
+                php /var/www/html/occ config:app:set onlyoffice jwt_secret \
+                --value="$JWT_SECRET"
+
+              kubectl exec -n nextcloud "$NC_POD" -- \
+                php /var/www/html/occ config:app:set onlyoffice jwt_header \
+                --value="AuthorizationJwt"
+
+              # Default to modern formats (.docx/.xlsx/.pptx)
+              kubectl exec -n nextcloud "$NC_POD" -- \
+                php /var/www/html/occ config:app:set onlyoffice defFormats \
+                --value='{"docx":"1","xlsx":"1","pptx":"1","odt":"","ods":"","odp":""}'
+
+              echo "Done. OnlyOffice is configured."
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
