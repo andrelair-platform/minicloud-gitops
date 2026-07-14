@@ -19,6 +19,7 @@ spec:
     size: 256
   dnsNames:
     - onlyoffice.10.0.0.200.nip.io
+    - onlyoffice.devandre.sbs
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -46,7 +47,18 @@ spec:
                 name: onlyoffice
                 port:
                   number: 80
+    - host: onlyoffice.devandre.sbs
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: onlyoffice
+                port:
+                  number: 80
   tls:
     - hosts:
         - onlyoffice.10.0.0.200.nip.io
+        - onlyoffice.devandre.sbs
       secretName: onlyoffice-tls
