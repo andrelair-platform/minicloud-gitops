@@ -1,0 +1,29 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    metadata.gatekeeper.sh/title: "Require Seccomp Profile"
+    metadata.gatekeeper.sh/description: "Requires pods to set seccompProfile.type to RuntimeDefault or Localhost (CIS 5.7.2)."
+  name: k8srequireseccomp
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequireSeccomp
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequireseccomp
+
+        allowed_types := {"RuntimeDefault", "Localhost"}
+
+        violation[{"msg": msg}] {
+          pod := input.review.object.spec
+          not valid_seccomp(pod)
+          msg := "Pod must set securityContext.seccompProfile.type to RuntimeDefault or Localhost"
+        }
+
+        valid_seccomp(spec) {
+          allowed_types[spec.securityContext.seccompProfile.type]
+        }
