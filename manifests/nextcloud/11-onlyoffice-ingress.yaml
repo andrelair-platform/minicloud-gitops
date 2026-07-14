@@ -1,0 +1,52 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: onlyoffice-tls
+  namespace: nextcloud
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  secretName: onlyoffice-tls
+  duration: 2160h
+  renewBefore: 720h
+  issuerRef:
+    kind: ClusterIssuer
+    name: minicloud-ca
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - onlyoffice.10.0.0.200.nip.io
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: onlyoffice
+  namespace: nextcloud
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    nginx.org/redirect-to-https: "true"
+    nginx.org/proxy-connect-timeout: "300"
+    nginx.org/proxy-read-timeout: "300"
+    nginx.org/proxy-send-timeout: "300"
+    nginx.org/websocket-services: "onlyoffice"
+    nginx.org/proxy-buffer-size: "16k"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: onlyoffice.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: onlyoffice
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - onlyoffice.10.0.0.200.nip.io
+      secretName: onlyoffice-tls
