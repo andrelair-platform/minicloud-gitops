@@ -28,3 +28,4 @@ spec:
             - ingress-nginx
             - chaos-mesh
             - velero
+            - productivity     # Plane CE — minio/minio:latest + minio/mc:latest hardcoded in chart
