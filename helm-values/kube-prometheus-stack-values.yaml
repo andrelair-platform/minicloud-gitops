@@ -206,9 +206,9 @@ grafana:
       auto_login: false
       # client_id + client_secret injected via env vars from the
       # grafana-oidc Secret (see envFromSecret below).
-      auth_url: https://auth.10.0.0.200.nip.io/application/o/authorize/
-      token_url: https://auth.10.0.0.200.nip.io/application/o/token/
-      api_url: https://auth.10.0.0.200.nip.io/application/o/userinfo/
+      auth_url: https://auth.devandre.sbs/application/o/authorize/
+      token_url: https://auth.devandre.sbs/application/o/token/
+      api_url: https://auth.devandre.sbs/application/o/userinfo/
       tls_skip_verify_insecure: true
       scopes: openid profile email groups
       use_pkce: true

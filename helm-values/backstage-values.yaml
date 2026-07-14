@@ -113,7 +113,7 @@ backstage:
       url: https://raw.githubusercontent.com/andrelair-platform/minicloud-gitops/main/tech-radar.json
 
     grafana:
-      domain: https://grafana.10.0.0.200.nip.io
+      domain: https://grafana.devandre.sbs
     kubernetes:
       serviceLocatorMethod:
         type: 'multiTenant'
