@@ -56,3 +56,5 @@ spec:
       - "registry.k8s.io/"
       - "oci.external-secrets.io/"
       - "ecr-public.aws.com/"
+      # Plane CE — makeplane's own registry, no Harbor mirror available
+      - "artifacts.plane.so/"
