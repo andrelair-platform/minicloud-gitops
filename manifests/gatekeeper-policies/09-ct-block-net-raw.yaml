@@ -1,0 +1,44 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    metadata.gatekeeper.sh/title: "Block NET_RAW Capability"
+    metadata.gatekeeper.sh/description: "Blocks containers that add or retain the NET_RAW capability (CIS 5.2.8)."
+  name: k8sblocknetraw
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sBlockNetRaw
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sblocknetraw
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          has_net_raw(container)
+          msg := sprintf("Container '%v' must not use or retain the NET_RAW capability", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.initContainers[_]
+          has_net_raw(container)
+          msg := sprintf("initContainer '%v' must not use or retain the NET_RAW capability", [container.name])
+        }
+
+        has_net_raw(container) {
+          cap := container.securityContext.capabilities.add[_]
+          upper(cap) == "NET_RAW"
+        }
+
+        has_net_raw(container) {
+          not container.securityContext.capabilities.drop
+        }
+
+        has_net_raw(container) {
+          drops := {cap | cap := container.securityContext.capabilities.drop[_]}
+          not drops["ALL"]
+          not drops["NET_RAW"]
+        }

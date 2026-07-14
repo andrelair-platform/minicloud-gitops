@@ -1,0 +1,41 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    metadata.gatekeeper.sh/title: "Block Added Capabilities"
+    metadata.gatekeeper.sh/description: "Blocks containers that add capabilities beyond the default set (CIS 5.2.9)."
+  name: k8sblockcapabilities
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sBlockCapabilities
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            allowedCapabilities:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sblockcapabilities
+
+        allowed := {cap | cap := input.parameters.allowedCapabilities[_]}
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          cap := container.securityContext.capabilities.add[_]
+          not allowed[upper(cap)]
+          msg := sprintf("Container '%v' adds disallowed capability '%v'", [container.name, cap])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.initContainers[_]
+          cap := container.securityContext.capabilities.add[_]
+          not allowed[upper(cap)]
+          msg := sprintf("initContainer '%v' adds disallowed capability '%v'", [container.name, cap])
+        }
