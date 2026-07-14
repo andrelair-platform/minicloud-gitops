@@ -79,9 +79,9 @@ api:
   cpuRequest: "100m"
 
 worker:
-  memoryLimit: "512Mi"
+  memoryLimit: "1Gi"
   cpuLimit: "500m"
-  memoryRequest: "128Mi"
+  memoryRequest: "256Mi"
   cpuRequest: "50m"
 
 beatworker:
