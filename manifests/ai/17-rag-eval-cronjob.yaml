@@ -24,8 +24,6 @@ spec:
             app: rag-eval-online
         spec:
           restartPolicy: Never
-          imagePullSecrets:
-            - name: ghcr-pull-secret
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
