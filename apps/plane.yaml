@@ -40,3 +40,4 @@ spec:
         - /spec/template/metadata/labels/controller-uid
         - /spec/template/metadata/labels/batch.kubernetes.io~1job-name
         - /spec/template/metadata/labels/job-name
+        - /spec/template/metadata/annotations/timestamp
