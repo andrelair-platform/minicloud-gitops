@@ -179,6 +179,12 @@ data:
         tag: live
         url: https://nats.devandre.sbs
         target: _blank
+      - name: Plane
+        icon: fas fa-tasks
+        subtitle: "Project management (Microsoft Planner replacement) — email+password"
+        tag: live
+        url: https://plane.devandre.sbs
+        target: _blank
       - name: Nextcloud
         icon: fas fa-cloud
         subtitle: "Document collaboration & file sharing — OIDC via Authentik"
