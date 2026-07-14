@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minicloud-plane
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minicloud-plane
+  template:
+    metadata:
+      labels:
+        app: minicloud-plane
+    spec:
+      serviceAccountName: minicloud-plane
+      containers:
+        - name: minicloud-plane
+          image: harbor.10.0.0.200.nip.io/library/minicloud-plane
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: minicloud-plane-secrets
+          env:
+            - name: NATS_URL
+              value: nats://nats.nats.svc.cluster.local:4222
+            - name: PORT
+              value: "8080"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
