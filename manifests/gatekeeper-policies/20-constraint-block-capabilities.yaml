@@ -3,6 +3,7 @@ kind: K8sBlockCapabilities
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   name: block-added-capabilities
 spec:
   enforcementAction: deny
