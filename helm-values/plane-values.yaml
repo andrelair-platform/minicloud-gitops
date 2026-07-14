@@ -1,0 +1,91 @@
+planeVersion: "v1.3.1"
+
+ingress:
+  enabled: true
+  appHost: "plane.devandre.sbs"
+  ingressClass: "nginx"
+  ingress_annotations:
+    nginx.org/client-max-body-size: "50m"
+    nginx.org/proxy-connect-timeout: "120"
+    nginx.org/proxy-read-timeout: "120"
+
+ssl:
+  tls_secret_name: "plane-tls"
+
+redis:
+  local_setup: true
+  storageClass: "longhorn"
+  volumeSize: "500Mi"
+
+postgres:
+  local_setup: true
+  storageClass: "longhorn"
+  volumeSize: "5Gi"
+
+rabbitmq:
+  local_setup: true
+  storageClass: "longhorn"
+  volumeSize: "500Mi"
+
+minio:
+  local_setup: true
+  storageClass: "longhorn"
+  volumeSize: "10Gi"
+
+env:
+  cors_allowed_origins: "https://plane.devandre.sbs,https://plane.10.0.0.200.nip.io"
+  default_cluster_domain: cluster.local
+  doc_upload_size_limit: "5242880"
+  docstore_bucket: "uploads"
+  api_key_rate_limit: "60/minute"
+
+# All secrets come from Vault via ESO — chart skips creating its own Secrets
+external_secrets:
+  app_env_existingSecret: "plane-app-secrets"
+  pgdb_existingSecret: "plane-pgdb-secrets"
+  rabbitmq_existingSecret: "plane-rabbitmq-secrets"
+  doc_store_existingSecret: "plane-doc-store-secrets"
+  live_env_existingSecret: "plane-live-secrets"
+
+# Resource tuning — reduce defaults for homelab (8 components × 50m/50Mi requests)
+web:
+  memoryLimit: "512Mi"
+  cpuLimit: "500m"
+  memoryRequest: "128Mi"
+  cpuRequest: "50m"
+
+space:
+  memoryLimit: "512Mi"
+  cpuLimit: "500m"
+  memoryRequest: "128Mi"
+  cpuRequest: "50m"
+
+admin:
+  memoryLimit: "512Mi"
+  cpuLimit: "500m"
+  memoryRequest: "128Mi"
+  cpuRequest: "50m"
+
+live:
+  memoryLimit: "512Mi"
+  cpuLimit: "500m"
+  memoryRequest: "128Mi"
+  cpuRequest: "50m"
+
+api:
+  memoryLimit: "1Gi"
+  cpuLimit: "1000m"
+  memoryRequest: "256Mi"
+  cpuRequest: "100m"
+
+worker:
+  memoryLimit: "512Mi"
+  cpuLimit: "500m"
+  memoryRequest: "128Mi"
+  cpuRequest: "50m"
+
+beatworker:
+  memoryLimit: "256Mi"
+  cpuLimit: "200m"
+  memoryRequest: "64Mi"
+  cpuRequest: "25m"

@@ -1,0 +1,72 @@
+---
+# Supplemental Ingress for internal nip.io access via Tailscale.
+# The Helm chart creates one ingress for plane.devandre.sbs only.
+# This adds a matching server block for plane.10.0.0.200.nip.io.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: plane-nip
+  namespace: productivity
+  annotations:
+    nginx.org/client-max-body-size: "50m"
+    nginx.org/proxy-connect-timeout: "120"
+    nginx.org/proxy-read-timeout: "120"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: plane.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: plane-ce-web
+                port:
+                  number: 3000
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: plane-ce-api
+                port:
+                  number: 8000
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: plane-ce-api
+                port:
+                  number: 8000
+          - path: /live/
+            pathType: Prefix
+            backend:
+              service:
+                name: plane-ce-live
+                port:
+                  number: 3000
+          - path: /spaces
+            pathType: Prefix
+            backend:
+              service:
+                name: plane-ce-space
+                port:
+                  number: 3000
+          - path: /god-mode
+            pathType: Prefix
+            backend:
+              service:
+                name: plane-ce-admin
+                port:
+                  number: 3000
+          - path: /uploads
+            pathType: Prefix
+            backend:
+              service:
+                name: plane-ce-minio
+                port:
+                  number: 9000
+  tls:
+    - hosts:
+        - plane.10.0.0.200.nip.io
+      secretName: plane-tls

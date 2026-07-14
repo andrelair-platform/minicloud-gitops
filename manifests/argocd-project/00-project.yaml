@@ -34,6 +34,7 @@ spec:
     - https://nextcloud.github.io/helm/
     - https://open-policy-agent.github.io/gatekeeper/charts
     - https://otwld.github.io/ollama-helm/
+    - https://helm.plane.so/
     - https://prometheus-community.github.io/helm-charts
     - https://stefanprodan.github.io/podinfo
     - https://vmware-tanzu.github.io/helm-charts
@@ -109,6 +110,8 @@ spec:
     - namespace: observability
       server: https://kubernetes.default.svc
     - namespace: podinfo
+      server: https://kubernetes.default.svc
+    - namespace: productivity
       server: https://kubernetes.default.svc
     - namespace: polaris
       server: https://kubernetes.default.svc
