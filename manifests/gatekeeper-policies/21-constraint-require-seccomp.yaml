@@ -3,6 +3,7 @@ kind: K8sRequireSeccomp
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   name: require-seccomp
 spec:
   enforcementAction: warn
