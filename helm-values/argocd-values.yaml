@@ -171,7 +171,7 @@ server:
 repoServer:
   resources:
     requests: { cpu: 50m,  memory: 256Mi }
-    limits:   { cpu: 1000m, memory: 1500Mi }
+    limits:   { cpu: 1000m, memory: 2500Mi }
 
 controller:
   resources:
