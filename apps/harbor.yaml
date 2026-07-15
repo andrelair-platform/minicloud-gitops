@@ -44,7 +44,8 @@ spec:
         - /data/secret
         - /data/secretKey
         - /data/CSRF_KEY
-    - kind: Deployment
+    - group: apps
+      kind: Deployment
       namespace: harbor
       jsonPointers:
         - /spec/template/metadata/annotations/checksum~1secret
