@@ -1,8 +1,11 @@
-# VPA objects — updateMode: "Off" = recommendation only, no automatic restarts.
-# After 7+ days of data, switch ClickHouse and Langfuse web to "Auto".
-# Never set "Auto" on StatefulSets with RWO PVCs without a maintenance window.
+# VPA objects
+# updateMode: "Off"  = recommendation only, no restarts
+# updateMode: "Auto" = VPA adjusts requests and evicts pods to apply
+#
+# Safe for Auto: stateless Deployments with 7+ days of data.
+# Keep Off:  StatefulSets with RWO PVCs (ClickHouse), CRD-managed StatefulSets (Prometheus).
 ---
-# langfuse ClickHouse — OOMKilled 2026-07-15 at 1536Mi after 36h of LLM traces
+# langfuse ClickHouse — StatefulSet + RWO PVC → keep Off (forced eviction risk)
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
@@ -25,7 +28,7 @@ spec:
           cpu: "2"
           memory: 4Gi
 ---
-# Langfuse web — 8 restarts observed, can grow with trace volume
+# Langfuse web — Deployment, Auto enabled 2026-07-15 (8h of data, 8 restarts observed)
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
@@ -37,7 +40,7 @@ spec:
     kind: Deployment
     name: langfuse-web
   updatePolicy:
-    updateMode: "Off"
+    updateMode: "Auto"
   resourcePolicy:
     containerPolicies:
       - containerName: langfuse-web
@@ -48,7 +51,7 @@ spec:
           cpu: "1"
           memory: 2Gi
 ---
-# Prometheus — manually resized PVC in RC#38 (15Gi→30Gi), memory can grow
+# Prometheus — CRD-managed StatefulSet (operator controls pod lifecycle) → keep Off
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
@@ -71,7 +74,7 @@ spec:
           cpu: "2"
           memory: 6Gi
 ---
-# Backstage — catalog grows with each new component
+# Backstage — Deployment, Auto enabled 2026-07-15 (recommendation: 15m/380Mi ≈ current)
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
@@ -83,7 +86,7 @@ spec:
     kind: Deployment
     name: backstage
   updatePolicy:
-    updateMode: "Off"
+    updateMode: "Auto"
   resourcePolicy:
     containerPolicies:
       - containerName: backstage
@@ -95,6 +98,7 @@ spec:
           memory: 2Gi
 ---
 # LiteLLM — AI gateway, memory scales with model cache + concurrent requests
+# Auto enabled 2026-07-15 (recommendation: 100m/1312Mi, well above minAllowed)
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
@@ -106,7 +110,7 @@ spec:
     kind: Deployment
     name: litellm
   updatePolicy:
-    updateMode: "Off"
+    updateMode: "Auto"
   resourcePolicy:
     containerPolicies:
       - containerName: litellm

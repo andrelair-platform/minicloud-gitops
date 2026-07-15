@@ -15,7 +15,6 @@ spec:
     server: https://kubernetes.default.svc
     namespace: platform-demo-dev
   syncPolicy:
-    # Dev auto-syncs on every CI push — CI updates overlays/dev/kustomization.yaml
     automated:
       prune: true
       selfHeal: true
@@ -24,10 +23,12 @@ spec:
       - ServerSideApply=true
       - ServerSideDiff=true
       - RespectIgnoreDifferences=true
+      - SkipDryRunOnMissingResource=true
   ignoreDifferences:
-    - group: apps
-      kind: Deployment
+    - group: argoproj.io
+      kind: Rollout
       name: platform-demo
       namespace: platform-demo-dev
       jqPathExpressions:
         - .spec.replicas
+        - .spec.template.metadata.annotations

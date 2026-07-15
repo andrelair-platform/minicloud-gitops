@@ -15,17 +15,17 @@ spec:
     server: https://kubernetes.default.svc
     namespace: platform-demo-staging
   syncPolicy:
-    # Staging sync is manual — promote by opening a PR bumping the tag in
-    # overlays/staging/kustomization.yaml, then sync in ArgoCD UI.
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
       - ServerSideDiff=true
       - RespectIgnoreDifferences=true
+      - SkipDryRunOnMissingResource=true
   ignoreDifferences:
-    - group: apps
-      kind: Deployment
+    - group: argoproj.io
+      kind: Rollout
       name: platform-demo
       namespace: platform-demo-staging
       jqPathExpressions:
         - .spec.replicas
+        - .spec.template.metadata.annotations

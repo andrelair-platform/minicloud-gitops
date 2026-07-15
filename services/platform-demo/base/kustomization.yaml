@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
+  - analysis-template.yaml
 # images: block is intentionally absent from base.
 # Each overlay pins its own image tag so that a CI push to main
 # only promotes the dev overlay — staging and prod require explicit PRs.

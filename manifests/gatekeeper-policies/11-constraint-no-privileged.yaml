@@ -32,5 +32,6 @@ spec:
             - kured
             - productivity
             - monitoring
+            - argo-rollouts
             - vpa-system
             - system-upgrade
