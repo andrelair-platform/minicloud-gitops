@@ -40,6 +40,10 @@ spec:
               value: "true"
             - name: ALLOW_META_IP_ADDRESS
               value: "true"
+          securityContext:
+            capabilities:
+              drop:
+                - NET_RAW
           resources:
             requests:
               cpu: 250m
