@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: documentserver
-          image: harbor.10.0.0.200.nip.io/library/onlyoffice:0f27859-amd64
+          image: harbor.10.0.0.200.nip.io/library/onlyoffice:9a8a5b4-amd64
           ports:
             - containerPort: 80
               name: http
