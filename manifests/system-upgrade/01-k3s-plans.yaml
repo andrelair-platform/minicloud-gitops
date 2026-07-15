@@ -1,0 +1,58 @@
+# k3s upgrade Plans — system-upgrade-controller v0.19.2
+# Target: v1.36.2+k3s2 (aligns all nodes; currently set-hog/fast-*/fast-heron on v1.36.1+k3s1)
+# Server plan runs first, agent plan waits for server to complete.
+# To upgrade to a new version: change the version field below and commit.
+# To PAUSE upgrades: set spec.concurrency: 0 or add a label selector that matches nothing.
+---
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: k3s-server
+  namespace: system-upgrade
+spec:
+  concurrency: 1
+  cordon: true
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/control-plane: "true"
+  serviceAccountName: system-upgrade
+  version: v1.36.2+k3s2
+  upgrade:
+    image: rancher/k3s-upgrade
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+    - effect: NoExecute
+      operator: Exists
+    - effect: NoSchedule
+      operator: Exists
+---
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: k3s-agent
+  namespace: system-upgrade
+spec:
+  concurrency: 1
+  cordon: true
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: DoesNotExist
+  prepare:
+    # Wait for the server plan to complete before upgrading agents
+    image: rancher/k3s-upgrade
+    args:
+      - prepare
+      - k3s-server
+  serviceAccountName: system-upgrade
+  version: v1.36.2+k3s2
+  upgrade:
+    image: rancher/k3s-upgrade
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+    - effect: NoExecute
+      operator: Exists
+    - effect: NoSchedule
+      operator: Exists

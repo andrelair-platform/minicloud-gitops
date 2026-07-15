@@ -32,4 +32,6 @@ spec:
             - falco
             - kured
             - productivity
+            - vpa-system
+            - system-upgrade
             - monitoring
