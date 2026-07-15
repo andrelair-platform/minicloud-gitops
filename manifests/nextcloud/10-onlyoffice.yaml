@@ -17,6 +17,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: onlyoffice
+        backstage.io/kubernetes-id: onlyoffice
     spec:
       containers:
         - name: documentserver

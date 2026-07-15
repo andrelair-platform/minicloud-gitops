@@ -7,6 +7,9 @@ backstage:
   strategy:
     type: Recreate
 
+  podLabels:
+    backstage.io/kubernetes-id: backstage
+
   image:
     # Phase 24 custom image — built from andrelair-platform/minicloud-backstage
     registry: harbor.10.0.0.200.nip.io
