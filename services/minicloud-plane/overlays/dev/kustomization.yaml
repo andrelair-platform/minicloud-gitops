@@ -5,4 +5,4 @@ resources:
 - ../../base
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-plane
-  newTag: dev-acaa05d
+  newTag: dev-1b6b40f
