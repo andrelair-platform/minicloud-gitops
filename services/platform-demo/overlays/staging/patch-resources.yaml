@@ -8,6 +8,7 @@ spec:
     spec:
       containers:
         - name: platform-demo
+          image: harbor.10.0.0.200.nip.io/library/platform-demo:placeholder
           resources:
             requests:
               cpu: 50m
