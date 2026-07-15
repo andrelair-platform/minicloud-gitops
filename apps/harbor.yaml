@@ -44,6 +44,14 @@ spec:
         - /data/secret
         - /data/secretKey
         - /data/CSRF_KEY
+    - kind: Deployment
+      namespace: harbor
+      jqPathExpressions:
+        - .spec.template.metadata.annotations["checksum/secret"]
+        - .spec.template.metadata.annotations["checksum/secret-core"]
+        - .spec.template.metadata.annotations["checksum/secret-jobservice"]
+        - .spec.template.metadata.annotations["checksum/configmap"]
+        - .spec.template.metadata.annotations["checksum/configmap-env"]
     - kind: PersistentVolumeClaim
       jsonPointers:
         - /spec/volumeName
