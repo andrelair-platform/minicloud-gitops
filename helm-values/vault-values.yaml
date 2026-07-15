@@ -16,11 +16,12 @@ server:
 
   updateStrategyType: RollingUpdate
 
-  securityContext:
-    container:
-      capabilities:
-        drop:
-          - NET_RAW
+  statefulSet:
+    securityContext:
+      container:
+        capabilities:
+          drop:
+            - NET_RAW
 
   resources:
     requests:
