@@ -38,6 +38,7 @@ env:
   doc_upload_size_limit: "5242880"
   docstore_bucket: "uploads"
   api_key_rate_limit: "60/minute"
+  webhook_allowed_hosts: "minicloud-plane.minicloud-plane-dev.svc.cluster.local"
 
 # All secrets come from Vault via ESO — chart skips creating its own Secrets
 external_secrets:
