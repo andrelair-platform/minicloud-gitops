@@ -86,9 +86,20 @@ backstage:
               resolvers:
                 - resolver: emailMatchingUserEntityProfileEmail
                 - resolver: emailLocalPartMatchingUserEntityName
+    integrations:
+      github:
+        - host: github.com
+          token: ${GITHUB_TOKEN}
+
+    scaffolder:
+      defaultAuthor:
+        name: AndreLiar
+        email: andrelaurelyvan.kanmegnetabouguie@ynov.com
+      defaultCommitMessage: "feat: scaffold initial service structure"
+
     catalog:
       rules:
-        - allow: [Component, System, API, Resource, Location, User, Group]
+        - allow: [Component, System, API, Resource, Location, User, Group, Template]
       locations:
         # Use raw.githubusercontent.com for direct (anonymous, no rate-limit
         # surprises) file fetches. Backstage's `url` location reader handles
@@ -121,6 +132,8 @@ backstage:
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-open-webui/main/catalog-info.yaml
         - type: url
           target: https://raw.githubusercontent.com/andrelair-platform/ktayl-solution-web/main/catalog-info.yaml
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/go-service/template.yaml
     proxy:
       endpoints:
         '/minicloud-plane':
@@ -204,6 +217,11 @@ backstage:
         secretKeyRef:
           name: backstage-phase24-secret
           key: argocd-password
+    - name: GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: backstage-github-secret
+          key: github-token
 
 # Disable the chart's Ingress — we'll add our own with cert-manager TLS.
 ingress:
