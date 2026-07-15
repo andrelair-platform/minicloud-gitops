@@ -30,3 +30,7 @@ spec:
             - velero
             - falco
             - kured
+            - productivity
+            - monitoring
+            - vpa-system
+            - system-upgrade

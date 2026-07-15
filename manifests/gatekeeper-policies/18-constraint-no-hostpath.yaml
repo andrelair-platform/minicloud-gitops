@@ -32,3 +32,4 @@ spec:
             - observability     # promtail: /var/log/pods, /var/lib/docker/containers
             - velero            # node-agent: /var/lib/kubelet/pods
             - kured             # mounts /var/run hostPath to read reboot-required sentinel
+            - system-upgrade    # upgrade Jobs mount /var/run/secrets for node access
