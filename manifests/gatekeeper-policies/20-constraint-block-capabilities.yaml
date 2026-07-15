@@ -32,5 +32,6 @@ spec:
             - falco
             - kured
             - productivity
+            - monitoring
   parameters:
     allowedCapabilities: []

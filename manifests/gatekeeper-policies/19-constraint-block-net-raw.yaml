@@ -32,3 +32,4 @@ spec:
             - falco
             - kured
             - productivity
+            - monitoring
