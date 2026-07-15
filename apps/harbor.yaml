@@ -39,6 +39,11 @@ spec:
       namespace: harbor
       jsonPointers:
         - /data/HARBOR_ADMIN_PASSWORD
+        - /data/tls.crt
+        - /data/tls.key
+        - /data/secret
+        - /data/secretKey
+        - /data/CSRF_KEY
     - kind: PersistentVolumeClaim
       jsonPointers:
         - /spec/volumeName
