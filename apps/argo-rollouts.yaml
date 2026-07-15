@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: "2.41.0"
+    helm:
+      values: |
+        controller:
+          containerSecurityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          podSecurityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+        dashboard:
+          enabled: true
+          containerSecurityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

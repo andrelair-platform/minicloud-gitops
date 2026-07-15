@@ -158,6 +158,13 @@ backstage:
               serviceAccountToken: ${K8S_SA_TOKEN}
               caData: ${K8S_CA_DATA}
               skipTLSVerify: false
+    techdocs:
+      builder: 'local'
+      generator:
+        runIn: 'local'
+      publisher:
+        type: 'local'
+
     argocd:
       username: ${ARGOCD_USERNAME}
       password: ${ARGOCD_PASSWORD}

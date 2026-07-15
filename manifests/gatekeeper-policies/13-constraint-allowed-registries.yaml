@@ -45,6 +45,7 @@ spec:
             - polaris
             - langfuse
             - productivity
+            - argo-rollouts
             - vpa-system
             - system-upgrade     # Plane CE — bundled postgres/valkey/rabbitmq/minio/busybox use short-form image names (no docker.io/ prefix)
   parameters:
