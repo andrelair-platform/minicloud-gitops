@@ -208,3 +208,6 @@ spec:
     # Velero backup CRs (namespace-scoped in velero ns)
     - group: "velero.io"
       kind: "*"
+    # system-upgrade-controller Plans
+    - group: "upgrade.cattle.io"
+      kind: "*"
