@@ -9,6 +9,6 @@ resources:
 # ArgoCD syncPolicy.automated is disabled for prod — requires manual sync click.
 images:
 - name: harbor.10.0.0.200.nip.io/library/platform-demo
-  newTag: cada303
+  newTag: ba31b3f
 patches:
 - path: patch-resources.yaml
