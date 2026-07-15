@@ -3,6 +3,15 @@ image:
 
 nextcloud:
   host: cloud.devandre.sbs
+  securityContext:
+    capabilities:
+      drop:
+        - NET_RAW
+  postgreSqlInitContainer:
+    securityContext:
+      capabilities:
+        drop:
+          - NET_RAW
   username: admin
   existingSecret:
     enabled: true

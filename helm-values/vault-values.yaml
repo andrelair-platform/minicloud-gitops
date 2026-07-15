@@ -14,6 +14,12 @@ server:
   extraLabels:
     backstage.io/kubernetes-id: vault
 
+  securityContext:
+    container:
+      capabilities:
+        drop:
+          - NET_RAW
+
   resources:
     requests:
       cpu: 250m
