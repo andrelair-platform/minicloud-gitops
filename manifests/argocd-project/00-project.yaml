@@ -211,3 +211,6 @@ spec:
     # system-upgrade-controller Plans
     - group: "upgrade.cattle.io"
       kind: "*"
+    # VPA objects (VerticalPodAutoscaler)
+    - group: "autoscaling.k8s.io"
+      kind: "*"
