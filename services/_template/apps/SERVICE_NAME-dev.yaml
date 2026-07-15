@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: SERVICE_NAME-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/SERVICE_NAME/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: SERVICE_NAME-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ServerSideDiff=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: SERVICE_NAME
+      namespace: SERVICE_NAME-dev
+      jqPathExpressions:
+        - .spec.replicas
