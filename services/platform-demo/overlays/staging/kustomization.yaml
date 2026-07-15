@@ -10,3 +10,8 @@ images:
     newTag: "0b7cb75"
 patches:
   - path: patch-resources.yaml
+    target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Rollout
+      name: platform-demo

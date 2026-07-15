@@ -1,18 +1,12 @@
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
-metadata:
-  name: platform-demo
-spec:
-  replicas: 1
-  template:
-    spec:
-      containers:
-        - name: platform-demo
-          image: harbor.10.0.0.200.nip.io/library/platform-demo:placeholder
-          resources:
-            requests:
-              cpu: 10m
-              memory: 16Mi
-            limits:
-              cpu: 100m
-              memory: 64Mi
+- op: replace
+  path: /spec/replicas
+  value: 1
+- op: replace
+  path: /spec/template/spec/containers/0/resources
+  value:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi

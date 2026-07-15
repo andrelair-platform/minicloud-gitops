@@ -11,3 +11,8 @@ images:
     newTag: "db79910"
 patches:
   - path: patch-resources.yaml
+    target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Rollout
+      name: platform-demo
