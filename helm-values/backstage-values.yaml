@@ -134,6 +134,8 @@ backstage:
           target: https://raw.githubusercontent.com/andrelair-platform/ktayl-solution-web/main/catalog-info.yaml
         - type: url
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/go-service/template.yaml
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/custom-image/template.yaml
     proxy:
       endpoints:
         '/minicloud-plane':
@@ -222,6 +224,13 @@ backstage:
         secretKeyRef:
           name: backstage-github-secret
           key: github-token
+    - name: VAULT_ADDR
+      value: https://vault.10.0.0.200.nip.io
+    - name: VAULT_SCAFFOLDER_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: backstage-vault-secret
+          key: vault-scaffolder-token
 
 # Disable the chart's Ingress — we'll add our own with cert-manager TLS.
 ingress:
