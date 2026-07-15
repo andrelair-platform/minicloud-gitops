@@ -179,6 +179,8 @@ alertmanager:
               storage: 1Gi
 
 grafana:
+  initChownData:
+    enabled: false
   podLabels:
     backstage.io/kubernetes-id: grafana
   admin:
