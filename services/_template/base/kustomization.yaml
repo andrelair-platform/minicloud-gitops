@@ -3,5 +3,4 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
-# No images: block here — each overlay pins its own tag.
-# No namespace: here — each overlay sets its own namespace.
+  - vpa.yaml
