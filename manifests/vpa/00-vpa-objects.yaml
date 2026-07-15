@@ -1,0 +1,118 @@
+# VPA objects — updateMode: "Off" = recommendation only, no automatic restarts.
+# After 7+ days of data, switch ClickHouse and Langfuse web to "Auto".
+# Never set "Auto" on StatefulSets with RWO PVCs without a maintenance window.
+---
+# langfuse ClickHouse — OOMKilled 2026-07-15 at 1536Mi after 36h of LLM traces
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: langfuse-clickhouse
+  namespace: langfuse
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: langfuse-clickhouse-shard0
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: clickhouse
+        minAllowed:
+          cpu: 200m
+          memory: 512Mi
+        maxAllowed:
+          cpu: "2"
+          memory: 4Gi
+---
+# Langfuse web — 8 restarts observed, can grow with trace volume
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: langfuse-web
+  namespace: langfuse
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: langfuse-web
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: langfuse-web
+        minAllowed:
+          cpu: 100m
+          memory: 256Mi
+        maxAllowed:
+          cpu: "1"
+          memory: 2Gi
+---
+# Prometheus — manually resized PVC in RC#38 (15Gi→30Gi), memory can grow
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  targetRef:
+    apiVersion: monitoring.coreos.com/v1
+    kind: Prometheus
+    name: kps-prometheus
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: prometheus
+        minAllowed:
+          cpu: 200m
+          memory: 512Mi
+        maxAllowed:
+          cpu: "2"
+          memory: 6Gi
+---
+# Backstage — catalog grows with each new component
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backstage
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: backstage
+        minAllowed:
+          cpu: 100m
+          memory: 256Mi
+        maxAllowed:
+          cpu: "1"
+          memory: 2Gi
+---
+# LiteLLM — AI gateway, memory scales with model cache + concurrent requests
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: litellm
+  namespace: ai
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: litellm
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: litellm
+        minAllowed:
+          cpu: 100m
+          memory: 256Mi
+        maxAllowed:
+          cpu: "2"
+          memory: 3Gi

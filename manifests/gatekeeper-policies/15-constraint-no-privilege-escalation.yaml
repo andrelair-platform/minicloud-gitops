@@ -32,4 +32,6 @@ spec:
             - authentik       # Bitnami chart init containers
             - langfuse        # Langfuse v3 + ClickHouse/Zookeeper/Valkey bitnami images
             - kured           # kured DaemonSet requires privilege escalation for nsenter reboot
-            - productivity    # Plane CE — chart does not expose allowPrivilegeEscalation in values
+            - productivity
+            - vpa-system
+            - system-upgrade    # Plane CE — chart does not expose allowPrivilegeEscalation in values

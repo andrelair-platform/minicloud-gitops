@@ -44,7 +44,9 @@ spec:
             - observability
             - polaris
             - langfuse
-            - productivity     # Plane CE — bundled postgres/valkey/rabbitmq/minio/busybox use short-form image names (no docker.io/ prefix)
+            - productivity
+            - vpa-system
+            - system-upgrade     # Plane CE — bundled postgres/valkey/rabbitmq/minio/busybox use short-form image names (no docker.io/ prefix)
   parameters:
     registries:
       # Private registry — platform images

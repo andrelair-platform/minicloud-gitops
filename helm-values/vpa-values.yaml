@@ -1,0 +1,28 @@
+# Vertical Pod Autoscaler — fairwinds-stable/vpa 4.12.3 (VPA 1.6.0)
+# Deployed in warn/recommendation-only mode initially.
+# ClickHouse, Langfuse, Backstage, and Prometheus VPA objects are in
+# manifests/vpa/ — switch updateMode: "Auto" per-workload when stable.
+
+recommender:
+  enabled: true
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
+
+updater:
+  enabled: true
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
+
+admissionController:
+  enabled: true
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
+  # Generate a fresh cert for the webhook — cert-manager not required
+  generateCertificate: true
+  certGen:
+    image:
+      repository: registry.k8s.io/ingress-nginx/kube-webhook-certgen
+      tag: v1.4.4
