@@ -127,7 +127,14 @@ clickhouse:
   clusterEnabled: false
   replicaCount: 1
   shards: 1
-  resourcesPreset: "medium"
+  resourcesPreset: "none"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2560Mi
   auth:
     username: default
     existingSecret: langfuse-secrets
