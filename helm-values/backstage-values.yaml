@@ -21,6 +21,15 @@ backstage:
     requests: { cpu: 100m, memory: 384Mi }
     limits:   { cpu: 1000m, memory: 1Gi }
 
+  # Startup probe: Node.js startup can take 60-120s; VPA may assign low CPU on first start.
+  # Give 5 min (30 × 10s) before kubelet kills — after startup, liveness/readiness take over.
+  startupProbe:
+    httpGet:
+      path: /.backstage/health/v1/liveness
+      port: 7007
+    failureThreshold: 30
+    periodSeconds: 10
+
   containerSecurityContext:
     allowPrivilegeEscalation: false
     capabilities:

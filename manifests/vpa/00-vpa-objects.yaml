@@ -74,7 +74,8 @@ spec:
           cpu: "2"
           memory: 6Gi
 ---
-# Backstage — Deployment, Auto enabled 2026-07-15 (recommendation: 15m/380Mi ≈ current)
+# Backstage — Deployment, Auto enabled 2026-07-15
+# minAllowed.cpu=200m: Node.js startup needs ~150m; VPA must not starve it below this.
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
@@ -91,8 +92,8 @@ spec:
     containerPolicies:
       - containerName: backstage
         minAllowed:
-          cpu: 100m
-          memory: 256Mi
+          cpu: 200m
+          memory: 300Mi
         maxAllowed:
           cpu: "1"
           memory: 2Gi
