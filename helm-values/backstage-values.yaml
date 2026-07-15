@@ -110,6 +110,13 @@ backstage:
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-postgresql-noavx512/main/catalog-info.yaml
         - type: url
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-litellm-custom/main/catalog-info.yaml
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-plane/main/catalog-info.yaml
+    proxy:
+      endpoints:
+        '/minicloud-plane':
+          target: 'http://minicloud-plane.minicloud-plane-dev.svc.cluster.local:8080'
+          changeOrigin: true
     techRadar:
       url: https://raw.githubusercontent.com/andrelair-platform/minicloud-gitops/main/tech-radar.json
 
