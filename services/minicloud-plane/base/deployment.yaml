@@ -11,6 +11,7 @@ spec:
     metadata:
       labels:
         app: minicloud-plane
+        backstage.io/kubernetes-id: minicloud-plane
     spec:
       serviceAccountName: minicloud-plane
       containers:
