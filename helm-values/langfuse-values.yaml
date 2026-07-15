@@ -22,6 +22,11 @@ langfuse:
       labels:
         backstage.io/kubernetes-id: langfuse
 
+  securityContext:
+    capabilities:
+      drop:
+        - NET_RAW
+
   logging:
     level: info
     format: json

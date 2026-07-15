@@ -32,6 +32,10 @@ authentik:
 server:
   enabled: true
   replicas: 1
+  containerSecurityContext:
+    capabilities:
+      drop:
+        - NET_RAW
   resources:
     requests: { cpu: 100m, memory: 384Mi }
     limits:   { cpu: 1000m, memory: 768Mi }
@@ -53,6 +57,10 @@ server:
 worker:
   enabled: true
   replicas: 1
+  containerSecurityContext:
+    capabilities:
+      drop:
+        - NET_RAW
   resources:
     requests: { cpu: 50m,  memory: 256Mi }
     limits:   { cpu: 500m, memory: 512Mi }
