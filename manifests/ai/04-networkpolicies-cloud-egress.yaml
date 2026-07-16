@@ -29,7 +29,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: ollama
+      app.kubernetes.io/name: ollama
   policyTypes:
     - Egress
   egress:
