@@ -21,7 +21,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: markitdown-proxy
-          image: harbor.10.0.0.200.nip.io/library/markitdown-proxy:db53b57-amd64
+          image: harbor.10.0.0.200.nip.io/library/markitdown-proxy:97db3bf-amd64
           ports:
             - containerPort: 8000
           env:
