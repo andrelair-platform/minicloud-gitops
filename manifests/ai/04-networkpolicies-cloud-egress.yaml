@@ -1,6 +1,6 @@
 ---
 # Allow LiteLLM pods to reach cloud model providers (Groq, etc.) on port 443.
-# Scoped to app=litellm only — Ollama and Open WebUI remain internet-blocked.
+# Scoped to app=litellm only — Ollama egress is handled by a separate policy below.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -15,4 +15,26 @@ spec:
   egress:
     - ports:
         - port: 443
+          protocol: TCP
+---
+# Allow Ollama pods to reach registry.ollama.ai on port 443 for model pulls.
+# Scoped to app=ollama only. Required any time a new model is pulled via
+# `ollama pull` inside the pod. Can be removed after all models are cached
+# locally, but keeping it allows future `ollama pull` without manifest changes.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ollama-registry-egress
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels:
+      app: ollama
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 443
+          protocol: TCP
+        - port: 80
           protocol: TCP
