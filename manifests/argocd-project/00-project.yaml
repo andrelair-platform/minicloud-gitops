@@ -37,6 +37,7 @@ spec:
     - https://helm.plane.so/
     - https://prometheus-community.github.io/helm-charts
     - https://stefanprodan.github.io/podinfo
+    - https://stakater.github.io/stakater-charts
     - https://vmware-tanzu.github.io/helm-charts
 
   destinations:
@@ -134,6 +135,8 @@ spec:
     - namespace: vpa-system
       server: https://kubernetes.default.svc
     - namespace: system-upgrade
+      server: https://kubernetes.default.svc
+    - namespace: reloader
       server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
