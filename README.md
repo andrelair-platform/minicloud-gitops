@@ -15,9 +15,9 @@
 
 ## Screenshots
 
-| MAAS — Bare-Metal Node Provisioning | set-hog — k3s Control Plane |
+| ArgoCD — All Platform Applications | MAAS — Bare-Metal Node Provisioning |
 |---|---|
-| ![MAAS](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/maas-machines-overview.png) | ![set-hog](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/set-hog-detail.png) |
+| ![ArgoCD](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/screenshot-argocd.png) | ![MAAS](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/maas-machines-overview.png) |
 
 | fast-skunk — k3s Worker | fast-heron — k3s Worker |
 |---|---|
