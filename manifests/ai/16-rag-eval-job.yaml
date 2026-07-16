@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: rag-eval
-          image: harbor.10.0.0.200.nip.io/library/rag-eval:1f1200c
+          image: harbor.10.0.0.200.nip.io/library/rag-eval:3feaf22
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
