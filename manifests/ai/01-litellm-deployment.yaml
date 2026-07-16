@@ -5,6 +5,8 @@ metadata:
   namespace: ai
   labels:
     app: litellm
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
   replicas: 1
   selector:
