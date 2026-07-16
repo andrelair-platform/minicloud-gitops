@@ -31,7 +31,6 @@
 - [Features](#features)
 - [Architecture](#architecture)
 - [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
 - [AI Platform](#ai-platform)
 - [Security Hardening](#security-hardening)
 - [Adding a New Service](#adding-a-new-service)
@@ -125,44 +124,6 @@ To verify cluster state locally:
 ```bash
 kubectl --context minicloud get applications -n argocd
 kubectl --context minicloud get pods -A
-```
-
----
-
-## Project Structure
-
-```
-.
-├── bootstrap/
-│   └── root-app.yaml              # one-time apply — creates the app-of-apps root Application
-├── apps/                          # one Application YAML per workload
-│   ├── litellm.yaml               # Enterprise AI Gateway (multi-provider routing)
-│   ├── langfuse.yaml              # LLMOps — traces, scores, prompt management
-│   ├── ollama.yaml / ollama-secondary.yaml / ollama-tertiary.yaml
-│   ├── open-webui.yaml            # Chat UI + RAG + BM25 + cross-encoder re-ranker
-│   ├── vault.yaml                 # HashiCorp Vault (AWS KMS auto-unseal)
-│   ├── kube-prometheus-stack.yaml # Prometheus + Grafana + Alertmanager
-│   ├── backstage.yaml             # Internal developer portal
-│   ├── environments.yaml          # ApplicationSet: insurance/collab × dev/staging/prod
-│   └── ...
-├── helm-values/                   # all Helm values files (canonical — never edit ansible/helm-values/)
-│   ├── litellm-values.yaml
-│   ├── open-webui-values.yaml
-│   ├── backstage-values.yaml      # bumped automatically by minicloud-backstage CI
-│   ├── kube-prometheus-stack-values.yaml
-│   └── ...
-├── manifests/                     # raw Kubernetes manifests (grouped by concern)
-│   ├── ai/                        # LiteLLM config, RAG pipeline, Docling, eval jobs
-│   ├── argocd-project/            # AppProject — locked sourceRepos + clusterResourceWhitelist
-│   ├── eso-platform-secrets/      # ExternalSecrets pulling credentials from Vault KV
-│   ├── gatekeeper-policies/       # ConstraintTemplates + Constraints (all deny mode)
-│   ├── network-policies/          # default-deny ingress + explicit allow rules per namespace
-│   ├── quotas/                    # ResourceQuota + LimitRange per namespace
-│   └── rbac/                      # ClusterRoleBindings + accepted-risks documentation
-├── services/                      # Kustomize base+overlays for internal services
-│   ├── platform-demo/             # Go CI/CD demo (base + dev/staging/prod overlays)
-│   └── _template/                 # scaffold — copy this for new services
-└── tech-radar.json                # Tech Radar data (read live by Backstage — no rebuild needed)
 ```
 
 ---
