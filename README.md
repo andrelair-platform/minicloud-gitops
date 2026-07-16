@@ -19,9 +19,9 @@
 |---|---|
 | ![ArgoCD](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/screenshot-argocd.png) | ![Grafana](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/screenshot-grafana.png) |
 
-| MAAS — Bare-Metal Node Provisioning | set-hog — k3s Control Plane |
+| Homer — Platform Service Dashboard | MAAS — Bare-Metal Node Provisioning |
 |---|---|
-| ![MAAS](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/maas-machines-overview.png) | ![set-hog](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/set-hog-detail.png) |
+| ![Homer](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/screenshot-homer.png) | ![MAAS](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/maas-machines-overview.png) |
 
 ---
 
