@@ -15,13 +15,13 @@
 
 ## Screenshots
 
-| ArgoCD — All Platform Applications | MAAS — Bare-Metal Node Provisioning |
+| ArgoCD — All Platform Applications | Grafana — Kubernetes Cluster Dashboards |
 |---|---|
-| ![ArgoCD](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/screenshot-argocd.png) | ![MAAS](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/maas-machines-overview.png) |
+| ![ArgoCD](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/screenshot-argocd.png) | ![Grafana](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/screenshot-grafana.png) |
 
-| fast-skunk — k3s Worker | fast-heron — k3s Worker |
+| MAAS — Bare-Metal Node Provisioning | set-hog — k3s Control Plane |
 |---|---|
-| ![fast-skunk](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/fast-skunk-detail.png) | ![fast-heron](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/fast-heron-detail.png) |
+| ![MAAS](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/maas-machines-overview.png) | ![set-hog](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/set-hog-detail.png) |
 
 ---
 
