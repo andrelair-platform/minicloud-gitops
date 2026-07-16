@@ -34,7 +34,7 @@ spec:
       containers:
         - name: web
           # CI bumps this tag on every push to main
-          image: harbor.10.0.0.200.nip.io/library/ktayl-solution-web:8e9f347
+          image: harbor.10.0.0.200.nip.io/library/ktayl-solution-web:4836293
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
