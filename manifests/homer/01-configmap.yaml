@@ -43,33 +43,27 @@ data:
       items:
       - name: MAAS
         icon: fas fa-network-wired
-        subtitle: "Bare-metal provisioning — Tailscale only"
+        subtitle: "Bare-metal provisioning — 5-node k3s cluster — Tailscale only"
         tag: internal
         url: http://100.88.123.8:5240/MAAS
         target: _blank
-      - name: set-hog
-        icon: fas fa-microchip
-        subtitle: "Control plane — 10.0.0.2"
-        tag: k8s
-        url: http://100.88.123.8:5240/MAAS/r/machines
+      - name: Harbor
+        icon: fas fa-anchor
+        subtitle: "Sovereign container registry — proxy caches + library project — OIDC via Authentik"
+        tag: SSO
+        url: https://harbor.devandre.sbs
         target: _blank
-      - name: fast-skunk
-        icon: fas fa-microchip
-        subtitle: "Worker — 10.0.0.4"
-        tag: k8s
-        url: http://100.88.123.8:5240/MAAS/r/machines
+      - name: MinIO
+        icon: fas fa-database
+        subtitle: "S3 object store — Velero backup target — Tailscale only"
+        tag: internal
+        url: http://100.88.123.8:9001
         target: _blank
-      - name: fast-heron
-        icon: fas fa-microchip
-        subtitle: "Worker — 10.0.0.7"
-        tag: k8s
-        url: http://100.88.123.8:5240/MAAS/r/machines
-        target: _blank
-      - name: star-kitten
-        icon: fas fa-microchip
-        subtitle: "Worker — 10.0.0.8"
-        tag: k8s
-        url: http://100.88.123.8:5240/MAAS/r/machines
+      - name: GitHub
+        icon: fab fa-github
+        subtitle: "Source of truth — andrelair-platform org"
+        tag: live
+        url: https://github.com/orgs/andrelair-platform/repositories
         target: _blank
     - name: Observability
       icon: fas fa-chart-line
@@ -82,136 +76,109 @@ data:
         target: _blank
       - name: Prometheus
         icon: fas fa-fire
-        subtitle: "Metrics — Tailscale only"
+        subtitle: "Metrics scraping & storage — Tailscale only"
         tag: internal
         url: https://prometheus.10.0.0.200.nip.io
         target: _blank
       - name: Alertmanager
         icon: fas fa-bell
-        subtitle: "Alerts — Tailscale only"
+        subtitle: "Alert routing & silencing — Tailscale only"
         tag: internal
         url: https://alertmanager.10.0.0.200.nip.io
         target: _blank
       - name: Polaris
         icon: fas fa-star
-        subtitle: "Workload quality scorer — resource limits, security context, best practices"
+        subtitle: "Workload best-practice scorer — resource limits, security context — Tailscale only"
         tag: internal
         url: https://polaris.10.0.0.200.nip.io
         target: _blank
-    - name: Identity
-      icon: fas fa-id-badge
+    - name: Identity & Secrets
+      icon: fas fa-shield-alt
       items:
       - name: Authentik
         icon: fas fa-key
-        subtitle: "SSO + IAM — OIDC for ArgoCD/Grafana/Harbor/MinIO/Chat, forward-auth for the rest"
+        subtitle: "SSO + IAM — OIDC provider for all platform services, forward-auth proxy"
         tag: SSO
         url: https://auth.devandre.sbs
         target: _blank
+      - name: Vault
+        icon: fas fa-lock
+        subtitle: "Secrets management — HashiCorp Vault, AWS KMS auto-unseal, ESO sync"
+        tag: live
+        url: https://vault.devandre.sbs
+        target: _blank
       - name: Vaultwarden
-        icon: fas fa-shield-alt
-        subtitle: "Password & credential manager — OIDC via Authentik (Bitwarden-compatible)"
+        icon: fas fa-user-shield
+        subtitle: "Password manager — Bitwarden-compatible — OIDC via Authentik"
         tag: SSO
         url: https://vault-pw.devandre.sbs
         target: _blank
-    - name: DevOps
+    - name: Platform & DevOps
       icon: fas fa-code-branch
       items:
       - name: ArgoCD
         icon: fas fa-sync
-        subtitle: "GitOps continuous reconciliation — OIDC via Authentik"
+        subtitle: "GitOps continuous reconciliation — all cluster state from git — OIDC via Authentik"
         tag: SSO
         url: https://argocd.devandre.sbs
         target: _blank
-      - name: GitHub
-        icon: fab fa-github
-        subtitle: "Source of truth — andrelair-platform org (7 repos)"
-        tag: live
-        url: https://github.com/orgs/andrelair-platform/repositories
-        target: _blank
-      - name: Harbor
-        icon: fas fa-anchor
-        subtitle: "Sovereign registry: 4 proxy caches + library project — OIDC via Authentik"
-        tag: SSO
-        url: https://harbor.devandre.sbs
-        target: _blank
-      - name: MinIO
-        icon: fas fa-database
-        subtitle: "S3 object store — Velero backup target — Tailscale only"
-        tag: internal
-        url: http://100.88.123.8:9001
-        target: _blank
-    - name: Apps
-      icon: fas fa-cubes
-      items:
-      - name: platform-demo
-        icon: fas fa-rocket
-        subtitle: "CI/CD pipeline demo (GHA → Harbor → ArgoCD) — forward-auth via Authentik"
-        tag: SSO
-        url: https://demo.devandre.sbs
-        target: _blank
       - name: Backstage
         icon: fas fa-th-large
-        subtitle: "Internal Developer Portal — OIDC via Authentik"
+        subtitle: "Internal Developer Portal — catalog, API docs, Tech Radar, Software Templates — OIDC via Authentik"
         tag: SSO
         url: https://backstage.devandre.sbs
         target: _blank
+      - name: Plane
+        icon: fas fa-tasks
+        subtitle: "Project & issue tracking — Plane CE — minicloud-plane API integration"
+        tag: live
+        url: https://plane.devandre.sbs
+        target: _blank
+      - name: NATS
+        icon: fas fa-bolt
+        subtitle: "Message broker — 3-replica JetStream HA, KEDA event-driven autoscaling"
+        tag: live
+        url: https://nats.devandre.sbs
+        target: _blank
+    - name: AI / ML
+      icon: fas fa-robot
+      items:
       - name: Chat
-        icon: fas fa-robot
-        subtitle: "Open WebUI + LiteLLM AI Gateway — 7 models, RAG, web search — OIDC via Authentik"
+        icon: fas fa-comments
+        subtitle: "Open WebUI — LiteLLM gateway, RAG pipeline, web search — OIDC via Authentik"
         tag: SSO
         url: https://chat.devandre.sbs
         target: _blank
       - name: LiteLLM Admin
         icon: fas fa-sliders-h
-        subtitle: "AI Gateway admin panel — manage virtual keys, budgets, model routing"
+        subtitle: "AI Gateway admin — virtual keys, budget governance, cloud + local provider routing"
         tag: admin
         url: https://litellm.devandre.sbs/ui
         target: _blank
       - name: Langfuse
         icon: fas fa-chart-line
-        subtitle: "LLM observability — traces, evaluations, prompt management"
+        subtitle: "LLM observability — traces, scores, prompt versioning, eval datasets"
         tag: AI
         url: https://langfuse.devandre.sbs
         target: _blank
-      - name: NATS
-        icon: fas fa-bolt
-        subtitle: "Message broker (3-replica HA + JetStream) — KEDA scales workers from 0"
-        tag: live
-        url: https://nats.devandre.sbs
-        target: _blank
-      - name: Plane
-        icon: fas fa-tasks
-        subtitle: "Project management (Microsoft Planner replacement) — email+password"
-        tag: live
-        url: https://plane.devandre.sbs
-        target: _blank
+    - name: Collaboration & Showcase
+      icon: fas fa-cubes
+      items:
       - name: Nextcloud
         icon: fas fa-cloud
-        subtitle: "Document collaboration & file sharing — OIDC via Authentik"
+        subtitle: "Document collaboration & file sharing — OnlyOffice integration — OIDC via Authentik"
         tag: SSO
         url: https://cloud.devandre.sbs
         target: _blank
-      - name: Vault
-        icon: fas fa-lock
-        subtitle: "Secrets management — HashiCorp Vault"
-        tag: live
-        url: https://vault.devandre.sbs
-        target: _blank
       - name: ktayl-solution
         icon: fas fa-briefcase
-        subtitle: "Insurance consulting showcase — 7 Lines of Business (Astro + Tailwind)"
+        subtitle: "Insurance consulting platform — 7 Lines of Business (Astro + Tailwind)"
         tag: live
         url: https://ktayl.devandre.sbs
         target: _blank
-      - name: podinfo
-        icon: fas fa-cube
-        subtitle: "Demo Go web app — internal only (Tailscale)"
-        tag: internal
-        url: https://podinfo.10.0.0.200.nip.io
-        target: _blank
-      - name: whoami
-        icon: fas fa-question-circle
-        subtitle: "Debug workload — internal only (Tailscale)"
-        tag: internal
-        url: https://whoami.10.0.0.200.nip.io
+      - name: platform-demo
+        icon: fas fa-rocket
+        subtitle: "CI/CD golden path demo — GHA → Harbor → ArgoCD canary rollout"
+        tag: live
+        url: https://demo.devandre.sbs
         target: _blank
