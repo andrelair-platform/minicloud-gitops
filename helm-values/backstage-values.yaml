@@ -17,8 +17,8 @@ backstage:
     # Phase 24 custom image — built from andrelair-platform/minicloud-backstage
     registry: harbor.10.0.0.200.nip.io
     repository: library/backstage
-    # git SHA: 7a4c2dc — built 2026-07-15 by CI
-    tag: "7a4c2dc-amd64"
+    # git SHA: 3239226 — built 2026-07-16 by CI
+    tag: "3239226-amd64"
 
   resources:
     requests: { cpu: 100m, memory: 384Mi }
