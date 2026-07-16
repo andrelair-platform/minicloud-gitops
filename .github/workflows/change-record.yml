@@ -37,7 +37,7 @@ jobs:
           fi
 
       - name: Create change record issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           CHANGE_TYPE: ${{ steps.classify.outputs.change_type }}
           RISK: ${{ steps.classify.outputs.risk }}
