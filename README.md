@@ -1,53 +1,145 @@
-# minicloud-gitops — GitOps source-of-truth
+# minicloud-gitops
 
-ArgoCD app-of-apps source for the minicloud enterprise Kubernetes platform. Every commit to `main` triggers an instant cluster reconciliation via the ArgoCD webhook.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![ArgoCD: app-of-apps](https://img.shields.io/badge/ArgoCD-app--of--apps-blue)](https://argocd.devandre.sbs)
+[![Supply chain: cosign](https://img.shields.io/badge/supply%20chain-cosign%20signed-green)](https://github.com/sigstore/cosign)
+[![Gatekeeper: deny mode](https://img.shields.io/badge/Gatekeeper-deny%20mode%20%E2%80%94%200%20violations-brightgreen)](https://open-policy-agent.github.io/gatekeeper)
 
-**Live docs:** <https://andrelair-platform.github.io/minicloud-platform-docs/>  
-**Portfolio:** <https://www.devandre.sbs>
+> Single source of truth for the minicloud enterprise Kubernetes platform. Every workload — AI/ML, observability, secrets, SSO, registry, security, collaboration, and platform tooling — is declared here and reconciled automatically by ArgoCD. Git is the only write path.
 
-**Sibling repos in the [andrelair-platform](https://github.com/andrelair-platform) org:**  
-[backstage](https://github.com/andrelair-platform/minicloud-backstage) ·
-[docs](https://github.com/andrelair-platform/minicloud-platform-docs) ·
-[ansible](https://github.com/andrelair-platform/minicloud-ansible) ·
-[litellm-custom](https://github.com/andrelair-platform/minicloud-litellm-custom) ·
-[rag-ingest](https://github.com/andrelair-platform/minicloud-rag-ingest) ·
-[markitdown-proxy](https://github.com/andrelair-platform/minicloud-markitdown-proxy) ·
-[platform-demo](https://github.com/andrelair-platform/platform-demo)
+**Live docs:** [andrelair-platform.github.io/minicloud-platform-docs](https://andrelair-platform.github.io/minicloud-platform-docs/)  
+**Portfolio:** [devandre.sbs](https://www.devandre.sbs)  
+**Live ArgoCD:** [argocd.devandre.sbs](https://argocd.devandre.sbs)
+
+---
+
+## Screenshots
+
+| MAAS — Bare-Metal Node Provisioning | set-hog — k3s Control Plane |
+|---|---|
+| ![MAAS](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/maas-machines-overview.png) | ![set-hog](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/set-hog-detail.png) |
+
+| fast-skunk — k3s Worker | fast-heron — k3s Worker |
+|---|---|
+| ![fast-skunk](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/fast-skunk-detail.png) | ![fast-heron](https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/fast-heron-detail.png) |
+
+---
+
+## Table of Contents
+
+- [What this repo is](#what-this-repo-is)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [AI Platform](#ai-platform)
+- [Security Hardening](#security-hardening)
+- [Adding a New Service](#adding-a-new-service)
+- [Tech Radar](#tech-radar)
+- [Key Rules](#key-rules)
+- [Troubleshooting](#troubleshooting)
+- [Related Repos](#related-repos)
+- [License](#license)
 
 ---
 
 ## What this repo is
 
-Single source of truth for all cluster state. ArgoCD watches `apps/` and reconciles 51 workloads automatically. No `kubectl apply` ever runs manually against the cluster for managed workloads — git is the only write path.
+Every resource running in the minicloud k3s cluster originates from this repo. ArgoCD watches `apps/` via the app-of-apps pattern and reconciles all child applications automatically on every push to `main`.
 
-**Rule:** if it runs in the cluster, its manifest or Helm values file lives here.
+**Rule:** if it runs in the cluster, its manifest or Helm values file lives here. No `kubectl apply` ever runs manually for managed workloads.
 
 ---
 
-## Platform at a Glance
+## Features
 
-| Check | Status |
+- **App-of-apps GitOps** — single root Application in `bootstrap/`; ArgoCD creates all child apps from `apps/` automatically; `selfHeal: true` enforces git as the only write path
+- **All OPA Gatekeeper policies in deny mode, zero violations** — NET_RAW, capabilities, seccomp, privilege escalation, host namespace, allowed registries, resource limits, non-root, ingress TLS
+- **Zero-trust NetworkPolicy** — default-deny ingress on all platform namespaces; services may only reach declared upstreams
+- **Secrets via Vault + ESO** — all credentials in HashiCorp Vault; External Secrets Operator syncs them to Kubernetes Secrets at runtime; nothing committed to git
+- **Enterprise AI stack** — LiteLLM gateway routing cloud and local LLM providers (Groq, OpenAI, Anthropic, Mistral, Gemini, Ollama); RAG pipeline (bge-m3 + pgvector HNSW + BM25 + cross-encoder + Docling OCR)
+- **Full supply chain** — all custom images Trivy-scanned, Cosign-signed (keyless via GitHub OIDC → Sigstore Fulcio), syft CycloneDX SBOM as OCI referrer; GPG-signed gitops bump commits
+- **Kustomize Combo 1** — base+overlays (dev/staging/prod) for internal services; CI promotes via `kustomize edit set image` to dev only; staging and prod require PR
+
+---
+
+## Architecture
+
+```
+MacBook Air (dev)              MAAS Controller (ThinkPad X390)
+git push → GitHub             MAAS + OpenTofu (bare metal)
+     |                        Ansible → k3s bootstrap
+     | webhook                Tailscale endpoint + NAT
+     v
+minicloud-gitops (this repo — ArgoCD app-of-apps)
++-- bootstrap/      root-app.yaml (one-time apply)
++-- apps/           ArgoCD Application per workload
++-- helm-values/    all Helm overrides (canonical)
++-- services/       Kustomize base+overlays (dev/staging/prod)
++-- manifests/      cluster-wide resources (CRDs, RBAC, policies)
+     |
+     v (ArgoCD reconciles on every push)
++--------------------------------------------------+
+|  k3s cluster — 5 nodes                          |
+|  set-hog (control plane, 10.0.0.2)              |
+|  fast-skunk / fast-heron / star-kitten / swift-mac|
+|                                                  |
+|  Secrets:   Vault (AWS KMS auto-unseal) + ESO   |
+|  Identity:  Authentik OIDC + TOTP               |
+|  Ingress:   nginx-ingress + cert-manager         |
+|  Storage:   Longhorn (distributed, swift-mac)   |
+|  Security:  Gatekeeper + Falco + NetworkPolicy  |
+|  Observ:    Prometheus + Grafana + Loki          |
+|  AI/ML:     LiteLLM → Groq/OpenAI/Ollama        |
+|             RAG: rag-ingest + pgvector + bge-m3  |
+|  Platform:  Backstage IDP + Plane CE + Harbor   |
+|  Collab:    Nextcloud + OnlyOffice + Vaultwarden |
++--------------------------------------------------+
+     |
+  Tailscale mesh (internal — 100.x.x.x)
+  Cloudflare Tunnel (public *.devandre.sbs)
+```
+
+| Component | Detail |
 |---|---|
-| ArgoCD apps | 56 total — all Synced + Healthy |
-| OPA Gatekeeper policies (deny mode) | 9 / 9 — 0 violations |
-| Regression checks | 62 PASS / 0 FAIL / 0 WARN |
-| Zero-trust NetworkPolicy namespaces | 23 / 23 |
-| ESO ExternalSecrets synced | 14 / 14 |
-| TLS certificates ready | 20 / 20 |
+| Kubernetes | k3s — 1 control plane (set-hog) + 4 workers |
+| GitOps | ArgoCD — app-of-apps, `selfHeal: true`, webhook on push |
+| Secrets | HashiCorp Vault (AWS KMS auto-unseal) + External Secrets Operator |
+| Storage | Longhorn distributed block storage; swift-mac as primary storage node |
+| Registry | Harbor (`harbor.10.0.0.200.nip.io` internal, `harbor.devandre.sbs` public) |
+| Network | Tailscale VPN mesh (internal) + Cloudflare Tunnel (public `*.devandre.sbs`) |
 
 ---
 
-## Layout
+## Getting Started
+
+```bash
+# One-time bootstrap — apply the root app; ArgoCD creates all child apps automatically
+kubectl apply -f bootstrap/root-app.yaml
+```
+
+All subsequent changes go through git. ArgoCD syncs on every push via webhook.
+
+To verify cluster state locally:
+
+```bash
+kubectl --context minicloud get applications -n argocd
+kubectl --context minicloud get pods -A
+```
+
+---
+
+## Project Structure
 
 ```
 .
 ├── bootstrap/
 │   └── root-app.yaml              # one-time apply — creates the app-of-apps root Application
-├── apps/                          # one Application YAML per workload (51 files)
+├── apps/                          # one Application YAML per workload
 │   ├── litellm.yaml               # Enterprise AI Gateway (multi-provider routing)
-│   ├── langfuse.yaml              # Langfuse LLMOps + ClickHouse + Valkey
+│   ├── langfuse.yaml              # LLMOps — traces, scores, prompt management
 │   ├── ollama.yaml / ollama-secondary.yaml / ollama-tertiary.yaml
-│   ├── open-webui.yaml            # Chat UI + RAG + BM25 French + cross-encoder re-ranker
+│   ├── open-webui.yaml            # Chat UI + RAG + BM25 + cross-encoder re-ranker
 │   ├── vault.yaml                 # HashiCorp Vault (AWS KMS auto-unseal)
 │   ├── kube-prometheus-stack.yaml # Prometheus + Grafana + Alertmanager
 │   ├── backstage.yaml             # Internal developer portal
@@ -60,29 +152,18 @@ Single source of truth for all cluster state. ArgoCD watches `apps/` and reconci
 │   ├── kube-prometheus-stack-values.yaml
 │   └── ...
 ├── manifests/                     # raw Kubernetes manifests (grouped by concern)
-│   ├── ai/                        # LiteLLM, RAG pipeline services, Docling, eval jobs
+│   ├── ai/                        # LiteLLM config, RAG pipeline, Docling, eval jobs
 │   ├── argocd-project/            # AppProject — locked sourceRepos + clusterResourceWhitelist
-│   ├── eso-platform-secrets/      # 14 ExternalSecrets pulling credentials from Vault KV
-│   ├── gatekeeper-policies/       # 9 ConstraintTemplates + 9 Constraints (all deny mode)
-│   ├── network-policies/          # default-deny ingress + explicit allow rules (23 namespaces)
+│   ├── eso-platform-secrets/      # ExternalSecrets pulling credentials from Vault KV
+│   ├── gatekeeper-policies/       # ConstraintTemplates + Constraints (all deny mode)
+│   ├── network-policies/          # default-deny ingress + explicit allow rules per namespace
 │   ├── quotas/                    # ResourceQuota + LimitRange per namespace
 │   └── rbac/                      # ClusterRoleBindings + accepted-risks documentation
 ├── services/                      # Kustomize base+overlays for internal services
 │   ├── platform-demo/             # Go CI/CD demo (base + dev/staging/prod overlays)
 │   └── _template/                 # scaffold — copy this for new services
-└── tech-radar.json                # 39-entry Tech Radar data (read live by Backstage)
+└── tech-radar.json                # Tech Radar data (read live by Backstage — no rebuild needed)
 ```
-
----
-
-## Bootstrap
-
-```bash
-# One-time only — apply the root app; ArgoCD creates all child apps automatically
-kubectl apply -f bootstrap/root-app.yaml
-```
-
-All subsequent changes go through git. ArgoCD syncs on every push via webhook.
 
 ---
 
@@ -92,17 +173,17 @@ The AI stack lives in the `ai` namespace and is fully managed here.
 
 | Component | Description |
 |---|---|
-| **LiteLLM** | AI Gateway: Groq, OpenAI, Gemini, DeepSeek, Mistral, Anthropic, HuggingFace, Ollama (local) |
-| **Ollama** × 3 | Primary + secondary (fast-heron, 7 models each) + tertiary (fast-skunk, light models) |
+| **LiteLLM** | AI Gateway: Groq, OpenAI, Gemini, DeepSeek, Mistral, Anthropic, HuggingFace, Ollama (local) — weighted routing, circuit-breaker, Valkey cache, per-department virtual keys |
+| **Ollama** × 3 | Primary + secondary (fast-heron) + tertiary (fast-skunk) — local GPU-free inference |
 | **Open WebUI** | Chat interface with RAG, SearXNG web search, BM25 French + HNSW hybrid retrieval |
-| **Langfuse** | LLM observability — traces, scores, cost per department key |
-| **Presidio** | PII/DLP guardrail (DATE_TIME/LOCATION excluded to avoid masking financial values) |
-| **markitdown-proxy** | Document converter: PDF/images → Docling, Office → MarkItDown |
-| **rag-ingest** | Ingest pipeline: convert → French-aware chunking → bge-m3 embed → pgvector INSERT |
-| **postgresql-ai** | pgvector (1024-dim HNSW + GIN French FTS) for RAG; LiteLLM + Langfuse DBs |
-| **phi3-financial** | Ollama model (FROM phi3.5 + financial system prompt) — local-only, never cloud-routed |
+| **Langfuse** | LLM observability — traces, scores, cost per department key, prompt versioning |
+| **Presidio** | PII/DLP guardrail — masks PERSON, PHONE, EMAIL, IP_ADDRESS before logging (DATE_TIME/LOCATION pass through to preserve financial context) |
+| **markitdown-proxy** | Document converter: PDF/images → Docling OCR, Office → MarkItDown |
+| **rag-ingest** | Ingest pipeline: convert → French-aware chunking → bge-m3 embed → pgvector HNSW insert |
+| **postgresql-ai** | pgvector (1024-dim HNSW + GIN French FTS) for RAG; LiteLLM + Langfuse databases |
+| **phi3-financial** | PromptOps pipeline — Groq llama-3.1-8b-instant primary + Ollama phi4-mini fallback; LangfusePromptHandler injects production-labelled system prompt at request time |
 
-### AI Gateway config
+### LiteLLM config
 
 LiteLLM config is managed in [minicloud-litellm-custom](https://github.com/andrelair-platform/minicloud-litellm-custom). CI syncs `config/litellm-config.yaml` into `manifests/ai/00-litellm-configmap.yaml` automatically. **Do not edit that file directly here.**
 
@@ -117,24 +198,14 @@ LiteLLM config is managed in [minicloud-litellm-custom](https://github.com/andre
 
 | Control | Detail |
 |---|---|
-| **NetworkPolicy** | Default-deny ingress on all 23 namespaces; webhook namespaces allow both `10.0.0.0/24` (kube-apiserver) and `10.42.0.0/24` (flannel VTEP) |
-| **OPA Gatekeeper** | 9 deny-mode policies: no-latest-tag, no-privileged, allowed-registries, require-resource-limits, require-non-root, no-privilege-escalation, require-ingress-tls, no-loadbalancer-in-dev, no-hostpath |
+| **NetworkPolicy** | Default-deny ingress on all platform namespaces; webhook namespaces allow both `10.0.0.0/24` (kube-apiserver) and `10.42.0.0/24` (flannel VTEP) |
+| **OPA Gatekeeper** | All policies in deny mode, zero violations: no-latest-tag, no-privileged, allowed-registries, require-resource-limits, require-non-root, no-privilege-escalation, require-ingress-tls, no-loadbalancer-in-dev, no-hostpath |
 | **Pod Security Admission** | `warn:restricted` on all namespaces; `enforce:restricted` on homer, podinfo, insurance/collab envs |
-| **ESO + Vault KV** | 14 ExternalSecrets — no secrets committed to git; all credentials in HashiCorp Vault |
+| **ESO + Vault KV** | All ExternalSecrets synced — no secrets committed to git; all credentials in HashiCorp Vault (AWS KMS auto-unseal) |
 | **Signed commits** | GPG key `FD6D39D681DEFA34` required on `main`; CI bump commits are GPG-signed |
-| **Cosign** | All 7 custom images keyless-signed via GitHub OIDC → Sigstore Fulcio |
-
----
-
-## Key Rules
-
-**Helm values location:** all values live in `helm-values/`. Do NOT edit `minicloud-ansible/helm-values/` for ArgoCD-managed tools — those files have no effect.
-
-**Never apply Application CRs manually.** `bootstrap/root-app.yaml` is the only file that needs a one-time `kubectl apply`. All other apps are created by the root app from `apps/`. Running `kubectl apply` on Application CRs manually competes with `selfHeal: true` and causes "missing last-applied-configuration" annotation conflicts.
-
-**Webhook namespaces** (cert-manager, external-secrets, gatekeeper-system, keda, vault): the `allow-webhook-from-apiserver` NetworkPolicy must allow both `10.0.0.0/24` (kube-apiserver node IP) and `10.42.0.0/24` (flannel VTEP — the source IP for traffic arriving from worker-node pods).
-
-**ResourceQuota sizing:** set quotas at ~2× steady-state to allow rolling updates. Both old and new pods count against the quota simultaneously during a rollout.
+| **Cosign + SBOM** | All custom images keyless-signed via GitHub OIDC → Sigstore Fulcio; syft CycloneDX SBOM attached as OCI referrer |
+| **Falco** | Runtime security — kernel-level syscall monitoring; alerts on unexpected process execution and file access |
+| **kube-bench** | CIS k3s-1.7 benchmark — all checks pass on every worker node |
 
 ---
 
@@ -153,6 +224,7 @@ services/<name>/
 ```
 
 **Checklist:**
+
 1. Copy `services/_template/` and replace `SERVICE_NAME`
 2. Add the namespace to `manifests/argocd-project/00-project.yaml` (destinations list)
 3. Add ArgoCD Application YAMLs in `apps/`
@@ -163,4 +235,56 @@ services/<name>/
 
 ## Tech Radar
 
-`tech-radar.json` at the repo root contains 39 entries across 4 quadrants (Platforms, AI/ML, Security & Identity, Languages & Frameworks). It is fetched live by the Backstage Tech Radar page at `https://backstage.devandre.sbs/tech-radar` — editing this file takes effect immediately without any Backstage rebuild.
+`tech-radar.json` at the repo root contains entries across 4 quadrants (Platforms, AI/ML, Security & Identity, Languages & Frameworks). It is fetched live by the Backstage Tech Radar page at [backstage.devandre.sbs/tech-radar](https://backstage.devandre.sbs/tech-radar) — editing this file takes effect immediately without any Backstage rebuild.
+
+---
+
+## Key Rules
+
+**Helm values location:** all values live in `helm-values/`. Do NOT edit `minicloud-ansible/helm-values/` for ArgoCD-managed tools — those files have no effect.
+
+**Never apply Application CRs manually.** `bootstrap/root-app.yaml` is the only file that needs a one-time `kubectl apply`. All other apps are created by the root app from `apps/`. Running `kubectl apply` on Application CRs manually competes with `selfHeal: true` and causes "missing last-applied-configuration" annotation conflicts.
+
+**Webhook namespaces** (cert-manager, external-secrets, gatekeeper-system, keda, vault): the `allow-webhook-from-apiserver` NetworkPolicy must allow both `10.0.0.0/24` (kube-apiserver node IP) and `10.42.0.0/24` (flannel VTEP — the source IP for traffic arriving from worker-node pods).
+
+**ResourceQuota sizing:** set quotas at ~2× steady-state to allow rolling updates. Both old and new pods count against the quota simultaneously during a rollout. For single-replica workloads with a tight quota, use `strategy.type: Recreate`.
+
+**Harbor ArgoCD loop:** do NOT set `ServerSideApply: true` on the Harbor Application. Harbor's Helm templates use `genSelfSignedCert` and `randAlphaNum` — these generate a new value on every render. With server-side apply, `ignoreDifferences` fields are not stripped, causing a sync loop and RWO PVC Multi-Attach conflicts.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| ArgoCD app stuck syncing forever after Velero upgrade | `upgradeCRDs` Helm hook Job exits 0 but k3s never sets `status.succeeded` | Set `upgradeCRDs: false` in `velero-values.yaml` and `skipCrds: true` in `apps/velero.yaml` (re-enable on next chart version bump) |
+| Harbor ArgoCD sync loop triggering rolling restarts | `ServerSideApply: true` + `genSelfSignedCert`/`randAlphaNum` generates new checksums each render | Remove `ServerSideApply: true` from `apps/harbor.yaml` syncOptions |
+| Rollout stalled after adding pod label to pre-Gatekeeper workload | New RS pods blocked by `K8sBlockNetRaw` — old pod predates the constraint | Add `securityContext.capabilities.drop: [NET_RAW]` in the same commit as the label change |
+| New pod blocked by `K8sBlockCapabilities` on rollout | Container spec missing `capabilities.drop` list format | Gatekeeper requires the list form (`capabilities.drop: [NET_RAW]`), not the map form |
+| Webhook-dependent pod fails to start with `connection refused` | NetworkPolicy missing flannel VTEP source (`10.42.0.0/24`) | Add `10.42.0.0/24` to the `allow-webhook-from-apiserver` NetworkPolicy alongside `10.0.0.0/24` |
+| ESO ExternalSecret stuck in `SecretSyncedError` | Vault KV path changed or policy missing `read` permission | Check `vault kv get secret/platform/<name>` and the Vault Kubernetes auth role `bound_service_account_namespaces` |
+| VPA update loop after switching to `updateMode: Auto` | Short `startupProbe` fails when VPA raises resource limits mid-start | Set `startupProbe.failureThreshold: 30` (5 min) and `minAllowed.cpu` in the VPA object |
+
+---
+
+## Related Repos
+
+| Repo | Purpose |
+|---|---|
+| [minicloud-ansible](https://github.com/andrelair-platform/minicloud-ansible) | k3s bootstrap, Ansible roles, CIS kubelet hardening — NOT helm values |
+| [minicloud-backstage](https://github.com/andrelair-platform/minicloud-backstage) | Custom Backstage image — plugins, templates, TechDocs |
+| [minicloud-platform-docs](https://github.com/andrelair-platform/minicloud-platform-docs) | Docusaurus docs site → GitHub Pages |
+| [minicloud-plane](https://github.com/andrelair-platform/minicloud-plane) | Go Level 4 integration: Plane API client + webhook→NATS bridge + REST API |
+| [minicloud-litellm-custom](https://github.com/andrelair-platform/minicloud-litellm-custom) | Custom LiteLLM image + config sync CI |
+| [minicloud-open-webui](https://github.com/andrelair-platform/minicloud-open-webui) | Custom Open WebUI image (CA cert + French BM25 baked in) |
+| [minicloud-onlyoffice](https://github.com/andrelair-platform/minicloud-onlyoffice) | Custom OnlyOffice image (CA cert + NODE_EXTRA_CA_CERTS) |
+| [minicloud-opentofu](https://github.com/andrelair-platform/minicloud-opentofu) | MAAS IaC (OpenTofu) — run only on controller |
+| [platform-demo](https://github.com/andrelair-platform/platform-demo) | Go CI/CD demo service |
+| [phi3-financial](https://github.com/andrelair-platform/phi3-financial) | PromptOps pipeline: LiteLLM CustomLogger + Langfuse + 25-case CI eval |
+| [ktayl-solution-web](https://github.com/andrelair-platform/ktayl-solution-web) | Astro + Tailwind public website |
+
+---
+
+## License
+
+[MIT](LICENSE) © andrelair-platform
