@@ -1,0 +1,290 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-roi-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  ai-roi-dashboard.json: |
+    {
+      "title": "AI Platform — ROI & Business Value",
+      "uid": "ai-roi-v1",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "5m",
+      "time": {"from": "now-30d", "to": "now"},
+      "tags": ["ai", "roi", "litellm"],
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Queries — 30 d",
+          "description": "Total AI requests in the last 30 days",
+          "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "prometheus"},
+              "expr": "sum(increase(litellm_proxy_total_requests_metric_total[30d]))",
+              "instant": true, "legendFormat": "", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Hours Saved — 30 d",
+          "description": "3 min/query × queries = 0.05 h saved per AI request",
+          "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "h", "decimals": 1,
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "prometheus"},
+              "expr": "sum(increase(litellm_proxy_total_requests_metric_total[30d])) * 0.05",
+              "instant": true, "legendFormat": "", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Cost Avoidance — 30 d (€)",
+          "description": "Hours saved × 35 €/h (average knowledge-worker cost)",
+          "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyEUR", "decimals": 2,
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "prometheus"},
+              "expr": "sum(increase(litellm_proxy_total_requests_metric_total[30d])) * 0.05 * 35",
+              "instant": true, "legendFormat": "", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Actual API Spend — month ($)",
+          "description": "From LiteLLM spend tracking (current calendar month)",
+          "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "litellm-postgres"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD", "decimals": 4,
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "yellow", "value": null},
+                  {"color": "red", "value": 5}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "litellm-postgres"},
+              "rawSql": "SELECT COALESCE(SUM(spend), 0) AS spend FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\" >= date_trunc('month', NOW())",
+              "format": "table", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "Platform Cost — month (€)",
+          "description": "Fixed infrastructure estimate (electricity + hardware amortisation, 5-node cluster)",
+          "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyEUR", "decimals": 0,
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]}
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "prometheus"},
+              "expr": "vector(50)",
+              "instant": true, "legendFormat": "", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "Net ROI — 30 d (€)",
+          "description": "Cost avoidance − platform cost. Green = platform pays for itself.",
+          "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyEUR", "decimals": 2,
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 0},
+                  {"color": "green", "value": 50}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "prometheus"},
+              "expr": "sum(increase(litellm_proxy_total_requests_metric_total[30d])) * 0.05 * 35 - 50",
+              "instant": true, "legendFormat": "", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "row",
+          "title": "Adoption & Volume",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 4},
+          "collapsed": false
+        },
+        {
+          "id": 8,
+          "type": "stat",
+          "title": "Active Callers — 7 d",
+          "description": "Distinct API key callers in the last 7 days",
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 5},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "litellm-postgres"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "green", "value": 5}
+                ]
+              }
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "litellm-postgres"},
+              "rawSql": "SELECT COUNT(DISTINCT COALESCE(\"user\", 'anonymous')) AS callers FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\" >= NOW() - INTERVAL '7 days'",
+              "format": "table", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Daily Request Volume — 30 d",
+          "gridPos": {"h": 8, "w": 18, "x": 6, "y": 5},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "litellm-postgres"},
+          "options": {
+            "tooltip": {"mode": "single"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"lineWidth": 2, "fillOpacity": 10}
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "litellm-postgres"},
+              "rawSql": "SELECT date_trunc('day', \"startTime\") AS time, COUNT(*) AS requests FROM \"LiteLLM_SpendLogs\" WHERE $__timeFilter(\"startTime\") GROUP BY 1 ORDER BY 1",
+              "format": "time_series", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "row",
+          "title": "Spend Breakdown (current month)",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 13},
+          "collapsed": false
+        },
+        {
+          "id": 11,
+          "type": "table",
+          "title": "Spend by Model",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "litellm-postgres"},
+          "options": {"sortBy": [{"displayName": "spend ($)", "desc": true}]},
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "litellm-postgres"},
+              "rawSql": "SELECT \"model\" AS model, COUNT(*) AS requests, ROUND(SUM(spend)::numeric, 6) AS \"spend ($)\", SUM(\"promptTokens\") AS \"input tokens\", SUM(\"completionTokens\") AS \"output tokens\" FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\" >= date_trunc('month', NOW()) GROUP BY \"model\" ORDER BY \"spend ($)\" DESC",
+              "format": "table", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "type": "table",
+          "title": "Spend by Caller",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "litellm-postgres"},
+          "options": {"sortBy": [{"displayName": "spend ($)", "desc": true}]},
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "litellm-postgres"},
+              "rawSql": "SELECT COALESCE(\"user\", 'anonymous') AS caller, COUNT(*) AS requests, ROUND(SUM(spend)::numeric, 6) AS \"spend ($)\" FROM \"LiteLLM_SpendLogs\" WHERE \"startTime\" >= date_trunc('month', NOW()) GROUP BY caller ORDER BY \"spend ($)\" DESC",
+              "format": "table", "refId": "A"
+            }
+          ]
+        }
+      ]
+    }

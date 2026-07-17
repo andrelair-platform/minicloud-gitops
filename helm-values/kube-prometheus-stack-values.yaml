@@ -315,6 +315,20 @@ grafana:
       jsonData:
         allowedHosts:
           - "http://langfuse-web.langfuse.svc.cluster.local:3000"
+    - name: RAG PostgreSQL
+      uid: ragdb-postgres
+      type: postgres
+      access: proxy
+      url: postgresql-ai.ai.svc.cluster.local:5432
+      user: aiplatform
+      isDefault: false
+      editable: false
+      secureJsonData:
+        password: "${GF_LITELLM_PG_PASSWORD}"
+      jsonData:
+        database: ragdb
+        sslmode: disable
+        postgresVersion: 1400
 
 kubeEtcd:
   enabled: false
