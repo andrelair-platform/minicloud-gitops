@@ -1,0 +1,42 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ai-governance-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+    app: kube-prometheus-stack
+spec:
+  groups:
+    - name: ai-governance
+      interval: 5m
+      rules:
+        - alert: AIMonthlyAPISpendOverrun
+          expr: |
+            (
+              sum(increase(litellm_input_tokens_metric_total{api_provider="groq"}[30d])) * 0.00000005
+              +
+              sum(increase(litellm_output_tokens_metric_total{api_provider="groq"}[30d])) * 0.00000008
+            ) > 5
+          for: 1h
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "AI monthly API spend exceeds $5"
+            description: >-
+              Estimated Groq spend this month exceeds $5
+              (input at $0.05/M tokens, output at $0.08/M tokens).
+              Review usage at https://grafana.devandre.sbs/d/litellm-cost-dept
+        - alert: AIAdoptionLow
+          expr: sum(increase(litellm_proxy_total_requests_metric_total[24h])) < 5
+          for: 6h
+          labels:
+            severity: info
+            team: platform
+          annotations:
+            summary: "AI platform: fewer than 5 requests in 24 h"
+            description: >-
+              The AI platform has received fewer than 5 requests in the past 24 h
+              for at least 6 consecutive hours. This may indicate low adoption or
+              a platform health issue. Check https://grafana.devandre.sbs/d/ai-roi-v1

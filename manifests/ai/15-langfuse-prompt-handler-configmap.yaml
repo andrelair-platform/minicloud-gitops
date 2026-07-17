@@ -16,8 +16,17 @@ data:
     """
     LangfusePromptHandler — LiteLLM CustomLogger
     =============================================
-    Intercepts requests to the phi3-financial virtual model and injects the current
-    production-labelled system prompt fetched from Langfuse.
+    Two responsibilities (run for every request):
+
+    1. Metadata tagging (ALL models)
+       Injects department, use_case, and tags into data["metadata"] so that
+       Langfuse traces are tagged with the correct business context.
+       Mapping: phi3-financial → finance / financial-advisory
+                everything else → general / general-assistant
+
+    2. System-prompt injection (phi3-financial only)
+       Fetches the production-labelled system prompt from Langfuse and prepends
+       it, stripping any caller-supplied system message to prevent guardrail bypass.
 
     Prompt source:  Langfuse Prompt Management → name="phi3-financial-system", label="production"
     Cache TTL:      5 minutes (in-process, per LiteLLM worker)
@@ -43,6 +52,20 @@ data:
     PROMPT_NAME  = "phi3-financial-system"
     PROMPT_LABEL = "production"
     TARGET_MODEL = "phi3-financial"
+
+    # department/use_case tags injected into every Langfuse trace
+    _MODEL_METADATA: dict[str, dict] = {
+        "phi3-financial": {
+            "department": "finance",
+            "use_case": "financial-advisory",
+            "tags": ["department:finance", "use_case:financial-advisory"],
+        },
+    }
+    _DEFAULT_METADATA: dict = {
+        "department": "general",
+        "use_case": "general-assistant",
+        "tags": ["department:general", "use_case:general-assistant"],
+    }
 
 
     async def _fetch_prompt() -> Optional[str]:
@@ -93,7 +116,9 @@ data:
         """
         Registered in litellm config.yaml under litellm_settings.callbacks.
 
-        For every request targeting phi3-financial:
+        For every request:
+        - Injects department/use_case metadata into data["metadata"] for Langfuse tagging
+        For phi3-financial requests additionally:
         - Fetches the production prompt from Langfuse (cached 5 min)
         - Strips any existing system message (prevents prompt-injection via system turn)
         - Prepends the Langfuse prompt as the sole system message
@@ -106,7 +131,19 @@ data:
             data: dict,
             call_type: str,
         ) -> dict:
-            if data.get("model") != TARGET_MODEL:
+            # ── 1. Metadata tagging (all models) ────────────────────────────────
+            model = data.get("model", "")
+            meta = _MODEL_METADATA.get(model, _DEFAULT_METADATA)
+            md = data.setdefault("metadata", {})
+            md.setdefault("department", meta["department"])
+            md.setdefault("use_case", meta["use_case"])
+            existing_tags: list = md.setdefault("tags", [])
+            for tag in meta["tags"]:
+                if tag not in existing_tags:
+                    existing_tags.append(tag)
+
+            # ── 2. System-prompt injection (phi3-financial only) ─────────────────
+            if model != TARGET_MODEL:
                 return data
 
             system_prompt = await _fetch_prompt()
