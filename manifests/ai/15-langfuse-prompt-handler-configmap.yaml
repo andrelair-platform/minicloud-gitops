@@ -89,9 +89,9 @@ data:
         _Base = object  # type: ignore[assignment,misc]
 
 
-    class LangfusePromptHandler(_Base):  # type: ignore[misc]
+    class _LangfusePromptHandler(_Base):  # type: ignore[misc]
         """
-        Registered in litellm config.yaml under general_settings.callbacks.
+        Registered in litellm config.yaml under litellm_settings.callbacks.
 
         For every request targeting phi3-financial:
         - Fetches the production prompt from Langfuse (cached 5 min)
@@ -127,3 +127,9 @@ data:
                 TARGET_MODEL, len(system_prompt),
             )
             return data
+
+
+    # Module-level instance required by LiteLLM's get_instance_fn:
+    # that function calls getattr(module, "LangfusePromptHandler") and returns whatever
+    # it finds — a class instead of an instance causes "missing self" errors at call time.
+    LangfusePromptHandler = _LangfusePromptHandler()
