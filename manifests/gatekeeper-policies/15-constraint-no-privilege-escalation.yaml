@@ -36,3 +36,4 @@ spec:
             - argo-rollouts
             - vpa-system
             - system-upgrade    # Plane CE — chart does not expose allowPrivilegeEscalation in values
+            - chat             # matrix-synapse signing key job — chart does not set allowPrivilegeEscalation

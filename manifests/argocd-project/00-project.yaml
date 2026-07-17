@@ -39,6 +39,7 @@ spec:
     - https://stefanprodan.github.io/podinfo
     - https://stakater.github.io/stakater-charts
     - https://vmware-tanzu.github.io/helm-charts
+    - https://ananace.gitlab.io/charts
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
@@ -137,6 +138,8 @@ spec:
     - namespace: system-upgrade
       server: https://kubernetes.default.svc
     - namespace: reloader
+      server: https://kubernetes.default.svc
+    - namespace: chat
       server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
