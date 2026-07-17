@@ -11,7 +11,7 @@ data:
     model_list:
       # ── phi3-financial — domain-restricted AI financial assistant ─────────
       # System prompt is injected at request time by LangfusePromptHandler
-      # (general_settings.callbacks) — fetched from Langfuse label="production",
+      # (litellm_settings.callbacks) — fetched from Langfuse label="production",
       # cached 5 min per worker, fails open to PHI3_FINANCIAL_SYSTEM_PROMPT env var.
       # Rollback: flip "production" label to an older version in Langfuse UI → instant,
       # zero redeployment (next request after cache TTL uses the rolled-back prompt).
@@ -297,6 +297,12 @@ data:
         port: 6379
         ttl: 600
         namespace: litellm
+      # IMPORTANT: callbacks/success_callback/failure_callback MUST be here under
+      # litellm_settings — proxy_server.py only reads these from litellm_settings.items().
+      # Placing them under general_settings causes silent ignore (no traces/metrics).
+      callbacks: ["langfuse_prompt_handler.LangfusePromptHandler"]
+      success_callback: ["langfuse", "prometheus"]
+      failure_callback: ["prometheus"]
 
     # PII / DLP guardrail — anonymizes prompts before they reach any cloud provider API.
     # phi3-financial is local-only (no cloud risk) but Ollama models with cloud fallbacks
@@ -336,13 +342,6 @@ data:
       # /v1/models lists available providers — safe to expose, no data returned.
       # /health used by load balancers and external monitoring.
       public_routes: ["/v1/models", "/health"]
-      # LangfusePromptHandler: intercepts phi3-financial requests and injects the
-      # production-labelled system prompt fetched from Langfuse (cached 5 min).
-      # The handler is in /app/langfuse_prompt_handler.py (baked into the custom image).
-      callbacks: ["langfuse_prompt_handler.LangfusePromptHandler"]
-      success_callback: ["langfuse", "prometheus"]
-      failure_callback: ["prometheus"]
-      langfuse_host: "http://langfuse-web.langfuse.svc.cluster.local:3000"
       # detect_secrets disabled: LiteLLM injects api_key into the scanned body, causing
       # every non-master-key request to false-positive as a "secret". Presidio PII masking
       # already covers the real DLP requirement on all pre-call messages.
