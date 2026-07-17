@@ -36,3 +36,4 @@ spec:
             - vpa-system
             - system-upgrade
             - monitoring
+            - chat

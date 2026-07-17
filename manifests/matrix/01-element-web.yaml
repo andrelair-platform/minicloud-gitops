@@ -1,0 +1,163 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: element-web-config
+  namespace: chat
+data:
+  config.json: |
+    {
+      "default_server_config": {
+        "m.homeserver": {
+          "base_url": "https://matrix.devandre.sbs",
+          "server_name": "matrix.devandre.sbs"
+        }
+      },
+      "brand": "Element",
+      "integrations_ui_url": "",
+      "integrations_rest_url": "",
+      "integrations_widgets_urls": [],
+      "bug_report_endpoint_url": "",
+      "showLabsSettings": false,
+      "features": {},
+      "default_federate": false,
+      "default_theme": "dark",
+      "room_directory": {
+        "servers": ["matrix.devandre.sbs"]
+      },
+      "disable_guests": true,
+      "disable_login_language_selector": false,
+      "jitsi": {
+        "preferred_domain": "meet.devandre.sbs"
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: element-web
+  namespace: chat
+  labels:
+    app: element-web
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: element-web
+  template:
+    metadata:
+      labels:
+        app: element-web
+        backstage.io/kubernetes-id: element-web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: element-web
+          image: vectorim/element-web:v1.11.105
+          ports:
+            - containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: false
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.json
+              subPath: config.json
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: element-web-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: element-web
+  namespace: chat
+spec:
+  selector:
+    app: element-web
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: element-web
+  namespace: chat
+  annotations:
+    nginx.org/redirect-to-https: "true"
+    cert-manager.io/cluster-issuer: minicloud-ca
+    cert-manager.io/duration: "2160h"
+    cert-manager.io/renew-before: "720h"
+    nginx.org/server-snippets: |
+      location /outpost.goauthentik.io {
+          proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
+          proxy_set_header        Host $host;
+          proxy_set_header        X-Original-URL $scheme://$http_host$request_uri;
+          add_header              Set-Cookie $auth_cookie;
+          auth_request_set        $auth_cookie $upstream_http_set_cookie;
+          proxy_pass_request_body off;
+          proxy_set_header        Content-Length "";
+      }
+      location @goauthentik_proxy_signin {
+          internal;
+          add_header Set-Cookie $auth_cookie;
+          return 302 /outpost.goauthentik.io/start?rd=$request_uri;
+      }
+    nginx.org/location-snippets: |
+      auth_request     /outpost.goauthentik.io/auth/nginx;
+      error_page       401 = @goauthentik_proxy_signin;
+      auth_request_set $auth_cookie $upstream_http_set_cookie;
+      add_header       Set-Cookie $auth_cookie;
+      auth_request_set $authentik_username $upstream_http_x_authentik_username;
+      proxy_set_header X-authentik-username $authentik_username;
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - element.devandre.sbs
+        - element.10.0.0.200.nip.io
+      secretName: element-tls
+  rules:
+    - host: element.devandre.sbs
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: element-web
+                port:
+                  number: 80
+    - host: element.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: element-web
+                port:
+                  number: 80
