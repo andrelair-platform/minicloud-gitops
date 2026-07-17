@@ -1,0 +1,180 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-rag-quality-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  ai-rag-quality-dashboard.json: |
+    {
+      "title": "AI Platform — RAG Quality & Indexing",
+      "uid": "ai-rag-quality-v1",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "10m",
+      "time": {"from": "now-7d", "to": "now"},
+      "tags": ["ai", "rag", "pgvector"],
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Total Chunks",
+          "description": "Number of text chunks stored in the pgvector index",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+              "rawSql": "SELECT COUNT(*) AS chunks FROM document_chunk",
+              "format": "table", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Indexed Documents",
+          "description": "Distinct source documents ingested",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+              "rawSql": "SELECT COUNT(DISTINCT vmetadata->>'source') AS documents FROM document_chunk",
+              "format": "table", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Collections",
+          "description": "Distinct pgvector collections (namespaces for user/topic isolation)",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]}
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+              "rawSql": "SELECT COUNT(DISTINCT collection_name) AS collections FROM document_chunk",
+              "format": "table", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Avg Chunks / Document",
+          "description": "Higher values = finer-grained chunking",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "decimals": 0,
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]}
+            }
+          },
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+              "rawSql": "SELECT ROUND(COUNT(*)::numeric / NULLIF(COUNT(DISTINCT vmetadata->>'source'), 0), 0) AS avg_chunks FROM document_chunk",
+              "format": "table", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "row",
+          "title": "Document Detail",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 4},
+          "collapsed": false
+        },
+        {
+          "id": 6,
+          "type": "table",
+          "title": "Documents by Source",
+          "description": "Source document breakdown with chunk count and average chunk size",
+          "gridPos": {"h": 10, "w": 14, "x": 0, "y": 5},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+          "options": {"sortBy": [{"displayName": "chunks", "desc": true}]},
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+              "rawSql": "SELECT vmetadata->>'source' AS source, vmetadata->>'document_type' AS type, COUNT(*) AS chunks, ROUND(AVG(LENGTH(text))::numeric, 0) AS \"avg chars/chunk\" FROM document_chunk GROUP BY source, type ORDER BY chunks DESC",
+              "format": "table", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "table",
+          "title": "Document Type Distribution",
+          "description": "Coverage by regulatory / policy / internal document type",
+          "gridPos": {"h": 10, "w": 10, "x": 14, "y": 5},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+          "options": {"sortBy": [{"displayName": "chunks", "desc": true}]},
+          "targets": [
+            {
+              "datasource": {"type": "grafana-postgresql-datasource", "uid": "ragdb-postgres"},
+              "rawSql": "SELECT COALESCE(vmetadata->>'document_type', 'unknown') AS doc_type, COUNT(*) AS chunks, COUNT(DISTINCT vmetadata->>'source') AS documents FROM document_chunk GROUP BY doc_type ORDER BY chunks DESC",
+              "format": "table", "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "row",
+          "title": "Retrieval Metrics",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 15},
+          "collapsed": false
+        },
+        {
+          "id": 9,
+          "type": "text",
+          "title": "Per-Query Retrieval Metrics — Instrumentation Required",
+          "gridPos": {"h": 5, "w": 24, "x": 0, "y": 16},
+          "options": {
+            "mode": "markdown",
+            "content": "## Retrieval Metrics Require rag-ingest Instrumentation\n\nPer-query metrics (hit rate, relevance/similarity scores, retrieval latency) are not yet available because the `rag-ingest` service does not currently expose Prometheus metrics or persist query results.\n\n**To add retrieval telemetry (Phase 77+):**\n1. Add a Prometheus counter `rag_retrieval_total{collection, status}` to `rag-ingest`\n2. Add a histogram `rag_retrieval_latency_seconds{collection}` for p50/p95 retrieval latency\n3. Log cosine similarity scores per retrieved chunk to Langfuse as evaluation scores\n4. Expose a `/metrics` endpoint from rag-ingest and add a ServiceMonitor\n\nCurrently available: chunk count, document coverage, collection health (this dashboard). See [AI Governance dashboard](/d/ai-governance-v1) for LLM-side quality signals."
+          }
+        }
+      ]
+    }
