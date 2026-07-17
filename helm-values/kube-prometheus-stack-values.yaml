@@ -179,6 +179,8 @@ alertmanager:
               storage: 1Gi
 
 grafana:
+  plugins:
+    - yesoreyeram-infinity-datasource
   podLabels:
     backstage.io/kubernetes-id: grafana
   admin:
@@ -227,6 +229,14 @@ grafana:
       secretKeyRef:
         name: grafana-litellm-db
         key: password
+    GF_LANGFUSE_PUBLIC_KEY:
+      secretKeyRef:
+        name: grafana-langfuse
+        key: public-key
+    GF_LANGFUSE_SECRET_KEY:
+      secretKeyRef:
+        name: grafana-langfuse
+        key: secret-key
   resources:
     requests:
       cpu: 100m
@@ -292,6 +302,19 @@ grafana:
         database: litellm
         sslmode: disable
         postgresVersion: 1400
+    - name: Langfuse
+      uid: langfuse-infinity
+      type: yesoreyeram-infinity-datasource
+      access: proxy
+      isDefault: false
+      editable: false
+      basicAuth: true
+      basicAuthUser: "${GF_LANGFUSE_PUBLIC_KEY}"
+      secureJsonData:
+        basicAuthPassword: "${GF_LANGFUSE_SECRET_KEY}"
+      jsonData:
+        allowedHosts:
+          - "http://langfuse-web.langfuse.svc.cluster.local:3000"
 
 kubeEtcd:
   enabled: false
