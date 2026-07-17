@@ -31,3 +31,8 @@ spec:
             - velero
             - falco
             - kured
+            - productivity
+            - argo-rollouts
+            - vpa-system
+            - system-upgrade
+            - chat

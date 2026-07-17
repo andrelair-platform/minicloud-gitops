@@ -1,0 +1,147 @@
+serverName: matrix.devandre.sbs
+publicServerName: matrix.devandre.sbs
+
+signingkey:
+  job:
+    enabled: true
+    generateImage:
+      repository: ghcr.io/element-hq/synapse
+      tag: v1.127.1
+    publishImage:
+      repository: bitnami/kubectl
+      tag: "1.30"
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 991
+      runAsGroup: 991
+      fsGroup: 991
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+      runAsNonRoot: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+config:
+  logLevel: WARNING
+
+extraConfig:
+  enable_registration: false
+  enable_registration_without_verification: false
+  registration_shared_secret: "${SYNAPSE_REGISTRATION_SECRET}"
+  macaroon_secret_key: "${SYNAPSE_MACAROON_KEY}"
+  oidc_providers:
+    - idp_id: authentik
+      idp_name: "Authentik SSO"
+      discover: true
+      issuer_url: "https://auth.devandre.sbs/application/o/matrix-synapse/"
+      client_auth_method: "client_secret_post"
+      client_id: "${SYNAPSE_OIDC_CLIENT_ID}"
+      client_secret: "${SYNAPSE_OIDC_CLIENT_SECRET}"
+      scopes: ["openid", "profile", "email"]
+      user_profile_method: "userinfo_endpoint"
+      allow_existing_users: true
+      user_mapping_provider:
+        config:
+          localpart_template: "{{ user.preferred_username }}"
+          display_name_template: "{{ user.name }}"
+          email_template: "{{ user.email }}"
+
+postgresql:
+  enabled: false
+
+externalPostgresql:
+  host: postgresql-ai.ai.svc.cluster.local
+  port: 5432
+  username: synapse
+  existingSecret: synapse-secrets
+  existingSecretPasswordKey: pg-password
+  database: synapse
+
+synapse:
+  strategy:
+    type: Recreate
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  podSecurityContext:
+    fsGroup: 991
+    runAsGroup: 991
+    runAsUser: 991
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [ALL]
+    runAsNonRoot: true
+
+  extraEnv:
+    - name: SYNAPSE_OIDC_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: synapse-secrets
+          key: oidc-client-id
+    - name: SYNAPSE_OIDC_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: synapse-secrets
+          key: oidc-client-secret
+    - name: SYNAPSE_REGISTRATION_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: synapse-secrets
+          key: registration-shared-secret
+    - name: SYNAPSE_MACAROON_KEY
+      valueFrom:
+        secretKeyRef:
+          name: synapse-secrets
+          key: macaroon-secret-key
+
+persistence:
+  enabled: true
+  storageClass: longhorn
+  accessMode: ReadWriteOnce
+  size: 10Gi
+
+ingress:
+  enabled: true
+  annotations:
+    nginx.org/redirect-to-https: "true"
+    cert-manager.io/cluster-issuer: minicloud-ca
+    cert-manager.io/duration: "2160h"
+    cert-manager.io/renew-before: "720h"
+    nginx.org/proxy-body-size: "50m"
+  csHosts:
+    - matrix.devandre.sbs
+    - matrix.10.0.0.200.nip.io
+  tls:
+    - secretName: matrix-tls
+      hosts:
+        - matrix.devandre.sbs
+        - matrix.10.0.0.200.nip.io
+
+workers:
+  default:
+    replicaCount: 0
+
+redis:
+  enabled: false
+
+coturn:
+  enabled: false
