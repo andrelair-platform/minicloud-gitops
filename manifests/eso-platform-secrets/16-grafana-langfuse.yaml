@@ -1,0 +1,27 @@
+---
+# Langfuse API credentials for Grafana Infinity datasource.
+# Vault KV path: platform/langfuse (keys: project-public-key, project-secret-key)
+# Injected into Grafana pod as GF_LANGFUSE_PUBLIC_KEY + GF_LANGFUSE_SECRET_KEY via envValueFrom.
+# Used by the langfuse-infinity Infinity datasource for Basic Auth against the Langfuse REST API.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: grafana-langfuse
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: grafana-langfuse
+    creationPolicy: Owner
+  data:
+    - secretKey: public-key
+      remoteRef:
+        key: platform/langfuse
+        property: project-public-key
+    - secretKey: secret-key
+      remoteRef:
+        key: platform/langfuse
+        property: project-secret-key
