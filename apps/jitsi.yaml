@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jitsi
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: minicloud-platform
+  sources:
+    - repoURL: https://jitsi-contrib.github.io/jitsi-helm/
+      chart: jitsi-meet
+      targetRevision: 2.21.0
+      helm:
+        valueFiles:
+          - $values/helm-values/jitsi-values.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      path: manifests/jitsi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: collab
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=false
