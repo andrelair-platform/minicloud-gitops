@@ -78,6 +78,10 @@ spec:
                 secretKeyRef:
                   name: stalwart-secret
                   key: STALWART_ADMIN_SECRET
+            # v0.16 recovery admin — grants WebUI access on first boot.
+            # Uses Kubernetes $(VAR) expansion to reference STALWART_ADMIN_SECRET above.
+            - name: STALWART_RECOVERY_ADMIN
+              value: "admin:$(STALWART_ADMIN_SECRET)"
             - name: SMTP_RELAY_HOST
               valueFrom:
                 secretKeyRef:

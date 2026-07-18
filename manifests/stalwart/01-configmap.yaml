@@ -4,74 +4,8 @@ metadata:
   name: stalwart-config
   namespace: mail
 data:
+  # v0.16+ format: config.json is ONLY the DataStore descriptor.
+  # All other settings (hostname, listeners, domains, users, routing)
+  # are stored inside the RocksDB database and managed via the WebUI or CLI.
   config.json: |
-    {
-      "server": {
-        "hostname": "mail.devandre.sbs",
-        "listener": {
-          "http": {
-            "bind": ["[::]:8080"],
-            "protocol": "http",
-            "tls": false
-          },
-          "smtp": {
-            "bind": ["[::]:25"],
-            "protocol": "smtp"
-          },
-          "submission": {
-            "bind": ["[::]:587"],
-            "protocol": "smtp",
-            "tls": false
-          },
-          "imap": {
-            "bind": ["[::]:143"],
-            "protocol": "imap"
-          }
-        }
-      },
-      "store": {
-        "rocksdb": {
-          "@type": "rocksdb",
-          "path": "/opt/stalwart-mail/data"
-        },
-        "blobs": {
-          "@type": "fs",
-          "path": "/opt/stalwart-mail/data/blobs"
-        }
-      },
-      "storage": {
-        "data": "rocksdb",
-        "fts": "rocksdb",
-        "blob": "blobs",
-        "lookup": "rocksdb",
-        "directory": "internal"
-      },
-      "directory": {
-        "internal": {
-          "@type": "internal",
-          "store": "rocksdb"
-        }
-      },
-      "authentication": {
-        "fallback-admin": {
-          "user": "admin",
-          "secret": "%{env:STALWART_ADMIN_SECRET}%"
-        }
-      },
-      "remote": {
-        "smtp-relay": {
-          "address": "%{env:SMTP_RELAY_HOST}%",
-          "port": 587,
-          "tls": "starttls",
-          "username": "%{env:SMTP_RELAY_USER}%",
-          "secret": "%{env:SMTP_RELAY_PASSWORD}%"
-        }
-      },
-      "tracer": {
-        "log": {
-          "@type": "log",
-          "level": "info",
-          "ansi": false
-        }
-      }
-    }
+    {"@type":"RocksDb","path":"/opt/stalwart-mail/data"}
