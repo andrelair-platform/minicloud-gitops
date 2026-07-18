@@ -9,7 +9,7 @@ signingkey:
       tag: v1.127.1
     publishImage:
       repository: docker.io/bitnami/kubectl
-      tag: "1.30"
+      tag: latest
 
 config:
   logLevel: WARNING
