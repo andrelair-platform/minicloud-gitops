@@ -8,7 +8,7 @@ signingkey:
       repository: ghcr.io/element-hq/synapse
       tag: v1.127.1
     publishImage:
-      repository: bitnami/kubectl
+      repository: docker.io/bitnami/kubectl
       tag: "1.30"
     podSecurityContext:
       runAsNonRoot: true
