@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minicloud-controller-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  controller.json: |
+    {
+      "uid": "minicloud-controller",
+      "title": "Controller Node (MAAS)",
+      "description": "OS-level metrics for the MAAS controller (Docker node_exporter, instance=controller). Not a k3s node.",
+      "tags": ["minicloud", "controller", "infrastructure"],
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "30s",
+      "time": {"from": "now-3h", "to": "now"},
+      "panels": [
+        {
+          "id": 1, "type": "timeseries", "title": "CPU Usage",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "max": 1, "min": 0}},
+          "targets": [{
+            "expr": "1 - avg(rate(node_cpu_seconds_total{instance=\"controller\",mode=\"idle\"}[5m]))",
+            "legendFormat": "CPU used"
+          }]
+        },
+        {
+          "id": 2, "type": "timeseries", "title": "Memory Usage",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "max": 1, "min": 0}},
+          "targets": [{
+            "expr": "1 - node_memory_MemAvailable_bytes{instance=\"controller\"} / node_memory_MemTotal_bytes{instance=\"controller\"}",
+            "legendFormat": "Memory used"
+          }]
+        },
+        {
+          "id": 3, "type": "timeseries", "title": "Disk Usage by Filesystem",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "max": 1, "min": 0}},
+          "targets": [{
+            "expr": "1 - node_filesystem_avail_bytes{instance=\"controller\",fstype!~\"tmpfs|squashfs\"} / node_filesystem_size_bytes{instance=\"controller\",fstype!~\"tmpfs|squashfs\"}",
+            "legendFormat": "{{mountpoint}}"
+          }]
+        },
+        {
+          "id": 4, "type": "timeseries", "title": "Network Throughput",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "fieldConfig": {"defaults": {"unit": "Bps"}},
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance=\"controller\",device!=\"lo\"}[5m])",
+              "legendFormat": "RX {{device}}"
+            },
+            {
+              "expr": "rate(node_network_transmit_bytes_total{instance=\"controller\",device!=\"lo\"}[5m])",
+              "legendFormat": "TX {{device}}"
+            }
+          ]
+        },
+        {
+          "id": 5, "type": "timeseries", "title": "System Load Average",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+          "fieldConfig": {"defaults": {"unit": "short"}},
+          "targets": [
+            {"expr": "node_load1{instance=\"controller\"}", "legendFormat": "1m"},
+            {"expr": "node_load5{instance=\"controller\"}", "legendFormat": "5m"},
+            {"expr": "node_load15{instance=\"controller\"}", "legendFormat": "15m"}
+          ]
+        },
+        {
+          "id": 6, "type": "timeseries", "title": "Disk IOPS",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+          "fieldConfig": {"defaults": {"unit": "iops"}},
+          "targets": [
+            {
+              "expr": "rate(node_disk_reads_completed_total{instance=\"controller\",device!~\"sr.*\"}[5m])",
+              "legendFormat": "reads {{device}}"
+            },
+            {
+              "expr": "rate(node_disk_writes_completed_total{instance=\"controller\",device!~\"sr.*\"}[5m])",
+              "legendFormat": "writes {{device}}"
+            }
+          ]
+        }
+      ]
+    }
