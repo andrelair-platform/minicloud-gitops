@@ -60,11 +60,9 @@ spec:
               value: "false"
             - name: HOST
               value: "sign.devandre.sbs"
-            - name: DATABASE_URL
-              value: "sqlite3:////data/docuseal.sqlite3"
           volumeMounts:
             - name: data
-              mountPath: /data
+              mountPath: /app/data
           resources:
             requests:
               cpu: 100m
