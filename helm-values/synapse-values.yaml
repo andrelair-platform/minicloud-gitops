@@ -20,9 +20,9 @@ extraConfig:
   suppress_key_server_warning: true
   registration_shared_secret: "${SYNAPSE_REGISTRATION_SECRET}"
   macaroon_secret_key: "${SYNAPSE_MACAROON_KEY}"
-  # discover: false + internal k8s endpoints avoids TLS trust issues:
-  # auth.devandre.sbs resolves to MetalLB 10.0.0.200 (minicloud CA) inside cluster.
-  # Use internal http for token/userinfo/jwks; public URL only for authorization (browser redirect).
+  # discover: false — inside the cluster auth.devandre.sbs resolves to MetalLB 10.0.0.200
+  # which presents a minicloud CA-signed cert. SSL_CERT_FILE (set via extraCommands) makes
+  # Synapse trust it. Authorization endpoint stays public (browser redirect).
   oidc_providers:
     - idp_id: authentik
       idp_name: "Authentik SSO"
@@ -32,9 +32,9 @@ extraConfig:
       client_id: "${SYNAPSE_OIDC_CLIENT_ID}"
       client_secret: "${SYNAPSE_OIDC_CLIENT_SECRET}"
       authorization_endpoint: "https://auth.devandre.sbs/application/o/authorize/"
-      token_endpoint: "http://authentik-server.authentik.svc.cluster.local/application/o/token/"
-      userinfo_endpoint: "http://authentik-server.authentik.svc.cluster.local/application/o/userinfo/"
-      jwks_uri: "http://authentik-server.authentik.svc.cluster.local/application/o/matrix-synapse/jwks/"
+      token_endpoint: "https://auth.devandre.sbs/application/o/token/"
+      userinfo_endpoint: "https://auth.devandre.sbs/application/o/userinfo/"
+      jwks_uri: "https://auth.devandre.sbs/application/o/matrix-synapse/jwks/"
       scopes: ["openid", "profile", "email"]
       user_profile_method: "userinfo_endpoint"
       allow_existing_users: true
@@ -79,6 +79,22 @@ synapse:
     capabilities:
       drop: [ALL]
     runAsNonRoot: true
+
+  # Merge minicloud CA into system bundle before starting Synapse.
+  # extraCommands run in the same sh -c as exec python so SSL_CERT_FILE is inherited.
+  extraCommands:
+    - "cp /etc/ssl/certs/ca-certificates.crt /tmp/ca-bundle.crt"
+    - "cat /etc/minicloud-ca/ca.crt >> /tmp/ca-bundle.crt"
+    - "export SSL_CERT_FILE=/tmp/ca-bundle.crt"
+
+  extraVolumes:
+    - name: minicloud-ca
+      configMap:
+        name: minicloud-ca-cert
+
+  extraVolumeMounts:
+    - name: minicloud-ca
+      mountPath: /etc/minicloud-ca
 
   extraEnv:
     - name: SYNAPSE_OIDC_CLIENT_ID
