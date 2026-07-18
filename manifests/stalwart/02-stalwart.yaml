@@ -62,7 +62,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: stalwart
-          image: stalwartlabs/mail-server:v0.11.7
+          image: docker.io/stalwartlabs/mail-server:v0.11.7
           args: ["--config", "/etc/stalwart/config.toml"]
           ports:
             - containerPort: 8080

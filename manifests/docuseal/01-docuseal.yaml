@@ -35,7 +35,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: docuseal
-          image: docuseal/docuseal:1.8.3
+          image: docker.io/docuseal/docuseal:1.8.3
           ports:
             - containerPort: 3000
               name: http
