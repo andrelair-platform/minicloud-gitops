@@ -69,3 +69,49 @@ spec:
           annotations:
             summary: "Controller disk > 90% used — MinIO at risk"
             description: "Controller root filesystem is {{ $value | humanizePercentage }} used. MinIO will stop accepting writes and its systemd service may crash. Delete k3s snapshots immediately: ls /srv/backups/k3s/ | sort | head -n -5 | xargs -I{} rm /srv/backups/k3s/{}"
+
+    - name: cluster-health
+      rules:
+        - alert: PodStuckTerminating
+          expr: |
+            (time() - kube_pod_deletion_timestamp) > 300
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} stuck Terminating > 5 min"
+            description: |
+              Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in Terminating state for
+              {{ $value | humanizeDuration }}. The kubelet on its node may be unresponsive.
+              Fix: kubectl delete pod {{ $labels.pod }} -n {{ $labels.namespace }} --grace-period=0 --force
+              If the pod uses a Longhorn RWO PVC, also delete the stale VolumeAttachment:
+              kubectl get volumeattachment | grep <pvc-id>
+              kubectl delete volumeattachment <name>
+
+        - alert: VaultPodRestarted
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="vault", pod=~"vault-0"}[15m]) > 0
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Vault pod restarted — check ESO ClusterSecretStore"
+            description: |
+              vault-0 restarted. After Vault becomes Ready, ESO may not reconnect automatically.
+              Check: kubectl get clustersecretstore vault-backend -o jsonpath='{.status.conditions[0].status}'
+              If not True: kubectl rollout restart deploy/external-secrets -n external-secrets
+              Verify: kubectl get externalsecret -A | grep -v True
+
+        - alert: ESOClusterSecretStoreNotReady
+          expr: |
+            kube_pod_container_status_restarts_total{namespace="external-secrets"} > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "External Secrets Operator has restarted — verify Vault connectivity"
+            description: |
+              The external-secrets controller has restarted. Check if the ClusterSecretStore is healthy:
+              kubectl get clustersecretstore vault-backend -o jsonpath='{.status.conditions[0].reason}'
+              If SecretStoreNotReady: wait for Vault Ready, then:
+              kubectl rollout restart deploy/external-secrets -n external-secrets
