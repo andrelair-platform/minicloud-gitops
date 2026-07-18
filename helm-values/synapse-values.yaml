@@ -66,37 +66,9 @@ synapse:
     - "cp /etc/ssl/certs/ca-certificates.crt /tmp/ca-bundle.crt"
     - "cat /etc/minicloud-ca/ca.crt >> /tmp/ca-bundle.crt"
     - "export SSL_CERT_FILE=/tmp/ca-bundle.crt"
-    - >-
-      python3 -c "
-      import os, yaml;
-      yaml.safe_dump(
-        {
-          'macaroon_secret_key': os.environ['SYNAPSE_MACAROON_KEY'],
-          'oidc_providers': [{
-            'idp_id': 'authentik',
-            'idp_name': 'Authentik SSO',
-            'discover': False,
-            'issuer': 'https://auth.devandre.sbs/',
-            'client_auth_method': 'client_secret_post',
-            'client_id': os.environ['SYNAPSE_OIDC_CLIENT_ID'],
-            'client_secret': os.environ['SYNAPSE_OIDC_CLIENT_SECRET'],
-            'authorization_endpoint': 'https://auth.devandre.sbs/application/o/authorize/',
-            'token_endpoint': 'https://auth.devandre.sbs/application/o/token/',
-            'userinfo_endpoint': 'https://auth.devandre.sbs/application/o/userinfo/',
-            'jwks_uri': 'https://auth.devandre.sbs/application/o/matrix-synapse/jwks/',
-            'scopes': ['openid', 'profile', 'email'],
-            'user_profile_method': 'userinfo_endpoint',
-            'allow_existing_users': True,
-            'user_mapping_provider': {'config': {
-              'localpart_template': '{{ user.preferred_username }}',
-              'display_name_template': '{{ user.name }}',
-              'email_template': '{{ user.email }}'
-            }}
-          }]
-        },
-        open('/synapse/config/conf.d/oidc.yaml', 'w')
-      )
-      "
+    - echo
+      aW1wb3J0IG9zLCB5YW1sCmxiID0gY2hyKDEyMykKcmIgPSBjaHIoMTI1KQpkZWYgdG1wbChmKTogcmV0dXJuIGxiK2xiKycgdXNlci4nK2YrJyAnK3JiK3JiCmRhdGEgPSB7CiAgICAnbWFjYXJvb25fc2VjcmV0X2tleSc6IG9zLmVudmlyb25bJ1NZTkFQU0VfTUFDQVJPT05fS0VZJ10sCiAgICAnb2lkY19wcm92aWRlcnMnOiBbewogICAgICAgICdpZHBfaWQnOiAnYXV0aGVudGlrJywKICAgICAgICAnaWRwX25hbWUnOiAnQXV0aGVudGlrIFNTTycsCiAgICAgICAgJ2Rpc2NvdmVyJzogRmFsc2UsCiAgICAgICAgJ2lzc3Vlcic6ICdodHRwczovL2F1dGguZGV2YW5kcmUuc2JzLycsCiAgICAgICAgJ2NsaWVudF9hdXRoX21ldGhvZCc6ICdjbGllbnRfc2VjcmV0X3Bvc3QnLAogICAgICAgICdjbGllbnRfaWQnOiBvcy5lbnZpcm9uWydTWU5BUFNFX09JRENfQ0xJRU5UX0lEJ10sCiAgICAgICAgJ2NsaWVudF9zZWNyZXQnOiBvcy5lbnZpcm9uWydTWU5BUFNFX09JRENfQ0xJRU5UX1NFQ1JFVCddLAogICAgICAgICdhdXRob3JpemF0aW9uX2VuZHBvaW50JzogJ2h0dHBzOi8vYXV0aC5kZXZhbmRyZS5zYnMvYXBwbGljYXRpb24vby9hdXRob3JpemUvJywKICAgICAgICAndG9rZW5fZW5kcG9pbnQnOiAnaHR0cHM6Ly9hdXRoLmRldmFuZHJlLnNicy9hcHBsaWNhdGlvbi9vL3Rva2VuLycsCiAgICAgICAgJ3VzZXJpbmZvX2VuZHBvaW50JzogJ2h0dHBzOi8vYXV0aC5kZXZhbmRyZS5zYnMvYXBwbGljYXRpb24vby91c2VyaW5mby8nLAogICAgICAgICdqd2tzX3VyaSc6ICdodHRwczovL2F1dGguZGV2YW5kcmUuc2JzL2FwcGxpY2F0aW9uL28vbWF0cml4LXN5bmFwc2Uvandrcy8nLAogICAgICAgICdzY29wZXMnOiBbJ29wZW5pZCcsICdwcm9maWxlJywgJ2VtYWlsJ10sCiAgICAgICAgJ3VzZXJfcHJvZmlsZV9tZXRob2QnOiAndXNlcmluZm9fZW5kcG9pbnQnLAogICAgICAgICdhbGxvd19leGlzdGluZ191c2Vycyc6IFRydWUsCiAgICAgICAgJ3VzZXJfbWFwcGluZ19wcm92aWRlcic6IHsnY29uZmlnJzogewogICAgICAgICAgICAnbG9jYWxwYXJ0X3RlbXBsYXRlJzogdG1wbCgncHJlZmVycmVkX3VzZXJuYW1lJyksCiAgICAgICAgICAgICdkaXNwbGF5X25hbWVfdGVtcGxhdGUnOiB0bXBsKCduYW1lJyksCiAgICAgICAgICAgICdlbWFpbF90ZW1wbGF0ZSc6IHRtcGwoJ2VtYWlsJyksCiAgICAgICAgfX0KICAgIH1dCn0KeWFtbC5zYWZlX2R1bXAoZGF0YSwgb3BlbignL3N5bmFwc2UvY29uZmlnL2NvbmYuZC9vaWRjLnlhbWwnLCAndycpKQo=
+      | base64 -d | python3
 
   extraVolumes:
     - name: minicloud-ca
