@@ -63,6 +63,7 @@ spec:
       containers:
         - name: stalwart
           image: docker.io/stalwartlabs/stalwart:v0.16.13
+          command: ["stalwart", "--config", "/etc/stalwart/config.toml"]
           ports:
             - containerPort: 8080
               name: http
@@ -100,7 +101,7 @@ spec:
                   key: SMTP_RELAY_PASSWORD
           volumeMounts:
             - name: config
-              mountPath: /opt/stalwart-mail/etc/config.toml
+              mountPath: /etc/stalwart/config.toml
               subPath: config.toml
             - name: data
               mountPath: /opt/stalwart-mail/data
