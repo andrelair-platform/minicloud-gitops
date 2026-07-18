@@ -149,6 +149,12 @@ alertmanager:
           continue: false
         - matchers: ['severity = info']
           receiver: "null"
+    global:
+      smtp_smarthost: stalwart.mail.svc.cluster.local:587
+      smtp_from: alertmanager@devandre.sbs
+      smtp_auth_username: admin
+      smtp_auth_password: hJYZh6ZAe8tE5o2nzWdn5fwqRi0iLbX7
+      smtp_require_tls: false
     receivers:
       - name: "null"
       - name: webhook-default
@@ -159,6 +165,11 @@ alertmanager:
         webhook_configs:
           - url: http://alert-webhook-logger.monitoring.svc:80/
             send_resolved: true
+        email_configs:
+          - to: kanmegnea@devandre.sbs
+            send_resolved: true
+            headers:
+              Subject: '[CRITICAL] {{ .GroupLabels.alertname }} — minicloud'
     templates:
       - /etc/alertmanager/config/*.tmpl
   alertmanagerSpec:
