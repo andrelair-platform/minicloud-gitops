@@ -32,6 +32,8 @@ spec:
             - falco
             - kured
             - productivity
+        - mail
+        - sign
             - collab
             - argo-rollouts
             - vpa-system
