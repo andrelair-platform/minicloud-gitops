@@ -29,6 +29,7 @@ spec:
             - chaos-mesh
             - velero
             - productivity
+            - collab
             - argo-rollouts
             - vpa-system
             - system-upgrade     # Plane CE — minio/minio:latest + minio/mc:latest hardcoded in chart
