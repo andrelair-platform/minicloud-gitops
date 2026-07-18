@@ -40,6 +40,7 @@ spec:
     - https://stakater.github.io/stakater-charts
     - https://vmware-tanzu.github.io/helm-charts
     - https://ananace.gitlab.io/charts
+    - https://jitsi-contrib.github.io/jitsi-helm/
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
@@ -54,6 +55,8 @@ spec:
     - namespace: cert-manager
       server: https://kubernetes.default.svc
     - namespace: chaos-mesh
+      server: https://kubernetes.default.svc
+    - namespace: collab
       server: https://kubernetes.default.svc
     - namespace: collab-dev
       server: https://kubernetes.default.svc

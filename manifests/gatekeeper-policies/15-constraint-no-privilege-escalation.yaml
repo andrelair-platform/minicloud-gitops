@@ -33,6 +33,7 @@ spec:
             - langfuse        # Langfuse v3 + ClickHouse/Zookeeper/Valkey bitnami images
             - kured           # kured DaemonSet requires privilege escalation for nsenter reboot
             - productivity
+            - collab
             - argo-rollouts
             - vpa-system
             - system-upgrade    # Plane CE — chart does not expose allowPrivilegeEscalation in values
