@@ -50,7 +50,7 @@ spec:
             - name: HOST
               value: "sign.devandre.sbs"
             - name: DATABASE_URL
-              value: "sqlite3:///data/docuseal.sqlite3"
+              value: "sqlite3:////data/docuseal.sqlite3"
           volumeMounts:
             - name: data
               mountPath: /data
