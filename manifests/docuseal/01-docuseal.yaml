@@ -29,6 +29,15 @@ spec:
         app: docuseal
         backstage.io/kubernetes-id: docuseal
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - fast-heron
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
