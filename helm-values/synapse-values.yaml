@@ -14,7 +14,6 @@ signingkey:
       runAsNonRoot: true
       runAsUser: 991
       runAsGroup: 991
-      fsGroup: 991
       seccompProfile:
         type: RuntimeDefault
     securityContext:
