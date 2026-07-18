@@ -31,6 +31,7 @@ spec:
             - messaging        # nats reloader/prom-exporter sidecars; LimitRange covers runtime
             - nfs-provisioner  # infrastructure component with variable I/O
             - productivity
+            - collab
             - argo-rollouts
             - vpa-system
             - system-upgrade     # Plane CE bundled PG/Redis/RabbitMQ/MinIO StatefulSets don't expose resource limits in values

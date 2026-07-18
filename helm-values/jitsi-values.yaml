@@ -1,0 +1,118 @@
+publicURL: "https://meet.devandre.sbs"
+tz: "Europe/Paris"
+
+# No per-meeting JWT auth. Authentik forward-auth on the NGINX ingress
+# protects access at the HTTP level — all employees authenticate via SSO
+# before reaching any Jitsi UI. Room names serve as the shared secret inside.
+enableAuth: false
+enableGuests: true
+
+# XMPP WebSocket disabled: NGINX + Cloudflare proxy can break WS upgrades on
+# these paths. Colibri SCTP is the default JVB signalling channel.
+websockets:
+  colibri:
+    enabled: false
+  xmpp:
+    enabled: false
+
+web:
+  replicaCount: 1
+
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.org/redirect-to-https: "true"
+      cert-manager.io/cluster-issuer: minicloud-ca
+      cert-manager.io/duration: "2160h"
+      cert-manager.io/renew-before: "720h"
+      nginx.org/proxy-read-timeout: "3600s"
+      nginx.org/proxy-send-timeout: "3600s"
+      nginx.org/server-snippets: |
+        location /outpost.goauthentik.io {
+            proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
+            proxy_set_header        Host $host;
+            proxy_set_header        X-Original-URL $scheme://$http_host$request_uri;
+            add_header              Set-Cookie $auth_cookie;
+            auth_request_set        $auth_cookie $upstream_http_set_cookie;
+            proxy_pass_request_body off;
+            proxy_set_header        Content-Length "";
+        }
+        location @goauthentik_proxy_signin {
+            internal;
+            add_header Set-Cookie $auth_cookie;
+            return 302 /outpost.goauthentik.io/start?rd=$request_uri;
+        }
+      nginx.org/location-snippets: |
+        auth_request     /outpost.goauthentik.io/auth/nginx;
+        error_page       401 = @goauthentik_proxy_signin;
+        auth_request_set $auth_cookie $upstream_http_set_cookie;
+        add_header       Set-Cookie $auth_cookie;
+        auth_request_set $authentik_username $upstream_http_x_authentik_username;
+        proxy_set_header X-authentik-username $authentik_username;
+    hosts:
+      - host: meet.devandre.sbs
+        paths:
+          - /
+      - host: meet.10.0.0.200.nip.io
+        paths:
+          - /
+    tls:
+      - secretName: jitsi-tls
+        hosts:
+          - meet.devandre.sbs
+          - meet.10.0.0.200.nip.io
+
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+
+prosody:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+
+jicofo:
+  xmpp:
+    # ESO-managed secret from Vault secret/platform/jitsi
+    existingSecretName: jitsi-jicofo-secret
+
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+
+jvb:
+  # Pin JVB to star-kitten (10.0.0.8) and bind directly to its NIC via
+  # hostNetwork so WebRTC UDP 10000 is reachable from the cluster LAN.
+  # Clients on Tailscale reach this via the controller's subnet route for
+  # 10.0.0.0/24. External clients without Tailscale need a TURN relay
+  # (future Coturn deployment, Phase 69-bis).
+  useHostNetwork: true
+  nodeSelector:
+    kubernetes.io/hostname: star-kitten
+
+  # Advertise star-kitten's IP in ICE candidates. No STUN discovery needed.
+  publicIPs:
+    - "10.0.0.8"
+  stunServers: ""
+  useNodeIP: false
+
+  UDPPort: 10000
+
+  service:
+    enabled: true
+    type: ClusterIP
+
+  xmpp:
+    # ESO-managed secret from Vault secret/platform/jitsi
+    existingSecretName: jitsi-jvb-secret
+
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 1000m, memory: 512Mi }
+
+  metrics:
+    enabled: false
+
+coturn:
+  enabled: false

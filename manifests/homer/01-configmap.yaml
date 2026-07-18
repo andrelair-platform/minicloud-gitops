@@ -164,6 +164,18 @@ data:
     - name: Collaboration & Showcase
       icon: fas fa-cubes
       items:
+      - name: Element
+        icon: fas fa-comments
+        subtitle: "Self-hosted Matrix chat — Synapse homeserver, E2E encryption — OIDC via Authentik"
+        tag: SSO
+        url: https://element.devandre.sbs
+        target: _blank
+      - name: Jitsi Meet
+        icon: fas fa-video
+        subtitle: "Self-hosted video conferencing — Spaces, screen share — OIDC via Authentik"
+        tag: SSO
+        url: https://meet.devandre.sbs
+        target: _blank
       - name: Nextcloud
         icon: fas fa-cloud
         subtitle: "Document collaboration & file sharing — OnlyOffice integration — OIDC via Authentik"
