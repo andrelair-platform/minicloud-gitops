@@ -144,6 +144,10 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: chat
       server: https://kubernetes.default.svc
+    - namespace: mail
+      server: https://kubernetes.default.svc
+    - namespace: sign
+      server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
     - group: ""
