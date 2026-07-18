@@ -17,13 +17,14 @@ config:
 extraConfig:
   enable_registration: false
   enable_registration_without_verification: false
+  suppress_key_server_warning: true
   registration_shared_secret: "${SYNAPSE_REGISTRATION_SECRET}"
   macaroon_secret_key: "${SYNAPSE_MACAROON_KEY}"
   oidc_providers:
     - idp_id: authentik
       idp_name: "Authentik SSO"
       discover: true
-      issuer_url: "https://auth.devandre.sbs/application/o/matrix-synapse/"
+      issuer: "https://auth.devandre.sbs/application/o/matrix-synapse/"
       client_auth_method: "client_secret_post"
       client_id: "${SYNAPSE_OIDC_CLIENT_ID}"
       client_secret: "${SYNAPSE_OIDC_CLIENT_SECRET}"
