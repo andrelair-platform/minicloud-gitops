@@ -16,6 +16,11 @@ server:
 
   updateStrategyType: RollingUpdate
 
+  # Pin to fast-heron where the Longhorn RWO PVC is attached.
+  # Prevents Longhorn Multi-Attach errors when k3s reschedules to a different node.
+  nodeSelector:
+    kubernetes.io/hostname: fast-heron
+
   statefulSet:
     securityContext:
       container:
