@@ -18,31 +18,10 @@ extraConfig:
   enable_registration: false
   enable_registration_without_verification: false
   suppress_key_server_warning: true
-  registration_shared_secret: "${SYNAPSE_REGISTRATION_SECRET}"
-  macaroon_secret_key: "${SYNAPSE_MACAROON_KEY}"
-  # discover: false — inside the cluster auth.devandre.sbs resolves to MetalLB 10.0.0.200
-  # which presents a minicloud CA-signed cert. SSL_CERT_FILE (set via extraCommands) makes
-  # Synapse trust it. Authorization endpoint stays public (browser redirect).
-  oidc_providers:
-    - idp_id: authentik
-      idp_name: "Authentik SSO"
-      discover: false
-      issuer: "https://auth.devandre.sbs/"
-      client_auth_method: "client_secret_post"
-      client_id: "${SYNAPSE_OIDC_CLIENT_ID}"
-      client_secret: "${SYNAPSE_OIDC_CLIENT_SECRET}"
-      authorization_endpoint: "https://auth.devandre.sbs/application/o/authorize/"
-      token_endpoint: "https://auth.devandre.sbs/application/o/token/"
-      userinfo_endpoint: "https://auth.devandre.sbs/application/o/userinfo/"
-      jwks_uri: "https://auth.devandre.sbs/application/o/matrix-synapse/jwks/"
-      scopes: ["openid", "profile", "email"]
-      user_profile_method: "userinfo_endpoint"
-      allow_existing_users: true
-      user_mapping_provider:
-        config:
-          localpart_template: "{{ user.preferred_username }}"
-          display_name_template: "{{ user.name }}"
-          email_template: "{{ user.email }}"
+  # registration_shared_secret and macaroon_secret_key are injected via conf.d/secrets.yaml
+  # (chart handles registration_shared_secret) and conf.d/oidc.yaml (extraCommands below).
+  # oidc_providers are also injected via conf.d/oidc.yaml — Synapse does NOT perform
+  # ${VAR} shell-style substitution in homeserver.yaml; only Jinja2 templates are supported.
 
 postgresql:
   enabled: false
@@ -80,12 +59,44 @@ synapse:
       drop: [ALL]
     runAsNonRoot: true
 
-  # Merge minicloud CA into system bundle before starting Synapse.
-  # extraCommands run in the same sh -c as exec python so SSL_CERT_FILE is inherited.
+  # extraCommands run in the same sh -c as exec python (before it), so exports are inherited.
+  # They write conf.d/oidc.yaml because Synapse does NOT do ${VAR} substitution in YAML —
+  # conf.d/ is loaded after homeserver.yaml and overrides the oidc_providers list.
   extraCommands:
     - "cp /etc/ssl/certs/ca-certificates.crt /tmp/ca-bundle.crt"
     - "cat /etc/minicloud-ca/ca.crt >> /tmp/ca-bundle.crt"
     - "export SSL_CERT_FILE=/tmp/ca-bundle.crt"
+    - >-
+      python3 -c "
+      import os, yaml;
+      yaml.safe_dump(
+        {
+          'macaroon_secret_key': os.environ['SYNAPSE_MACAROON_KEY'],
+          'oidc_providers': [{
+            'idp_id': 'authentik',
+            'idp_name': 'Authentik SSO',
+            'discover': False,
+            'issuer': 'https://auth.devandre.sbs/',
+            'client_auth_method': 'client_secret_post',
+            'client_id': os.environ['SYNAPSE_OIDC_CLIENT_ID'],
+            'client_secret': os.environ['SYNAPSE_OIDC_CLIENT_SECRET'],
+            'authorization_endpoint': 'https://auth.devandre.sbs/application/o/authorize/',
+            'token_endpoint': 'https://auth.devandre.sbs/application/o/token/',
+            'userinfo_endpoint': 'https://auth.devandre.sbs/application/o/userinfo/',
+            'jwks_uri': 'https://auth.devandre.sbs/application/o/matrix-synapse/jwks/',
+            'scopes': ['openid', 'profile', 'email'],
+            'user_profile_method': 'userinfo_endpoint',
+            'allow_existing_users': True,
+            'user_mapping_provider': {'config': {
+              'localpart_template': '{{ user.preferred_username }}',
+              'display_name_template': '{{ user.name }}',
+              'email_template': '{{ user.email }}'
+            }}
+          }]
+        },
+        open('/synapse/config/conf.d/oidc.yaml', 'w')
+      )
+      "
 
   extraVolumes:
     - name: minicloud-ca
