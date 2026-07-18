@@ -66,11 +66,6 @@ data:
     username = "%{env:SMTP_RELAY_USER}%"
     secret   = "%{env:SMTP_RELAY_PASSWORD}%"
 
-    # Disable automatic webadmin updates — the bundled UI must match the
-    # server version. Upgrade both together when moving to v0.13.x+.
-    [config]
-    resource.webadmin.auto-update = false
-
     # Logging
     [tracer."log"]
     type  = "log"
