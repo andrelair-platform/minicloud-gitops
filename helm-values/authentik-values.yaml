@@ -37,8 +37,8 @@ server:
       drop:
         - NET_RAW
   resources:
-    requests: { cpu: 100m, memory: 384Mi }
-    limits:   { cpu: 1000m, memory: 768Mi }
+    requests: { cpu: 100m, memory: 512Mi }
+    limits:   { cpu: 1000m, memory: 1280Mi }
   ingress:
     enabled: false   # we add our own with cert-manager TLS — see ../../authentik-ingress.yaml
   # Bootstrap admin (one-time use; rotate to MFA-enrolled account after first login).
