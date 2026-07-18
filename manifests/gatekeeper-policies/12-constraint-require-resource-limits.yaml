@@ -31,8 +31,8 @@ spec:
             - messaging        # nats reloader/prom-exporter sidecars; LimitRange covers runtime
             - nfs-provisioner  # infrastructure component with variable I/O
             - productivity
-        - mail
-        - sign
+            - mail
+            - sign
             - collab
             - argo-rollouts
             - vpa-system
