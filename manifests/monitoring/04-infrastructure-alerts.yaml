@@ -1,0 +1,42 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: infrastructure-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: node-scheduling
+      rules:
+        - alert: NodeSchedulingDisabled
+          expr: |
+            kube_node_spec_unschedulable == 1
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.node }} is cordoned (unschedulable)"
+            description: |
+              Node {{ $labels.node }} has spec.unschedulable=true and has been cordoned for more
+              than 30 minutes. If this is unintentional, uncordon it:
+                kubectl uncordon {{ $labels.node }}
+              If it is intentional (e.g. maintenance), add a comment in the CLAUDE.md runbook.
+
+    - name: node-stability
+      rules:
+        - alert: NodeFrequentlyNotReady
+          expr: |
+            changes(kube_node_status_condition{condition="Ready",status="true"}[24h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.node }} toggled Ready/NotReady {{ $value | printf \"%.0f\" }} times in 24h"
+            description: |
+              Node {{ $labels.node }} has been unstable — its Ready condition changed
+              {{ $value | printf "%.0f" }} times in the last 24 hours.
+              Likely causes: network flaps, k3s-agent crash loop, Apple SMC sleep (swift-mac).
+              Check: kubectl describe node {{ $labels.node }}
+              On swift-mac: sudo systemctl status k3s-agent && sudo journalctl -u k3s-agent -n 50
