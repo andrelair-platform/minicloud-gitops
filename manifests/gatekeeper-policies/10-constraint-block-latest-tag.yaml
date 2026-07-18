@@ -29,6 +29,8 @@ spec:
             - chaos-mesh
             - velero
             - productivity
+        - mail
+        - sign
             - collab
             - argo-rollouts
             - vpa-system

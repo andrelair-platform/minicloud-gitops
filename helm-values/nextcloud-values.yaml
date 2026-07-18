@@ -40,9 +40,16 @@ nextcloud:
         'allow_local_remote_servers' => true,
       );
 
-  # Mail via Zoho SMTP (filled in after Zoho is configured)
+  # Mail via Stalwart internal SMTP (stalwart.mail.svc.cluster.local:587)
   mail:
-    enabled: false
+    enabled: true
+    fromAddress: noreply
+    domain: devandre.sbs
+    smtp:
+      host: stalwart.mail.svc.cluster.local
+      port: 587
+      secure: false
+      authtype: NONE
 
 persistence:
   enabled: true
