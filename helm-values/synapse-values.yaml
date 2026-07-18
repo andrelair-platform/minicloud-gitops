@@ -73,6 +73,37 @@ synapse:
       drop: [ALL]
     runAsNonRoot: true
 
+  extraInitContainers:
+    - name: install-minicloud-ca
+      image: ghcr.io/element-hq/synapse:v1.127.1
+      command: ['/bin/sh', '-c']
+      args:
+        - |
+          cp /etc/ssl/certs/ca-certificates.crt /shared-certs/ca-certificates.crt
+          cat /etc/minicloud-ca/ca.crt >> /shared-certs/ca-certificates.crt
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+        runAsNonRoot: true
+        runAsUser: 991
+      volumeMounts:
+        - name: minicloud-ca
+          mountPath: /etc/minicloud-ca
+        - name: shared-certs
+          mountPath: /shared-certs
+
+  extraVolumes:
+    - name: minicloud-ca
+      configMap:
+        name: minicloud-ca-cert
+    - name: shared-certs
+      emptyDir: {}
+
+  extraVolumeMounts:
+    - name: shared-certs
+      mountPath: /etc/ssl/certs
+
   extraEnv:
     - name: SYNAPSE_OIDC_CLIENT_ID
       valueFrom:
