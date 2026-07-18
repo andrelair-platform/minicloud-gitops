@@ -75,8 +75,10 @@ postgresql:
         memory: 512Mi
 
 # Redis for caching + session locking (prevents file corruption on concurrent writes)
+# standalone mode: master only, no replicas (replicas were crash-looping on exit 0 health probe)
 redis:
   enabled: true
+  architecture: standalone
   auth:
     enabled: false
   master:
@@ -107,6 +109,13 @@ ingress:
     nginx.org/proxy-read-timeout: "300"
     nginx.org/proxy-send-timeout: "300"
     nginx.org/client-max-body-size: "10g"
+    # CalDAV/CardDAV autodiscovery redirects (RFC 6764)
+    # Required for iOS/Android/Thunderbird to find the DAV endpoint automatically
+    nginx.org/server-snippets: |
+      location = /.well-known/carddav { return 301 $scheme://$host/remote.php/dav; }
+      location = /.well-known/caldav  { return 301 $scheme://$host/remote.php/dav; }
+      location = /.well-known/webfinger { return 301 $scheme://$host/index.php/.well-known/webfinger; }
+      location = /.well-known/nodeinfo  { return 301 $scheme://$host/index.php/.well-known/nodeinfo; }
   tls:
     - hosts:
         - cloud.10.0.0.200.nip.io
