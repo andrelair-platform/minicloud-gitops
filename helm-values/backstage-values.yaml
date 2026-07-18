@@ -17,8 +17,8 @@ backstage:
     # Phase 24 custom image — built from andrelair-platform/minicloud-backstage
     registry: harbor.10.0.0.200.nip.io
     repository: library/backstage
-    # git SHA: 2d4c8f1 — built 2026-07-16 by CI
-    tag: "2d4c8f1-amd64"
+    # git SHA: c55299e — built 2026-07-18 by CI
+    tag: "c55299e-amd64"
 
   resources:
     requests: { cpu: 100m, memory: 384Mi }
@@ -148,6 +148,8 @@ backstage:
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/go-service/template.yaml
         - type: url
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/custom-image/template.yaml
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/onboard-employee/template.yaml
     proxy:
       endpoints:
         '/minicloud-plane':
@@ -250,6 +252,22 @@ backstage:
         secretKeyRef:
           name: backstage-vault-secret
           key: vault-scaffolder-token
+    - name: AUTHENTIK_URL
+      value: https://auth.devandre.sbs
+    - name: STALWART_URL
+      value: http://stalwart.mail.svc.cluster.local:8080
+    - name: MAIL_DOMAIN
+      value: devandre.sbs
+    - name: AUTHENTIK_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: backstage-phase24-secret
+          key: AUTHENTIK_API_TOKEN
+    - name: STALWART_ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: backstage-phase24-secret
+          key: STALWART_ADMIN_PASSWORD
 
 # Disable the chart's Ingress — we'll add our own with cert-manager TLS.
 ingress:
