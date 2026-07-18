@@ -45,8 +45,8 @@ spec:
             - polaris
             - langfuse
             - productivity
-        - mail
-        - sign
+            - mail
+            - sign
             - collab
             - argo-rollouts
             - vpa-system

@@ -42,8 +42,8 @@ spec:
             - langfuse         # Langfuse v3 + ClickHouse/Zookeeper/Valkey bitnami images
             - kured            # kured DaemonSet runs as root to nsenter into host PID 1
             - productivity
-        - mail
-        - sign
+            - mail
+            - sign
             - collab
             - argo-rollouts
             - vpa-system

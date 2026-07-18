@@ -31,8 +31,8 @@ spec:
             - falco
             - kured
             - productivity
-        - mail
-        - sign
+            - mail
+            - sign
             - collab
             - monitoring
             - argo-rollouts
