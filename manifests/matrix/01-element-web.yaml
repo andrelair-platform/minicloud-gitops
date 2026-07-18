@@ -52,6 +52,7 @@ spec:
         app: element-web
         backstage.io/kubernetes-id: element-web
     spec:
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 101
@@ -62,6 +63,11 @@ spec:
           image: docker.io/vectorim/element-web:v1.11.105
           ports:
             - containerPort: 8080
+          env:
+            - name: NGINX_PORT
+              value: "8080"
+            - name: ELEMENT_WEB_PORT
+              value: "8080"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
