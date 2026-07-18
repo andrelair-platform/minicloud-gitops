@@ -20,14 +20,21 @@ extraConfig:
   suppress_key_server_warning: true
   registration_shared_secret: "${SYNAPSE_REGISTRATION_SECRET}"
   macaroon_secret_key: "${SYNAPSE_MACAROON_KEY}"
+  # discover: false + internal k8s endpoints avoids TLS trust issues:
+  # auth.devandre.sbs resolves to MetalLB 10.0.0.200 (minicloud CA) inside cluster.
+  # Use internal http for token/userinfo/jwks; public URL only for authorization (browser redirect).
   oidc_providers:
     - idp_id: authentik
       idp_name: "Authentik SSO"
-      discover: true
-      issuer: "https://auth.devandre.sbs/application/o/matrix-synapse/"
+      discover: false
+      issuer: "https://auth.devandre.sbs/"
       client_auth_method: "client_secret_post"
       client_id: "${SYNAPSE_OIDC_CLIENT_ID}"
       client_secret: "${SYNAPSE_OIDC_CLIENT_SECRET}"
+      authorization_endpoint: "https://auth.devandre.sbs/application/o/authorize/"
+      token_endpoint: "http://authentik-server.authentik.svc.cluster.local/application/o/token/"
+      userinfo_endpoint: "http://authentik-server.authentik.svc.cluster.local/application/o/userinfo/"
+      jwks_uri: "http://authentik-server.authentik.svc.cluster.local/application/o/matrix-synapse/jwks/"
       scopes: ["openid", "profile", "email"]
       user_profile_method: "userinfo_endpoint"
       allow_existing_users: true
@@ -72,37 +79,6 @@ synapse:
     capabilities:
       drop: [ALL]
     runAsNonRoot: true
-
-  extraInitContainers:
-    - name: install-minicloud-ca
-      image: ghcr.io/element-hq/synapse:v1.127.1
-      command: ['/bin/sh', '-c']
-      args:
-        - |
-          cp /etc/ssl/certs/ca-certificates.crt /shared-certs/ca-certificates.crt
-          cat /etc/minicloud-ca/ca.crt >> /shared-certs/ca-certificates.crt
-      securityContext:
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop: [ALL]
-        runAsNonRoot: true
-        runAsUser: 991
-      volumeMounts:
-        - name: minicloud-ca
-          mountPath: /etc/minicloud-ca
-        - name: shared-certs
-          mountPath: /shared-certs
-
-  extraVolumes:
-    - name: minicloud-ca
-      configMap:
-        name: minicloud-ca-cert
-    - name: shared-certs
-      emptyDir: {}
-
-  extraVolumeMounts:
-    - name: shared-certs
-      mountPath: /etc/ssl/certs
 
   extraEnv:
     - name: SYNAPSE_OIDC_CLIENT_ID
