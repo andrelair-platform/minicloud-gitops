@@ -1,6 +1,7 @@
 ---
 # Actual peak: ~21m CPU / 515Mi memory (5 pods)
-# 6Gi: repo-server raised to 2500Mi (OOMKilling with 55+ apps); controller 1Gi + others ~1Gi → 4.5Gi total
+# 9Gi: controller bumped 1Gi→2Gi + repo-server 2500Mi → rolling update needs 7.8Gi peak
+# Breakdown: controller 2Gi + repo-server×2 5Gi + server 512Mi + appset 256Mi + redis 128Mi
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -10,8 +11,8 @@ spec:
   hard:
     requests.cpu: "2"
     limits.cpu: "6"
-    requests.memory: 2Gi
-    limits.memory: 6Gi
+    requests.memory: 4Gi
+    limits.memory: 9Gi
     count/pods: "20"
 ---
 # LimitRange injects defaults so pods without explicit resource specs count against the quota
