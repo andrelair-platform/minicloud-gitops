@@ -149,6 +149,13 @@ clickhouse:
   zookeeper:
     image:
       repository: bitnamilegacy/zookeeper
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 768Mi
 
 # Redis/Valkey — internal standalone, no auth (Langfuse connects without password)
 redis:
