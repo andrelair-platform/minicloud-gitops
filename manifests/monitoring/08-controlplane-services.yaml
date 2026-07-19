@@ -1,0 +1,40 @@
+---
+# Selector-based Services for the controlplane-proxy DaemonSet.
+# With hostNetwork: true, the DaemonSet pod IP equals set-hog's node IP
+# (10.0.0.2), so Endpoints automatically resolve to 10.0.0.2:port.
+# Port names match what the ServiceMonitors expect.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-scheduler-proxy
+  namespace: monitoring
+  labels:
+    app: controlplane-proxy
+    component: kube-scheduler
+spec:
+  selector:
+    app: controlplane-proxy
+  ports:
+    - name: https-metrics
+      port: 10269
+      targetPort: 10269
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-controller-manager-proxy
+  namespace: monitoring
+  labels:
+    app: controlplane-proxy
+    component: kube-controller-manager
+spec:
+  selector:
+    app: controlplane-proxy
+  ports:
+    - name: https-metrics
+      port: 10267
+      targetPort: 10267
+      protocol: TCP
+  type: ClusterIP
