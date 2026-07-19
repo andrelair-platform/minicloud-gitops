@@ -1,17 +1,12 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: platform-demo
-spec:
-  replicas: 3
-  template:
-    spec:
-      containers:
-        - name: platform-demo
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
+- op: replace
+  path: /spec/replicas
+  value: 3
+- op: replace
+  path: /spec/template/spec/containers/0/resources
+  value:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
