@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: minicloud-plane
+  namespace: minicloud-plane-dev
+spec:
+  selector:
+    matchLabels:
+      app: minicloud-plane
+  namespaceSelector:
+    matchNames:
+      - minicloud-plane-dev
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
