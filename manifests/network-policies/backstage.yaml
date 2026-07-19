@@ -51,6 +51,27 @@ spec:
         - port: 5432
           protocol: TCP
 ---
+# ERPNext webhooks call the Backstage scaffolder API (employee onboarding)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-erp-to-backstage
+  namespace: backstage
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: backstage
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: erp
+      ports:
+        - port: 7007
+          protocol: TCP
+---
 # Prometheus scrapes backstage metrics
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
