@@ -11,7 +11,7 @@ spec:
       failureLimit: 3
       provider:
         prometheus:
-          address: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+          address: http://kps-prometheus.monitoring.svc:9090
           query: |
             sum(rate(http_requests_total{service="platform-demo",code!~"5.."}[2m]))
             /
