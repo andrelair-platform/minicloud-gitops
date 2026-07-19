@@ -1,0 +1,106 @@
+# ERPNext v16.28.0 — Phase 79 — HR source of truth
+# Chart: erpnext/erpnext 8.0.67
+# Namespace: erp | URL: https://erp.devandre.sbs
+#
+# Site name = domain — ERPNext routes requests by $host header to the right site.
+# mariadb-sts.rootPassword is intentionally left empty here: the ESO ExternalSecret
+# erpnext-mariadb-root pre-creates the k8s secret named "erpnext" with key
+# mariadb-root-password. ArgoCD ignoreDifferences prevents Helm from overwriting it.
+
+image:
+  repository: frappe/erpnext
+  tag: v16.28.0
+  pullPolicy: IfNotPresent
+
+nginx:
+  replicaCount: 1
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
+
+worker:
+  gunicorn:
+    replicaCount: 1
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 500m, memory: 512Mi }
+  default:
+    replicaCount: 1
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits:   { cpu: 500m, memory: 512Mi }
+  short:
+    replicaCount: 1
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits:   { cpu: 200m, memory: 256Mi }
+  long:
+    replicaCount: 1
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits:   { cpu: 200m, memory: 256Mi }
+
+socketio:
+  replicaCount: 1
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
+
+persistence:
+  worker:
+    enabled: true
+    storageClass: longhorn
+    size: 8Gi
+    accessModes:
+      - ReadWriteOnce
+
+ingress:
+  enabled: false
+
+jobs:
+  configure:
+    enabled: true
+    fixVolume: true
+
+  # Enabled on first deploy only — disable after site is created by setting
+  # enabled: false and opening a PR. Leaving enabled=true is safe (bench
+  # handles "site already exists" gracefully), but wastes a Job run per sync.
+  createSite:
+    enabled: true
+    siteName: "erp.devandre.sbs"
+    adminExistingSecret: erpnext-admin-secret
+    adminExistingSecretKey: ERPNEXT_ADMIN_PASSWORD
+    installApps:
+      - erpnext
+    dbType: mariadb
+
+# MariaDB StatefulSet — internal-only, password managed via ESO erpnext-mariadb-root.
+# ArgoCD ignoreDifferences on the erpnext Secret prevents Helm from clobbering the
+# ESO-owned value. The placeholder below is never actually applied when ESO wins the
+# Server-Side Apply race (SSA field ownership).
+mariadb-sts:
+  enabled: true
+  image:
+    repository: mariadb
+    tag: "10.6"
+    pullPolicy: IfNotPresent
+  rootPassword: "placeholder-overridden-by-eso"
+  persistence:
+    storageClass: longhorn
+    size: 8Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+# Valkey (Redis fork) for cache and queue — enabled by default, keep bundled
+"valkey-cache":
+  enabled: true
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
+
+"valkey-queue":
+  enabled: true
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
