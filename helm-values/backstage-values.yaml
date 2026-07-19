@@ -80,8 +80,11 @@ backstage:
           user: ${POSTGRES_USER}
           password: ${POSTGRES_PASSWORD}
       auth:
-        keys:
-          - secret: ${BACKSTAGE_API_KEY}
+        externalAccess:
+          - type: static
+            options:
+              token: ${BACKSTAGE_API_KEY}
+              subject: erp-next-service
     auth:
       environment: production
       providers:
