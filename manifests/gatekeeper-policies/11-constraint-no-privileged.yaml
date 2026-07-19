@@ -39,3 +39,4 @@ spec:
             - vpa-system
             - system-upgrade
             - chat
+            - erp

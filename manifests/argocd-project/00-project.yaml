@@ -41,6 +41,7 @@ spec:
     - https://vmware-tanzu.github.io/helm-charts
     - https://ananace.gitlab.io/charts
     - https://jitsi-contrib.github.io/jitsi-helm/
+    - https://helm.erpnext.com
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
@@ -147,6 +148,8 @@ spec:
     - namespace: mail
       server: https://kubernetes.default.svc
     - namespace: sign
+      server: https://kubernetes.default.svc
+    - namespace: erp
       server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
