@@ -2,14 +2,10 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: platform-demo
-  namespace: gitops-demo
 spec:
   selector:
     matchLabels:
       app: platform-demo
-  namespaceSelector:
-    matchNames:
-      - gitops-demo
   endpoints:
     - port: http
       path: /metrics
