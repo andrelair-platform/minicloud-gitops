@@ -62,11 +62,10 @@ jobs:
     enabled: true
     fixVolume: true
 
-  # Enabled on first deploy only — disable after site is created by setting
-  # enabled: false and opening a PR. Leaving enabled=true is safe (bench
-  # handles "site already exists" gracefully), but wastes a Job run per sync.
+  # Site erp.devandre.sbs created 2026-07-19. Disabled to avoid spurious Job
+  # runs on every ArgoCD sync (each sync creates a new timestamped Job).
   createSite:
-    enabled: true
+    enabled: false
     siteName: "erp.devandre.sbs"
     adminExistingSecret: erpnext-admin-secret
     adminExistingSecretKey: ERPNEXT_ADMIN_PASSWORD
