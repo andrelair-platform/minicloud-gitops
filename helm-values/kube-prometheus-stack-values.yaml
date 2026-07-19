@@ -154,7 +154,12 @@ alertmanager:
       smtp_from: alertmanager@devandre.sbs
       smtp_auth_username: admin
       smtp_auth_password: hJYZh6ZAe8tE5o2nzWdn5fwqRi0iLbX7
-      smtp_require_tls: false
+      smtp_require_tls: true
+      smtp_tls_config:
+        # Stalwart uses a self-signed/internal-CA cert on port 587 STARTTLS.
+        # Alertmanager Go smtp.PlainAuth refuses plaintext; STARTTLS with
+        # insecure_skip_verify is the correct workaround for cluster-internal SMTP.
+        insecure_skip_verify: true
     receivers:
       - name: "null"
       - name: webhook-default
