@@ -33,7 +33,7 @@ spec:
       terminationGracePeriodSeconds: 5
       containers:
         - name: scheduler-proxy
-          image: alpine/socat:1.8.0.0
+          image: harbor.10.0.0.200.nip.io/library/socat:1.8.0.0
           command:
             - socat
             - TCP-LISTEN:10269,fork,reuseaddr
@@ -60,7 +60,7 @@ spec:
             capabilities:
               drop: [ALL]
         - name: cm-proxy
-          image: alpine/socat:1.8.0.0
+          image: harbor.10.0.0.200.nip.io/library/socat:1.8.0.0
           command:
             - socat
             - TCP-LISTEN:10267,fork,reuseaddr
