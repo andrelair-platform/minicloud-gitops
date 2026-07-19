@@ -39,3 +39,10 @@ spec:
       jqPathExpressions:
         - '.data["oidc.config"]'
         - '.data["url"]'
+    - group: ""
+      kind: Secret
+      name: argocd-secret
+      namespace: argocd
+      jsonPointers:
+        - /data
+        - /metadata/annotations
