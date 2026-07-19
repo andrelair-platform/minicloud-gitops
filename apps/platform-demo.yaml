@@ -22,3 +22,13 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - ServerSideDiff=true
+      - RespectIgnoreDifferences=true
+      - SkipDryRunOnMissingResource=true
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Rollout
+      name: platform-demo
+      namespace: gitops-demo
+      jqPathExpressions:
+        - .spec.replicas
+        - .spec.template.metadata.annotations
