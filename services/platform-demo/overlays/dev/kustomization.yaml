@@ -2,17 +2,17 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: platform-demo-dev
 resources:
-  - ../../base
-  - scaledobject.yaml
+- ../../base
+- scaledobject.yaml
 # CI updates newTag here on every push to main (overlays/dev only).
 # Staging and prod tags are promoted manually via PRs.
 images:
-  - name: harbor.10.0.0.200.nip.io/library/platform-demo
-    newTag: "db79910"
+- name: harbor.10.0.0.200.nip.io/library/platform-demo
+  newTag: 66319fb
 patches:
-  - path: patch-resources.yaml
-    target:
-      group: argoproj.io
-      version: v1alpha1
-      kind: Rollout
-      name: platform-demo
+- path: patch-resources.yaml
+  target:
+    group: argoproj.io
+    kind: Rollout
+    name: platform-demo
+    version: v1alpha1
