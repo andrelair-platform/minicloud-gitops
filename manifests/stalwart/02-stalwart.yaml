@@ -150,6 +150,10 @@ metadata:
     nginx.org/proxy-read-timeout: "300"
     nginx.org/proxy-connect-timeout: "60"
     nginx.org/client-max-body-size: "50m"
+    # /webmail is not a Stalwart v0.16 path; redirect to the built-in account portal
+    nginx.org/server-snippets: |
+      location = /webmail { return 301 /account/; }
+      location /webmail/ { return 301 /account/; }
 spec:
   ingressClassName: nginx
   tls:
