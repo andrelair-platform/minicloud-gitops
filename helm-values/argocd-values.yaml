@@ -11,6 +11,27 @@ configs:
   cm:
     # Enable resource exclusions / inclusions later if needed
     timeout.reconciliation: 180s
+    resource.customizations.health.argoproj.io_Rollout: |
+      hs = {}
+      if obj.status ~= nil then
+        if obj.status.phase == "Degraded" then
+          hs.status = "Degraded"
+          hs.message = obj.status.message
+        elseif obj.status.phase == "Paused" then
+          hs.status = "Suspended"
+          hs.message = "Rollout is paused"
+        elseif obj.status.readyReplicas == obj.spec.replicas then
+          hs.status = "Healthy"
+          hs.message = "Rollout is healthy"
+        else
+          hs.status = "Progressing"
+          hs.message = "Waiting for rollout to finish"
+        end
+      else
+        hs.status = "Progressing"
+        hs.message = "Waiting for rollout status"
+      end
+      return hs
     # Disable local admin — OIDC (Authentik) is the only login path.
     # Break-glass: kubectl --context minicloud-break-glass + kubectl exec into argocd-server.
     admin.enabled: "false"
