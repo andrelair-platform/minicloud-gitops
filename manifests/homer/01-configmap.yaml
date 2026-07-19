@@ -166,9 +166,9 @@ data:
       items:
       - name: Mail
         icon: fas fa-envelope
-        subtitle: "Self-hosted email — Stalwart Mail Server, webmail + IMAP/SMTP — OIDC via Authentik"
-        tag: SSO
-        url: https://mail.devandre.sbs
+        subtitle: "Self-hosted email — Stalwart v0.16, webmail + IMAP/SMTP — login with full email address"
+        tag: mail
+        url: https://mail.devandre.sbs/webmail
         target: _blank
       - name: Sign
         icon: fas fa-file-signature
