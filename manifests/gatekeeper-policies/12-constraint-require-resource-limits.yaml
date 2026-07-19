@@ -38,3 +38,4 @@ spec:
             - vpa-system
             - system-upgrade     # Plane CE bundled PG/Redis/RabbitMQ/MinIO StatefulSets don't expose resource limits in values
             - chat              # matrix-synapse signing key job (batch/v1 Job) has no resource limits in chart defaults
+            - erp

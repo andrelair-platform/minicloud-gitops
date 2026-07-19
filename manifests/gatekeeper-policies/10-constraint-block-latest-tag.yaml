@@ -36,3 +36,4 @@ spec:
             - vpa-system
             - system-upgrade     # Plane CE — minio/minio:latest + minio/mc:latest hardcoded in chart
             - chat              # matrix-synapse signing key job uses bitnami/kubectl:latest by default
+            - erp

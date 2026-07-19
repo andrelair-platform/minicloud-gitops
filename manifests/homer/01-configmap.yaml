@@ -194,6 +194,12 @@ data:
         tag: SSO
         url: https://cloud.devandre.sbs
         target: _blank
+      - name: ERPNext
+        icon: fas fa-building
+        subtitle: "Frappe HR / ERP — employee management, departments, HR source of truth — OIDC via Authentik"
+        tag: HR
+        url: https://erp.devandre.sbs
+        target: _blank
       - name: ktayl-solution
         icon: fas fa-briefcase
         subtitle: "Insurance consulting platform — 7 Lines of Business (Astro + Tailwind)"

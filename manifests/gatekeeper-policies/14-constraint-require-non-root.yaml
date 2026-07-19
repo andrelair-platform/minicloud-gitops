@@ -49,3 +49,4 @@ spec:
             - vpa-system
             - system-upgrade     # Plane CE — Django + Node frontends run as root, no securityContext override in chart
             - chat              # matrix-synapse signing key job (bitnami/kubectl init) — chart doesn't set runAsNonRoot
+            - erp               # ERPNext — frappe runs as UID 1000 but chart doesn't set runAsNonRoot explicitly

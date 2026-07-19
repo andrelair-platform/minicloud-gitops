@@ -51,6 +51,7 @@ spec:
             - argo-rollouts
             - vpa-system
             - system-upgrade     # Plane CE — bundled postgres/valkey/rabbitmq/minio/busybox use short-form image names (no docker.io/ prefix)
+            - erp                # ERPNext — frappe/erpnext on docker.io, mariadb on docker.io, valkey on docker.io/bitnami
   parameters:
     registries:
       # Private registry — platform images
