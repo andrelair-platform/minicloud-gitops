@@ -9,7 +9,7 @@ metadata:
     nginx.org/proxy-connect-timeout: "60"
     nginx.org/client-max-body-size: "50m"
     # ERPNext long-polling websocket (socket.io)
-    nginx.org/websocket-services: "erpnext-nginx"
+    nginx.org/websocket-services: "erpnext"
 spec:
   ingressClassName: nginx
   tls:
@@ -24,6 +24,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: erpnext-nginx
+                name: erpnext
                 port:
                   number: 8080
