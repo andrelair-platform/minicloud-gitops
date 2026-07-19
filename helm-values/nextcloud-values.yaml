@@ -18,7 +18,6 @@ nextcloud:
     secretName: nextcloud-secrets
     usernameKey: nextcloud-admin-username
     passwordKey: nextcloud-admin-password
-    smtpUsernameKey: ""
     smtpPasswordKey: smtp-password
 
   # Trusted domains: nip.io internal + devandre.sbs public
