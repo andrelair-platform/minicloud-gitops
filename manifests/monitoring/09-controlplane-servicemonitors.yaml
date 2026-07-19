@@ -1,0 +1,41 @@
+---
+# Same auth pattern as kps-kubelet: bearer token from Prometheus SA
+# (kps-prometheus ClusterRole has nonResourceURL /metrics get),
+# HTTPS scheme, insecureSkipVerify for the self-signed k3s cert.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-scheduler-proxy
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      component: kube-scheduler
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: https-metrics
+      scheme: https
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        insecureSkipVerify: true
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-controller-manager-proxy
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      component: kube-controller-manager
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: https-metrics
+      scheme: https
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        insecureSkipVerify: true

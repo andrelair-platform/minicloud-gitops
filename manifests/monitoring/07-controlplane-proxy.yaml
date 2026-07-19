@@ -1,0 +1,88 @@
+---
+# Socat TCP proxy running on set-hog (control-plane node) to bridge
+# 127.0.0.1:10259 (scheduler) and 127.0.0.1:10257 (controller-manager)
+# to the pod network so Prometheus can scrape them.
+# hostNetwork: true is required — without it 127.0.0.1 refers to the
+# pod's own loopback, not the host's.
+# monitoring namespace is excluded from all deny Gatekeeper constraints.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: controlplane-proxy
+  namespace: monitoring
+  labels:
+    app: controlplane-proxy
+spec:
+  selector:
+    matchLabels:
+      app: controlplane-proxy
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: controlplane-proxy
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: set-hog
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: scheduler-proxy
+          image: harbor.10.0.0.200.nip.io/library/socat:1.8.0.0
+          command:
+            - socat
+            - TCP-LISTEN:10269,fork,reuseaddr
+            - TCP:127.0.0.1:10259
+          ports:
+            - name: scheduler
+              containerPort: 10269
+              hostPort: 10269
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 5m
+              memory: 10Mi
+            limits:
+              cpu: 20m
+              memory: 20Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: [ALL]
+        - name: cm-proxy
+          image: harbor.10.0.0.200.nip.io/library/socat:1.8.0.0
+          command:
+            - socat
+            - TCP-LISTEN:10267,fork,reuseaddr
+            - TCP:127.0.0.1:10257
+          ports:
+            - name: cm
+              containerPort: 10267
+              hostPort: 10267
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 5m
+              memory: 10Mi
+            limits:
+              cpu: 20m
+              memory: 20Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: [ALL]
