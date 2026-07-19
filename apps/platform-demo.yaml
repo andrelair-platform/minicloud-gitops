@@ -20,10 +20,7 @@ spec:
     # then click Sync in ArgoCD UI or run: argocd app sync platform-demo
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
-      - ServerSideDiff=true
       - RespectIgnoreDifferences=true
-      - SkipDryRunOnMissingResource=true
   ignoreDifferences:
     - group: argoproj.io
       kind: Rollout
