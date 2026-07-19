@@ -40,3 +40,4 @@ spec:
             - system-upgrade
             - monitoring
             - chat
+            - erp
