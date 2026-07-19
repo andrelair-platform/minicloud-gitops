@@ -1,5 +1,6 @@
 controller:
   enableSnippets: true
+  enableLatencyMetrics: true
   ingressClass:
     setAsDefaultIngress: true
   resources:
