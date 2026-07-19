@@ -78,6 +78,25 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: observability
 ---
+# Argo Rollouts controller queries Prometheus to evaluate AnalysisRuns (port 9090)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-argo-rollouts
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argo-rollouts
+      ports:
+        - port: 9090
+          protocol: TCP
+---
 # Falco Sidekick pushes runtime security events to Alertmanager (port 9093)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
