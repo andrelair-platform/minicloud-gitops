@@ -42,6 +42,13 @@ backstage:
   containerPorts:
     backend: 7007
 
+  # prom-client metrics server (port 9464) started in packages/backend/src/index.ts.
+  # Must be separate from 7007 because plugin-app-backend catches /metrics with SPA HTML.
+  extraPorts:
+    - name: metrics
+      containerPort: 9464
+      protocol: TCP
+
   # Inline app-config — OIDC via Authentik + catalog locations targeting our
   # GitHub repos. Each repo has a catalog-info.yaml at its root.
   # Primary URL is devandre.sbs (public via Cloudflare Tunnel).
@@ -275,6 +282,14 @@ backstage:
         secretKeyRef:
           name: backstage-phase24-secret
           key: BACKSTAGE_API_KEY
+
+# Expose prom-client metrics port (9464) in the Service so ServiceMonitor can find it.
+service:
+  extraPorts:
+    - name: metrics
+      port: 9464
+      targetPort: 9464
+      protocol: TCP
 
 # Disable the chart's Ingress — we'll add our own with cert-manager TLS.
 ingress:
