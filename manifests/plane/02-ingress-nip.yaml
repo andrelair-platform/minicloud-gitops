@@ -8,9 +8,9 @@ metadata:
   name: plane-nip
   namespace: productivity
   annotations:
-    nginx.org/client-max-body-size: "50m"
-    nginx.org/proxy-connect-timeout: "120"
-    nginx.org/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
 spec:
   ingressClassName: nginx
   rules:

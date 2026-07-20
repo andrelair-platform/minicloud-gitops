@@ -1,8 +1,10 @@
 controller:
-  enableSnippets: true
-  enableLatencyMetrics: true
-  ingressClass:
-    setAsDefaultIngress: true
+  ingressClassResource:
+    name: nginx
+    enabled: true
+    default: true
+    controllerValue: "k8s.io/ingress-nginx"
+
   resources:
     requests:
       cpu: 100m
@@ -10,18 +12,30 @@ controller:
     limits:
       cpu: 500m
       memory: 512Mi
+
   service:
-    httpPort:
-      enable: true
-      port: 80
-    httpsPort:
-      enable: true
-      port: 443
     type: LoadBalancer
+    loadBalancerIP: "10.0.0.200"
+
   config:
-    entries:
-      server-snippets: |
-        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-      http-snippets: |
-        limit_req_zone $binary_remote_addr zone=public_ratelimit:10m rate=20r/s;
-        limit_req_zone $binary_remote_addr zone=auth_ratelimit:10m rate=5r/s;
+    # Per-request latency histogram: nginx_ingress_controller_request_duration_seconds_bucket
+    enable-latency-metrics: "true"
+    # Required for Authentik forward-auth server-snippet / configuration-snippet annotations
+    allow-snippet-annotations: "true"
+    # HSTS (replaces F5 server-snippets HSTS header)
+    hsts: "true"
+    hsts-max-age: "31536000"
+    hsts-include-subdomains: "true"
+    # Rate limiting zones (replaces F5 http-snippets)
+    http-snippet: |
+      limit_req_zone $binary_remote_addr zone=public_ratelimit:10m rate=20r/s;
+      limit_req_zone $binary_remote_addr zone=auth_ratelimit:10m rate=5r/s;
+    # Default upload size — overridden per-ingress via proxy-body-size annotation
+    proxy-body-size: "100m"
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      namespace: monitoring
+      # No label filter needed — kps uses serviceMonitorSelectorNilUsesHelmValues: false

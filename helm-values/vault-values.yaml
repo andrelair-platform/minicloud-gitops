@@ -65,7 +65,7 @@ server:
       }
 
       telemetry {
-        prometheus_retention_time = "30s"
+        prometheus_retention_time = "30"
         disable_hostname          = true
       }
 
@@ -94,8 +94,8 @@ server:
     enabled: true
     ingressClassName: nginx
     annotations:
-      nginx.org/proxy-connect-timeout: "30s"
-      nginx.org/proxy-read-timeout: "30s"
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
     hosts:
       - host: vault.10.0.0.200.nip.io
         paths:

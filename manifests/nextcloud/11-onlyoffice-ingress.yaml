@@ -28,11 +28,9 @@ metadata:
   namespace: nextcloud
   annotations:
     argocd.argoproj.io/sync-wave: "2"
-    nginx.org/redirect-to-https: "true"
-    nginx.org/proxy-connect-timeout: "300"
-    nginx.org/proxy-read-timeout: "300"
-    nginx.org/proxy-send-timeout: "300"
-    nginx.org/websocket-services: "onlyoffice"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
 spec:
   ingressClassName: nginx
   rules:

@@ -14,7 +14,7 @@ data:
       "tags": ["minicloud", "controller", "infrastructure"],
       "schemaVersion": 38,
       "version": 1,
-      "refresh": "30s",
+      "refresh": "30",
       "time": {"from": "now-3h", "to": "now"},
       "panels": [
         {
