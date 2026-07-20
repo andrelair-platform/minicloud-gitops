@@ -32,7 +32,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: nginx-ingress
+      app.kubernetes.io/name: ingress-nginx
   policyTypes:
     - Ingress
   ingress:
