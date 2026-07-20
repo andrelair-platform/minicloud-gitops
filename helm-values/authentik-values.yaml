@@ -39,6 +39,12 @@ server:
   resources:
     requests: { cpu: 100m, memory: 512Mi }
     limits:   { cpu: 1000m, memory: 1280Mi }
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
   ingress:
     enabled: false   # we add our own with cert-manager TLS — see ../../authentik-ingress.yaml
   # Bootstrap admin (one-time use; rotate to MFA-enrolled account after first login).

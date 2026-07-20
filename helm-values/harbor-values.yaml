@@ -32,3 +32,9 @@ persistence:
       storageClass: longhorn
 trivy:
   enabled: true
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
