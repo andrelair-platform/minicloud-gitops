@@ -65,15 +65,16 @@ spec:
               Check NATS monitor: https://nats.devandre.sbs/jsz
 
         - alert: NATSStaleConnections
-          expr: nats_varz_stale_connections > 5
-          for: 5m
+          expr: increase(nats_varz_stale_connections[5m]) > 0
+          for: 0m
           labels:
             severity: warning
           annotations:
-            summary: "NATS has {{ $value | printf \"%.0f\" }} stale connections"
+            summary: "NATS forcibly closed {{ $value | printf \"%.0f\" }} slow connections in 5m"
             description: |
-              NATS has accumulated {{ $value | printf "%.0f" }} stale connections (>5 threshold).
-              Stale connections consume server resources and may indicate client disconnection issues.
+              NATS closed {{ $value | printf "%.0f" }} connection(s) due to slow consumer backpressure
+              in the last 5 minutes. nats_varz_stale_connections is a cumulative counter — increase()
+              fires only on new force-closures (not the historical total).
               Check: kubectl logs -n minicloud-plane-dev deploy/minicloud-plane --tail=50
 
     - name: vault
