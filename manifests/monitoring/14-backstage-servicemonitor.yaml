@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backstage-metrics
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  namespaceSelector:
+    matchNames:
+      - backstage
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backstage
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
