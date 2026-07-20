@@ -22,6 +22,8 @@ controller:
     enable-latency-metrics: "true"
     # Required for Authentik forward-auth server-snippet / configuration-snippet annotations
     allow-snippet-annotations: "true"
+    # v1.12+: snippet annotations are risk level Critical, must be explicitly allowed
+    annotations-risk-level: "Critical"
     # HSTS (replaces F5 server-snippets HSTS header)
     hsts: "true"
     hsts-max-age: "31536000"
@@ -32,10 +34,6 @@ controller:
       limit_req_zone $binary_remote_addr zone=auth_ratelimit:10m rate=5r/s;
     # Default upload size — overridden per-ingress via proxy-body-size annotation
     proxy-body-size: "100m"
-
-  # Required for Authentik server-snippet / configuration-snippet (risk level Critical since v1.12)
-  extraArgs:
-    annotations-risk-level: Critical
 
   metrics:
     enabled: true
