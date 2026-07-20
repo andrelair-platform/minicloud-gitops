@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: synapse
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - chat
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: matrix-synapse
+      app.kubernetes.io/component: synapse
+  endpoints:
+    - port: http
+      path: /_synapse/metrics
+      scheme: http
+      interval: 30s
+      scrapeTimeout: 10s
