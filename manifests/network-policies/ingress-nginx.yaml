@@ -45,7 +45,12 @@ spec:
         - port: 443
           protocol: TCP
 ---
-# kube-apiserver health-checks the ingress controller from node IPs
+# kube-apiserver health-checks and admission webhook calls reach the ingress controller
+# from two source ranges:
+#   10.0.0.0/24  - node physical IPs (MetalLB LB traffic, kubelet health checks)
+#   10.42.0.0/16 - flannel pod CIDR; host processes (konnectivity proxy, kube-apiserver)
+#                  use the node's flannel.1 bridge IP (e.g. 10.42.0.0) as source when
+#                  sending cross-node traffic to pod IPs via VXLAN
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -59,6 +64,8 @@ spec:
     - from:
         - ipBlock:
             cidr: 10.0.0.0/24
+        - ipBlock:
+            cidr: 10.42.0.0/16
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
