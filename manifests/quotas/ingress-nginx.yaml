@@ -1,6 +1,6 @@
 ---
-# Actual peak: ~2m CPU / 76Mi memory (single nginx-ingress-controller pod)
-# Quota allows horizontal scaling to 3 replicas for HA if needed
+# Peak during controller swap: old pod (512Mi) + 2 admission jobs (128Mi each) = 768Mi
+# Steady state: community ingress-nginx controller (512Mi) + ServiceMonitor scrape pod
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -10,8 +10,8 @@ spec:
   hard:
     requests.cpu: 500m
     limits.cpu: "2"
-    requests.memory: 256Mi
-    limits.memory: 512Mi
+    requests.memory: 512Mi
+    limits.memory: 1Gi
     count/pods: "10"
 ---
 apiVersion: v1
