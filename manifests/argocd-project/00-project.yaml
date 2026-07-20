@@ -23,7 +23,7 @@ spec:
     - https://falcosecurity.github.io/charts
     - https://grafana.github.io/helm-charts
     - https://helm.goharbor.io
-    - https://helm.nginx.com/stable
+    - https://kubernetes.github.io/ingress-nginx
     - https://helm.openwebui.com
     - https://helm.releases.hashicorp.com
     - https://kedacore.github.io/charts

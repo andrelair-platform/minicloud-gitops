@@ -9,9 +9,9 @@ metadata:
 spec:
   project: minicloud-platform
   sources:
-    - repoURL: https://helm.nginx.com/stable
-      chart: nginx-ingress
-      targetRevision: "2.5.1"
+    - repoURL: https://kubernetes.github.io/ingress-nginx
+      chart: ingress-nginx
+      targetRevision: "4.15.1"
       helm:
         releaseName: nginx-ingress
         valueFiles:
@@ -36,7 +36,7 @@ spec:
       jsonPointers:
         - /webhooks/0/clientConfig/caBundle
     - kind: Service
-      name: nginx-ingress-controller
+      name: nginx-ingress-ingress-nginx-controller
       namespace: ingress-nginx
       jqPathExpressions:
         - .spec.clusterIP

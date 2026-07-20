@@ -1,17 +1,5 @@
-apiVersion: monitoring.coreos.com/v1
-kind: PodMonitor
-metadata:
-  name: nginx-ingress
-  namespace: monitoring
-spec:
-  namespaceSelector:
-    matchNames:
-      - ingress-nginx
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: nginx-ingress
-  podMetricsEndpoints:
-    - port: prometheus
-      scheme: http
-      path: /metrics
-      interval: 30s
+# Removed: community ingress-nginx chart creates a ServiceMonitor automatically
+# via controller.metrics.serviceMonitor.enabled: true in nginx-ingress-values.yaml.
+# The ServiceMonitor (namespace: monitoring, job: nginx-ingress-ingress-nginx-controller)
+# exposes nginx_ingress_controller_request_duration_seconds_bucket (per-request latency)
+# and nginx_ingress_controller_requests (traffic + errors by status/ingress/namespace).

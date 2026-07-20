@@ -5,9 +5,8 @@ metadata:
   name: vaultwarden
   namespace: vaultwarden
   annotations:
-    nginx.org/proxy-read-timeout: "3600"
-    nginx.org/proxy-send-timeout: "3600"
-    nginx.org/websocket-services: "vaultwarden"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     cert-manager.io/cluster-issuer: minicloud-ca
     cert-manager.io/duration: "2160h"
     cert-manager.io/renew-before: "720h"

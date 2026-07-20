@@ -5,8 +5,8 @@ metadata:
   name: langfuse-ingress
   namespace: langfuse
   annotations:
-    nginx.org/proxy-read-timeout: "120"
-    nginx.org/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
 spec:
   ingressClassName: nginx
   tls:

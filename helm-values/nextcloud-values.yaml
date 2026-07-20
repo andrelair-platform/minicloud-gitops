@@ -112,14 +112,13 @@ ingress:
   enabled: true
   className: nginx
   annotations:
-    nginx.org/redirect-to-https: "true"
-    nginx.org/proxy-connect-timeout: "300"
-    nginx.org/proxy-read-timeout: "300"
-    nginx.org/proxy-send-timeout: "300"
-    nginx.org/client-max-body-size: "10g"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10g"
     # CalDAV/CardDAV autodiscovery redirects (RFC 6764)
     # Required for iOS/Android/Thunderbird to find the DAV endpoint automatically
-    nginx.org/server-snippets: |
+    nginx.ingress.kubernetes.io/server-snippet: |
       location = /.well-known/carddav { return 301 $scheme://$host/remote.php/dav; }
       location = /.well-known/caldav  { return 301 $scheme://$host/remote.php/dav; }
       location = /.well-known/webfinger { return 301 $scheme://$host/index.php/.well-known/webfinger; }
