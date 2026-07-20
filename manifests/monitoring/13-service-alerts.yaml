@@ -1,0 +1,106 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: service-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: harbor
+      rules:
+        - alert: HarborHighErrorRate
+          expr: |
+            sum(rate(harbor_core_http_request_total{code=~"5.."}[5m])) /
+            sum(rate(harbor_core_http_request_total[5m])) > 0.01
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Harbor 5xx error rate above 1%"
+            description: |
+              Harbor core error rate is {{ $value | humanizePercentage }} over the last 5m.
+              Check: kubectl logs -n harbor deploy/harbor-core --tail=50
+              Common causes: registry unreachable, database connection exhausted.
+
+        - alert: HarborJobServiceErrors
+          expr: |
+            sum(rate(harbor_jobservice_task_total{status="Error"}[10m])) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Harbor job service tasks failing"
+            description: |
+              Harbor job service has errored tasks: {{ $value | printf "%.1f" }}/s over the last 10m.
+              Check: kubectl logs -n harbor deploy/harbor-jobservice --tail=50
+
+    - name: nats
+      rules:
+        - alert: NATSSlowConsumers
+          expr: nats_varz_slow_consumers > 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "NATS slow consumer detected ({{ $value | printf \"%.0f\" }} pending)"
+            description: |
+              NATS has {{ $value | printf "%.0f" }} slow consumer(s). Slow consumers indicate that
+              a subscriber cannot keep up with message throughput — NATS will drop messages.
+              Check minicloud-plane logs for NATS consumer backlog:
+                kubectl logs -n minicloud-plane-dev deploy/minicloud-plane --tail=50
+              Check NATS monitor: https://nats.devandre.sbs/subsz
+
+        - alert: NATSJetStreamAPIErrors
+          expr: increase(nats_varz_jetstream_stats_api_errors[5m]) > 0
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "NATS JetStream API errors in last 5m"
+            description: |
+              NATS JetStream API returned {{ $value | printf "%.0f" }} error(s) in the last 5m.
+              This may indicate stream/consumer configuration issues or resource exhaustion.
+              Check NATS monitor: https://nats.devandre.sbs/jsz
+
+        - alert: NATSStaleConnections
+          expr: nats_varz_stale_connections > 5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "NATS has {{ $value | printf \"%.0f\" }} stale connections"
+            description: |
+              NATS has accumulated {{ $value | printf "%.0f" }} stale connections (>5 threshold).
+              Stale connections consume server resources and may indicate client disconnection issues.
+              Check: kubectl logs -n minicloud-plane-dev deploy/minicloud-plane --tail=50
+
+    - name: vault
+      rules:
+        - alert: VaultHighRequestLatency
+          expr: |
+            vault_core_handle_request_sum / vault_core_handle_request_count > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Vault request average latency > 500ms"
+            description: |
+              Vault average request latency is {{ $value | humanizeDuration }}.
+              Note: Vault telemetry exposes Summaries (avg) not Histograms (no p99 available in CE).
+              Check: kubectl logs -n vault vault-0 --tail=50
+              Check Longhorn storage performance if barrier operations are slow.
+
+        - alert: VaultSealedOrUnhealthy
+          expr: vault_core_active == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Vault is sealed or not the active node"
+            description: |
+              vault_core_active == 0 means Vault is either sealed or in standby mode.
+              Check: kubectl exec -n vault vault-0 -- vault status
+              If sealed: unseal keys are in ~/.vault-unseal on the controller (AWSKMS auto-unseal
+              should recover automatically — check vault-0 logs for KMS errors).
