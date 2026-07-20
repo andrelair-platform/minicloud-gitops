@@ -80,7 +80,8 @@ spec:
       rules:
         - alert: VaultHighRequestLatency
           expr: |
-            vault_core_handle_request_sum / vault_core_handle_request_count > 0.5
+            rate(vault_core_handle_request_sum[5m]) /
+            rate(vault_core_handle_request_count[5m]) > 0.5
           for: 5m
           labels:
             severity: warning
