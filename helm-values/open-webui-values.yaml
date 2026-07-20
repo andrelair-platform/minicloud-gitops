@@ -7,7 +7,7 @@
 # To upgrade: bump tag + digest together (use: crane digest ghcr.io/open-webui/open-webui:<new-tag>)
 image:
   repository: harbor.10.0.0.200.nip.io/library/open-webui
-  tag: "7c9634e-amd64"
+  tag: "47296e9-amd64"
   pullPolicy: IfNotPresent
 
 ollama:
