@@ -33,6 +33,10 @@ controller:
     # Default upload size — overridden per-ingress via proxy-body-size annotation
     proxy-body-size: "100m"
 
+  # Required for Authentik server-snippet / configuration-snippet (risk level Critical since v1.12)
+  extraArgs:
+    annotations-risk-level: Critical
+
   metrics:
     enabled: true
     serviceMonitor:
