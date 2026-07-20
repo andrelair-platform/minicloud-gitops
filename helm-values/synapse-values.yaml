@@ -18,6 +18,7 @@ extraConfig:
   enable_registration: false
   enable_registration_without_verification: false
   suppress_key_server_warning: true
+  enable_metrics: true
   # registration_shared_secret and macaroon_secret_key are injected via conf.d/secrets.yaml
   # (chart handles registration_shared_secret) and conf.d/oidc.yaml (extraCommands below).
   # oidc_providers are also injected via conf.d/oidc.yaml — Synapse does NOT perform
