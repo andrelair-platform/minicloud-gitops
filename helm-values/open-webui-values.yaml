@@ -138,13 +138,13 @@ extraEnvVars:
     value: "pgvector"
   - name: PGVECTOR_DB_URL
     value: "postgresql://aiplatform:$(PG_PASSWORD)@postgresql-ai.ai.svc.cluster.local:5432/ragdb"
-  # Embedding: text-embedding-3-small via LiteLLM AI gateway (1536-dim, OpenAI cloud).
-  # Replaces bge-m3 on Ollama CPU — 359 chunks embed in ~3s vs 14 min.
-  # Query embeddings also go through LiteLLM so Langfuse traces the full RAG pipeline.
+  # Embedding: nomic-embed-text via LiteLLM → Ollama (768-dim, local CPU).
+  # Switched from text-embedding-3-small (OpenAI 1536-dim) after OpenAI quota exhaustion.
+  # nomic-embed-text: 274MB, best-in-class for CPU RAG, available on all Ollama nodes.
   - name: RAG_EMBEDDING_ENGINE
     value: "openai"
   - name: RAG_EMBEDDING_MODEL
-    value: "text-embedding-3-small"
+    value: "nomic-embed-text"
   - name: RAG_OPENAI_API_BASE_URL
     value: "http://litellm.ai.svc.cluster.local:4000"
   - name: RAG_OPENAI_API_KEY
@@ -179,9 +179,9 @@ extraEnvVars:
   - name: RAG_TOP_K_RERANKER
     value: "3"
   - name: VECTOR_LENGTH
-    value: "1536"
+    value: "768"
   - name: PGVECTOR_INITIALIZE_MAX_VECTOR_LENGTH
-    value: "1536"
+    value: "768"
   - name: PGVECTOR_INDEX_METHOD
     value: "hnsw"
   - name: PGVECTOR_HNSW_M
