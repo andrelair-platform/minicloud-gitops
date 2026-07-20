@@ -8,10 +8,10 @@ metadata:
   name: nextcloud-nip
   namespace: nextcloud
   annotations:
-    nginx.org/proxy-connect-timeout: "300"
-    nginx.org/proxy-read-timeout: "300"
-    nginx.org/proxy-send-timeout: "300"
-    nginx.org/client-max-body-size: "10g"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10g"
 spec:
   ingressClassName: nginx
   rules:

@@ -4,8 +4,7 @@
 expose:
   ingress:
     annotations:
-      nginx.org/client-max-body-size: "0"
-      nginx.org/redirect-to-https: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
     className: nginx
     controller: default
     hosts:

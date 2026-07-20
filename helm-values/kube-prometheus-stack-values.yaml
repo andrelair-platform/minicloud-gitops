@@ -14,11 +14,10 @@ prometheus:
     enabled: true
     ingressClassName: nginx
     annotations:
-      nginx.org/redirect-to-https: "true"
       cert-manager.io/cluster-issuer: minicloud-ca
       cert-manager.io/duration: "2160h"
       cert-manager.io/renew-before: "720h"
-      nginx.org/server-snippets: |
+      nginx.ingress.kubernetes.io/server-snippet: |
         location /outpost.goauthentik.io {
             proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
             proxy_set_header        Host $host;
@@ -33,7 +32,7 @@ prometheus:
             add_header Set-Cookie $auth_cookie;
             return 302 /outpost.goauthentik.io/start?rd=$request_uri;
         }
-      nginx.org/location-snippets: |
+      nginx.ingress.kubernetes.io/configuration-snippet: |
         auth_request     /outpost.goauthentik.io/auth/nginx;
         error_page       401 = @goauthentik_proxy_signin;
         auth_request_set $auth_cookie $upstream_http_set_cookie;
@@ -84,11 +83,10 @@ alertmanager:
     enabled: true
     ingressClassName: nginx
     annotations:
-      nginx.org/redirect-to-https: "true"
       cert-manager.io/cluster-issuer: minicloud-ca
       cert-manager.io/duration: "2160h"
       cert-manager.io/renew-before: "720h"
-      nginx.org/server-snippets: |
+      nginx.ingress.kubernetes.io/server-snippet: |
         location /outpost.goauthentik.io {
             proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
             proxy_set_header        Host $host;
@@ -103,7 +101,7 @@ alertmanager:
             add_header Set-Cookie $auth_cookie;
             return 302 /outpost.goauthentik.io/start?rd=$request_uri;
         }
-      nginx.org/location-snippets: |
+      nginx.ingress.kubernetes.io/configuration-snippet: |
         auth_request     /outpost.goauthentik.io/auth/nginx;
         error_page       401 = @goauthentik_proxy_signin;
         auth_request_set $auth_cookie $upstream_http_set_cookie;
@@ -279,7 +277,6 @@ grafana:
     enabled: true
     ingressClassName: nginx
     annotations:
-      nginx.org/redirect-to-https: "true"
     hosts:
       - grafana.10.0.0.200.nip.io
       - grafana.devandre.sbs

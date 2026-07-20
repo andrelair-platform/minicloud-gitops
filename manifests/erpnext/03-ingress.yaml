@@ -4,12 +4,10 @@ metadata:
   name: erpnext
   namespace: erp
   annotations:
-    nginx.org/redirect-to-https: "true"
-    nginx.org/proxy-read-timeout: "300"
-    nginx.org/proxy-connect-timeout: "60"
-    nginx.org/client-max-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     # ERPNext long-polling websocket (socket.io)
-    nginx.org/websocket-services: "erpnext"
 spec:
   ingressClassName: nginx
   tls:
