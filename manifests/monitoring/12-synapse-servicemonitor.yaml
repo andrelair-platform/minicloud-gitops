@@ -1,3 +1,25 @@
+---
+# The ananace matrix-synapse chart generates a metrics listener on port 9090
+# but does not expose it in the chart-managed Service (only port 8008 is there).
+# This Service exposes port 9090 so the ServiceMonitor can select it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: matrix-synapse-metrics
+  namespace: chat
+  labels:
+    app.kubernetes.io/name: matrix-synapse
+    app.kubernetes.io/component: synapse-metrics
+spec:
+  selector:
+    app.kubernetes.io/name: matrix-synapse
+    app.kubernetes.io/component: synapse
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -10,9 +32,9 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: matrix-synapse
-      app.kubernetes.io/component: synapse
+      app.kubernetes.io/component: synapse-metrics
   endpoints:
-    - port: http
+    - port: metrics
       path: /_synapse/metrics
       scheme: http
       interval: 30s
