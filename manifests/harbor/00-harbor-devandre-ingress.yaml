@@ -4,8 +4,7 @@ metadata:
   name: harbor-devandre
   namespace: harbor
   annotations:
-    nginx.org/client-max-body-size: "0"
-    nginx.org/redirect-to-https: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
 spec:
   ingressClassName: nginx
   tls:

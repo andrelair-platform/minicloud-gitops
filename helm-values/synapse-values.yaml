@@ -111,11 +111,10 @@ persistence:
 ingress:
   enabled: true
   annotations:
-    nginx.org/redirect-to-https: "true"
     cert-manager.io/cluster-issuer: minicloud-ca
     cert-manager.io/duration: "2160h"
     cert-manager.io/renew-before: "720h"
-    nginx.org/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
   csHosts:
     - matrix.devandre.sbs
     - matrix.10.0.0.200.nip.io
