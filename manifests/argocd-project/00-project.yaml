@@ -42,6 +42,7 @@ spec:
     - https://ananace.gitlab.io/charts
     - https://jitsi-contrib.github.io/jitsi-helm/
     - https://helm.erpnext.com
+    - https://open-telemetry.github.io/opentelemetry-helm-charts
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
