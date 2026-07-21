@@ -1,0 +1,45 @@
+---
+# ClusterRole grants k8sattributesprocessor read access to pod/namespace/node
+# metadata so it can enrich log records with k8s.namespace.name, k8s.pod.name,
+# k8s.node.name, and pod labels (including "app").
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otelcol-k8s-attributes
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/status
+      - namespaces
+      - nodes
+      - nodes/status
+      - replicationcontrollers
+      - services
+      - endpoints
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources:
+      - replicasets
+      - deployments
+      - statefulsets
+      - daemonsets
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otelcol-k8s-attributes
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otelcol-k8s-attributes
+subjects:
+  - kind: ServiceAccount
+    name: otelcol
+    namespace: observability
