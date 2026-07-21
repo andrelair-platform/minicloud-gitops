@@ -1,0 +1,33 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otelcol
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  sources:
+    - repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+      chart: opentelemetry-collector
+      targetRevision: "0.165.0"
+      helm:
+        releaseName: otelcol
+        valueFiles:
+          - $values/helm-values/otelcol-values.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      path: manifests/otelcol
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

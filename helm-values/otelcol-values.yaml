@@ -1,0 +1,198 @@
+mode: daemonset
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.156.0"
+
+serviceAccount:
+  create: true
+  name: otelcol
+
+# RBAC managed in manifests/otelcol/00-rbac.yaml bound to SA otelcol
+clusterRole:
+  create: false
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+tolerations:
+  - operator: Exists
+
+# Disable unused receiver ports; enable metrics scrape port
+ports:
+  otlp:
+    enabled: false
+  otlp-http:
+    enabled: false
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+  metrics:
+    enabled: true
+    containerPort: 8888
+    servicePort: 8888
+    protocol: TCP
+
+podMonitor:
+  enabled: true
+  metricsEndpoints:
+    - port: metrics
+      interval: 30s
+
+# /var/log/pods — read pod logs (same paths Promtail mounted)
+# /var/lib/otelcol — file_storage checkpoints (replaces /run/promtail/positions.yaml)
+extraVolumes:
+  - name: varlogpods
+    hostPath:
+      path: /var/log/pods
+  - name: filestore
+    hostPath:
+      path: /var/lib/otelcol
+      type: DirectoryOrCreate
+
+extraVolumeMounts:
+  - name: varlogpods
+    mountPath: /var/log/pods
+    readOnly: true
+  - name: filestore
+    mountPath: /var/lib/otelcol
+
+config:
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133
+    file_storage:
+      directory: /var/lib/otelcol
+
+  receivers:
+    filelog:
+      include:
+        - /var/log/pods/*/*/*.log
+      # exclude own pods to prevent self-referential log loops
+      exclude:
+        - /var/log/pods/observability_otelcol*/*.log
+      start_at: beginning
+      include_file_path: true
+      storage: file_storage
+      operators:
+        # Parses the k3s containerd CRI log format:
+        #   <rfc3339nano> <stream> <flags> <body>
+        # and extracts k8s.namespace.name / pod.name / pod.uid / container.name
+        # from the file path segment: <namespace>_<pod>_<uid>/<container>/0.log
+        - type: container
+          id: container-parser
+          max_log_size: 102400
+
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_mib: 200
+      spike_limit_mib: 50
+
+    k8sattributes:
+      auth_type: serviceAccount
+      extract:
+        metadata:
+          - k8s.namespace.name
+          - k8s.pod.name
+          - k8s.pod.uid
+          - k8s.node.name
+          - k8s.container.name
+        labels:
+          # Extract pod label "app" (Kustomize-deployed services: platform-demo, minicloud-plane)
+          - tag_name: app
+            key: app
+            from: pod
+          # Extract pod label "app.kubernetes.io/name" (Helm-deployed services: backstage, argocd, authentik)
+          # If both labels exist on a pod, this second entry wins — acceptable for this platform
+          # because Helm charts that set app.kubernetes.io/name do not also set plain "app"
+          - tag_name: app
+            key: app.kubernetes.io/name
+            from: pod
+      pod_association:
+        # filelogreceiver container operator parses pod UID from the file path
+        # and sets it as resource.attributes["k8s.pod.uid"] — use that for association
+        - sources:
+            - from: resource_attribute
+              name: k8s.pod.uid
+
+    transform:
+      # ignore means parse failures on non-JSON / non-logfmt lines are silent —
+      # those lines simply do not get a level label, which is correct behaviour
+      error_mode: ignore
+      log_statements:
+        - context: log
+          statements:
+            # ── Gap 1: Kopia CronJob name normalisation ───────────────────────
+            # Each Kopia maintenance run creates a pod named
+            # "<ns>-default-kopia-maintain-job-<unix_ms>", producing a unique
+            # "app" resource attribute per run → stream cardinality bomb.
+            # Collapse all of them to the static value "kopia-job".
+            - 'replace_match(resource.attributes["app"], "^.+-kopia-[a-z]+-job-\d+$", "kopia-job")'
+            # Derive job = namespace/app (must run after Gap 1 normalisation)
+            - 'set(resource.attributes["job"], Concat([resource.attributes["k8s.namespace.name"], resource.attributes["app"]], "/")) where resource.attributes["k8s.namespace.name"] != nil and resource.attributes["app"] != nil'
+
+            # ── Gap 2a: JSON services ─────────────────────────────────────────
+            # Backstage (winston) and Authentik (structlog) emit newline-
+            # delimited JSON with a "level" field.
+            # ParseJSON returns nil on non-JSON lines; nil["level"] = nil;
+            # setting an attribute to nil is a no-op — safe for mixed-format pods.
+            - 'set(attributes["level"], ParseJSON(body)["level"]) where IsMatch(body, "^\{") and IsMatch(resource.attributes["k8s.namespace.name"], "^(backstage|authentik)$")'
+
+            # ── Gap 2b: logfmt services ───────────────────────────────────────
+            # ArgoCD (zerolog) emits: time="..." level=info msg="..."
+            # Own Go services (minicloud-plane, platform-demo) emit logfmt on
+            # request-path log lines; startup lines (plain Go stdlib) have no
+            # level= key and are safely skipped by ExtractPatterns.
+            - 'set(attributes["level"], ExtractPatterns(body, "level=(?P<level>[^\s\"]+)")["level"]) where IsMatch(body, "level=") and IsMatch(resource.attributes["k8s.namespace.name"], "^(argocd|minicloud-plane-dev|platform-demo-dev|platform-demo-staging|platform-demo-prod)$")'
+
+            # ── Gap 2c: level normalisation ───────────────────────────────────
+            # Normalise to lowercase so {level="warn"} catches both "warn" and
+            # "WARNING" (Python/Authentik convention) without regex alternation
+            # in every Grafana query.
+            - 'set(attributes["level"], ConvertCase(attributes["level"], "lower")) where attributes["level"] != nil'
+            - 'replace_pattern(attributes["level"], "^warning$", "warn")'
+
+    batch:
+      send_batch_size: 1000
+      timeout: 5s
+
+  exporters:
+    loki:
+      endpoint: http://loki.observability.svc:3100/loki/api/v1/push
+      # Explicit label mapping — this is the only block that changes when
+      # switching backends (e.g. replace loki: with elasticsearch: or otlp:).
+      # Pipeline logic above (receivers / processors) is backend-agnostic.
+      labels:
+        resource:
+          k8s.namespace.name: namespace
+          k8s.pod.name:       pod
+          k8s.node.name:      node_name
+          k8s.container.name: container
+          app:                app
+          job:                job
+        attributes:
+          level: level        # only present on instrumented namespaces
+
+  service:
+    extensions: [health_check, file_storage]
+    pipelines:
+      logs:
+        receivers:  [filelog]
+        processors: [memory_limiter, k8sattributes, transform, batch]
+        exporters:  [loki]
+    telemetry:
+      metrics:
+        address: 0.0.0.0:8888
+      logs:
+        level: warn
