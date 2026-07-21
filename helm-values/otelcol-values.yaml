@@ -23,6 +23,13 @@ resources:
 tolerations:
   - operator: Exists
 
+# Required by Gatekeeper constraints (no-privilege-escalation, block-net-raw)
+# which are not excluded for the observability namespace.
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [NET_RAW]
+
 # Disable unused receiver ports; enable metrics scrape port
 ports:
   otlp:
