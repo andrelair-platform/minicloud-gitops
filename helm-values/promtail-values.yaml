@@ -8,6 +8,20 @@ config:
     extraScrapeConfigs: ""
     pipelineStages:
     - cri: {}
+    extraRelabelConfigs:
+      # Kopia CronJob pods get per-run names like
+      # "ai-default-kopia-maintain-job-1784593814158", producing 471+ unique
+      # stream label values that bloat the TSDB index. Collapse them all to
+      # the static value "kopia-job" so the app label stays low-cardinality.
+      - source_labels: [app]
+        regex: '^.+-kopia-[a-z]+-job-\d+$'
+        target_label: app
+        replacement: kopia-job
+      # Re-derive job (= namespace/app) after normalising app, so the job
+      # label also gets the collapsed value instead of the unique job ID.
+      - source_labels: [namespace, app]
+        separator: /
+        target_label: job
 resources:
   limits:
     cpu: 200m
