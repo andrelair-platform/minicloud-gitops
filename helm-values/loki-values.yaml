@@ -19,6 +19,27 @@ loki:
     allow_structured_metadata: true
     retention_period: 168h
     volume_enabled: true
+    # Promote OTel resource attributes to Loki stream labels when logs arrive
+    # via the OTLP endpoint (/otlp/v1/logs) from the OTel Collector DaemonSet.
+    # Short-name attributes (namespace, pod, etc.) are set by the OTel
+    # transformprocessor to maintain backward compatibility with Promtail labels
+    # and existing Grafana dashboards.
+    otlp_config:
+      resource_attributes:
+        attributes_config:
+          - action: index_label
+            attributes:
+              - namespace
+              - pod
+              - node_name
+              - container
+              - app
+              - job
+      log_attributes:
+        attributes_config:
+          - action: index_label
+            attributes:
+              - level
   schemaConfig:
     configs:
     - from: "2025-01-01"
