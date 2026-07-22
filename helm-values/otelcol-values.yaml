@@ -156,23 +156,28 @@ config:
             # "<ns>-default-kopia-maintain-job-<unix_ms>", producing a unique
             # "app" resource attribute per run → stream cardinality bomb.
             # Collapse all of them to the static value "kopia-job".
-            - 'replace_match(resource.attributes["app"], "^.+-kopia-[a-z]+-job-\d+$", "kopia-job")'
+            # Note: YAML single-quoted strings pass backslashes literally to the
+            # OTTL string literal. OTTL processes \\ → \ before passing to RE2,
+            # so \\d in YAML → \\d in config → \d in RE2 → digit class. ✓
+            - 'replace_match(resource.attributes["app"], "^.+-kopia-[a-z]+-job-\\d+$", "kopia-job")'
             # Derive job = namespace/app (must run after Gap 1 normalisation)
             - 'set(resource.attributes["job"], Concat([resource.attributes["namespace"], resource.attributes["app"]], "/")) where resource.attributes["namespace"] != nil and resource.attributes["app"] != nil'
 
             # ── Gap 2a: JSON services ─────────────────────────────────────────
             # Backstage (winston) and Authentik (structlog) emit newline-
             # delimited JSON with a "level" field.
-            # ParseJSON returns nil on non-JSON lines; nil["level"] = nil;
-            # setting an attribute to nil is a no-op — safe for mixed-format pods.
-            - 'set(attributes["level"], ParseJSON(body)["level"]) where IsMatch(body, "^\{") and IsMatch(resource.attributes["namespace"], "^(backstage|authentik)$")'
+            # ParseJSON returns nil on non-JSON lines (error_mode:ignore);
+            # nil["level"] = nil; setting attribute to nil is a no-op — safe
+            # for mixed-format pods. Namespace filter avoids unnecessary calls.
+            - 'set(attributes["level"], ParseJSON(body)["level"]) where IsMatch(resource.attributes["namespace"], "^(backstage|authentik)$")'
 
             # ── Gap 2b: logfmt services ───────────────────────────────────────
             # ArgoCD (zerolog) emits: time="..." level=info msg="..."
             # Own Go services (minicloud-plane, platform-demo) emit logfmt on
             # request-path log lines; startup lines (plain Go stdlib) have no
-            # level= key and are safely skipped by ExtractPatterns.
-            - 'set(attributes["level"], ExtractPatterns(body, "level=(?P<level>[^\s\"]+)")["level"]) where IsMatch(body, "level=") and IsMatch(resource.attributes["namespace"], "^(argocd|minicloud-plane-dev|platform-demo-dev|platform-demo-staging|platform-demo-prod)$")'
+            # level= key and are safely skipped by ExtractPatterns returning nil.
+            # \\s in YAML → \\s in config → \s in RE2 → whitespace class. ✓
+            - 'set(attributes["level"], ExtractPatterns(body, "level=(?P<level>[^\\s\"]+)")["level"]) where IsMatch(body, "level=") and IsMatch(resource.attributes["namespace"], "^(argocd|minicloud-plane-dev|platform-demo-dev|platform-demo-staging|platform-demo-prod)$")'
 
             # ── Gap 2c: level normalisation ───────────────────────────────────
             # Normalise to lowercase so {level="warn"} catches both "warn" and
