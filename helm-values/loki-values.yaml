@@ -87,17 +87,18 @@ singleBinary:
   # values set in values.yaml. The -ruler.alertmanager-url flag bypasses this.
   extraArgs:
     - -ruler.alertmanager-url=http://kps-alertmanager.monitoring.svc:9093
-  # Mount loki-rules ConfigMap at /var/loki/rules/fake/ — the path the ruler
-  # uses with auth_enabled:false (tenant "fake") and ruler.storage.local.directory
-  # defaulting to /var/loki/rules (from common.storage.filesystem.rules_directory).
-  # /var/loki is the PVC mount; /var/loki/rules/fake is a subdirectory overlay.
+  # Ruler directory structure: <storage_dir>/<tenant>/<namespace>/<file>.yaml
+  # With auth_enabled:false tenant="fake", storage dir=/var/loki/rules.
+  # The namespace segment ("minicloud") maps to the LogQL API path:
+  # /loki/api/v1/rules/minicloud — required by the ruler, not optional.
+  # /var/loki is the PVC mount; this is a nested overlay within it.
   extraVolumes:
     - name: loki-rules
       configMap:
         name: loki-rules
   extraVolumeMounts:
     - name: loki-rules
-      mountPath: /var/loki/rules/fake
+      mountPath: /var/loki/rules/fake/minicloud
       readOnly: true
 test:
   enabled: false
