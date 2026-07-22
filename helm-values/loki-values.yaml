@@ -36,10 +36,9 @@ loki:
               - app
               - job
       log_attributes:
-        attributes_config:
-          - action: index_label
-            attributes:
-              - level
+        - action: index_label
+          attributes:
+            - level
   schemaConfig:
     configs:
     - from: "2025-01-01"
