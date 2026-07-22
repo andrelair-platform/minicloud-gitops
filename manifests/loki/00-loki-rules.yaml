@@ -1,0 +1,178 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-rules
+  namespace: observability
+data:
+  # Ruler reads from ruler.storage.local.directory=/rules, tenant=fake →
+  # /rules/fake/<file>. This ConfigMap is mounted at /rules/fake/ via
+  # singleBinary.extraVolumeMounts so the ruler finds these files directly.
+  app-alerts.yaml: |
+    groups:
+
+      # ── Fatal errors / panics ─────────────────────────────────────────────
+      # Any FATAL, panic, or runtime error in application logs is actionable.
+      # Excludes infra namespaces (kube-system, longhorn, observability,
+      # monitoring) to avoid false positives from systems that log 'FATAL'
+      # at startup as part of their normal banner.
+      - name: app-fatal-errors
+        interval: 1m
+        rules:
+          - alert: AppFatalError
+            expr: |
+              sum by (namespace, pod, app) (
+                count_over_time(
+                  {namespace!~"kube-system|longhorn-system|observability|monitoring|velero|system-upgrade|reloader|vpa-system"}
+                    |~ `(?i)(FATAL|panic:|runtime error:)`
+                  [5m]
+                )
+              ) > 0
+            for: 0m
+            labels:
+              severity: critical
+            annotations:
+              summary: "FATAL/panic in {{ $labels.namespace }}/{{ $labels.pod }}"
+              description: >-
+                {{ $value | printf "%.0f" }} FATAL/panic/runtime-error log lines
+                in the last 5 minutes in pod {{ $labels.pod }}
+                (namespace={{ $labels.namespace }}, app={{ $labels.app }}).
+                This requires immediate investigation.
+
+      # ── Stalwart SMTP delivery failures ──────────────────────────────────
+      # Stalwart v0.16 logs each SMTP session. Permanent failures (5xx codes),
+      # bounces, and delivery-failed messages indicate outbound mail is broken.
+      # A burst threshold (>3 in 10m) avoids noise from individual bad addresses.
+      - name: stalwart-smtp-failures
+        interval: 2m
+        rules:
+          - alert: StalwartSmtpDeliveryFailure
+            expr: |
+              sum(
+                count_over_time(
+                  {namespace="mail"}
+                    |~ `(?i)(status=5[0-9]{2}|bounce|delivery failed|message rejected|permanent failure)`
+                  [10m]
+                )
+              ) > 3
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Stalwart SMTP delivery failures ({{ $value | printf \"%.0f\" }} in 10m)"
+              description: >-
+                More than 3 SMTP delivery failures (5xx bounce/rejected) in the
+                last 10 minutes. Check Stalwart logs: kubectl logs -n mail
+                stalwart-0 | grep -i 'delivery\|bounce\|5[0-9][0-9]'.
+                Possible causes: SES quota, recipient blacklist, DNS issues.
+
+      # ── Authentik authentication failure burst ────────────────────────────
+      # Authentik emits JSON with event fields for login failures. >10 failures
+      # in 5 minutes exceeds normal user error rate and may indicate a
+      # brute-force attack or credential stuffing.
+      - name: authentik-brute-force
+        interval: 1m
+        rules:
+          - alert: AuthentikAuthFailureBurst
+            expr: |
+              sum(
+                count_over_time(
+                  {namespace="authentik"}
+                    |~ `(?i)(Failed to authenticate|authentication.*failed|Login.*Failed|invalid.*credent|Login event.*outcome.*failed)`
+                  [5m]
+                )
+              ) > 10
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Authentik auth failure burst — possible brute-force ({{ $value | printf \"%.0f\" }} in 5m)"
+              description: >-
+                {{ $value | printf "%.0f" }} authentication failures in 5 minutes
+                from Authentik. This exceeds the expected error rate for normal
+                users. Review Authentik logs for source IPs:
+                kubectl logs -n authentik deploy/authentik-server | grep -i 'failed\|login'.
+
+      # ── Container crash indicators ────────────────────────────────────────
+      # "Back-off restarting failed container" is a kubelet message that goes
+      # to systemd journal (not captured by the OTel filelogreceiver). This
+      # alert uses application-level crash signals that DO appear in pod logs:
+      # panics, OOM kills, and fatal exits visible in container stdout/stderr.
+      # >5 in 10m with sustained occurrence (for: 5m) indicates CrashLoopBackOff.
+      - name: container-crash-indicators
+        interval: 1m
+        rules:
+          - alert: ContainerCrashIndicator
+            expr: |
+              sum by (namespace, pod, app) (
+                count_over_time(
+                  {namespace!~"kube-system|longhorn-system|observability|monitoring"}
+                    |~ `(?i)(panic:|FATAL|runtime error:|OOM killed|Killed by kernel|exit code 137|signal: killed|segmentation fault)`
+                  [10m]
+                )
+              ) > 5
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Container crash indicators in {{ $labels.namespace }}/{{ $labels.pod }}"
+              description: >-
+                {{ $value | printf "%.0f" }} crash-indicator log lines in
+                {{ $labels.pod }} ({{ $labels.namespace }}) over 10 minutes.
+                The pod is likely CrashLoopBackOff. Check:
+                kubectl describe pod -n {{ $labels.namespace }} {{ $labels.pod }};
+                kubectl logs -n {{ $labels.namespace }} {{ $labels.pod }} --previous.
+
+      # ── Open WebUI / LiteLLM HTTP 5xx errors ─────────────────────────────
+      # Open WebUI (FastAPI + prometheus-fastapi-instrumentator) and LiteLLM
+      # log HTTP response status in their access logs. >5 server errors in 5m
+      # indicates the AI service is degraded.
+      - name: ai-service-errors
+        interval: 1m
+        rules:
+          - alert: AIServiceHTTPErrors
+            expr: |
+              sum by (app) (
+                count_over_time(
+                  {namespace="ai"}
+                    |~ `(?i)(status[_=\s:]+5[0-9]{2}|internal server error|bad gateway|service unavailable|litellm\.exceptions)`
+                  [5m]
+                )
+              ) > 5
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "HTTP 5xx errors in AI service {{ $labels.app }}"
+              description: >-
+                {{ $value | printf "%.0f" }} HTTP 5xx / error log lines from
+                {{ $labels.app }} in the last 5 minutes. Check:
+                kubectl logs -n ai deploy/{{ $labels.app }} | grep -i 'error\|5[0-9][0-9]'.
+                Common causes: Ollama unreachable, OpenAI quota, LiteLLM config error.
+
+      # ── ERPNext / Frappe background job failures ──────────────────────────
+      # Frappe HR background jobs (employee sync, notifications, scheduled
+      # reports) write failure tracebacks to the worker logs. Any job failure
+      # is actionable — the ERPNext webhook → Backstage onboard flow depends
+      # on background jobs completing successfully.
+      - name: erpnext-job-failures
+        interval: 1m
+        rules:
+          - alert: ERPNextJobFailure
+            expr: |
+              sum(
+                count_over_time(
+                  {namespace="erp"}
+                    |~ `(?i)(Job Failed|Traceback \(most recent|frappe\.exceptions\.|background.*fail|worker.*error)`
+                  [10m]
+                )
+              ) > 0
+            for: 0m
+            labels:
+              severity: warning
+            annotations:
+              summary: "ERPNext background job failure"
+              description: >-
+                {{ $value | printf "%.0f" }} job failure events in ERPNext logs
+                in the last 10 minutes. The employee-onboard webhook flow may be
+                broken. Check: kubectl logs -n erp -l app=erpnext-worker-d |
+                grep -i 'failed\|traceback'.
