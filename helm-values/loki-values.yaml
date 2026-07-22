@@ -50,6 +50,22 @@ loki:
       store: tsdb
   storage:
     type: filesystem
+  # Enable the ruler component so LogQL alert rules can be evaluated.
+  # ring.kvstore.store: inmemory — correct for single-binary (no distributed KV).
+  # storage.local.directory: /rules — overrides the common.storage.filesystem.rules_directory
+  # default (/var/loki/rules on the PVC). The rules ConfigMap is mounted at
+  # /rules/fake/ via singleBinary.extraVolumeMounts. With auth_enabled: false,
+  # Loki's ruler always uses tenant "fake", so it looks in <directory>/fake/<file>.
+  ruler:
+    alertmanager_url: http://kps-alertmanager.monitoring.svc:9093
+    enable_api: true
+    ring:
+      kvstore:
+        store: inmemory
+    storage:
+      type: local
+      local:
+        directory: /rules
 lokiCanary:
   enabled: false
 minio:
@@ -82,6 +98,18 @@ singleBinary:
     requests:
       cpu: 100m
       memory: 256Mi
+  # Mount the loki-rules ConfigMap at /rules/fake/ so the ruler can find rule
+  # files without requiring the sidecar's FOLDER_ANNOTATION env var.
+  # The sc-rules-volume (emptyDir) is mounted at /rules by the chart; this
+  # ConfigMap mount creates /rules/fake/ as a subdirectory within it.
+  extraVolumes:
+    - name: loki-rules
+      configMap:
+        name: loki-rules
+  extraVolumeMounts:
+    - name: loki-rules
+      mountPath: /rules/fake
+      readOnly: true
 test:
   enabled: false
 write:
