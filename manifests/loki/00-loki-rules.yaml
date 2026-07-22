@@ -4,9 +4,10 @@ metadata:
   name: loki-rules
   namespace: observability
 data:
-  # Ruler reads from ruler.storage.local.directory=/rules, tenant=fake →
-  # /rules/fake/<file>. This ConfigMap is mounted at /rules/fake/ via
-  # singleBinary.extraVolumeMounts so the ruler finds these files directly.
+  # Ruler path: <storage_dir>/<tenant>/<namespace>/<file>
+  # = /var/loki/rules / fake / minicloud / app-alerts.yaml
+  # ConfigMap mounted at /var/loki/rules/fake/minicloud/ via extraVolumeMounts.
+  # Query via: GET /loki/api/v1/rules/minicloud
   app-alerts.yaml: |
     groups:
 
