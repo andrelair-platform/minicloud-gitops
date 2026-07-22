@@ -140,6 +140,17 @@ config:
       log_statements:
         - context: log
           statements:
+            # ── Short-name resource attributes for Loki label mapping ─────────
+            # Loki's otlp_config promotes resource attributes to stream labels
+            # using the attribute name as the label name. Copy the OTel semantic
+            # convention names (k8s.namespace.name etc.) to the short names that
+            # Promtail used, so existing Grafana dashboards keep working without
+            # any query changes after the Promtail → OTel migration.
+            - 'set(resource.attributes["namespace"], resource.attributes["k8s.namespace.name"])'
+            - 'set(resource.attributes["pod"],       resource.attributes["k8s.pod.name"])'
+            - 'set(resource.attributes["node_name"], resource.attributes["k8s.node.name"])'
+            - 'set(resource.attributes["container"], resource.attributes["k8s.container.name"])'
+
             # ── Gap 1: Kopia CronJob name normalisation ───────────────────────
             # Each Kopia maintenance run creates a pod named
             # "<ns>-default-kopia-maintain-job-<unix_ms>", producing a unique
@@ -147,21 +158,21 @@ config:
             # Collapse all of them to the static value "kopia-job".
             - 'replace_match(resource.attributes["app"], "^.+-kopia-[a-z]+-job-\d+$", "kopia-job")'
             # Derive job = namespace/app (must run after Gap 1 normalisation)
-            - 'set(resource.attributes["job"], Concat([resource.attributes["k8s.namespace.name"], resource.attributes["app"]], "/")) where resource.attributes["k8s.namespace.name"] != nil and resource.attributes["app"] != nil'
+            - 'set(resource.attributes["job"], Concat([resource.attributes["namespace"], resource.attributes["app"]], "/")) where resource.attributes["namespace"] != nil and resource.attributes["app"] != nil'
 
             # ── Gap 2a: JSON services ─────────────────────────────────────────
             # Backstage (winston) and Authentik (structlog) emit newline-
             # delimited JSON with a "level" field.
             # ParseJSON returns nil on non-JSON lines; nil["level"] = nil;
             # setting an attribute to nil is a no-op — safe for mixed-format pods.
-            - 'set(attributes["level"], ParseJSON(body)["level"]) where IsMatch(body, "^\{") and IsMatch(resource.attributes["k8s.namespace.name"], "^(backstage|authentik)$")'
+            - 'set(attributes["level"], ParseJSON(body)["level"]) where IsMatch(body, "^\{") and IsMatch(resource.attributes["namespace"], "^(backstage|authentik)$")'
 
             # ── Gap 2b: logfmt services ───────────────────────────────────────
             # ArgoCD (zerolog) emits: time="..." level=info msg="..."
             # Own Go services (minicloud-plane, platform-demo) emit logfmt on
             # request-path log lines; startup lines (plain Go stdlib) have no
             # level= key and are safely skipped by ExtractPatterns.
-            - 'set(attributes["level"], ExtractPatterns(body, "level=(?P<level>[^\s\"]+)")["level"]) where IsMatch(body, "level=") and IsMatch(resource.attributes["k8s.namespace.name"], "^(argocd|minicloud-plane-dev|platform-demo-dev|platform-demo-staging|platform-demo-prod)$")'
+            - 'set(attributes["level"], ExtractPatterns(body, "level=(?P<level>[^\s\"]+)")["level"]) where IsMatch(body, "level=") and IsMatch(resource.attributes["namespace"], "^(argocd|minicloud-plane-dev|platform-demo-dev|platform-demo-staging|platform-demo-prod)$")'
 
             # ── Gap 2c: level normalisation ───────────────────────────────────
             # Normalise to lowercase so {level="warn"} catches both "warn" and
@@ -175,21 +186,16 @@ config:
       timeout: 5s
 
   exporters:
-    loki:
-      endpoint: http://loki.observability.svc:3100/loki/api/v1/push
-      # Explicit label mapping — this is the only block that changes when
-      # switching backends (e.g. replace loki: with elasticsearch: or otlp:).
-      # Pipeline logic above (receivers / processors) is backend-agnostic.
-      labels:
-        resource:
-          k8s.namespace.name: namespace
-          k8s.pod.name:       pod
-          k8s.node.name:      node_name
-          k8s.container.name: container
-          app:                app
-          job:                job
-        attributes:
-          level: level        # only present on instrumented namespaces
+    # lokiexporter was removed from otelcol-contrib in 0.150+; Loki 3.x has
+    # native OTLP ingest at /otlp/v1/logs. The otlphttp exporter appends
+    # /v1/logs automatically when only logs_endpoint is set.
+    # This is the only backend-specific block — swap it for any OTel-compatible
+    # sink (elasticsearch, datadog, otlp to another collector, etc.) without
+    # touching the pipeline processors above.
+    otlphttp/loki:
+      logs_endpoint: http://loki.observability.svc:3100/otlp/v1/logs
+      tls:
+        insecure: true
 
   service:
     extensions: [health_check, file_storage]
@@ -197,9 +203,9 @@ config:
       logs:
         receivers:  [filelog]
         processors: [memory_limiter, k8sattributes, transform, batch]
-        exporters:  [loki]
+        exporters:  [otlphttp/loki]
+    # Telemetry metrics address moved to prometheus reader format in 0.150+;
+    # the chart handles port 8888 via ports.metrics — do not set address here.
     telemetry:
-      metrics:
-        address: 0.0.0.0:8888
       logs:
         level: warn
