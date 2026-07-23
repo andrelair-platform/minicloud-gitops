@@ -75,6 +75,8 @@ singleBinary:
     size: 30Gi
     storageClass: longhorn
   replicas: 1
+  podAnnotations:
+    reloader.stakater.com/auto: "true"
   resources:
     limits:
       cpu: "1"
@@ -87,11 +89,13 @@ singleBinary:
   # values set in values.yaml. The -ruler.alertmanager-url flag bypasses this.
   extraArgs:
     - -ruler.alertmanager-url=http://kps-alertmanager.monitoring.svc:9093
-  # Ruler directory structure: <storage_dir>/<tenant>/<namespace>/<file>.yaml
-  # With auth_enabled:false tenant="fake", storage dir=/var/loki/rules.
-  # The namespace segment ("minicloud") maps to the LogQL API path:
-  # /loki/api/v1/rules/minicloud — required by the ruler, not optional.
-  # /var/loki is the PVC mount; this is a nested overlay within it.
+  # Loki local ruler storage layout: <dir>/<tenant>/<namespace> where
+  # <namespace> is a YAML FILE (not a directory). With auth_enabled:false,
+  # tenant="fake"; storage dir=/var/loki/rules (from common.storage.filesystem).
+  # A plain ConfigMap mount always creates a directory, which the ruler rejects
+  # with "is a directory". subPath mounts a single ConfigMap key as a file,
+  # giving /var/loki/rules/fake/minicloud the content of app-alerts.yaml.
+  # API path: GET /loki/api/v1/rules/minicloud
   extraVolumes:
     - name: loki-rules
       configMap:
@@ -99,6 +103,7 @@ singleBinary:
   extraVolumeMounts:
     - name: loki-rules
       mountPath: /var/loki/rules/fake/minicloud
+      subPath: app-alerts.yaml
       readOnly: true
 test:
   enabled: false
