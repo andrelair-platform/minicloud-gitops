@@ -1,0 +1,315 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minicloud-crash-events-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  crash-events.json: |
+    {
+      "uid": "minicloud-crash-events",
+      "title": "Pod Crash & Restart Events",
+      "description": "Crash indicators extracted from pod logs: panics, OOM kills, FATAL exits, and runtime errors. Replaces kubelet events for our filelogreceiver-based OTel pipeline.",
+      "tags": ["minicloud", "logs", "loki", "crash", "events"],
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "1m",
+      "time": {"from": "now-24h", "to": "now"},
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "label": "Namespace",
+            "type": "query",
+            "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+            "definition": "label_values(namespace)",
+            "query": {"label": "namespace", "refId": "A", "stream": "", "type": 1},
+            "includeAll": true,
+            "allValue": ".+",
+            "multi": false,
+            "refresh": 2,
+            "sort": 1,
+            "hide": 0,
+            "options": [],
+            "current": {}
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Crash Events (24h)",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "options": {
+            "reduceOptions": {"calcs": ["sum"]},
+            "colorMode": "background",
+            "graphMode": "area"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 5}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum(count_over_time({namespace=~\"$namespace\", namespace!~\"kube-system|longhorn-system\"} |~ \"(?i)(panic:|FATAL|runtime error:|OOM killed|Killed by kernel|exit code 137|signal: killed|segmentation fault)\" [24h]))",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "OOM Kill Events (24h)",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "options": {
+            "reduceOptions": {"calcs": ["sum"]},
+            "colorMode": "background",
+            "graphMode": "area"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "red", "value": 1}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum(count_over_time({namespace=~\"$namespace\"} |~ \"(?i)(OOM killed|Killed by kernel|exit code 137|signal: killed)\" [24h]))",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "FATAL/Panic Events (24h)",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "options": {
+            "reduceOptions": {"calcs": ["sum"]},
+            "colorMode": "background",
+            "graphMode": "area"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "red", "value": 1}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum(count_over_time({namespace=~\"$namespace\"} |~ \"(?i)(panic:|FATAL|runtime error:|segmentation fault)\" [24h]))",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Affected Namespaces (24h)",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 3}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "count(sum by (namespace) (count_over_time({namespace=~\"$namespace\", namespace!~\"kube-system|longhorn-system\"} |~ \"(?i)(panic:|FATAL|runtime error:|OOM killed|Killed by kernel|exit code 137|signal: killed|segmentation fault)\" [24h])) > 0)",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Crash Indicator Timeline by Namespace",
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 4},
+          "options": {
+            "tooltip": {"mode": "multi", "sort": "desc"},
+            "legend": {"displayMode": "table", "placement": "right", "calcs": ["sum", "max"]},
+            "fillOpacity": 20
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"lineWidth": 2, "fillOpacity": 20, "drawStyle": "bars"},
+              "color": {"mode": "palette-classic"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum by (namespace) (count_over_time({namespace=~\"$namespace\", namespace!~\"kube-system|longhorn-system\"} |~ \"(?i)(panic:|FATAL|runtime error:|OOM killed|Killed by kernel|exit code 137|signal: killed|segmentation fault)\" [5m]))",
+              "legendFormat": "{{namespace}}",
+              "queryType": "range"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "bargauge",
+          "title": "Top Crashing Pods (24h)",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+          "options": {
+            "reduceOptions": {"calcs": ["sum"]},
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "valueMode": "color"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {"mode": "continuous-reds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]
+              }
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "topk(10, sum by (namespace, pod) (count_over_time({namespace=~\"$namespace\", namespace!~\"kube-system|longhorn-system\"} |~ \"(?i)(panic:|FATAL|runtime error:|OOM killed|exit code 137|signal: killed|segmentation fault)\" [24h])))",
+              "legendFormat": "{{namespace}}/{{pod}}",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "bargauge",
+          "title": "Crash Type Breakdown (24h)",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+          "options": {
+            "reduceOptions": {"calcs": ["sum"]},
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "valueMode": "color"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {"mode": "palette-classic"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum(count_over_time({namespace=~\"$namespace\"} |~ \"(?i)(panic:)\" [24h]))",
+              "legendFormat": "panic",
+              "instant": true,
+              "queryType": "instant"
+            },
+            {
+              "refId": "B",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum(count_over_time({namespace=~\"$namespace\"} |~ \"(?i)(FATAL)\" [24h]))",
+              "legendFormat": "FATAL",
+              "instant": true,
+              "queryType": "instant"
+            },
+            {
+              "refId": "C",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum(count_over_time({namespace=~\"$namespace\"} |~ \"(?i)(OOM killed|Killed by kernel|exit code 137|signal: killed)\" [24h]))",
+              "legendFormat": "OOM/Killed",
+              "instant": true,
+              "queryType": "instant"
+            },
+            {
+              "refId": "D",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum(count_over_time({namespace=~\"$namespace\"} |~ \"(?i)(runtime error:|segmentation fault)\" [24h]))",
+              "legendFormat": "runtime error",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "logs",
+          "title": "Crash Log Lines",
+          "gridPos": {"h": 20, "w": 24, "x": 0, "y": 22},
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": true,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "{namespace=~\"$namespace\", namespace!~\"kube-system|longhorn-system\"} |~ \"(?i)(panic:|FATAL|runtime error:|OOM killed|Killed by kernel|exit code 137|signal: killed|segmentation fault)\"",
+              "queryType": "range",
+              "maxLines": 300
+            }
+          ]
+        }
+      ]
+    }
