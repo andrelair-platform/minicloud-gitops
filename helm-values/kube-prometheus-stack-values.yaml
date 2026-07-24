@@ -342,6 +342,44 @@ grafana:
         database: ragdb
         sslmode: disable
         postgresVersion: 1400
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.observability.svc:3200
+      isDefault: false
+      editable: false
+      jsonData:
+        # TraceQL search enabled (Tempo 2.x native query language)
+        search:
+          hide: false
+        # Node graph panel — visualises service dependency graph from spans
+        nodeGraph:
+          enabled: true
+        # Traces→Logs: clicking "View Logs" on any span opens Loki Explore
+        # filtered to the same pod/namespace for the span's time window.
+        # Tags map span resource attributes (set by k8sattributes processor
+        # in the OTel traces pipeline) to Loki stream label names.
+        tracesToLogsV2:
+          datasourceUid: P8E80F9AEF21F6940
+          spanStartTimeShift: "-5m"
+          spanEndTimeShift: "5m"
+          filterByTraceID: false
+          filterBySpanID: false
+          tags:
+            - key: k8s.namespace.name
+              value: namespace
+            - key: k8s.pod.name
+              value: pod
+            - key: service.name
+              value: app
+        # Traces→Metrics: link from span to Prometheus exemplar on the
+        # request duration histogram — surfaces after exemplar support is
+        # added to the Go services instrumentation (Gap E).
+        tracesToMetrics:
+          datasourceUid: prometheus
+        lokiSearch:
+          datasourceUid: P8E80F9AEF21F6940
 
 kubeEtcd:
   enabled: false
