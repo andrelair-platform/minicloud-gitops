@@ -13,7 +13,7 @@ data:
       "description": "Pod states, restarts, CrashLoopBackOff, OOMKill, and deployment availability across all namespaces.",
       "tags": ["minicloud", "kubernetes", "workload"],
       "schemaVersion": 38,
-      "version": 1,
+      "version": 2,
       "refresh": "1m",
       "time": {"from": "now-3h", "to": "now"},
       "panels": [
@@ -78,7 +78,7 @@ data:
           "id": 5,
           "type": "table",
           "title": "CrashLoopBackOff Containers",
-          "description": "Containers currently in CrashLoopBackOff. Empty = healthy.",
+          "description": "Containers currently in CrashLoopBackOff. Click a pod name to open its logs in Explore.",
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
           "options": {},
           "fieldConfig": {
@@ -87,7 +87,22 @@ data:
               {"matcher": {"id": "byName", "options": "Time"}, "properties": [{"id": "custom.hidden", "value": true}]},
               {"matcher": {"id": "byName", "options": "Value"}, "properties": [{"id": "custom.hidden", "value": true}]},
               {"matcher": {"id": "byName", "options": "__name__"}, "properties": [{"id": "custom.hidden", "value": true}]},
-              {"matcher": {"id": "byName", "options": "reason"}, "properties": [{"id": "custom.hidden", "value": true}]}
+              {"matcher": {"id": "byName", "options": "reason"}, "properties": [{"id": "custom.hidden", "value": true}]},
+              {
+                "matcher": {"id": "byName", "options": "pod"},
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "View pod logs",
+                        "url": "/explore?orgId=1&left={\"datasource\":\"P8E80F9AEF21F6940\",\"queries\":[{\"refId\":\"A\",\"datasource\":{\"type\":\"loki\",\"uid\":\"P8E80F9AEF21F6940\"},\"expr\":\"{namespace=\\\"${__data.fields.namespace}\\\",pod=\\\"${__data.fields.pod}\\\"}\"}],\"range\":{\"from\":\"${__from}\",\"to\":\"${__to}\"}}",
+                        "targetBlank": true
+                      }
+                    ]
+                  }
+                ]
+              }
             ]
           },
           "targets": [{"expr": "kube_pod_container_status_waiting_reason{reason=\"CrashLoopBackOff\"} == 1", "instant": true, "format": "table", "legendFormat": "__auto"}],
@@ -99,13 +114,29 @@ data:
           "id": 6,
           "type": "table",
           "title": "Top Restarting Pods (last 1h)",
+          "description": "Click a pod name to open its logs in Explore.",
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
           "options": {"sortBy": [{"displayName": "Restarts", "desc": true}]},
           "fieldConfig": {
             "defaults": {"custom": {"filterable": true}},
             "overrides": [
               {"matcher": {"id": "byName", "options": "Time"}, "properties": [{"id": "custom.hidden", "value": true}]},
-              {"matcher": {"id": "byName", "options": "Value"}, "properties": [{"id": "displayName", "value": "Restarts"}, {"id": "decimals", "value": 0}]}
+              {"matcher": {"id": "byName", "options": "Value"}, "properties": [{"id": "displayName", "value": "Restarts"}, {"id": "decimals", "value": 0}]},
+              {
+                "matcher": {"id": "byName", "options": "pod"},
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "View pod logs",
+                        "url": "/explore?orgId=1&left={\"datasource\":\"P8E80F9AEF21F6940\",\"queries\":[{\"refId\":\"A\",\"datasource\":{\"type\":\"loki\",\"uid\":\"P8E80F9AEF21F6940\"},\"expr\":\"{namespace=\\\"${__data.fields.namespace}\\\",pod=\\\"${__data.fields.pod}\\\"}\"}],\"range\":{\"from\":\"${__from}\",\"to\":\"${__to}\"}}",
+                        "targetBlank": true
+                      }
+                    ]
+                  }
+                ]
+              }
             ]
           },
           "targets": [{"expr": "topk(10, sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total[1h])) > 0)", "instant": true, "format": "table", "legendFormat": "__auto"}],
@@ -117,7 +148,7 @@ data:
           "id": 7,
           "type": "table",
           "title": "Deployment Health — Missing Replicas",
-          "description": "Deployments where available replicas < desired. Empty = all healthy.",
+          "description": "Deployments where available replicas < desired. Click a namespace to view its logs.",
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
           "options": {"sortBy": [{"displayName": "Missing", "desc": true}]},
           "fieldConfig": {
@@ -128,7 +159,22 @@ data:
                 {"id": "displayName", "value": "Missing"},
                 {"id": "decimals", "value": 0},
                 {"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}
-              ]}
+              ]},
+              {
+                "matcher": {"id": "byName", "options": "namespace"},
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "View namespace logs",
+                        "url": "/explore?orgId=1&left={\"datasource\":\"P8E80F9AEF21F6940\",\"queries\":[{\"refId\":\"A\",\"datasource\":{\"type\":\"loki\",\"uid\":\"P8E80F9AEF21F6940\"},\"expr\":\"{namespace=\\\"${__data.fields.namespace}\\\"}\"}],\"range\":{\"from\":\"${__from}\",\"to\":\"${__to}\"}}",
+                        "targetBlank": true
+                      }
+                    ]
+                  }
+                ]
+              }
             ]
           },
           "targets": [{"expr": "kube_deployment_spec_replicas - kube_deployment_status_replicas_available > 0", "instant": true, "format": "table", "legendFormat": "__auto"}],
@@ -140,7 +186,7 @@ data:
           "id": 8,
           "type": "table",
           "title": "OOMKilled Containers",
-          "description": "Containers whose last termination reason was OOMKill. Empty = no recent OOMKills.",
+          "description": "Containers whose last termination reason was OOMKill. Click a pod name to open its logs.",
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
           "options": {},
           "fieldConfig": {
@@ -148,7 +194,22 @@ data:
             "overrides": [
               {"matcher": {"id": "byName", "options": "Time"}, "properties": [{"id": "custom.hidden", "value": true}]},
               {"matcher": {"id": "byName", "options": "Value"}, "properties": [{"id": "custom.hidden", "value": true}]},
-              {"matcher": {"id": "byName", "options": "reason"}, "properties": [{"id": "custom.hidden", "value": true}]}
+              {"matcher": {"id": "byName", "options": "reason"}, "properties": [{"id": "custom.hidden", "value": true}]},
+              {
+                "matcher": {"id": "byName", "options": "pod"},
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "View pod logs",
+                        "url": "/explore?orgId=1&left={\"datasource\":\"P8E80F9AEF21F6940\",\"queries\":[{\"refId\":\"A\",\"datasource\":{\"type\":\"loki\",\"uid\":\"P8E80F9AEF21F6940\"},\"expr\":\"{namespace=\\\"${__data.fields.namespace}\\\",pod=\\\"${__data.fields.pod}\\\"}\"}],\"range\":{\"from\":\"${__from}\",\"to\":\"${__to}\"}}",
+                        "targetBlank": true
+                      }
+                    ]
+                  }
+                ]
+              }
             ]
           },
           "targets": [{"expr": "kube_pod_container_status_last_terminated_reason{reason=\"OOMKilled\"} == 1", "instant": true, "format": "table", "legendFormat": "__auto"}],
@@ -160,9 +221,20 @@ data:
           "id": 9,
           "type": "timeseries",
           "title": "Container Restart Rate — by Namespace (5m rate)",
+          "description": "Click a series to open namespace logs in Explore.",
           "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20},
           "fieldConfig": {
-            "defaults": {"unit": "short", "custom": {"lineWidth": 2}},
+            "defaults": {
+              "unit": "short",
+              "custom": {"lineWidth": 2},
+              "links": [
+                {
+                  "title": "View namespace logs",
+                  "url": "/explore?orgId=1&left={\"datasource\":\"P8E80F9AEF21F6940\",\"queries\":[{\"refId\":\"A\",\"datasource\":{\"type\":\"loki\",\"uid\":\"P8E80F9AEF21F6940\"},\"expr\":\"{namespace=\\\"${__field.labels.namespace}\\\"}\"}],\"range\":{\"from\":\"${__from}\",\"to\":\"${__to}\"}}",
+                  "targetBlank": true
+                }
+              ]
+            },
             "overrides": []
           },
           "options": {"legend": {"displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"]}},
