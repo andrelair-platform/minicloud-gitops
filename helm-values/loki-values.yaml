@@ -77,22 +77,6 @@ singleBinary:
   replicas: 1
   podAnnotations:
     reloader.stakater.com/auto: "true"
-  # One-time cleanup: PR #233 mounted ConfigMap as a directory at
-  # /var/loki/rules/fake/minicloud on the PVC, leaving a stale dir that
-  # blocks subPath file mounts ("not a directory" runc error). rm -rf is
-  # idempotent — noop on subsequent starts after the dir is gone.
-  initContainers:
-    - name: cleanup-stale-rules-dir
-      image: busybox:1.36
-      command: ["/bin/sh", "-c", "rm -rf /var/loki/rules/fake/minicloud && echo 'cleaned up stale rules dir'"]
-      securityContext:
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop:
-            - NET_RAW
-      volumeMounts:
-        - name: storage
-          mountPath: /var/loki
   resources:
     limits:
       cpu: "1"
@@ -105,20 +89,19 @@ singleBinary:
   # values set in values.yaml. The -ruler.alertmanager-url flag bypasses this.
   extraArgs:
     - -ruler.alertmanager-url=http://kps-alertmanager.monitoring.svc:9093
-  # Loki local ruler storage layout: <dir>/<tenant>/<namespace> where
-  # <namespace> is a YAML FILE (not a directory). With auth_enabled:false,
-  # tenant="fake"; storage dir=/var/loki/rules (from common.storage.filesystem).
-  # A plain ConfigMap mount always creates a directory, which the ruler rejects
-  # with "is a directory". subPath mounts a single ConfigMap key as a file,
-  # giving /var/loki/rules/fake/minicloud the content of app-alerts.yaml.
-  # API path: GET /loki/api/v1/rules/minicloud
+  # Loki local ruler storage: <dir>/<tenant>/<namespace> where <namespace>
+  # is a plain YAML FILE. subPath mounts the ConfigMap key as a file.
+  # Namespace is "minicloud-alerts" (not "minicloud") to avoid the stale
+  # directory left at /var/loki/rules/fake/minicloud by PR #233 — the ruler
+  # skips directories when listing, so the stale dir is silently ignored.
+  # API path: GET /loki/api/v1/rules/minicloud-alerts
   extraVolumes:
     - name: loki-rules
       configMap:
         name: loki-rules
   extraVolumeMounts:
     - name: loki-rules
-      mountPath: /var/loki/rules/fake/minicloud
+      mountPath: /var/loki/rules/fake/minicloud-alerts
       subPath: app-alerts.yaml
       readOnly: true
 test:
