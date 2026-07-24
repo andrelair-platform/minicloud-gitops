@@ -1,0 +1,243 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minicloud-error-rate-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  error-rate.json: |
+    {
+      "uid": "minicloud-error-rate",
+      "title": "Error Rate by Service",
+      "description": "count_over_time error rate grouped by namespace and pod. Global view across all application namespaces.",
+      "tags": ["minicloud", "logs", "loki", "errors"],
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "1m",
+      "time": {"from": "now-3h", "to": "now"},
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Total Error Lines (1h)",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "options": {
+            "reduceOptions": {"calcs": ["sum"]},
+            "colorMode": "background",
+            "graphMode": "area",
+            "text": {}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 10},
+                  {"color": "red", "value": 50}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum(count_over_time({namespace=~\".+\", namespace!~\"kube-system|longhorn-system|observability|monitoring|velero|system-upgrade|reloader|vpa-system\"} |~ \"(?i)(error|ERROR)\" [1h]))",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Total FATAL/Panic Lines (1h)",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "options": {
+            "reduceOptions": {"calcs": ["sum"]},
+            "colorMode": "background",
+            "graphMode": "area"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "red", "value": 1}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum(count_over_time({namespace=~\".+\", namespace!~\"kube-system|longhorn-system|observability|monitoring|velero|system-upgrade|reloader|vpa-system\"} |~ \"(?i)(FATAL|panic:|runtime error:)\" [1h]))",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Namespaces with Errors (1h)",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 3},
+                  {"color": "red", "value": 6}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "count(sum by (namespace) (count_over_time({namespace=~\".+\", namespace!~\"kube-system|longhorn-system|observability|monitoring|velero|system-upgrade|reloader|vpa-system\"} |~ \"(?i)(error|ERROR)\" [1h])) > 0)",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Error Rate per Namespace",
+          "description": "count_over_time({namespace=~\".+\"} |~ \"error\" [5m]) grouped by namespace",
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 4},
+          "options": {
+            "tooltip": {"mode": "multi", "sort": "desc"},
+            "legend": {"displayMode": "table", "placement": "right", "calcs": ["sum", "max"]},
+            "fillOpacity": 10
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"lineWidth": 2, "fillOpacity": 10, "drawStyle": "line"},
+              "color": {"mode": "palette-classic"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum by (namespace) (count_over_time({namespace=~\".+\", namespace!~\"kube-system|longhorn-system|observability|monitoring|velero|system-upgrade|reloader|vpa-system\"} |~ \"(?i)(error|ERROR)\" [5m]))",
+              "legendFormat": "{{namespace}}",
+              "queryType": "range"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "bargauge",
+          "title": "Top Namespaces by Error Count (1h)",
+          "gridPos": {"h": 10, "w": 12, "x": 0, "y": 14},
+          "options": {
+            "reduceOptions": {"calcs": ["sum"]},
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "valueMode": "color"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {"mode": "continuous-reds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{"color": "green", "value": null}, {"color": "red", "value": 10}]
+              }
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum by (namespace) (count_over_time({namespace=~\".+\", namespace!~\"kube-system|longhorn-system|observability|monitoring|velero|system-upgrade|reloader|vpa-system\"} |~ \"(?i)(error|ERROR)\" [1h]))",
+              "legendFormat": "{{namespace}}",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "bargauge",
+          "title": "Top Pods by Error Count (1h)",
+          "gridPos": {"h": 10, "w": 12, "x": 12, "y": 14},
+          "options": {
+            "reduceOptions": {"calcs": ["sum"]},
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "valueMode": "color"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {"mode": "continuous-reds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{"color": "green", "value": null}, {"color": "red", "value": 10}]
+              }
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "topk(15, sum by (namespace, pod) (count_over_time({namespace=~\".+\", namespace!~\"kube-system|longhorn-system|observability|monitoring|velero|system-upgrade|reloader|vpa-system\"} |~ \"(?i)(error|ERROR)\" [1h])))",
+              "legendFormat": "{{namespace}}/{{pod}}",
+              "instant": true,
+              "queryType": "instant"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "logs",
+          "title": "Recent Error Logs",
+          "gridPos": {"h": 16, "w": 24, "x": 0, "y": 24},
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": true,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "{namespace=~\".+\", namespace!~\"kube-system|longhorn-system|observability|monitoring|velero|system-upgrade|reloader|vpa-system\"} |~ \"(?i)(error|ERROR|FATAL|panic:)\"",
+              "queryType": "range",
+              "maxLines": 200
+            }
+          ]
+        }
+      ]
+    }
