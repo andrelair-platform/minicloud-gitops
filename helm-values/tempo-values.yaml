@@ -1,0 +1,67 @@
+replicas: 1
+
+tempo:
+  reportingEnabled: false
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+  # Container security context — drop all capabilities to satisfy
+  # K8sBlockNetRaw Gatekeeper constraint (observability ns not excluded).
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: false
+
+  retention: 336h
+
+  # OTLP gRPC (4317) + HTTP (4318) receivers.
+  # The OTel Collector DaemonSet (in this same namespace) will export traces
+  # to http://tempo.observability.svc:4317 once its traces pipeline is enabled.
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+# Pod-level security context — Tempo 2.9 image runs as UID 10001 (grafana group)
+securityContext:
+  fsGroup: 10001
+  runAsGroup: 10001
+  runAsNonRoot: true
+  runAsUser: 10001
+
+persistence:
+  enabled: true
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+podAnnotations:
+  reloader.stakater.com/auto: "true"
+
+tolerations:
+  - operator: Exists
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: kube-prometheus-stack

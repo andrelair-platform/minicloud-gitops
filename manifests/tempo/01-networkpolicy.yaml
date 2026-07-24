@@ -1,0 +1,23 @@
+---
+# Grafana (monitoring namespace) → Tempo query port 3200.
+# OTel Collector → Tempo OTLP ports 4317/4318 is already covered by the
+# allow-same-namespace policy (both in observability namespace).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-grafana-query-tempo
+  namespace: observability
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: tempo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 3200
