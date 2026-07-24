@@ -4,12 +4,16 @@ metadata:
   name: loki-push
   namespace: observability
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - loki.10.0.0.200.nip.io
+      secretName: loki-tls
   rules:
     - host: loki.10.0.0.200.nip.io
       http:
