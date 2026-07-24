@@ -1,0 +1,23 @@
+---
+# Allow any pod in any namespace to push OTLP traces to the OTel Collector
+# DaemonSet on gRPC (4317) and HTTP (4318).
+# The DaemonSet exposes a Service; services in all namespaces need to reach it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-otlp-ingress
+  namespace: observability
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: opentelemetry-collector
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
