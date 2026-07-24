@@ -4,10 +4,9 @@ metadata:
   name: loki-rules
   namespace: observability
 data:
-  # Ruler path: <storage_dir>/<tenant>/<namespace>/<file>
-  # = /var/loki/rules / fake / minicloud / app-alerts.yaml
-  # ConfigMap mounted at /var/loki/rules/fake/minicloud/ via extraVolumeMounts.
-  # Query via: GET /loki/api/v1/rules/minicloud
+  # Ruler path: <storage_dir>/<tenant>/<namespace>
+  # = /var/loki/rules/fake/minicloud-alerts (file, via subPath mount)
+  # Query via: GET /loki/api/v1/rules/minicloud-alerts
   app-alerts.yaml: |
     groups:
 
@@ -23,7 +22,7 @@ data:
             expr: |
               sum by (namespace, pod, app) (
                 count_over_time(
-                  {namespace!~"kube-system|longhorn-system|observability|monitoring|velero|system-upgrade|reloader|vpa-system"}
+                  {namespace=~".+", namespace!~"kube-system|longhorn-system|observability|monitoring|velero|system-upgrade|reloader|vpa-system"}
                     |~ `(?i)(FATAL|panic:|runtime error:)`
                   [5m]
                 )
@@ -106,7 +105,7 @@ data:
             expr: |
               sum by (namespace, pod, app) (
                 count_over_time(
-                  {namespace!~"kube-system|longhorn-system|observability|monitoring"}
+                  {namespace=~".+", namespace!~"kube-system|longhorn-system|observability|monitoring"}
                     |~ `(?i)(panic:|FATAL|runtime error:|OOM killed|Killed by kernel|exit code 137|signal: killed|segmentation fault)`
                   [10m]
                 )
