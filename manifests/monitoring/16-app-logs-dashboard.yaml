@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minicloud-app-logs-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  app-logs.json: |
+    {
+      "uid": "minicloud-app-logs",
+      "title": "Application Logs Explorer",
+      "description": "Drill-down log explorer: namespace → pod → level filter with error rate panel.",
+      "tags": ["minicloud", "logs", "loki"],
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "label": "Namespace",
+            "type": "query",
+            "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+            "definition": "label_values(namespace)",
+            "query": {"label": "namespace", "refId": "A", "stream": "", "type": 1},
+            "includeAll": true,
+            "allValue": ".+",
+            "multi": false,
+            "refresh": 2,
+            "sort": 1,
+            "hide": 0,
+            "options": [],
+            "current": {}
+          },
+          {
+            "name": "pod",
+            "label": "Pod",
+            "type": "query",
+            "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+            "definition": "label_values({namespace=~\"$namespace\"}, pod)",
+            "query": {"label": "pod", "refId": "B", "stream": "{namespace=~\"$namespace\"}", "type": 1},
+            "includeAll": true,
+            "allValue": ".+",
+            "multi": false,
+            "refresh": 2,
+            "sort": 1,
+            "hide": 0,
+            "options": [],
+            "current": {}
+          },
+          {
+            "name": "search",
+            "label": "Search",
+            "type": "textbox",
+            "query": "",
+            "hide": 0,
+            "options": [],
+            "current": {}
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Error & Warning Rate",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "options": {
+            "tooltip": {"mode": "multi", "sort": "desc"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"lineWidth": 2, "fillOpacity": 10, "drawStyle": "line"},
+              "color": {"mode": "palette-classic"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum by (level) (count_over_time({namespace=~\"$namespace\", pod=~\"$pod\"} |~ \"(?i)(error|fatal|panic)\" [2m]))",
+              "legendFormat": "{{level}}",
+              "queryType": "range"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Log Volume by Level",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "options": {
+            "tooltip": {"mode": "multi", "sort": "desc"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"lineWidth": 1, "fillOpacity": 20, "drawStyle": "bars", "stacking": {"mode": "normal"}},
+              "color": {"mode": "palette-classic"}
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "sum by (level) (count_over_time({namespace=~\"$namespace\", pod=~\"$pod\"} [2m]))",
+              "legendFormat": "{{level}}",
+              "queryType": "range"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "logs",
+          "title": "Log Lines",
+          "gridPos": {"h": 22, "w": 24, "x": 0, "y": 8},
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": true,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+              "expr": "{namespace=~\"$namespace\", pod=~\"$pod\"} |~ \"$search\"",
+              "queryType": "range",
+              "maxLines": 500
+            }
+          ]
+        }
+      ]
+    }
