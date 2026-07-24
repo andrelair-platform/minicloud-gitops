@@ -15,7 +15,7 @@ clusterRole:
 resources:
   limits:
     cpu: 200m
-    memory: 256Mi
+    memory: 384Mi
   requests:
     cpu: 50m
     memory: 128Mi
@@ -34,12 +34,19 @@ securityContext:
   capabilities:
     drop: [NET_RAW]
 
-# Disable unused receiver ports; enable metrics scrape port
+# OTLP ports open so instrumented services can push spans to this DaemonSet.
+# metrics port (8888) exposes otelcol's own Prometheus telemetry.
 ports:
   otlp:
-    enabled: false
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    protocol: TCP
   otlp-http:
-    enabled: false
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+    protocol: TCP
   jaeger-compact:
     enabled: false
   jaeger-thrift:
@@ -86,6 +93,13 @@ config:
       directory: /var/lib/otelcol
 
   receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
     filelog:
       include:
         - /var/log/pods/*/*/*.log
@@ -107,8 +121,8 @@ config:
   processors:
     memory_limiter:
       check_interval: 5s
-      limit_mib: 200
-      spike_limit_mib: 50
+      limit_mib: 300
+      spike_limit_mib: 75
 
     k8sattributes:
       auth_type: serviceAccount
@@ -136,6 +150,31 @@ config:
         - sources:
             - from: resource_attribute
               name: k8s.pod.uid
+
+    # Separate k8sattributes instance for traces: must use pod_association
+    # "from: connection" (source IP of the OTLP connection → pod lookup)
+    # rather than "from: resource_attribute k8s.pod.uid" which only works
+    # for the filelog receiver that parses UID from the file path.
+    k8sattributes/traces:
+      auth_type: serviceAccount
+      extract:
+        metadata:
+          - k8s.namespace.name
+          - k8s.pod.name
+          - k8s.pod.uid
+          - k8s.node.name
+          - k8s.container.name
+          - k8s.deployment.name
+        labels:
+          - tag_name: app
+            key: app
+            from: pod
+          - tag_name: app
+            key: app.kubernetes.io/name
+            from: pod
+      pod_association:
+        - sources:
+            - from: connection
 
     transform:
       # ignore means parse failures on non-JSON / non-logfmt lines are silent —
@@ -206,6 +245,11 @@ config:
       tls:
         insecure: true
 
+    otlp/tempo:
+      endpoint: tempo.observability.svc:4317
+      tls:
+        insecure: true
+
   service:
     extensions: [health_check, file_storage]
     pipelines:
@@ -213,6 +257,10 @@ config:
         receivers:  [filelog]
         processors: [memory_limiter, k8sattributes, transform, batch]
         exporters:  [otlphttp/loki]
+      traces:
+        receivers:  [otlp]
+        processors: [memory_limiter, k8sattributes/traces, batch]
+        exporters:  [otlp/tempo]
     # Telemetry metrics address moved to prometheus reader format in 0.150+;
     # the chart handles port 8888 via ports.metrics — do not set address here.
     telemetry:
