@@ -1,0 +1,148 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: capacity-forecasting-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    # ── Node memory & CPU exhaustion forecast ──────────────────────────────
+    - name: capacity.node.forecast
+      rules:
+        # Fire when predict_linear projects memory available hitting zero within 7 days.
+        # Uses a 24h subquery (5m step) so short-term spikes don't produce false positives.
+        - alert: NodeMemoryExhaustionForecast
+          expr: |
+            predict_linear(
+              node_memory_MemAvailable_bytes[24h],
+              7 * 24 * 3600
+            ) < 0
+          for: 1h
+          labels:
+            severity: warning
+            capacity: "true"
+          annotations:
+            summary: "Node {{ $labels.instance }} memory projected to exhaust within 7 days"
+            description: |
+              At the current 24h consumption trend, node {{ $labels.instance }} will have
+              no free memory within 7 days. Current available: {{ with query (printf
+              "node_memory_MemAvailable_bytes{instance=\"%s\"}" .Labels.instance) }}
+              {{ . | first | value | humanize1024 }}B{{ end }}.
+              Check for memory leaks, oversized pods, or review VPA recommendations.
+
+        # Fire when predict_linear projects CPU usage exceeding 90% within 7 days.
+        - alert: NodeCPUExhaustionForecast
+          expr: |
+            predict_linear(
+              (
+                sum without(mode) (
+                  avg without(cpu) (
+                    rate(node_cpu_seconds_total{mode!~"idle|iowait"}[2m])
+                  )
+                )
+              )[24h:5m],
+              7 * 24 * 3600
+            ) * 100 > 90
+          for: 1h
+          labels:
+            severity: warning
+            capacity: "true"
+          annotations:
+            summary: "Node {{ $labels.instance }} CPU projected to exceed 90% within 7 days"
+            description: |
+              At the current 24h growth trend, {{ $labels.instance }} CPU will exceed 90%
+              within 7 days. Review which workloads are growing on this node.
+
+        # Controller filesystem forecast (node-exporter scrape at 10.0.0.1:9100)
+        - alert: ControllerDiskExhaustionForecast
+          expr: |
+            predict_linear(
+              node_filesystem_free_bytes{
+                instance="10.0.0.1:9100",
+                mountpoint="/"
+              }[24h],
+              7 * 24 * 3600
+            ) < 1073741824
+          for: 1h
+          labels:
+            severity: warning
+            capacity: "true"
+          annotations:
+            summary: "Controller disk projected to have < 1Gi free within 7 days"
+            description: |
+              At the current 24h growth trend, the controller root filesystem
+              ({{ $labels.instance }}) will have less than 1Gi free within 7 days.
+              Current free: {{ with query "node_filesystem_free_bytes{instance=\"10.0.0.1:9100\",mountpoint=\"/\"}" }}
+              {{ . | first | value | humanize1024 }}B{{ end }}.
+              Run the controller disk triage commands and clean up MinIO / k3s snapshots.
+
+    # ── Scheduler pressure (allocatable − requested, not actual) ──────────
+    # A node can be underloaded on actual CPU/memory but still unable to
+    # schedule new pods if its allocatable is fully committed via resource requests.
+    - name: capacity.scheduler.pressure
+      rules:
+        - alert: NodeCPUSchedulerPressure
+          expr: |
+            (
+              kube_node_status_allocatable{resource="cpu"}
+              - on(node) group_left()
+              sum by (node) (
+                kube_pod_container_resource_requests{resource="cpu", node!=""}
+              )
+            ) < 0.5
+          for: 15m
+          labels:
+            severity: warning
+            capacity: "true"
+          annotations:
+            summary: "Node {{ $labels.node }} has < 0.5 CPU cores of scheduling headroom"
+            description: |
+              Node {{ $labels.node }} has less than 500m of uncommitted CPU.
+              New pods with CPU requests > 500m will fail to schedule here.
+              Review pod requests or consider adding a node.
+
+        - alert: NodeMemorySchedulerPressure
+          expr: |
+            (
+              kube_node_status_allocatable{resource="memory"}
+              - on(node) group_left()
+              sum by (node) (
+                kube_pod_container_resource_requests{resource="memory", node!=""}
+              )
+            ) < 536870912
+          for: 15m
+          labels:
+            severity: warning
+            capacity: "true"
+          annotations:
+            summary: "Node {{ $labels.node }} has < 512Mi of scheduling headroom"
+            description: |
+              Node {{ $labels.node }} has less than 512Mi of uncommitted memory.
+              New pods requesting > 512Mi will fail to schedule here.
+
+    # ── Longhorn PVC growth forecast ──────────────────────────────────────
+    - name: capacity.storage.forecast
+      rules:
+        - alert: LonghornVolumeFillForecast
+          expr: |
+            predict_linear(
+              longhorn_volume_usage_bytes[24h],
+              7 * 24 * 3600
+            )
+            > longhorn_volume_capacity_bytes
+          for: 1h
+          labels:
+            severity: warning
+            capacity: "true"
+          annotations:
+            summary: "Longhorn volume {{ $labels.pvc }} projected full within 7 days"
+            description: |
+              Volume {{ $labels.volume }} (PVC {{ $labels.pvc }} in {{ $labels.pvc_namespace }})
+              is projected to exceed its capacity within 7 days at the current fill rate.
+              Current usage: {{ with query (printf "longhorn_volume_usage_bytes{volume=\"%s\"}" .Labels.volume) }}
+              {{ . | first | value | humanize1024 }}B{{ end }} /
+              {{ with query (printf "longhorn_volume_capacity_bytes{volume=\"%s\"}" .Labels.volume) }}
+              {{ . | first | value | humanize1024 }}B{{ end }}.
+              Options: expand the PVC, enable compression, or purge old data.
