@@ -146,6 +146,18 @@ clickhouse:
     existingSecretKey: clickhouse-password
   image:
     repository: bitnamilegacy/clickhouse
+  # Disable heavy ClickHouse internal system log tables that filled the 8Gi PVC
+  # (system.trace_log = 6.2 GiB, system.text_log = 1 GiB of internal profiling data).
+  # These tables have zero value for Langfuse — only the default.* tables matter.
+  extraOverrides: |
+    <clickhouse>
+        <trace_log><enabled>false</enabled></trace_log>
+        <text_log><enabled>false</enabled></text_log>
+        <metric_log><enabled>false</enabled></metric_log>
+        <asynchronous_metric_log><enabled>false</enabled></asynchronous_metric_log>
+        <latency_log><enabled>false</enabled></latency_log>
+        <processors_profile_log><enabled>false</enabled></processors_profile_log>
+    </clickhouse>
   zookeeper:
     image:
       repository: bitnamilegacy/zookeeper
