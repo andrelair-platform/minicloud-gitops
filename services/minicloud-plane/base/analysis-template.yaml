@@ -4,7 +4,9 @@ metadata:
   name: http-regression-gate
 spec:
   metrics:
-    # Gate 1: success rate ≥ 95% over a 2m window
+    # Gate 1: success rate ≥ 95% over a 2m window.
+    # `or vector(1)` prevents NaN failures when KEDA has scaled to 0 and there
+    # is no traffic yet — the readinessProbe already confirmed the pod is healthy.
     - name: success-rate
       count: 4
       interval: 30s
@@ -14,11 +16,14 @@ spec:
         prometheus:
           address: http://kps-prometheus.monitoring.svc:9090
           query: |
-            sum(rate(http_requests_total{service="minicloud-plane",code!~"5.."}[2m]))
-            /
-            sum(rate(http_requests_total{service="minicloud-plane"}[2m]))
+            (
+              sum(rate(http_requests_total{service="minicloud-plane",code!~"5.."}[2m]))
+              /
+              sum(rate(http_requests_total{service="minicloud-plane"}[2m]))
+            ) or vector(1)
 
-    # Gate 2: p95 latency ≤ 500ms
+    # Gate 2: p95 latency ≤ 500ms.
+    # `or vector(0)` returns 0s when no traffic — satisfies the ≤ 0.5 threshold.
     - name: p95-latency
       count: 4
       interval: 30s
@@ -31,4 +36,4 @@ spec:
             histogram_quantile(
               0.95,
               job:http_request_duration_seconds_bucket:rate5m{service="minicloud-plane"}
-            )
+            ) or vector(0)

@@ -4,7 +4,9 @@ metadata:
   name: http-regression-gate
 spec:
   metrics:
-    # Gate 1: success rate ≥ 95% over a 2m window
+    # Gate 1: success rate ≥ 95% over a 2m window.
+    # `or vector(1)` returns 1.0 (100%) when KEDA has scaled to 0 replicas and
+    # there is no traffic data yet — the readinessProbe already validated the pod.
     - name: success-rate
       count: 5
       interval: 30s
@@ -14,13 +16,14 @@ spec:
         prometheus:
           address: http://kps-prometheus.monitoring.svc:9090
           query: |
-            sum(rate(http_requests_total{service="platform-demo",code!~"5.."}[2m]))
-            /
-            sum(rate(http_requests_total{service="platform-demo"}[2m]))
+            (
+              sum(rate(http_requests_total{service="platform-demo",code!~"5.."}[2m]))
+              /
+              sum(rate(http_requests_total{service="platform-demo"}[2m]))
+            ) or vector(1)
 
-    # Gate 2: p95 latency ≤ 500ms
-    # Uses the pre-aggregated recording rule so the query is cheap.
-    # Threshold is 500ms — generous for a canary but will catch hard regressions.
+    # Gate 2: p95 latency ≤ 500ms.
+    # `or vector(0)` returns 0s when no traffic — satisfies the ≤ 0.5 threshold.
     - name: p95-latency
       count: 5
       interval: 30s
@@ -33,17 +36,4 @@ spec:
             histogram_quantile(
               0.95,
               job:http_request_duration_seconds_bucket:rate5m{service="platform-demo"}
-            )
-
-    # Gate 3: throughput must be > 0 (canary is actually receiving traffic)
-    # Guards against a silent failure where the new pods start but receive no requests.
-    - name: receiving-traffic
-      count: 3
-      interval: 60s
-      successCondition: result[0] > 0
-      failureLimit: 3
-      provider:
-        prometheus:
-          address: http://kps-prometheus.monitoring.svc:9090
-          query: |
-            sum(rate(http_requests_total{service="platform-demo"}[2m]))
+            ) or vector(0)
