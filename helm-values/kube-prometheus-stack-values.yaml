@@ -186,7 +186,10 @@ alertmanager:
         - matchers: ['alertname = "Watchdog"']
           receiver: watchdog
           repeat_interval: 1m
-        - matchers: ['alertname =~ "KubeProxyDown|KubeControllerManagerDown|KubeSchedulerDown"']
+        # KubeProxyDown: k3s has no kube-proxy — this alert is structurally impossible.
+        # KubeControllerManagerDown + KubeSchedulerDown: now have socat proxy (Gap 5, PR #157)
+        # and targets are confirmed up — removed from null route so they can fire.
+        - matchers: ['alertname = "KubeProxyDown"']
           receiver: "null"
         - matchers: ['severity = critical']
           receiver: webhook-critical

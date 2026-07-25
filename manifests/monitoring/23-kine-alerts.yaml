@@ -1,0 +1,46 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kine-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: kine.sqlite
+      rules:
+        - alert: KineSQLError
+          expr: >-
+            increase(
+              kine_sql_time_seconds_count{
+                error_code!="",
+                error_code!~"constraint failed|context canceled"
+              }[5m]
+            ) > 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/runbooks/kine-sqlite"
+            summary: "Kine/SQLite error on {{ $labels.name }}: {{ $labels.error_code }}"
+            description: |
+              k3s control plane (kine/SQLite) is reporting an unexpected database error.
+              Operation: {{ $labels.name }}
+              Error: {{ $labels.error_code }}
+
+              Expected benign codes (excluded from this alert):
+                - "constraint failed" — OCC retry, normal kine behaviour
+                - "context canceled" — watch canceled during API server rotation
+
+              This error indicates disk I/O failure, database corruption, or disk-full
+              on set-hog's SQLite database at /var/lib/rancher/k3s/server/db/state.db.
+
+              Diagnose:
+                ssh set-hog "df -h /var/lib/rancher/k3s/"
+                ssh set-hog "sudo sqlite3 /var/lib/rancher/k3s/server/db/state.db 'PRAGMA integrity_check;'"
+                ssh set-hog "sudo journalctl -u k3s -n 100 --no-pager | grep -i 'error\|fail\|corrupt'"
+
+              If disk full: free space on set-hog root partition (k3s logs, /tmp, old images).
+              If corrupt: restore from Velero (velero restore create --from-schedule velero-daily-full).
+              Dead-man's switch: healthchecks.io will alert if cluster goes fully silent (>8 min).
