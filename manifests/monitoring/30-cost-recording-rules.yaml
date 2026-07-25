@@ -1,0 +1,85 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cost-recording-rules
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: cost.waste.memory
+      interval: 60s
+      rules:
+        # Wasted memory per namespace: requested − actual working set (bytes)
+        - record: namespace:memory_waste_bytes:1h
+          expr: >-
+            sum by (namespace) (
+              kube_pod_container_resource_requests{resource="memory", container!=""}
+            )
+            -
+            sum by (namespace) (
+              avg_over_time(
+                container_memory_working_set_bytes{container!="", container!="POD"}[1h]
+              )
+            )
+
+        # Over-provisioning ratio: requested / actual (e.g. 3.0 = 3× over-provisioned)
+        # clamp_min avoids division by zero for containers that never ran
+        - record: namespace:memory_overprovisioning_ratio:1h
+          expr: >-
+            sum by (namespace) (
+              kube_pod_container_resource_requests{resource="memory", container!=""}
+            )
+            /
+            clamp_min(
+              sum by (namespace) (
+                avg_over_time(
+                  container_memory_working_set_bytes{container!="", container!="POD"}[1h]
+                )
+              ),
+              1048576
+            )
+
+    - name: cost.waste.cpu
+      interval: 60s
+      rules:
+        # Wasted CPU per namespace: requested − actual (cores)
+        # Uses the pre-computed job:container_cpu_usage:rate5m recording rule
+        - record: namespace:cpu_waste_cores:5m
+          expr: >-
+            sum by (namespace) (
+              kube_pod_container_resource_requests{resource="cpu", container!=""}
+            )
+            -
+            sum by (namespace) (job:container_cpu_usage:rate5m)
+
+        # CPU over-provisioning ratio
+        - record: namespace:cpu_overprovisioning_ratio:5m
+          expr: >-
+            sum by (namespace) (
+              kube_pod_container_resource_requests{resource="cpu", container!=""}
+            )
+            /
+            clamp_min(
+              sum by (namespace) (job:container_cpu_usage:rate5m),
+              0.001
+            )
+
+    - name: cost.electricity
+      interval: 5m
+      rules:
+        # Electricity cost heuristic per namespace (€/month).
+        # Model: cluster draws ~150W at average load, electricity at 0.25 €/kWh (French tariff).
+        # Monthly baseline: 150W × 24h × 30d × 0.001 kWh/Wh × 0.25 €/kWh ≈ €27/month.
+        # Attribution: each namespace's share = its CPU requests / total cluster allocatable CPU.
+        # This is a scheduling-based attribution: you "own" the slice you reserved.
+        - record: namespace:estimated_monthly_cost_eur:gauge
+          expr: >-
+            (
+              sum by (namespace) (
+                kube_pod_container_resource_requests{resource="cpu", container!=""}
+              )
+              /
+              scalar(sum(kube_node_status_allocatable{resource="cpu"}))
+            ) * 27
