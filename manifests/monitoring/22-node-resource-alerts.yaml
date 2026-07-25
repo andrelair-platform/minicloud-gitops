@@ -1,0 +1,79 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: node-resource-alerts
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  groups:
+    - name: node.cpu
+      rules:
+        # kps built-in NodeCPUHighUsage fires at >90% severity:info (silenced to null).
+        # These custom rules enforce the stated thresholds: warning at 80% for 10m,
+        # critical at 95% for 5m, covering both cluster nodes and the controller (10.0.0.1:9100).
+        - alert: NodeCPUWarning
+          expr: >-
+            sum without(mode) (
+              avg without(cpu) (
+                rate(node_cpu_seconds_total{mode!~"idle|iowait"}[2m])
+              )
+            ) * 100 > 80
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} CPU >80% for 10 min ({{ $value | humanize }}%)"
+            description: >-
+              Node {{ $labels.instance }} CPU usage has been above 80% for 10 minutes.
+              Current value: {{ $value | humanize }}%.
+
+        - alert: NodeCPUCritical
+          expr: >-
+            sum without(mode) (
+              avg without(cpu) (
+                rate(node_cpu_seconds_total{mode!~"idle|iowait"}[2m])
+              )
+            ) * 100 > 95
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.instance }} CPU >95% for 5 min ({{ $value | humanize }}%)"
+            description: >-
+              Node {{ $labels.instance }} CPU usage critically high at {{ $value | humanize }}%.
+              Node may be unresponsive or evicting pods.
+
+    - name: node.memory
+      rules:
+        # kps built-in NodeMemoryHighUtilization fires at >90% severity:warning (webhook-logger only).
+        # These rules fire at 85% with email notification path via severity:warning→webhook-critical.
+        - alert: NodeMemoryWarning
+          expr: >-
+            100 - (
+              node_memory_MemAvailable_bytes
+              / node_memory_MemTotal_bytes * 100
+            ) > 85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} memory >85% used ({{ $value | humanize }}%)"
+            description: >-
+              Node {{ $labels.instance }} memory usage above 85% for 10 minutes.
+              Current: {{ $value | humanize }}%. OOMKill risk increases above 90%.
+
+        - alert: NodeMemoryCritical
+          expr: >-
+            100 - (
+              node_memory_MemAvailable_bytes
+              / node_memory_MemTotal_bytes * 100
+            ) > 95
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.instance }} memory >95% used — OOMKill imminent"
+            description: >-
+              Node {{ $labels.instance }} memory at {{ $value | humanize }}%.
+              OOMKill events likely. Check for memory leaks or undersized pod limits.
