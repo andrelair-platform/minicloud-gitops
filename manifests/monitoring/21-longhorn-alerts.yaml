@@ -1,0 +1,78 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: longhorn-alerts
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  groups:
+    - name: longhorn.volume
+      rules:
+        - alert: LonghornVolumeDegraded
+          expr: longhorn_volume_robustness == 2
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Longhorn volume degraded: {{ $labels.pvc }} ({{ $labels.pvc_namespace }})"
+            description: >-
+              Volume {{ $labels.volume }} backing PVC {{ $labels.pvc }} in namespace
+              {{ $labels.pvc_namespace }} has lost replicas but is still accessible.
+              Check Longhorn UI for replica rebuild status. The multipathd/IET incident
+              (Phase 80) caused this state on fast-heron and swift-mac.
+
+        - alert: LonghornVolumeFaulted
+          expr: longhorn_volume_robustness == 3
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "CRITICAL: Longhorn volume faulted: {{ $labels.pvc }} ({{ $labels.pvc_namespace }})"
+            description: >-
+              Volume {{ $labels.volume }} backing PVC {{ $labels.pvc }} in namespace
+              {{ $labels.pvc_namespace }} is FAULTED — no healthy replicas, volume is
+              inaccessible. Check for multipathd claiming IET VIRTUAL-DISK as mpatha.
+              Fix: blacklist IET devices in /etc/multipath.conf on the affected node.
+
+    - name: longhorn.node
+      rules:
+        - alert: LonghornNodeNotReady
+          expr: longhorn_node_status{condition="ready"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Longhorn node {{ $labels.node }} is not ready"
+            description: >-
+              Longhorn node {{ $labels.node }} has condition ready=0. This blocks
+              new replica scheduling on this node. Check disk health and node status
+              in Longhorn UI. Restart longhorn-manager pod on this node if disk is healthy.
+
+        - alert: LonghornNodeDiskPressure
+          expr: >-
+            longhorn_node_storage_usage_bytes
+            / longhorn_node_storage_capacity_bytes * 100 > 85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Longhorn node {{ $labels.node }} disk >85% used ({{ $value | humanize }}%)"
+            description: >-
+              Longhorn storage node {{ $labels.node }} is {{ $value | humanize }}% full.
+              This will block new replica scheduling before it hits 100%. Consider
+              expanding volumes or adding disk capacity.
+
+        - alert: LonghornNodeDiskCritical
+          expr: >-
+            longhorn_node_storage_usage_bytes
+            / longhorn_node_storage_capacity_bytes * 100 > 95
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Longhorn node {{ $labels.node }} disk >95% used — replica scheduling blocked"
+            description: >-
+              Longhorn storage node {{ $labels.node }} is {{ $value | humanize }}% full.
+              No new replicas can be scheduled. Volumes at risk of going degraded if
+              existing replicas are lost. Immediate action required.
