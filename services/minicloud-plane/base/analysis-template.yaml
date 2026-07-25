@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: http-regression-gate
+spec:
+  metrics:
+    # Gate 1: success rate ≥ 95% over a 2m window
+    - name: success-rate
+      count: 4
+      interval: 30s
+      successCondition: result[0] >= 0.95
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://kps-prometheus.monitoring.svc:9090
+          query: |
+            sum(rate(http_requests_total{service="minicloud-plane",code!~"5.."}[2m]))
+            /
+            sum(rate(http_requests_total{service="minicloud-plane"}[2m]))
+
+    # Gate 2: p95 latency ≤ 500ms
+    - name: p95-latency
+      count: 4
+      interval: 30s
+      successCondition: result[0] <= 0.5
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://kps-prometheus.monitoring.svc:9090
+          query: |
+            histogram_quantile(
+              0.95,
+              job:http_request_duration_seconds_bucket:rate5m{service="minicloud-plane"}
+            )

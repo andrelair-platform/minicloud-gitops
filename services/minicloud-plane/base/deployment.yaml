@@ -1,8 +1,9 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: minicloud-plane
 spec:
+  # 1 replica in base; dev/staging overlays override via patch-resources.yaml
   replicas: 1
   selector:
     matchLabels:
@@ -54,3 +55,14 @@ spec:
               drop: [ALL]
             seccompProfile:
               type: RuntimeDefault
+  strategy:
+    # With 1 replica there is no traffic split — setWeight: 100 replaces the
+    # pod atomically and the analysis window runs against the new version.
+    # Argo Rollouts will rollback automatically if the analysis fails.
+    canary:
+      steps:
+        - setWeight: 100
+        - pause: {duration: 2m}
+        - analysis:
+            templates:
+              - templateName: http-regression-gate

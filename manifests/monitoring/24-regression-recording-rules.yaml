@@ -1,0 +1,52 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: regression-recording-rules
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: regression.recording
+      interval: 30s
+      rules:
+        # Pre-aggregate histogram buckets — removes per-pod cardinality so
+        # histogram_quantile can be applied cheaply at query time.
+        - record: job:http_request_duration_seconds_bucket:rate5m
+          expr: >-
+            sum by (le, service, namespace)
+              (rate(http_request_duration_seconds_bucket[5m]))
+
+        # Request rate per service
+        - record: job:http_requests_total:rate5m
+          expr: >-
+            sum by (service, namespace)
+              (rate(http_requests_total[5m]))
+
+        # Error rate fraction — 0.0–1.0
+        - record: job:http_requests_error_fraction:rate5m
+          expr: >-
+            sum by (service, namespace) (rate(http_requests_total{code=~"5.."}[5m]))
+            /
+            sum by (service, namespace) (rate(http_requests_total[5m]))
+
+        # Container CPU per pod (used by regression alert + dashboard)
+        - record: job:container_cpu_usage:rate5m
+          expr: >-
+            sum by (pod, namespace)
+              (rate(container_cpu_usage_seconds_total{container!="", container!="POD"}[5m]))
+
+        # Container memory working set per pod
+        - record: job:container_memory_working_set:bytes
+          expr: >-
+            sum by (pod, namespace)
+              (container_memory_working_set_bytes{container!="", container!="POD"})
+
+        # p95 latency per service — convenient shorthand for dashboards
+        - record: job:http_request_duration_p95:rate5m
+          expr: >-
+            histogram_quantile(
+              0.95,
+              job:http_request_duration_seconds_bucket:rate5m
+            )

@@ -1,0 +1,124 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: regression-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: regression.latency
+      rules:
+        # Fire when p95 latency is > 2× what it was 1 hour ago.
+        # The offset 1h baseline guard (> 0.05 s) prevents spurious triggers
+        # when the baseline window had near-zero traffic.
+        - alert: LatencyRegressionDetected
+          expr: |
+            (
+              job:http_request_duration_p95:rate5m
+              /
+              (job:http_request_duration_p95:rate5m offset 1h)
+            ) > 2
+            AND
+            (job:http_request_duration_p95:rate5m offset 1h) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            regression: "true"
+          annotations:
+            summary: "p95 latency regression on {{ $labels.service }} ({{ $labels.namespace }})"
+            description: |
+              p95 latency is {{ $value | humanizeDuration }} × the baseline from 1 hour ago.
+              Current: {{ with query (printf "job:http_request_duration_p95:rate5m{service=\"%s\",namespace=\"%s\"}" .Labels.service .Labels.namespace) }}{{ . | first | value | humanizeDuration }}{{ end }}
+              Baseline (1h ago): {{ with query (printf "job:http_request_duration_p95:rate5m{service=\"%s\",namespace=\"%s\"} offset 1h" .Labels.service .Labels.namespace) }}{{ . | first | value | humanizeDuration }}{{ end }}
+              Check the Regression Detection dashboard for a before/after view.
+
+    - name: regression.errors
+      rules:
+        # Fire when error rate increases by more than 5 percentage points above
+        # the 1h-ago baseline AND the baseline wasn't already high.
+        - alert: ErrorRateRegressionDetected
+          expr: |
+            (
+              job:http_requests_error_fraction:rate5m
+              -
+              (job:http_requests_error_fraction:rate5m offset 1h)
+            ) > 0.05
+            AND
+            (job:http_requests_total:rate5m) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            regression: "true"
+          annotations:
+            summary: "Error rate regression on {{ $labels.service }} ({{ $labels.namespace }})"
+            description: |
+              Error rate increased by {{ $value | humanizePercentage }} above the 1h baseline.
+              Only fires when request rate > 3 rpm to filter noise from idle services.
+
+    - name: regression.throughput
+      rules:
+        # Fire when request throughput drops to < 30% of its 1h-ago baseline.
+        # Indicates the new deployment is shedding traffic (crash loop, OOM, etc.).
+        - alert: ThroughputRegressionDetected
+          expr: |
+            (
+              job:http_requests_total:rate5m
+              /
+              (job:http_requests_total:rate5m offset 1h)
+            ) < 0.30
+            AND
+            (job:http_requests_total:rate5m offset 1h) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            regression: "true"
+          annotations:
+            summary: "Throughput drop on {{ $labels.service }} ({{ $labels.namespace }})"
+            description: |
+              Throughput is {{ $value | humanizePercentage }} of the 1h baseline.
+              A > 70% drop usually means the new pods are crashing or not receiving traffic.
+
+    - name: regression.resources
+      rules:
+        # CPU: current average pod CPU is > 3× baseline.
+        # Filtered to our own services to avoid noise from infrastructure pods.
+        - alert: CPURegressionDetected
+          expr: |
+            (
+              avg by (namespace) (job:container_cpu_usage:rate5m{namespace=~"platform-demo.*|minicloud-plane.*"})
+              /
+              avg by (namespace) (job:container_cpu_usage:rate5m{namespace=~"platform-demo.*|minicloud-plane.*"} offset 1h)
+            ) > 3
+            AND
+            avg by (namespace) (job:container_cpu_usage:rate5m{namespace=~"platform-demo.*|minicloud-plane.*"} offset 1h) > 0.001
+          for: 5m
+          labels:
+            severity: warning
+            regression: "true"
+          annotations:
+            summary: "CPU regression in {{ $labels.namespace }}"
+            description: |
+              Average pod CPU is {{ $value }}× higher than 1h ago.
+              A new deployment may have introduced a CPU-intensive code path or infinite loop.
+
+        # Memory: current average pod memory is > 2× baseline.
+        - alert: MemoryRegressionDetected
+          expr: |
+            (
+              avg by (namespace) (job:container_memory_working_set:bytes{namespace=~"platform-demo.*|minicloud-plane.*"})
+              /
+              avg by (namespace) (job:container_memory_working_set:bytes{namespace=~"platform-demo.*|minicloud-plane.*"} offset 1h)
+            ) > 2
+            AND
+            avg by (namespace) (job:container_memory_working_set:bytes{namespace=~"platform-demo.*|minicloud-plane.*"} offset 1h) > 1048576
+          for: 5m
+          labels:
+            severity: warning
+            regression: "true"
+          annotations:
+            summary: "Memory regression in {{ $labels.namespace }}"
+            description: |
+              Average pod memory is {{ $value }}× higher than 1h ago.
+              May indicate a memory leak introduced in the new deployment.
