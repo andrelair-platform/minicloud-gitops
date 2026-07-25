@@ -82,5 +82,5 @@ spec:
         - pause: {duration: 30s}
         - analysis:
             templates:
-              - templateName: http-success-rate
+              - templateName: http-regression-gate
         - setWeight: 100
