@@ -4,8 +4,11 @@ metadata:
   name: platform-demo-cron-scaler
 spec:
   scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
+    # platform-demo was converted from Deployment → Rollout (Phase 73).
+    # KEDA must target the Rollout kind directly — targeting apps/v1 Deployment
+    # causes "scaleTargetRef not found" and silently disables scale-to-zero.
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
     name: platform-demo
   minReplicaCount: 0
   maxReplicaCount: 1

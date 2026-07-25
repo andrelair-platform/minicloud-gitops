@@ -1,0 +1,105 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cost-optimization-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: cost.overprovisioning
+      rules:
+        # Fire when a namespace requests > 3× its actual memory usage for 7 days.
+        # Threshold of 256Mi filters out namespaces with trivially small workloads
+        # where any absolute waste is statistically insignificant.
+        - alert: HighMemoryOverProvisioning
+          expr: |
+            namespace:memory_overprovisioning_ratio:1h > 3
+            AND
+            sum by (namespace) (
+              kube_pod_container_resource_requests{resource="memory", container!=""}
+            ) > 268435456
+          for: 7d
+          labels:
+            severity: info
+            cost: "true"
+          annotations:
+            summary: "{{ $labels.namespace }} memory requests are {{ $value | humanize }}× actual usage"
+            description: |
+              Namespace {{ $labels.namespace }} has been requesting {{ $value | humanize }}× more
+              memory than it actually uses for 7+ days. Run VPA recommendations or check
+              kube_verticalpodautoscaler_status_recommendation_containerrecommendations_target
+              for right-sizing targets. Top wasted namespaces from last audit: ai (2.7×),
+              homer (8.9×), messaging (5.7×).
+
+        # CPU over-provisioning: > 5× for 7 days (higher threshold than memory since
+        # CPU bursts are shorter and harder to capture in a 5m window)
+        - alert: HighCPUOverProvisioning
+          expr: |
+            namespace:cpu_overprovisioning_ratio:5m > 5
+            AND
+            sum by (namespace) (
+              kube_pod_container_resource_requests{resource="cpu", container!=""}
+            ) > 0.1
+          for: 7d
+          labels:
+            severity: info
+            cost: "true"
+          annotations:
+            summary: "{{ $labels.namespace }} CPU requests are {{ $value | humanize }}× actual usage"
+            description: |
+              Namespace {{ $labels.namespace }} has been requesting {{ $value | humanize }}× more
+              CPU than it actually uses. This wastes scheduling headroom on constrained nodes.
+
+    - name: cost.idle
+      rules:
+        # Fire when an instrumented service has received 0 HTTP requests for 24h
+        # but is still running and consuming resources.
+        # Scoped to own Go services (platform-demo, minicloud-plane) where
+        # zero traffic for 24h is definitively idle, not just uninstrumented.
+        - alert: IdleServiceRunning
+          expr: |
+            sum by (service, namespace) (
+              increase(http_requests_total{
+                namespace=~"platform-demo.*|minicloud-plane.*"
+              }[24h])
+            ) == 0
+          for: 1h
+          labels:
+            severity: info
+            cost: "true"
+          annotations:
+            summary: "Service {{ $labels.service }} ({{ $labels.namespace }}) idle for 24h"
+            description: |
+              {{ $labels.service }} in {{ $labels.namespace }} has received zero HTTP requests
+              in the last 24 hours but is still consuming CPU/memory requests.
+              If this is a dev environment consider enabling KEDA scale-to-zero or
+              manually scaling to 0: kubectl scale rollout/{{ $labels.service }}
+              -n {{ $labels.namespace }} --replicas=0
+
+    - name: cost.limits
+      rules:
+        # Container running without a memory limit.
+        # Without a limit a container can consume all available node memory
+        # and trigger OOMKill on its neighbors — "noisy neighbour" antipattern.
+        # Excludes init containers and pause containers.
+        - alert: ContainerWithoutMemoryLimit
+          expr: |
+            kube_pod_container_info{
+              container!="",
+              namespace!~"kube-system|longhorn-system|gatekeeper-system"
+            }
+            unless on(namespace, pod, container)
+            kube_pod_container_resource_limits{resource="memory", container!=""}
+          for: 30m
+          labels:
+            severity: warning
+            cost: "true"
+          annotations:
+            summary: "Container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }} has no memory limit"
+            description: |
+              Pod {{ $labels.pod }} container {{ $labels.container }} in namespace
+              {{ $labels.namespace }} is running without a memory limit.
+              It can consume unbounded memory and OOMKill other pods on the same node.
+              Add a LimitRange to the namespace or set resources.limits.memory explicitly.

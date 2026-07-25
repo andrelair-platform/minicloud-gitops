@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: minicloud-plane-dev
 resources:
 - ../../base
+- scaledobject.yaml
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-plane
   newTag: "4134991"
