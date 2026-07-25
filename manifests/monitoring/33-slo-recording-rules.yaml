@@ -1,0 +1,127 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: slo-recording-rules
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: slo.recording
+      interval: 60s
+      rules:
+
+        # ── Availability & Error Rate ─────────────────────────────────────────
+        # Source: NGINX community ingress-nginx — captures ALL traffic through
+        # the ingress layer. or vector(0/1) guards against KEDA scale-to-zero
+        # returning NaN when there are no pods serving traffic.
+
+        - record: job:slo_http_error_rate:ratio5m
+          expr: >-
+            (
+              sum(rate(nginx_ingress_controller_requests{status=~"5.."}[5m]))
+              /
+              sum(rate(nginx_ingress_controller_requests[5m]))
+            ) or vector(0)
+
+        - record: job:slo_availability:ratio5m
+          expr: >-
+            1 - job:slo_http_error_rate:ratio5m
+
+        # ── API Latency p95 ────────────────────────────────────────────────────
+        # Returns seconds. Multiply by 1000 in dashboards/alerts for ms.
+
+        - record: job:slo_latency_p95:seconds5m
+          expr: >-
+            histogram_quantile(
+              0.95,
+              sum(rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])) by (le)
+            ) or vector(0)
+
+        # ── Pod Restart Rate ───────────────────────────────────────────────────
+        # Rolling 24h window across all app namespaces (excludes infra).
+
+        - record: job:slo_pod_restarts:count24h
+          expr: >-
+            sum(
+              increase(
+                kube_pod_container_status_restarts_total{
+                  namespace!~"kube-system|longhorn-system|monitoring|observability|velero|system-upgrade|reloader|vpa-system|cert-manager|kube-node-lease|kube-public"
+                }[24h]
+              )
+            ) or vector(0)
+
+        # ── Resource Utilization ────────────────────────────────────────────────
+
+        # Average CPU utilization vs limits across all app containers.
+        - record: job:slo_cpu_utilization:avg5m
+          expr: >-
+            avg(
+              rate(container_cpu_usage_seconds_total{container!="",container!="POD",namespace!~"kube-system|longhorn-system|monitoring|observability|velero|system-upgrade|reloader|vpa-system"}[5m])
+              /
+              on(pod, container, namespace)
+              kube_pod_container_resource_limits{resource="cpu"}
+            ) or vector(0)
+
+        # Cluster memory: working set / total limits.
+        - record: job:slo_memory_utilization:ratio5m
+          expr: >-
+            (
+              sum(container_memory_working_set_bytes{container!="",container!="POD",namespace!~"kube-system|longhorn-system|monitoring|observability|velero|system-upgrade|reloader|vpa-system"})
+              /
+              sum(kube_pod_container_resource_limits{resource="memory",namespace!~"kube-system|longhorn-system|monitoring|observability|velero|system-upgrade|reloader|vpa-system"})
+            ) or vector(0)
+
+        # ── Deployment Availability ─────────────────────────────────────────────
+        # Fraction of deployments with all desired replicas available.
+        # Note: Rollout-managed workloads use ReplicaSets directly — kube-state-
+        # metrics tracks them under kube_replicaset_* but the parent Rollout is
+        # the source of truth. This metric covers standard Deployments only.
+
+        - record: job:slo_deployment_availability:ratio
+          expr: >-
+            sum(kube_deployment_status_replicas_available)
+            /
+            clamp_min(sum(kube_deployment_spec_replicas), 1)
+
+        # ── Burn Rate helpers ────────────────────────────────────────────────────
+        # Burn rate = how fast the error budget is being consumed relative to
+        # the sustainable rate. Rate 1.0 = on track for 30 days. Rate 14.4 =
+        # exhausts the monthly budget in 2 hours.
+
+        # Availability SLO budget = 0.1% (1 - 0.999)
+        - record: job:slo_availability_burn_rate:1h
+          expr: >-
+            (
+              sum(rate(nginx_ingress_controller_requests{status=~"5.."}[1h]))
+              /
+              clamp_min(sum(rate(nginx_ingress_controller_requests[1h])), 1e-9)
+            ) / 0.001
+
+        # Error rate SLO budget = 1% (target error rate < 1%)
+        - record: job:slo_error_rate_burn_rate:1h
+          expr: >-
+            (
+              sum(rate(nginx_ingress_controller_requests{status=~"5.."}[1h]))
+              /
+              clamp_min(sum(rate(nginx_ingress_controller_requests[1h])), 1e-9)
+            ) / 0.01
+
+        # ── 7-day compliance window ────────────────────────────────────────────
+        # Used by the error budget panels. 7d is cheaper than 30d on a local
+        # cluster and gives a meaningful medium-term view.
+
+        - record: job:slo_availability_7d:ratio
+          expr: >-
+            (
+              1 - sum(rate(nginx_ingress_controller_requests{status=~"5.."}[7d]))
+                  / clamp_min(sum(rate(nginx_ingress_controller_requests[7d])), 1e-9)
+            )
+
+        - record: job:slo_error_budget_remaining_7d:pct
+          expr: >-
+            clamp_min(
+              (1 - job:slo_http_error_rate:ratio5m / 0.001) * 100,
+              0
+            )
