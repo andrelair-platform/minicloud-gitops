@@ -56,13 +56,20 @@ spec:
             seccompProfile:
               type: RuntimeDefault
   strategy:
-    # With 1 replica there is no traffic split — setWeight: 100 replaces the
-    # pod atomically and the analysis window runs against the new version.
-    # Argo Rollouts will rollback automatically if the analysis fails.
-    canary:
-      steps:
-        - setWeight: 100
-        - pause: {duration: 2m}
-        - analysis:
-            templates:
-              - templateName: http-regression-gate
+    # BlueGreen: the controller spins up the new pod behind minicloud-plane-preview,
+    # runs prePromotionAnalysis (3× HTTP health checks), then atomically switches
+    # minicloud-plane to the new RS. Old RS stays for scaleDownDelaySeconds in case
+    # immediate rollback is needed. postPromotionAnalysis confirms Prometheus RED
+    # signals after traffic has migrated.
+    blueGreen:
+      activeService: minicloud-plane
+      previewService: minicloud-plane-preview
+      autoPromotionEnabled: true
+      autoPromotionSeconds: 30
+      scaleDownDelaySeconds: 30
+      prePromotionAnalysis:
+        templates:
+          - templateName: preview-health-gate
+      postPromotionAnalysis:
+        templates:
+          - templateName: http-regression-gate

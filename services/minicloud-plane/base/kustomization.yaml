@@ -5,5 +5,7 @@ resources:
   - externalsecret.yaml
   - deployment.yaml
   - service.yaml
+  - service-preview.yaml
   - servicemonitor.yaml
   - analysis-template.yaml
+  - analysis-template-preview.yaml
