@@ -1,0 +1,27 @@
+---
+# The opentelemetry-collector Helm chart does not create a ClusterIP Service in
+# DaemonSet mode. Create one manually so instrumented services can push traces to
+# http://otelcol-opentelemetry-collector.observability.svc:4317 (gRPC OTLP)
+# or :4318 (HTTP OTLP) without needing to know the per-node DaemonSet pod IP.
+apiVersion: v1
+kind: Service
+metadata:
+  name: otelcol-opentelemetry-collector
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: opentelemetry-collector
+    app.kubernetes.io/instance: otelcol
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: opentelemetry-collector
+    component: agent-collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
