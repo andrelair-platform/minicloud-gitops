@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: preview-health-gate
+spec:
+  metrics:
+    # Calls the preview service /health endpoint 3× (every 10s) before promotion.
+    # The Web provider runs inside the cluster so the short DNS name resolves.
+    # If the new version is unhealthy, this fails and the active service keeps
+    # pointing to the old pods — zero-downtime rollback.
+    - name: health
+      count: 3
+      interval: 10s
+      successCondition: result.status == "ok"
+      failureLimit: 1
+      provider:
+        web:
+          url: http://minicloud-plane-preview:8080/health
+          jsonPath: "{$.status}"
