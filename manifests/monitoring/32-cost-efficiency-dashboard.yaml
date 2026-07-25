@@ -1,0 +1,225 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-cost-efficiency
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  cost-efficiency.json: |
+    {
+      "title": "Cost & Efficiency",
+      "uid": "minicloud-cost",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "5m",
+      "time": {"from": "now-24h", "to": "now"},
+      "tags": ["cost", "efficiency", "waste", "rightsizing"],
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "prometheus",
+            "label": "Prometheus",
+            "hide": 0,
+            "refresh": 1
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Cluster Efficiency Summary",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+          "collapsed": false
+        },
+        {
+          "id": 2,
+          "title": "Total Memory Wasted (requested − actual)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "decimals": 1,
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5368709120}, {"color": "red", "value": 10737418240}]},
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background", "graphMode": "none"},
+          "targets": [{"refId": "A", "legendFormat": "Memory wasted", "expr": "sum(clamp_min(namespace:memory_waste_bytes:1h, 0))"}]
+        },
+        {
+          "id": 3,
+          "title": "Total CPU Wasted (requested − actual, cores)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 1,
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 15}]},
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background", "graphMode": "none"},
+          "targets": [{"refId": "A", "legendFormat": "CPU cores wasted", "expr": "sum(clamp_min(namespace:cpu_waste_cores:5m, 0))"}]
+        },
+        {
+          "id": 4,
+          "title": "Estimated Monthly Cost (€)",
+          "description": "Heuristic: 150W cluster × 0.25 €/kWh × 720h. Attributed by CPU request fraction.",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {"unit": "currencyEUR", "decimals": 2, "color": {"fixedColor": "blue", "mode": "fixed"}}
+          },
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "graphMode": "none"},
+          "targets": [{"refId": "A", "legendFormat": "€/month", "expr": "sum(namespace:estimated_monthly_cost_eur:gauge)"}]
+        },
+        {
+          "id": 5,
+          "title": "Scale-to-Zero Active Now",
+          "description": "Namespaces currently scaled to 0 replicas by KEDA cron.",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {"unit": "short", "color": {"fixedColor": "green", "mode": "fixed"}}
+          },
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "graphMode": "none"},
+          "targets": [{"refId": "A", "legendFormat": "Scaled-to-zero workloads", "expr": "count(kube_deployment_spec_replicas == 0) + count(kube_replicaset_spec_replicas == 0 and kube_replicaset_owner{owner_kind=\"Rollout\"}==1) or vector(0)"}]
+        },
+        {
+          "id": 10,
+          "title": "Namespace Waste Leaderboard",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+          "collapsed": false
+        },
+        {
+          "id": 11,
+          "title": "Memory Waste by Namespace (Gi requested − actual)",
+          "type": "bargauge",
+          "gridPos": {"h": 10, "w": 12, "x": 0, "y": 6},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 536870912}, {"color": "red", "value": 2147483648}]}
+            }
+          },
+          "options": {"orientation": "horizontal", "displayMode": "gradient", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"refId": "A", "legendFormat": "{{namespace}}", "expr": "sort_desc(clamp_min(namespace:memory_waste_bytes:1h, 0))"}]
+        },
+        {
+          "id": 12,
+          "title": "Memory Over-Provisioning Ratio by Namespace",
+          "description": "1.0 = perfect fit. Higher = more waste. 8.9 = homer (nginx serving 1KB of HTML).",
+          "type": "bargauge",
+          "gridPos": {"h": 10, "w": 12, "x": 12, "y": 6},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 1,
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 2}, {"color": "red", "value": 4}]}
+            }
+          },
+          "options": {"orientation": "horizontal", "displayMode": "gradient", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"refId": "A", "legendFormat": "{{namespace}}", "expr": "sort_desc(namespace:memory_overprovisioning_ratio:1h > 1)"}]
+        },
+        {
+          "id": 20,
+          "title": "Electricity Cost Attribution",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 16},
+          "collapsed": false
+        },
+        {
+          "id": 21,
+          "title": "Estimated Monthly Cost by Namespace (€)",
+          "description": "Based on CPU requests / total cluster allocatable × €27/month cluster cost. Attribution proxy only.",
+          "type": "piechart",
+          "gridPos": {"h": 10, "w": 12, "x": 0, "y": 17},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"unit": "currencyEUR", "decimals": 2}},
+          "options": {"pieType": "donut", "displayLabels": ["name", "percent"], "legend": {"displayMode": "table", "placement": "right", "values": ["value", "percent"]}},
+          "targets": [{"refId": "A", "legendFormat": "{{namespace}}", "expr": "sort_desc(namespace:estimated_monthly_cost_eur:gauge > 0.05)"}]
+        },
+        {
+          "id": 22,
+          "title": "Cost per Namespace — Table",
+          "type": "table",
+          "gridPos": {"h": 10, "w": 12, "x": 12, "y": 17},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {"custom": {"filterable": true}},
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "Cost €/month"}, "properties": [{"id": "unit", "value": "currencyEUR"}, {"id": "decimals", "value": 2}]},
+              {"matcher": {"id": "byName", "options": "Mem waste"}, "properties": [{"id": "unit", "value": "bytes"}]},
+              {"matcher": {"id": "byName", "options": "Mem ratio"}, "properties": [{"id": "unit", "value": "short"}, {"id": "decimals", "value": 1}, {"id": "custom.displayMode", "value": "color-background-solid"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 2}, {"color": "red", "value": 4}]}}]}
+            ]
+          },
+          "options": {"showHeader": true, "sortBy": [{"displayName": "Cost €/month", "desc": true}]},
+          "targets": [
+            {"refId": "A", "expr": "namespace:estimated_monthly_cost_eur:gauge", "instant": true, "format": "table", "legendFormat": ""},
+            {"refId": "B", "expr": "clamp_min(namespace:memory_waste_bytes:1h, 0)", "instant": true, "format": "table"},
+            {"refId": "C", "expr": "namespace:memory_overprovisioning_ratio:1h", "instant": true, "format": "table"}
+          ],
+          "transformations": [
+            {"id": "merge", "options": {}},
+            {"id": "organize", "options": {"renameByName": {"namespace": "Namespace", "Value #A": "Cost €/month", "Value #B": "Mem waste", "Value #C": "Mem ratio"}}}
+          ]
+        },
+        {
+          "id": 30,
+          "title": "Right-Sizing & Scale-to-Zero",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 27},
+          "collapsed": false
+        },
+        {
+          "id": 31,
+          "title": "Containers Without Memory Limit",
+          "description": "These can consume unbounded memory and trigger OOMKill on their node neighbours.",
+          "type": "table",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"custom": {"filterable": true}}},
+          "options": {"showHeader": true},
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kube_pod_container_info{container!=\"\", namespace!~\"kube-system|longhorn-system|gatekeeper-system\"} unless on(namespace, pod, container) kube_pod_container_resource_limits{resource=\"memory\", container!=\"\"}",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {"id": "filterFieldsByName", "options": {"include": {"names": ["namespace", "pod", "container", "image"]}}}
+          ]
+        },
+        {
+          "id": 32,
+          "title": "Active Cost & Efficiency Alerts",
+          "type": "table",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {"custom": {"filterable": true}},
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "severity"}, "properties": [{"id": "custom.displayMode", "value": "color-background"}, {"id": "mappings", "value": [{"type": "value", "options": {"info": {"color": "blue", "text": "info"}, "warning": {"color": "yellow", "text": "warning"}}}]}]}
+            ]
+          },
+          "options": {"showHeader": true},
+          "targets": [{"refId": "A", "expr": "ALERTS{cost=\"true\"}", "instant": true, "format": "table"}],
+          "transformations": [{"id": "filterFieldsByName", "options": {"include": {"names": ["alertname", "namespace", "service", "container", "severity", "Value"]}}}]
+        }
+      ]
+    }
