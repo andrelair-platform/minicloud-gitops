@@ -14,9 +14,18 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: minicloud-plane-dev
+  ignoreDifferences:
+    # Rollout CRD doesn't support SSA — ArgoCD records op:Update not op:Apply.
+    # Without this, VPA or manual scaling diffs cause permanent OutOfSync.
+    - group: argoproj.io
+      kind: Rollout
+      jsonPointers:
+        - /spec/replicas
+        - /spec/template/metadata/annotations
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
