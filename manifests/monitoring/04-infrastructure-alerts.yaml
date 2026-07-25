@@ -17,12 +17,17 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/runbooks/node-not-ready"
             summary: "Node {{ $labels.node }} is cordoned (unschedulable)"
             description: |
-              Node {{ $labels.node }} has spec.unschedulable=true and has been cordoned for more
-              than 30 minutes. If this is unintentional, uncordon it:
-                kubectl uncordon {{ $labels.node }}
-              If it is intentional (e.g. maintenance), add a comment in the CLAUDE.md runbook.
+              Node {{ $labels.node }} has spec.unschedulable=true for more than 30 minutes.
+              If unintentional: kubectl uncordon {{ $labels.node }}
+              If intentional (maintenance): add a note in CLAUDE.md.
+
+              NOTE — swift-mac (10.0.0.10, MacBook Pro 2012) never auto-restarts after power
+              failure due to Apple SMC limitation. Manual power button press required.
+              After boot, rejoin the cluster:
+                ssh swift-mac "sudo systemctl start k3s-agent"
 
     - name: node-stability
       rules:
@@ -33,13 +38,30 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/runbooks/node-not-ready"
             summary: "Node {{ $labels.node }} toggled Ready/NotReady {{ $value | printf \"%.0f\" }} times in 24h"
             description: |
-              Node {{ $labels.node }} has been unstable — its Ready condition changed
-              {{ $value | printf "%.0f" }} times in the last 24 hours.
-              Likely causes: network flaps, k3s-agent crash loop, Apple SMC sleep (swift-mac).
-              Check: kubectl describe node {{ $labels.node }}
-              On swift-mac: sudo systemctl status k3s-agent && sudo journalctl -u k3s-agent -n 50
+              Node {{ $labels.node }} has been unstable — Ready condition changed
+              {{ $value | printf "%.0f" }} times in 24 hours.
+
+              General recovery:
+                kubectl describe node {{ $labels.node }}
+                ssh <node> "sudo systemctl status k3s-agent && sudo journalctl -u k3s-agent -n 50"
+
+              swift-mac specific (Apple SMC — never auto-restarts after power failure):
+                Physical power button press required to boot.
+                After boot: ssh swift-mac "sudo systemctl start k3s-agent"
+                Check Longhorn multipathd issue: ssh swift-mac "sudo multipath -ll | grep -i iet"
+                If IET VIRTUAL-DISK claimed as mpatha: sudo multipath -f mpatha
+                Permanent fix already applied in /etc/multipath.conf on all nodes.
+
+              After full power failure — controller NAT may be lost (iptables not persistent):
+                ssh -t controller "sudo sh -c 'iptables-restore < /etc/iptables/rules.v4'"
+                ssh controller "sudo iptables -I FORWARD -s 10.0.0.0/24 -j ACCEPT"
+                ssh controller "sudo iptables -I FORWARD -d 10.0.0.0/24 -j ACCEPT"
+                ssh controller "sudo iptables -I FORWARD -s 10.42.0.0/16 -j ACCEPT"
+                ssh controller "sudo iptables -I FORWARD -d 10.42.0.0/16 -j ACCEPT"
+                Symptom: ArgoCD shows 'context deadline exceeded' reaching GitHub.
 
     - name: pod-lifecycle
       rules:
@@ -52,11 +74,22 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/runbooks/pod-stuck-pending"
             summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} stuck Pending for >5m"
             description: |
-              Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in Pending state for more than
-              5 minutes. Common causes: image pull failure, insufficient node resources, PVC not bound.
-              Diagnose: kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
+              Pod {{ $labels.namespace }}/{{ $labels.pod }} has been Pending for >5 minutes.
+
+              Diagnose:
+                kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
+                kubectl get events -n {{ $labels.namespace }} --sort-by='.lastTimestamp' | tail -20
+
+              Common causes:
+                - Image pull failure: check Harbor registry and Tailscale connectivity
+                - Insufficient resources: kubectl describe nodes | grep -A5 Allocated
+                - PVC not bound: kubectl get pvc -n {{ $labels.namespace }}
+                - Longhorn volume stuck: check Longhorn UI at https://longhorn.10.0.0.200.nip.io
+                - Gatekeeper policy violation: check admission webhook errors in describe output
+                - After power failure: controller NAT may be down — see NodeFrequentlyNotReady runbook
 
         - alert: ContainerOOMKilled
           expr: |
@@ -65,9 +98,20 @@ spec:
           labels:
             severity: warning
           annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/runbooks/oom-killed"
             summary: "OOMKill: {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }}"
             description: |
-              Container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }} was
-              terminated by OOMKill. Check VPA recommendations and raise memory limits:
+              Container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }}
+              was terminated by the kernel OOM killer.
+
+              Investigate:
                 kubectl describe pod {{ $labels.pod }} -n {{ $labels.namespace }}
                 kubectl get vpa -n {{ $labels.namespace }}
+                kubectl top pod {{ $labels.pod }} -n {{ $labels.namespace }}
+
+              Fix options (in order of preference):
+                1. VPA recommendation: check kubectl get vpa -n {{ $labels.namespace }} for suggested limits
+                2. Raise memory limit in the relevant helm-values/*.yaml file and push
+                3. If VPA updateMode=Off: switch to Auto after reviewing recommendation (7+ days data)
+              Known OOMKill-prone workloads: ArgoCD controller (bumped 2Gi→3Gi 2026-07-24),
+              Authentik server (bumped to 1280Mi 2026-07-18).
