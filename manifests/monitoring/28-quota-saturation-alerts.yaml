@@ -1,0 +1,89 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: quota-saturation-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: capacity.quota
+      rules:
+        # Memory requests > 80% of the namespace hard limit.
+        # Using requests (not limits): requests determine scheduling; hitting the
+        # quota hard limit blocks new pods from being created entirely.
+        - alert: NamespaceMemoryRequestsQuotaNearing
+          expr: |
+            kube_resourcequota{resource="requests.memory", type="used"}
+            /
+            kube_resourcequota{resource="requests.memory", type="hard"}
+            > 0.80
+          for: 10m
+          labels:
+            severity: warning
+            capacity: "true"
+          annotations:
+            summary: "Namespace {{ $labels.namespace }} memory requests at {{ $value | humanizePercentage }} of quota"
+            description: |
+              Namespace {{ $labels.namespace }} is using {{ $value | humanizePercentage }} of its
+              memory request quota. When it reaches 100%, all new pod creations will be blocked
+              with "exceeded quota: requests.memory". Review VPA recommendations and prune
+              over-provisioned requests.
+
+        # CPU requests > 80% of quota
+        - alert: NamespaceCPURequestsQuotaNearing
+          expr: |
+            kube_resourcequota{resource="requests.cpu", type="used"}
+            /
+            kube_resourcequota{resource="requests.cpu", type="hard"}
+            > 0.80
+          for: 10m
+          labels:
+            severity: warning
+            capacity: "true"
+          annotations:
+            summary: "Namespace {{ $labels.namespace }} CPU requests at {{ $value | humanizePercentage }} of quota"
+            description: |
+              Namespace {{ $labels.namespace }} is using {{ $value | humanizePercentage }} of its
+              CPU request quota. New pods requiring CPU requests will fail to be created once
+              the hard limit is reached.
+
+        # Pod count > 85% of quota — useful for catching rapid pod proliferation
+        # (e.g., Argo Rollouts canary + analysis pods accumulating)
+        - alert: NamespacePodCountQuotaNearing
+          expr: |
+            kube_resourcequota{resource="count/pods", type="used"}
+            /
+            kube_resourcequota{resource="count/pods", type="hard"}
+            > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            capacity: "true"
+          annotations:
+            summary: "Namespace {{ $labels.namespace }} pod count at {{ $value | humanizePercentage }} of quota"
+            description: |
+              Namespace {{ $labels.namespace }} has {{ $value | humanizePercentage }} of its pod
+              count quota used. Argo Rollouts analysis pods, Jobs, and CronJobs all count.
+              Review if stale pods or completed jobs are not being cleaned up.
+
+        # Hard quota hit — fires immediately when a namespace exhausts its quota.
+        # At this point, NO new pods can be created in the namespace.
+        - alert: NamespaceQuotaExhausted
+          expr: |
+            kube_resourcequota{resource="requests.memory", type="used"}
+            /
+            kube_resourcequota{resource="requests.memory", type="hard"}
+            >= 1.0
+          for: 1m
+          labels:
+            severity: critical
+            capacity: "true"
+          annotations:
+            summary: "CRITICAL: Namespace {{ $labels.namespace }} memory request quota fully exhausted"
+            description: |
+              Namespace {{ $labels.namespace }} has hit its memory request hard limit.
+              All new pod creations are blocked. Deployments, DaemonSets, and Jobs will fail
+              to create new pods. Immediate action required: scale down or delete pods,
+              or bump the quota in manifests/quotas/{{ $labels.namespace }}.yaml.

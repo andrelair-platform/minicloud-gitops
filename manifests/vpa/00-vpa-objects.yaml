@@ -3,7 +3,9 @@
 # updateMode: "Auto" = VPA adjusts requests and evicts pods to apply
 #
 # Safe for Auto: stateless Deployments with 7+ days of data.
-# Keep Off:  StatefulSets with RWO PVCs (ClickHouse), CRD-managed StatefulSets (Prometheus).
+# Keep Off:  StatefulSets with RWO PVCs (ClickHouse), CRD-managed StatefulSets (Prometheus),
+#            and any service not yet proven stable under VPA evictions.
+# Coverage target: all stateless Deployments — see capacity-planning-gaps.md for audit.
 ---
 # langfuse ClickHouse — StatefulSet + RWO PVC → keep Off (forced eviction risk)
 apiVersion: autoscaling.k8s.io/v1
@@ -121,3 +123,120 @@ spec:
         maxAllowed:
           cpu: "2"
           memory: 3Gi
+---
+# Open WebUI — GPU-proxied FastAPI app; memory grows with concurrent sessions
+# Off mode: collect 7+ days of data before switching to Auto
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: open-webui
+  namespace: ai
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: open-webui
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: open-webui
+        minAllowed:
+          cpu: 100m
+          memory: 256Mi
+        maxAllowed:
+          cpu: "2"
+          memory: 4Gi
+---
+# Matrix Synapse — Python homeserver, memory scales with room count and federation
+# Off mode: StatefulSet with RWO Longhorn PVC
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: matrix-synapse
+  namespace: chat
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: matrix-synapse
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: synapse
+        minAllowed:
+          cpu: 100m
+          memory: 256Mi
+        maxAllowed:
+          cpu: "2"
+          memory: 4Gi
+---
+# Vault — StatefulSet with AWS KMS auto-unseal; keep Off (unseal during eviction is slow)
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: vault
+  namespace: vault
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: vault
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: vault
+        minAllowed:
+          cpu: 50m
+          memory: 128Mi
+        maxAllowed:
+          cpu: "1"
+          memory: 2Gi
+---
+# minicloud-plane — Go service, low memory footprint, stateless; collect baseline first
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: minicloud-plane
+  namespace: minicloud-plane-dev
+spec:
+  targetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: minicloud-plane
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: minicloud-plane
+        minAllowed:
+          cpu: 10m
+          memory: 32Mi
+        maxAllowed:
+          cpu: "1"
+          memory: 512Mi
+---
+# platform-demo — Go service, stateless Rollout; same baseline collection
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: platform-demo
+  namespace: platform-demo-dev
+spec:
+  targetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: platform-demo
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: platform-demo
+        minAllowed:
+          cpu: 10m
+          memory: 16Mi
+        maxAllowed:
+          cpu: "500m"
+          memory: 256Mi

@@ -1,0 +1,383 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-capacity-planning
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  capacity-planning.json: |
+    {
+      "title": "Capacity Planning",
+      "uid": "minicloud-capacity",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "5m",
+      "time": {"from": "now-7d", "to": "now"},
+      "tags": ["capacity", "planning", "infrastructure"],
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "prometheus",
+            "label": "Prometheus",
+            "hide": 0,
+            "refresh": 1
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Cluster CPU — Allocatable vs Requested vs Actual",
+          "type": "bargauge",
+          "gridPos": {"h": 6, "w": 24, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 70},
+                  {"color": "red", "value": 90}
+                ]
+              }
+            }
+          },
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "reduceOptions": {"calcs": ["lastNotNull"]}
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Allocatable ({{node}})",
+              "expr": "kube_node_status_allocatable{resource=\"cpu\"}"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Requested ({{node}})",
+              "expr": "sum by (node) (kube_pod_container_resource_requests{resource=\"cpu\", node!=\"\"})"
+            },
+            {
+              "refId": "C",
+              "legendFormat": "Actual ({{instance}})",
+              "expr": "sum without(mode) (avg without(cpu) (rate(node_cpu_seconds_total{mode!~\"idle|iowait\"}[5m])))"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Node CPU Scheduler Pressure (requested / allocatable)",
+          "description": "Measures scheduling headroom, not actual load. Red = new pods with CPU requests may fail to schedule.",
+          "type": "gauge",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 0.7},
+                  {"color": "red", "value": 0.9}
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "{{node}}",
+              "expr": "sum by (node) (kube_pod_container_resource_requests{resource=\"cpu\", node!=\"\"}) / on(node) kube_node_status_allocatable{resource=\"cpu\"}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Node Memory Scheduler Pressure (requested / allocatable)",
+          "description": "Measures scheduling headroom. Red = new pods requiring memory may fail to schedule.",
+          "type": "gauge",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 0.7},
+                  {"color": "red", "value": 0.9}
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "showThresholdMarkers": true
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "{{node}}",
+              "expr": "sum by (node) (kube_pod_container_resource_requests{resource=\"memory\", node!=\"\"}) / on(node) kube_node_status_allocatable{resource=\"memory\"}"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Node Memory — 7-day Trend + 7-day Forecast",
+          "description": "Solid: actual available memory. Dashed: predict_linear projection 7 days ahead. If dashed line hits 0, a NodeMemoryExhaustionForecast alert will fire.",
+          "type": "timeseries",
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 14},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {"lineWidth": 2}
+            },
+            "overrides": [
+              {
+                "matcher": {"id": "byRegexp", "options": "Forecast.*"},
+                "properties": [
+                  {"id": "custom.lineStyle", "value": {"dash": [8, 4], "fill": "dash"}},
+                  {"id": "custom.lineWidth", "value": 1}
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {"displayMode": "list", "placement": "bottom"},
+            "tooltip": {"mode": "multi"}
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Available ({{instance}})",
+              "expr": "node_memory_MemAvailable_bytes"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Forecast ({{instance}})",
+              "expr": "predict_linear(node_memory_MemAvailable_bytes[24h], 7 * 24 * 3600)"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Namespace Quota Saturation — Memory Requests",
+          "description": "Percentage of memory request quota used. At 100% all pod creations in that namespace are blocked.",
+          "type": "bargauge",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 0.8},
+                  {"color": "red", "value": 0.95}
+                ]
+              }
+            }
+          },
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "reduceOptions": {"calcs": ["lastNotNull"]}
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "{{namespace}}",
+              "expr": "kube_resourcequota{resource=\"requests.memory\", type=\"used\"} / kube_resourcequota{resource=\"requests.memory\", type=\"hard\"}"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "Namespace Quota Saturation — CPU Requests",
+          "type": "bargauge",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 0.8},
+                  {"color": "red", "value": 0.95}
+                ]
+              }
+            }
+          },
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "reduceOptions": {"calcs": ["lastNotNull"]}
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "{{namespace}}",
+              "expr": "kube_resourcequota{resource=\"requests.cpu\", type=\"used\"} / kube_resourcequota{resource=\"requests.cpu\", type=\"hard\"}"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Longhorn PVC Usage — Top 15 by % Used",
+          "type": "bargauge",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 0.7},
+                  {"color": "red", "value": 0.9}
+                ]
+              }
+            }
+          },
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "reduceOptions": {"calcs": ["lastNotNull"]}
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "{{pvc_namespace}}/{{pvc}}",
+              "expr": "topk(15, longhorn_volume_usage_bytes / longhorn_volume_capacity_bytes)"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "Longhorn PVC Growth Rate (7d)",
+          "description": "Rate at which each volume is filling up. Useful for estimating time to full.",
+          "type": "table",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {"custom": {"filterable": true}},
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "Growth rate (bytes/day)"}, "properties": [{"id": "unit", "value": "binBps"}]},
+              {"matcher": {"id": "byName", "options": "Used %"}, "properties": [{"id": "unit", "value": "percentunit"}, {"id": "custom.displayMode", "value": "color-background-solid"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.7}, {"color": "red", "value": 0.9}]}}]}
+            ]
+          },
+          "options": {"showHeader": true, "sortBy": [{"displayName": "Growth rate (bytes/day)", "desc": true}]},
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "deriv(longhorn_volume_usage_bytes[7d]) * 86400",
+              "legendFormat": "{{pvc_namespace}}/{{pvc}}",
+              "instant": true,
+              "format": "table"
+            },
+            {
+              "refId": "B",
+              "expr": "longhorn_volume_usage_bytes / longhorn_volume_capacity_bytes",
+              "legendFormat": "{{pvc_namespace}}/{{pvc}}",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {"id": "merge", "options": {}},
+            {"id": "organize", "options": {"renameByName": {"Value #A": "Growth rate (bytes/day)", "Value #B": "Used %", "pvc_namespace": "Namespace", "pvc": "PVC"}}}
+          ]
+        },
+        {
+          "id": 9,
+          "title": "VPA Recommendations vs Current Limits",
+          "description": "Services with Off-mode VPA. Target = VPA recommendation. Shows where current limits are over/under-provisioned.",
+          "type": "table",
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 40},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {"custom": {"filterable": true}},
+            "overrides": [
+              {"matcher": {"id": "byRegexp", "options": ".*memory.*"}, "properties": [{"id": "unit", "value": "bytes"}]},
+              {"matcher": {"id": "byRegexp", "options": ".*cpu.*"}, "properties": [{"id": "unit", "value": "short"}]}
+            ]
+          },
+          "options": {"showHeader": true},
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kube_verticalpodautoscaler_status_recommendation_containerrecommendations_target{resource=\"memory\"}",
+              "legendFormat": "{{namespace}}/{{target_name}}: mem target",
+              "instant": true,
+              "format": "table"
+            },
+            {
+              "refId": "B",
+              "expr": "kube_verticalpodautoscaler_status_recommendation_containerrecommendations_target{resource=\"cpu\"}",
+              "legendFormat": "{{namespace}}/{{target_name}}: cpu target",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {"id": "merge", "options": {}},
+            {"id": "organize", "options": {"renameByName": {"namespace": "Namespace", "target_name": "Workload", "container": "Container", "Value #A": "VPA mem target", "Value #B": "VPA cpu target"}}}
+          ]
+        },
+        {
+          "id": 10,
+          "title": "Active Capacity Alerts",
+          "type": "table",
+          "gridPos": {"h": 6, "w": 24, "x": 0, "y": 50},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {"custom": {"filterable": true}},
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "severity"}, "properties": [{"id": "custom.displayMode", "value": "color-background"}, {"id": "mappings", "value": [{"type": "value", "options": {"warning": {"color": "yellow", "text": "warning"}, "critical": {"color": "red", "text": "critical"}}}]}]}
+            ]
+          },
+          "options": {"showHeader": true},
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "ALERTS{capacity=\"true\"}",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {"id": "filterFieldsByName", "options": {"include": {"names": ["alertname", "namespace", "node", "instance", "severity", "Value"]}}}
+          ]
+        }
+      ]
+    }
