@@ -285,9 +285,10 @@ grafana:
         limits: {cpu: 100m, memory: 128Mi}
       # Gap E: link exemplar traceID labels to Tempo — clicking an exemplar dot
       # in a Grafana histogram panel opens the corresponding trace in Tempo.
+      # kps 84.5.0 template accesses .datasourceUid directly — single object, not list.
       exemplarTraceIdDestinations:
-        - name: traceID
-          datasourceUid: tempo
+        name: traceID
+        datasourceUid: tempo
   persistence:
     enabled: true
     type: pvc
