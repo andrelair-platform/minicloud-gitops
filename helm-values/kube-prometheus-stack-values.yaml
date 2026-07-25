@@ -139,8 +139,11 @@ alertmanager:
       repeat_interval: 12h
       receiver: webhook-default
       routes:
+        # GAP 1 fix: Watchdog → healthchecks.io dead-man's switch (period 3m, grace 5m).
+        # repeat_interval 1m ensures hc-ping receives a heartbeat every minute.
         - matchers: ['alertname = "Watchdog"']
-          receiver: "null"
+          receiver: watchdog
+          repeat_interval: 1m
         - matchers: ['alertname =~ "KubeProxyDown|KubeControllerManagerDown|KubeSchedulerDown"']
           receiver: "null"
         - matchers: ['severity = critical']
@@ -164,6 +167,12 @@ alertmanager:
         insecure_skip_verify: true
     receivers:
       - name: "null"
+      # GAP 1: dead-man's switch — Alertmanager pings healthchecks.io every 1m.
+      # If minicloud goes down, healthchecks.io alerts kanmegnea@gmail.com after 8m silence.
+      - name: watchdog
+        webhook_configs:
+          - url: https://hc-ping.com/cc3f232b-2dbf-4852-821d-3eb6ecf0ff29
+            send_resolved: false
       - name: webhook-default
         webhook_configs:
           - url: http://alert-webhook-logger.monitoring.svc:80/
@@ -173,7 +182,10 @@ alertmanager:
           - url: http://alert-webhook-logger.monitoring.svc:80/
             send_resolved: true
         email_configs:
-          - to: kanmegnea@devandre.sbs
+          # GAP 2 fix: added kanmegnea@gmail.com so critical alerts reach Gmail.
+          # Gmail delivery goes via Stalwart → SES relay.
+          # While SES is in sandbox, kanmegnea@gmail.com must be a verified SES identity.
+          - to: kanmegnea@devandre.sbs,kanmegnea@gmail.com
             send_resolved: true
             headers:
               Subject: '[CRITICAL] {{ .GroupLabels.alertname }} — minicloud'
