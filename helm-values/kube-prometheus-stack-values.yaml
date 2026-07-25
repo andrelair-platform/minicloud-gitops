@@ -50,6 +50,10 @@ prometheus:
           - prometheus.10.0.0.200.nip.io
         secretName: prometheus-tls
   prometheusSpec:
+    # Gap E: store exemplars (trace IDs embedded in histogram observations)
+    # so Grafana can render scatter-plot dots with clickable trace IDs.
+    enableFeatures:
+      - exemplar-storage
     retention: 10d
     retentionSize: 27GB
     resources:
@@ -267,6 +271,11 @@ grafana:
       resources:
         requests: {cpu: 50m, memory: 64Mi}
         limits: {cpu: 100m, memory: 128Mi}
+      # Gap E: link exemplar traceID labels to Tempo — clicking an exemplar dot
+      # in a Grafana histogram panel opens the corresponding trace in Tempo.
+      exemplarTraceIdDestinations:
+        - name: traceID
+          datasourceUid: tempo
   persistence:
     enabled: true
     type: pvc
