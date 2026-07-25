@@ -1,0 +1,158 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: slo-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: slo.burn-rate
+      rules:
+        # Fast burn: 1h window, burn rate > 14.4× means the monthly
+        # error budget exhausts in under 2 hours. Page now.
+        - alert: SLOAvailabilityBurnRateCritical
+          expr: job:slo_availability_burn_rate:1h > 14.4
+          for: 2m
+          labels:
+            severity: critical
+            slo: availability
+            team: platform
+          annotations:
+            summary: "SLO: Availability budget burning critically fast"
+            description: >-
+              Availability burn rate is {{ $value | printf "%.1f" }}× the
+              sustainable rate (threshold: 14.4×). Monthly error budget
+              exhausts in ≈ {{ printf "%.0f" (div 720.0 $value) }}h at
+              this rate. Investigate the ingress error logs immediately.
+            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+
+        # Slow burn: sustained >1× burn rate over 1h means we'll miss the month.
+        - alert: SLOAvailabilityBurnRateElevated
+          expr: job:slo_availability_burn_rate:1h > 1
+          for: 1h
+          labels:
+            severity: warning
+            slo: availability
+            team: platform
+          annotations:
+            summary: "SLO: Availability error budget being consumed"
+            description: >-
+              Availability burn rate {{ $value | printf "%.2f" }}× sustained
+              for 1h. At this rate the 30-day error budget will be exhausted
+              before the end of the month.
+            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+
+    - name: slo.latency
+      rules:
+        - alert: SLOLatencyP95Violated
+          expr: job:slo_latency_p95:seconds5m * 1000 > 200
+          for: 10m
+          labels:
+            severity: warning
+            slo: latency
+            team: platform
+          annotations:
+            summary: "SLO: API p95 latency exceeds 200ms"
+            description: >-
+              Current p95 latency: {{ $value | printf "%.0f" }}ms (SLO: <200ms).
+              Sustained for 10 minutes. Check NGINX ingress metrics, upstream
+              service latency, and node CPU saturation.
+            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+
+    - name: slo.errors
+      rules:
+        - alert: SLOErrorRateViolated
+          expr: job:slo_http_error_rate:ratio5m * 100 > 1
+          for: 5m
+          labels:
+            severity: warning
+            slo: error_rate
+            team: platform
+          annotations:
+            summary: "SLO: HTTP error rate above 1%"
+            description: >-
+              Current HTTP 5xx error rate: {{ $value | humanizePercentage }}.
+              SLO target: <1%. Sustained for 5 minutes.
+            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+
+        - alert: SLOErrorRateCritical
+          expr: job:slo_http_error_rate:ratio5m * 100 > 5
+          for: 2m
+          labels:
+            severity: critical
+            slo: error_rate
+            team: platform
+          annotations:
+            summary: "SLO: HTTP error rate critically high (>5%)"
+            description: >-
+              Current HTTP 5xx error rate: {{ $value | humanizePercentage }}.
+              This is 5× the SLO budget. Users are actively experiencing errors.
+            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+
+    - name: slo.pod-restarts
+      rules:
+        - alert: SLOPodRestartRateHigh
+          expr: job:slo_pod_restarts:count24h > 5
+          for: 15m
+          labels:
+            severity: warning
+            slo: pod_restarts
+            team: platform
+          annotations:
+            summary: "SLO: Pod restart rate above 5/day"
+            description: >-
+              {{ $value | printf "%.0f" }} container restarts in the last 24h
+              (SLO: <5/day). Check for OOMKill, CrashLoopBackOff, or
+              liveness probe failures.
+            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+
+    - name: slo.resources
+      rules:
+        - alert: SLOCPUUtilizationHigh
+          expr: job:slo_cpu_utilization:avg5m * 100 > 70
+          for: 15m
+          labels:
+            severity: warning
+            slo: cpu
+            team: platform
+          annotations:
+            summary: "SLO: Average CPU utilization above 70%"
+            description: >-
+              Average CPU utilization across app containers:
+              {{ $value | humanizePercentage }} (SLO: <70%). Sustained 15 min.
+              Review VPA recommendations and consider scaling or raising limits.
+            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+
+        - alert: SLOMemoryUtilizationHigh
+          expr: job:slo_memory_utilization:ratio5m * 100 > 80
+          for: 15m
+          labels:
+            severity: warning
+            slo: memory
+            team: platform
+          annotations:
+            summary: "SLO: Memory utilization above 80%"
+            description: >-
+              Cluster memory utilization (working set / limits):
+              {{ $value | humanizePercentage }} (SLO: <80%). Sustained 15 min.
+              Risk of OOMKill. Check VPA recommendations.
+            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+
+    - name: slo.deployment
+      rules:
+        - alert: SLODeploymentAvailabilityLow
+          expr: job:slo_deployment_availability:ratio * 100 < 99
+          for: 5m
+          labels:
+            severity: critical
+            slo: deployment_success
+            team: platform
+          annotations:
+            summary: "SLO: Deployment availability below 99%"
+            description: >-
+              {{ $value | humanizePercentage }} of desired deployment replicas
+              are available (SLO: >99%). A service may be partially down.
+              Check: kubectl get deploy -A | grep -v "1/1"
+            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"

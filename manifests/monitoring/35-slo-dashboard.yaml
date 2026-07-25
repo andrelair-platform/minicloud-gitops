@@ -1,0 +1,600 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minicloud-slo-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  slo-dashboard.json: |
+    {
+      "uid": "minicloud-slo",
+      "title": "SLO — Service Level Objectives",
+      "description": "Live SLO status, error budget burn rate, and trend timeseries for all 7 platform objectives.",
+      "tags": ["minicloud", "slo", "reliability"],
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "1m",
+      "time": {"from": "now-24h", "to": "now"},
+      "timepicker": {},
+      "annotations": {"list": []},
+      "panels": [
+
+        {"id": 100, "type": "text", "title": "", "gridPos": {"h": 2, "w": 24, "x": 0, "y": 0},
+         "options": {"mode": "markdown", "content": "## SLO Status — Current Window\nGreen = within target · Red = SLO violated · Values update every 60s from recording rules."}},
+
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Availability",
+          "description": "Target: ≥ 99.9%  |  HTTP non-5xx / total (NGINX ingress, 5m)",
+          "gridPos": {"h": 5, "w": 6, "x": 0, "y": 2},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "area",
+            "orientation": "auto",
+            "text": {"titleSize": 12, "valueSize": 36}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 3,
+              "min": 99,
+              "max": 100,
+              "noValue": "No traffic",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 99.5},
+                  {"color": "green", "value": 99.9}
+                ]
+              },
+              "color": {"mode": "thresholds"},
+              "mappings": []
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_availability:ratio5m * 100", "instant": true, "legendFormat": "Availability"}]
+        },
+
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "API Latency p95",
+          "description": "Target: < 200ms  |  histogram_quantile(0.95) across all ingress routes (5m)",
+          "gridPos": {"h": 5, "w": 6, "x": 6, "y": 2},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "area",
+            "text": {"titleSize": 12, "valueSize": 36}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "decimals": 1,
+              "noValue": "No traffic",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 200},
+                  {"color": "red", "value": 500}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_latency_p95:seconds5m * 1000", "instant": true, "legendFormat": "p95 ms"}]
+        },
+
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Error Rate",
+          "description": "Target: < 1%  |  HTTP 5xx / total (NGINX ingress, 5m)",
+          "gridPos": {"h": 5, "w": 6, "x": 12, "y": 2},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "area",
+            "text": {"titleSize": 12, "valueSize": 36}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 3,
+              "noValue": "0.000%",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 5}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_http_error_rate:ratio5m * 100", "instant": true, "legendFormat": "Error Rate"}]
+        },
+
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Pod Restart Rate",
+          "description": "Target: < 5 restarts / 24h  |  App namespaces only",
+          "gridPos": {"h": 5, "w": 6, "x": 18, "y": 2},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "area",
+            "text": {"titleSize": 12, "valueSize": 36}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 5},
+                  {"color": "red", "value": 20}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_pod_restarts:count24h", "instant": true, "legendFormat": "Restarts (24h)"}]
+        },
+
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "CPU Utilization",
+          "description": "Target: < 70% avg  |  working / limits across app containers (5m)",
+          "gridPos": {"h": 5, "w": 8, "x": 0, "y": 7},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "area",
+            "text": {"titleSize": 12, "valueSize": 36}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "noValue": "0.0%",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 70},
+                  {"color": "red", "value": 85}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_cpu_utilization:avg5m * 100", "instant": true, "legendFormat": "CPU avg %"}]
+        },
+
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "Memory Utilization",
+          "description": "Target: < 80%  |  working set / limits across app containers (5m)",
+          "gridPos": {"h": 5, "w": 8, "x": 8, "y": 7},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "area",
+            "text": {"titleSize": 12, "valueSize": 36}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "noValue": "0.0%",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 80},
+                  {"color": "red", "value": 90}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_memory_utilization:ratio5m * 100", "instant": true, "legendFormat": "Memory %"}]
+        },
+
+        {
+          "id": 7,
+          "type": "stat",
+          "title": "Deployment Success",
+          "description": "Target: > 99%  |  available replicas / desired (all Deployments)",
+          "gridPos": {"h": 5, "w": 8, "x": 16, "y": 7},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "area",
+            "text": {"titleSize": 12, "valueSize": 36}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 2,
+              "min": 90,
+              "max": 100,
+              "noValue": "—",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 95},
+                  {"color": "green", "value": 99}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_deployment_availability:ratio * 100", "instant": true, "legendFormat": "Available %"}]
+        },
+
+        {"id": 101, "type": "text", "title": "", "gridPos": {"h": 2, "w": 24, "x": 0, "y": 12},
+         "options": {"mode": "markdown", "content": "## Error Budget & Burn Rate\nBurn rate 1.0 = consuming at the sustainable 30-day rate · **> 14.4** = budget exhausted in < 2h (page immediately) · 7d compliance shows the rolling weekly SLO health."}},
+
+        {
+          "id": 8,
+          "type": "stat",
+          "title": "Availability Burn Rate (1h)",
+          "description": "Current 1h error rate ÷ 0.1% budget. >14.4 = alert. >1 = on track to miss the month.",
+          "gridPos": {"h": 5, "w": 6, "x": 0, "y": 14},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none",
+            "text": {"titleSize": 12, "valueSize": 36}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "x",
+              "decimals": 2,
+              "noValue": "0.00×",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 14.4}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_availability_burn_rate:1h", "instant": true, "legendFormat": "Burn rate"}]
+        },
+
+        {
+          "id": 9,
+          "type": "stat",
+          "title": "Error Rate Burn Rate (1h)",
+          "description": "Current 1h error rate ÷ 1% budget. >14.4 = alert.",
+          "gridPos": {"h": 5, "w": 6, "x": 6, "y": 14},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none",
+            "text": {"titleSize": 12, "valueSize": 36}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "x",
+              "decimals": 2,
+              "noValue": "0.00×",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 14.4}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_error_rate_burn_rate:1h", "instant": true, "legendFormat": "Burn rate"}]
+        },
+
+        {
+          "id": 10,
+          "type": "stat",
+          "title": "7-Day Availability",
+          "description": "Rolling 7-day availability window. Proxy for monthly compliance.",
+          "gridPos": {"h": 5, "w": 6, "x": 12, "y": 14},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none",
+            "text": {"titleSize": 12, "valueSize": 36}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 4,
+              "noValue": "No data",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 99.5},
+                  {"color": "green", "value": 99.9}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_availability_7d:ratio * 100", "instant": true, "legendFormat": "7d availability"}]
+        },
+
+        {
+          "id": 11,
+          "type": "gauge",
+          "title": "Error Budget Remaining",
+          "description": "How much of the 5m-window availability error budget (0.1%) remains. <0% = SLO broken.",
+          "gridPos": {"h": 5, "w": 6, "x": 18, "y": 14},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "orientation": "auto",
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "minVizWidth": 75,
+            "minVizHeight": 75
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "min": 0,
+              "max": 100,
+              "noValue": "100%",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 25},
+                  {"color": "green", "value": 50}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            }
+          },
+          "targets": [{"refId": "A", "expr": "job:slo_error_budget_remaining_7d:pct", "instant": true, "legendFormat": "Budget remaining"}]
+        },
+
+        {"id": 102, "type": "text", "title": "", "gridPos": {"h": 2, "w": 24, "x": 0, "y": 19},
+         "options": {"mode": "markdown", "content": "## Trends — 24h\nDashed line = SLO target. Sustained breach triggers an Alertmanager alert → Stalwart SMTP."}},
+
+        {
+          "id": 12,
+          "type": "timeseries",
+          "title": "Availability Trend",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 21},
+          "options": {
+            "tooltip": {"mode": "single"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 3,
+              "min": 99,
+              "max": 100.1,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "thresholdStyle": {"mode": "line"}
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "transparent", "value": null},
+                  {"color": "red", "value": 0},
+                  {"color": "transparent", "value": 99.9}
+                ]
+              },
+              "color": {"fixedColor": "green", "mode": "fixed"}
+            }
+          },
+          "targets": [
+            {"refId": "A", "expr": "job:slo_availability:ratio5m * 100", "legendFormat": "Availability %"},
+            {"refId": "B", "expr": "vector(99.9)", "legendFormat": "SLO target (99.9%)", "hide": false}
+          ]
+        },
+
+        {
+          "id": 13,
+          "type": "timeseries",
+          "title": "Error Rate Trend",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 21},
+          "options": {
+            "tooltip": {"mode": "single"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 3,
+              "min": 0,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "thresholdStyle": {"mode": "line"}
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "transparent", "value": null},
+                  {"color": "red", "value": 1}
+                ]
+              },
+              "color": {"fixedColor": "red", "mode": "fixed"}
+            }
+          },
+          "targets": [
+            {"refId": "A", "expr": "job:slo_http_error_rate:ratio5m * 100", "legendFormat": "Error rate %"},
+            {"refId": "B", "expr": "vector(1)", "legendFormat": "SLO target (1%)"}
+          ]
+        },
+
+        {
+          "id": 14,
+          "type": "timeseries",
+          "title": "API Latency p95 Trend",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 29},
+          "options": {
+            "tooltip": {"mode": "single"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "decimals": 1,
+              "min": 0,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "thresholdStyle": {"mode": "line"}
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "transparent", "value": null},
+                  {"color": "red", "value": 200}
+                ]
+              },
+              "color": {"fixedColor": "blue", "mode": "fixed"}
+            }
+          },
+          "targets": [
+            {"refId": "A", "expr": "job:slo_latency_p95:seconds5m * 1000", "legendFormat": "p95 latency"},
+            {"refId": "B", "expr": "vector(200)", "legendFormat": "SLO target (200ms)"}
+          ]
+        },
+
+        {
+          "id": 15,
+          "type": "timeseries",
+          "title": "Pod Restart Rate (rolling 24h)",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 29},
+          "options": {
+            "tooltip": {"mode": "single"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "min": 0,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 20,
+                "thresholdStyle": {"mode": "line"}
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "transparent", "value": null},
+                  {"color": "red", "value": 5}
+                ]
+              },
+              "color": {"fixedColor": "orange", "mode": "fixed"}
+            }
+          },
+          "targets": [
+            {"refId": "A", "expr": "job:slo_pod_restarts:count24h", "legendFormat": "Restarts (24h)"},
+            {"refId": "B", "expr": "vector(5)", "legendFormat": "SLO target (5/day)"}
+          ]
+        },
+
+        {
+          "id": 16,
+          "type": "timeseries",
+          "title": "CPU Utilization Trend",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 37},
+          "options": {
+            "tooltip": {"mode": "multi"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "thresholdStyle": {"mode": "line"}
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "transparent", "value": null},
+                  {"color": "yellow", "value": 70},
+                  {"color": "red", "value": 85}
+                ]
+              },
+              "color": {"fixedColor": "purple", "mode": "fixed"}
+            }
+          },
+          "targets": [
+            {"refId": "A", "expr": "job:slo_cpu_utilization:avg5m * 100", "legendFormat": "Avg CPU %"},
+            {"refId": "B", "expr": "vector(70)", "legendFormat": "SLO target (70%)"}
+          ]
+        },
+
+        {
+          "id": 17,
+          "type": "timeseries",
+          "title": "Memory Utilization Trend",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 37},
+          "options": {
+            "tooltip": {"mode": "multi"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "thresholdStyle": {"mode": "line"}
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "transparent", "value": null},
+                  {"color": "yellow", "value": 80},
+                  {"color": "red", "value": 90}
+                ]
+              },
+              "color": {"fixedColor": "semi-dark-green", "mode": "fixed"}
+            }
+          },
+          "targets": [
+            {"refId": "A", "expr": "job:slo_memory_utilization:ratio5m * 100", "legendFormat": "Memory %"},
+            {"refId": "B", "expr": "vector(80)", "legendFormat": "SLO target (80%)"}
+          ]
+        }
+
+      ]
+    }
