@@ -1,5 +1,47 @@
 fullnameOverride: kps
 
+# GAP 6: disable the built-in KubeAPIDown so we can replace it with an enhanced
+# version (additionalPrometheusRulesMap below) that explains the dead-man's switch
+# coverage and the self-defeating nature of in-cluster API-down alerting.
+defaultRules:
+  disabled:
+    KubeAPIDown: true
+
+additionalPrometheusRulesMap:
+  kubeapidown-enhanced:
+    groups:
+      - name: kubernetes-system-apiserver
+        rules:
+          - alert: KubeAPIDown
+            # Same expression/labels/for as the kps built-in — only annotations differ.
+            expr: absent(up{job="apiserver"})
+            for: 15m
+            labels:
+              severity: critical
+            annotations:
+              runbook_url: "https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubeapidown"
+              summary: "Kubernetes API server (set-hog) unreachable for 15 min"
+              description: |
+                The kube-apiserver scrape target has disappeared from Prometheus for 15 minutes.
+                Control plane node: set-hog (10.0.0.2).
+
+                IMPORTANT — if the API server AND control plane are fully down, this alert
+                may never be delivered because Alertmanager is itself a cluster workload.
+                The dead-man's switch at healthchecks.io provides external coverage:
+                if Alertmanager stops pinging, kanmegnea@gmail.com is alerted after 8 min silence.
+                Check: https://healthchecks.io — minicloud-alertmanager-watchdog status.
+
+                Recovery steps:
+                  1. SSH to set-hog: ssh set-hog (via controller ProxyJump)
+                  2. Check k3s server: sudo systemctl status k3s && sudo journalctl -u k3s -n 50
+                  3. Restart if crashed: sudo systemctl restart k3s
+                  4. After power failure — restore NAT on controller (see NAT recovery runbook):
+                     sudo sh -c 'iptables-restore < /etc/iptables/rules.v4'
+                     sudo iptables -I FORWARD -s 10.0.0.0/24 -j ACCEPT
+                     sudo iptables -I FORWARD -d 10.0.0.0/24 -j ACCEPT
+                     sudo iptables -I FORWARD -s 10.42.0.0/16 -j ACCEPT
+                     sudo iptables -I FORWARD -d 10.42.0.0/16 -j ACCEPT
+
 prometheusOperator:
   resources:
     requests:
