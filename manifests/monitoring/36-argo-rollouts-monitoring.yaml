@@ -1,0 +1,88 @@
+---
+# Expose Argo Rollouts controller metrics (port 8090) as a ClusterIP Service
+# so Prometheus can scrape them via ServiceMonitor.
+apiVersion: v1
+kind: Service
+metadata:
+  name: argo-rollouts-metrics
+  namespace: argo-rollouts
+  labels:
+    app.kubernetes.io/name: argo-rollouts
+    app.kubernetes.io/component: metrics
+spec:
+  selector:
+    app.kubernetes.io/name: argo-rollouts
+  ports:
+    - name: metrics
+      port: 8090
+      targetPort: 8090
+      protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argo-rollouts
+  namespace: argo-rollouts
+  labels:
+    release: kps
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argo-rollouts
+      app.kubernetes.io/component: metrics
+  namespaceSelector:
+    matchNames:
+      - argo-rollouts
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+---
+# NetworkPolicy: allow Prometheus (monitoring ns) to scrape Argo Rollouts metrics
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-scrape
+  namespace: argo-rollouts
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: argo-rollouts
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8090
+---
+# Alert when Argo Rollouts auto-rolls back a deployment (AnalysisRun failure).
+# argo_rollout_info is a gauge with labels: namespace, name, phase, strategy.
+# Phase "Degraded" means the analysis failed and the rollout was rolled back.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rollout-degraded-alert
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  groups:
+    - name: rollout.regression
+      rules:
+        - alert: RolloutAutoRollback
+          expr: argo_rollout_info{phase="Degraded"} == 1
+          for: 1m
+          labels:
+            severity: warning
+            regression: "true"
+          annotations:
+            summary: "Rollout {{ $labels.name }} auto-rolled back ({{ $labels.namespace }})"
+            description: |
+              Argo Rollouts detected a regression and automatically rolled back
+              {{ $labels.name }} in namespace {{ $labels.namespace }}.
+              Strategy: {{ $labels.strategy }}.
+              The AnalysisRun failed one or more Prometheus gates (success-rate or
+              p95-latency). Check ArgoCD UI → Rollout details → AnalysisRuns for
+              the failing metric and the regression dashboard for before/after view.

@@ -10,6 +10,7 @@ spec:
     - name: success-rate
       count: 4
       interval: 30s
+      initialDelay: 60s
       successCondition: result[0] >= 0.95
       failureLimit: 2
       provider:
@@ -27,6 +28,7 @@ spec:
     - name: p95-latency
       count: 4
       interval: 30s
+      initialDelay: 60s
       successCondition: result[0] <= 0.5
       failureLimit: 2
       provider:
