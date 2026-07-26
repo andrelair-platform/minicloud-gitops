@@ -6,10 +6,10 @@ tempo:
   resources:
     requests:
       cpu: 100m
-      memory: 128Mi
+      memory: 512Mi
     limits:
       cpu: "1"
-      memory: 512Mi
+      memory: 1536Mi
 
   # Container security context — drop all capabilities to satisfy
   # K8sBlockNetRaw Gatekeeper constraint (observability ns not excluded).
