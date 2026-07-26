@@ -7,9 +7,14 @@ spec:
     # Gate 1: success rate ≥ 95% over a 2m window.
     # `or vector(1)` returns 1.0 (100%) when KEDA has scaled to 0 replicas and
     # there is no traffic data yet — the readinessProbe already validated the pod.
+    # initialDelay: 60s gives the canary-load CI job time to generate real traffic
+    # before the first check fires. With k6 starting ~30s into the rollout and
+    # the 30s pause step, this guarantees ≥2 Prometheus recording intervals of
+    # real data are available when the first metric check executes.
     - name: success-rate
       count: 5
       interval: 30s
+      initialDelay: 60s
       successCondition: result[0] >= 0.95
       failureLimit: 3
       provider:
@@ -27,6 +32,7 @@ spec:
     - name: p95-latency
       count: 5
       interval: 30s
+      initialDelay: 60s
       successCondition: result[0] <= 0.5
       failureLimit: 3
       provider:
