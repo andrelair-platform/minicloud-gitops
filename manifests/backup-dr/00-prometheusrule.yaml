@@ -102,6 +102,20 @@ spec:
               If not True: kubectl rollout restart deploy/external-secrets -n external-secrets
               Verify: kubectl get externalsecret -A | grep -v True
 
+        - alert: K3sSQLiteBackupStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="k3s-sqlite-backup", namespace="monitoring"}) / 3600 > 25
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "k3s SQLite backup not run in 25+ hours"
+            description: |
+              The k3s-sqlite-backup CronJob last succeeded {{ $value | printf "%.1f" }} hours ago.
+              Control plane state (Kine/SQLite) is not being backed up to MinIO.
+              Check: kubectl get cronjob k3s-sqlite-backup -n monitoring
+              Logs: kubectl logs -n monitoring -l job-name --since=2h
+
         - alert: ESOClusterSecretStoreNotReady
           expr: |
             kube_pod_container_status_restarts_total{namespace="external-secrets"} > 0

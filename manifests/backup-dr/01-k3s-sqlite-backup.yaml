@@ -1,0 +1,103 @@
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: k3s-backup-minio
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: k3s-backup-minio
+    creationPolicy: Owner
+  data:
+    - secretKey: password
+      remoteRef:
+        key: secret/platform/minio
+        property: password
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: k3s-sqlite-backup
+  namespace: monitoring
+spec:
+  schedule: "30 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          nodeSelector:
+            node-role.kubernetes.io/control-plane: "true"
+          restartPolicy: OnFailure
+          volumes:
+            - name: k3s-db
+              hostPath:
+                path: /var/lib/rancher/k3s/server/db
+                type: Directory
+          containers:
+            - name: backup
+              image: alpine:3.20
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  apk add --no-cache sqlite rclone > /dev/null 2>&1
+
+                  DATE=$(date +%Y%m%d-%H%M%S)
+                  BACKUP_FILE="/tmp/k3s-state-${DATE}.db"
+
+                  # Consistent binary snapshot via SQLite Backup API (handles WAL)
+                  sqlite3 /db/state.db ".backup ${BACKUP_FILE}"
+                  gzip "${BACKUP_FILE}"
+
+                  # Configure rclone for MinIO
+                  cat > /tmp/rclone.conf << CONF
+                  [minio]
+                  type = s3
+                  provider = Minio
+                  access_key_id = admin
+                  secret_access_key = ${MINIO_PASSWORD}
+                  endpoint = http://10.0.0.1:9000
+                  CONF
+
+                  rclone --config /tmp/rclone.conf mkdir minio:k3s-backup 2>/dev/null || true
+                  rclone --config /tmp/rclone.conf copy "${BACKUP_FILE}.gz" minio:k3s-backup/
+
+                  # Rotate: keep 7, delete oldest
+                  FILE_COUNT=$(rclone --config /tmp/rclone.conf ls minio:k3s-backup/ | wc -l)
+                  DELETE_COUNT=$((FILE_COUNT - 7))
+                  if [ "$DELETE_COUNT" -gt 0 ]; then
+                    rclone --config /tmp/rclone.conf ls minio:k3s-backup/ | \
+                      sort | awk '{print $NF}' | head -n "$DELETE_COUNT" | \
+                      xargs -r -I{} rclone --config /tmp/rclone.conf delete "minio:k3s-backup/{}"
+                  fi
+
+                  echo "Backup complete: k3s-state-${DATE}.db.gz (kept $((FILE_COUNT > 7 ? 7 : FILE_COUNT)) of $FILE_COUNT files)"
+              volumeMounts:
+                - name: k3s-db
+                  mountPath: /db
+              env:
+                - name: MINIO_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: k3s-backup-minio
+                      key: password
+              securityContext:
+                runAsUser: 0
+                capabilities:
+                  drop: [NET_RAW]
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
