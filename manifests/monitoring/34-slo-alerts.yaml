@@ -23,9 +23,9 @@ spec:
             summary: "SLO: Availability budget burning critically fast"
             description: >-
               Availability burn rate is {{ $value | printf "%.1f" }}× the
-              sustainable rate (threshold: 14.4×). Monthly error budget
-              exhausts in ≈ {{ printf "%.0f" (div 720.0 $value) }}h at
-              this rate. Investigate the ingress error logs immediately.
+              sustainable rate (threshold: 14.4×). At this rate the monthly
+              error budget exhausts in under 2 hours. Investigate the ingress
+              error logs immediately.
             runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
 
         # Slow burn: sustained >1× burn rate over 1h means we'll miss the month.
