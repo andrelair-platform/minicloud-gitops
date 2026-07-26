@@ -1,6 +1,13 @@
 publicURL: "https://meet.devandre.sbs"
 tz: "Europe/Paris"
 
+# External TURN server: Coturn on the controller (192.168.1.130), reachable
+# from the internet via home router port-forward 3478+49152-49199 → 192.168.1.130.
+# DNS: turn.devandre.sbs A 37.65.57.112 (unproxied).
+# coturn.enabled=false: we run Coturn externally as Docker+systemd on the controller.
+# TURN config injected into prosody via extraEnvFrom (chart gates it on coturn.enabled).
+turnHost: "turn.devandre.sbs"
+
 # No per-meeting JWT auth. Authentik forward-auth on the NGINX ingress
 # protects access at the HTTP level — all employees authenticate via SSO
 # before reaching any Jitsi UI. Room names serve as the shared secret inside.
@@ -67,6 +74,14 @@ web:
     limits:   { cpu: 500m, memory: 256Mi }
 
 prosody:
+  # Inject TURN config — chart only does this when coturn.enabled=true,
+  # so we bypass it via extraEnvFrom with our own ConfigMap + ESO secret.
+  extraEnvFrom:
+    - configMapRef:
+        name: jitsi-coturn-config    # STUN_HOST, TURN_HOST, TURN_PORT, TURN_TRANSPORT
+    - secretRef:
+        name: jitsi-coturn-secret    # TURN_CREDENTIALS (HMAC shared secret)
+
   resources:
     requests: { cpu: 50m, memory: 128Mi }
     limits:   { cpu: 500m, memory: 256Mi }
@@ -81,19 +96,18 @@ jicofo:
     limits:   { cpu: 500m, memory: 256Mi }
 
 jvb:
-  # Pin JVB to star-kitten (10.0.0.8) and bind directly to its NIC via
-  # hostNetwork so WebRTC UDP 10000 is reachable from the cluster LAN.
-  # Clients on Tailscale reach this via the controller's subnet route for
-  # 10.0.0.0/24. External clients without Tailscale need a TURN relay
-  # (future Coturn deployment, Phase 69-bis).
+  # Pin JVB to star-kitten (10.0.0.8). Tailscale clients connect directly
+  # via hostNetwork UDP 10000. External clients use TURN relay via coturn
+  # on the controller (turn.devandre.sbs:3478).
   useHostNetwork: true
   nodeSelector:
     kubernetes.io/hostname: star-kitten
 
-  # Advertise star-kitten's IP in ICE candidates. No STUN discovery needed.
+  # Advertise star-kitten's IP for Tailscale clients (direct UDP).
+  # External clients fall back to TURN relay via turn.devandre.sbs.
   publicIPs:
     - "10.0.0.8"
-  stunServers: ""
+  stunServers: "turn.devandre.sbs:3478"
   useNodeIP: false
 
   UDPPort: 10000
