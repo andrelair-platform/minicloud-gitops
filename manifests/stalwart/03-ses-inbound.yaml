@@ -154,7 +154,8 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: [ALL]
-            runAsUser: 0
+            runAsNonRoot: true
+            runAsUser: 1000
       containers:
         - name: injector
           image: python:3.12-slim
