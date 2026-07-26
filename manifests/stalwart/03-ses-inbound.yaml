@@ -1,0 +1,217 @@
+---
+# ESO ExternalSecret — pulls SES inbound credentials from Vault
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ses-inbound-secret
+  namespace: mail
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: ses-inbound-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: AWS_ACCESS_KEY_ID
+      remoteRef:
+        key: secret/platform/ses-inbound
+        property: aws-access-key-id
+    - secretKey: AWS_SECRET_ACCESS_KEY
+      remoteRef:
+        key: secret/platform/ses-inbound
+        property: aws-secret-access-key
+    - secretKey: SQS_QUEUE_URL
+      remoteRef:
+        key: secret/platform/ses-inbound
+        property: sqs-url
+    - secretKey: S3_BUCKET
+      remoteRef:
+        key: secret/platform/ses-inbound
+        property: s3-bucket
+    - secretKey: AWS_DEFAULT_REGION
+      remoteRef:
+        key: secret/platform/ses-inbound
+        property: aws-region
+---
+# ConfigMap — Python long-poll injector script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ses-inbound-script
+  namespace: mail
+data:
+  injector.py: |
+    #!/usr/bin/env python3
+    """
+    SES Inbound Injector — polls SQS for new email notifications,
+    downloads raw email from S3, injects into Stalwart via SMTP.
+    """
+    import os, json, boto3, smtplib, email, logging, time
+
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+    log = logging.getLogger('ses-inbound')
+
+    SQS_URL     = os.environ['SQS_QUEUE_URL']
+    S3_BUCKET   = os.environ['S3_BUCKET']
+    REGION      = os.environ.get('AWS_DEFAULT_REGION', 'eu-west-1')
+    STALWART    = os.environ.get('STALWART_HOST', 'stalwart.mail.svc.cluster.local')
+    SMTP_PORT   = int(os.environ.get('STALWART_PORT', '25'))
+
+    sqs = boto3.client('sqs', region_name=REGION)
+    s3  = boto3.client('s3',  region_name=REGION)
+
+    def inject(raw_bytes, mail_from, rcpt_tos):
+        with smtplib.SMTP(STALWART, SMTP_PORT, timeout=30) as smtp:
+            smtp.ehlo('ses-inbound.mail.svc.cluster.local')
+            smtp.sendmail(mail_from, rcpt_tos, raw_bytes)
+        log.info('Delivered %s → %s', mail_from, rcpt_tos)
+
+    def process(msg):
+        body = json.loads(msg['Body'])
+        # SNS wraps the SES notification in Message field
+        notification = json.loads(body['Message']) if 'Message' in body else body
+        receipt = notification.get('receipt', {})
+        mail    = notification.get('mail', {})
+
+        action    = receipt.get('action', {})
+        s3_key    = action.get('objectKey', '')
+        mail_from = mail.get('source', '')
+        rcpt_tos  = mail.get('destination', [])
+
+        if not s3_key:
+            log.warning('No S3 key in notification, skipping')
+            return
+
+        log.info('Fetching s3://%s/%s', S3_BUCKET, s3_key)
+        obj = s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
+        raw = obj['Body'].read()
+
+        inject(raw, mail_from, rcpt_tos)
+
+        # Clean up S3 object after successful delivery
+        s3.delete_object(Bucket=S3_BUCKET, Key=s3_key)
+
+    def main():
+        log.info('SES inbound injector started — queue: %s', SQS_URL)
+        while True:
+            try:
+                resp = sqs.receive_message(
+                    QueueUrl=SQS_URL,
+                    MaxNumberOfMessages=10,
+                    WaitTimeSeconds=20,
+                )
+                for msg in resp.get('Messages', []):
+                    try:
+                        process(msg)
+                        sqs.delete_message(
+                            QueueUrl=SQS_URL,
+                            ReceiptHandle=msg['ReceiptHandle'],
+                        )
+                    except Exception as e:
+                        log.error('Failed to process message: %s', e)
+            except Exception as e:
+                log.error('SQS poll error: %s', e)
+                time.sleep(5)
+
+    if __name__ == '__main__':
+        main()
+---
+# Deployment — runs the injector in the mail namespace
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ses-inbound
+  namespace: mail
+  labels:
+    app: ses-inbound
+    backstage.io/kubernetes-id: ses-inbound
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ses-inbound
+  template:
+    metadata:
+      labels:
+        app: ses-inbound
+        backstage.io/kubernetes-id: ses-inbound
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      initContainers:
+        # Install boto3 into a shared emptyDir so the main container picks it up
+        - name: install-deps
+          image: python:3.12-slim
+          command: ["pip", "install", "--target=/deps", "-q", "boto3"]
+          volumeMounts:
+            - name: deps
+              mountPath: /deps
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            runAsUser: 0
+      containers:
+        - name: injector
+          image: python:3.12-slim
+          command: ["python3", "/scripts/injector.py"]
+          env:
+            - name: PYTHONPATH
+              value: /deps
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ses-inbound-secret
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ses-inbound-secret
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: SQS_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ses-inbound-secret
+                  key: SQS_QUEUE_URL
+            - name: S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: ses-inbound-secret
+                  key: S3_BUCKET
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: ses-inbound-secret
+                  key: AWS_DEFAULT_REGION
+            - name: STALWART_HOST
+              value: stalwart.mail.svc.cluster.local
+            - name: STALWART_PORT
+              value: "25"
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+            - name: deps
+              mountPath: /deps
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: false
+      volumes:
+        - name: script
+          configMap:
+            name: ses-inbound-script
+            defaultMode: 0755
+        - name: deps
+          emptyDir: {}
