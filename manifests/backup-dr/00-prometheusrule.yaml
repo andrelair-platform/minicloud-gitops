@@ -109,12 +109,14 @@ spec:
           labels:
             severity: critical
           annotations:
-            summary: "k3s SQLite backup not run in 25+ hours"
+            summary: "k3s SQLite (Kine) CronJob backup not run in 25+ hours"
             description: |
               The k3s-sqlite-backup CronJob last succeeded {{ $value | printf "%.1f" }} hours ago.
-              Control plane state (Kine/SQLite) is not being backed up to MinIO.
+              Control plane state (Kine/SQLite) is not being backed up to MinIO via k8s.
               Check: kubectl get cronjob k3s-sqlite-backup -n monitoring
               Logs: kubectl logs -n monitoring -l job-name --since=2h
+              Fallback: controller systemd timer also runs at 02:30 UTC daily.
+              Verify fallback: ssh controller "mc ls minilocal/db-backups/kine/ | tail -3"
 
         - alert: ESOClusterSecretStoreNotReady
           expr: |
