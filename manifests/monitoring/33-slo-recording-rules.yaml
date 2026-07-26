@@ -47,7 +47,7 @@ spec:
             sum(
               increase(
                 kube_pod_container_status_restarts_total{
-                  namespace!~"kube-system|longhorn-system|monitoring|observability|velero|system-upgrade|reloader|vpa-system|cert-manager|kube-node-lease|kube-public"
+                  namespace!~"kube-system|longhorn-system|monitoring|observability|velero|system-upgrade|reloader|vpa-system|cert-manager|kube-node-lease|kube-public|chaos-mesh"
                 }[24h]
               )
             ) or vector(0)
