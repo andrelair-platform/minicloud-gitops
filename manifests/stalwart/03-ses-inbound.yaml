@@ -75,13 +75,19 @@ data:
         receipt = notification.get('receipt', {})
         mail    = notification.get('mail', {})
 
+        # When receipt rule has both S3 and SNS actions, the SNS notification
+        # describes the SNS action (type=SNS), not the S3 action. The S3 object
+        # key is the inbound messageId assigned by SES, stored at {prefix}{messageId}.
         action    = receipt.get('action', {})
-        s3_key    = action.get('objectKey', '')
         mail_from = mail.get('source', '')
         rcpt_tos  = mail.get('destination', [])
 
-        if not s3_key:
-            log.warning('No S3 key in notification, skipping')
+        # Try objectKey first (in case rule has only S3 action sending to SNS),
+        # then fall back to mail.messageId (standard dual S3+SNS action setup).
+        s3_key = action.get('objectKey', '') or f"inbound/{mail.get('messageId', '')}"
+
+        if not s3_key or s3_key == 'inbound/':
+            log.warning('No S3 key in notification, skipping. action=%s', action)
             return
 
         log.info('Fetching s3://%s/%s', S3_BUCKET, s3_key)
