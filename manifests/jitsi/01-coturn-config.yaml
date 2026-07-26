@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jitsi-coturn-config
+  namespace: collab
+data:
+  STUN_HOST: "turn.devandre.sbs"
+  STUN_PORT: "3478"
+  TURN_HOST: "turn.devandre.sbs"
+  TURN_PORT: "3478"
+  TURN_TRANSPORT: "udp"
