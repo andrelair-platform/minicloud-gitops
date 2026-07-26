@@ -29,6 +29,13 @@ worker:
     resources:
       requests: { cpu: 100m, memory: 256Mi }
       limits:   { cpu: 500m, memory: 512Mi }
+    affinity:
+      podAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: erpnext-gunicorn
+            topologyKey: kubernetes.io/hostname
   short:
     replicaCount: 1
     resources:
