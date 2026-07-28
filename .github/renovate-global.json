@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "repositories": [
+    "andrelair-platform/minicloud-gitops",
+    "andrelair-platform/minicloud-backstage",
+    "andrelair-platform/minicloud-open-webui",
+    "andrelair-platform/minicloud-onlyoffice",
+    "andrelair-platform/minicloud-plane",
+    "andrelair-platform/platform-demo",
+    "andrelair-platform/ktayl-solution-web"
+  ],
+  "onboarding": false,
+  "requireConfig": "optional",
+  "platform": "github"
+}
