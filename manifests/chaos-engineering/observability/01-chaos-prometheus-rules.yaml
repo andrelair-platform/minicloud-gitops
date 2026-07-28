@@ -1,0 +1,113 @@
+---
+# Prometheus recording rules and alerts for chaos engineering game days.
+#
+# Design principles:
+#   - ChaosGameDayActive fires when ANY chaos experiment is injecting.
+#     AlertManager inhibit_rules use this to suppress the pod-restart SLO
+#     alert during known chaos windows (expected degradation ≠ incident).
+#   - TTR (time-to-recover) is measured from the moment a pod is killed
+#     to the moment all desired replicas are available again.
+#   - All chaos experiment types tracked: PodChaos, NetworkChaos, StressChaos.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: chaos-engineering-rules
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+
+    # ── Active experiment detection ──────────────────────────────────────────
+    - name: chaos.active
+      interval: 15s
+      rules:
+
+        # Fires whenever chaos-mesh is actively injecting into a pod.
+        # Uses chaos-mesh controller metric: chaos_controller_chaos_experiments_total
+        # with status="Injecting". Falls back to 0 if metric not yet scraped.
+        - alert: ChaosGameDayActive
+          expr: >-
+            sum(chaos_controller_chaos_experiments_total{status="Injecting"}) > 0
+            or
+            sum(chaos_controller_chaos_experiments_total{status="Running"}) > 0
+          for: 0m
+          labels:
+            severity: info
+            team: platform
+            chaos: "true"
+          annotations:
+            summary: "Chaos game day in progress"
+            description: >-
+              A chaos experiment is actively injecting faults.
+              SLO pod-restart alerts are inhibited during this window.
+              Check Chaos Mesh dashboard for active experiments.
+
+        # Count of pods in CrashLoopBackOff across app namespaces.
+        # During chaos: expected to rise and then recover.
+        # After chaos: should return to 0 — if not, chaos revealed a real bug.
+        - record: chaos:pod_crash_loop:count
+          expr: >-
+            count(
+              kube_pod_container_status_waiting_reason{
+                reason="CrashLoopBackOff",
+                namespace!~"kube-system|longhorn-system|monitoring|observability|velero|chaos-mesh"
+              }
+            ) or vector(0)
+
+    # ── Recovery time tracking ────────────────────────────────────────────────
+    - name: chaos.recovery
+      interval: 15s
+      rules:
+
+        # Deployment replica gap: desired - available. Spikes during pod-kill
+        # experiments and returns to 0 when k8s reschedules the killed pod.
+        # TTR for pod-kill = time this metric is > 0 for the target deployment.
+        - record: chaos:deployment_replica_gap:count
+          expr: >-
+            (kube_deployment_spec_replicas - kube_deployment_status_replicas_available)
+            > 0
+
+        # Alert if a deployment hasn't recovered within 120s after a chaos event.
+        # This catches cases where the experiment revealed a real scheduling problem.
+        - alert: ChaosRecoveryTimeout
+          expr: >-
+            chaos:deployment_replica_gap:count > 0
+          for: 2m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Deployment {{ $labels.deployment }} not recovering"
+            description: >-
+              {{ $labels.deployment }} in {{ $labels.namespace }} has been missing
+              replicas for over 2 minutes. A chaos experiment may have revealed a
+              real scheduling or image-pull problem. Investigate immediately.
+
+    # ── Experiment SLO impact measurement ────────────────────────────────────
+    - name: chaos.slo-impact
+      interval: 30s
+      rules:
+
+        # HTTP error rate during last 5m — same as SLO recording rule but
+        # broken out per ingress host so we can see which service was impacted.
+        - record: chaos:http_error_rate_by_host:ratio5m
+          expr: >-
+            sum by (host) (
+              rate(nginx_ingress_controller_requests{status=~"5.."}[5m])
+            )
+            /
+            sum by (host) (
+              rate(nginx_ingress_controller_requests[5m])
+            )
+
+        # Latency p95 per host during a chaos window.
+        - record: chaos:latency_p95_by_host:seconds5m
+          expr: >-
+            histogram_quantile(
+              0.95,
+              sum by (host, le) (
+                rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])
+              )
+            )
