@@ -1,8 +1,21 @@
-# k3s upgrade Plans — system-upgrade-controller v0.19.2
-# Target: v1.36.2+k3s1 (aligns all nodes; currently set-hog/fast-*/fast-heron on v1.36.1+k3s1)
-# Server plan runs first, agent plan waits for server to complete.
-# To upgrade to a new version: change the version field below and commit.
-# To PAUSE upgrades: set spec.concurrency: 0 or add a label selector that matches nothing.
+# k3s upgrade Plans — system-upgrade-controller
+#
+# Upgrade sequence:
+#   1. Server plan runs first (set-hog, the single control-plane node).
+#   2. Agent plan's prepare step waits for server plan to complete.
+#   3. Workers upgrade one at a time (concurrency: 1).
+#
+# To upgrade: change `version:` below and commit. ArgoCD auto-syncs the Plan.
+# To PAUSE: set concurrency: 0 on both plans (commit, sync, then revert when ready).
+#
+# IMPORTANT — ArgoCD auto-sync and upgrade jobs:
+#   Do not trigger a sync while the SUC controller is running upgrade Job pods.
+#   The Job pods are owned by the Plan; ArgoCD sees them as "out of sync" and
+#   may delete them if selfHeal is enabled. Pause auto-sync or add an ignoreDifferences
+#   entry for Job resources during active upgrade windows.
+#
+# Current cluster version: v1.36.2+k3s1 (all 5 nodes as of 2026-07-28).
+# Next target: bump version below when a new k3s release is validated.
 ---
 apiVersion: upgrade.cattle.io/v1
 kind: Plan
@@ -11,11 +24,20 @@ metadata:
   namespace: system-upgrade
 spec:
   concurrency: 1
-  cordon: true
+  # operator: Exists is preferred over matchLabels: "true" — the label value
+  # varies across k3s versions; Exists matches regardless of value.
   nodeSelector:
-    matchLabels:
-      node-role.kubernetes.io/control-plane: "true"
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
   serviceAccountName: system-upgrade
+  cordon: true
+  drain:
+    force: true
+    ignoreDaemonSets: true
+    deleteEmptydirData: true
+    # timeout matches the default kubectl drain --timeout
+    timeout: 120
   version: v1.36.2+k3s1
   upgrade:
     image: rancher/k3s-upgrade
@@ -34,18 +56,23 @@ metadata:
   namespace: system-upgrade
 spec:
   concurrency: 1
-  cordon: true
   nodeSelector:
     matchExpressions:
       - key: node-role.kubernetes.io/control-plane
         operator: DoesNotExist
+  serviceAccountName: system-upgrade
+  cordon: true
+  drain:
+    force: true
+    ignoreDaemonSets: true       # required: Longhorn and other DaemonSet pods
+    deleteEmptydirData: true     # required: many system pods use emptyDir
+    timeout: 120
   prepare:
-    # Wait for the server plan to complete before upgrading agents
+    # Blocks agent upgrades until the server plan has completed.
     image: rancher/k3s-upgrade
     args:
       - prepare
       - k3s-server
-  serviceAccountName: system-upgrade
   version: v1.36.2+k3s1
   upgrade:
     image: rancher/k3s-upgrade
