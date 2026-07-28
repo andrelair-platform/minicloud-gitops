@@ -32,7 +32,7 @@ spec:
   mode: one
   selector:
     namespaces:
-      - platform-demo-staging
+      - gitops-demo
     labelSelectors:
       app: platform-demo
   duration: "5m"
