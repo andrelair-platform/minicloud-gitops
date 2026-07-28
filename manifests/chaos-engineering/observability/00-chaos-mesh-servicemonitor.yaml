@@ -1,0 +1,24 @@
+---
+# Scrape chaos-mesh controller metrics from port 10080
+# Exposes experiment counts, injection failures, webhook latency, etc.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: chaos-mesh-controller
+  namespace: chaos-mesh
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: controller-manager
+      app.kubernetes.io/instance: chaos-mesh
+  namespaceSelector:
+    matchNames:
+      - chaos-mesh
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scheme: http

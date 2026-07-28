@@ -1,0 +1,48 @@
+---
+# EXPERIMENT 3 — CPU Stress: platform-demo under 80% load
+#
+# Steady-state hypothesis:
+#   All 3 platform-demo replicas can sustain 80% CPU load for 3 minutes without:
+#   - HTTP p95 latency exceeding 500ms (job:slo_latency_p95:seconds5m < 0.5)
+#   - Any pod OOMKill or eviction
+#   - KEDA triggering a scale-up (no HPA configured — VPA handles resources)
+#
+# Why this matters:
+#   Verifies that resource limits (1000m CPU, 512Mi memory) are correctly
+#   set and that the Linux cgroup CPU throttle kicks in before the process
+#   becomes unresponsive. VPA should observe elevated usage and adjust
+#   requests upward over subsequent days.
+#
+# How to run (game day):
+#   kubectl apply -f 03-cpu-stress-platform-demo.yaml
+#   # Observe for 3 minutes:
+#   kubectl get stresschaos -n chaos-mesh -w
+#   kubectl top pods -n platform-demo-staging
+#   # Cleanup:
+#   kubectl delete -f 03-cpu-stress-platform-demo.yaml
+#
+# Expected outcome: CPU throttled at limits, latency increases slightly,
+#   pods stay Running, no restarts.
+# Risk level: MEDIUM (CPU throttle affects real traffic — run during low-traffic window)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: platform-demo-cpu-stress
+  namespace: chaos-mesh
+  labels:
+    experiment-id: "exp-03"
+    game-day: "true"
+    target-service: platform-demo
+    risk-level: medium
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - platform-demo-staging
+    labelSelectors:
+      app: platform-demo
+  stressors:
+    cpu:
+      workers: 2
+      load: 80
+  duration: "3m"
