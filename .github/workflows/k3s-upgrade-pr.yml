@@ -46,7 +46,8 @@ jobs:
         id: current
         run: |
           # Both plans are pinned to the same version — read from the server plan.
-          CURRENT=$(grep -m1 'version:' manifests/system-upgrade/01-k3s-plans.yaml \
+          # Use '^[^#]' to skip comment lines that also contain the word 'version:'.
+          CURRENT=$(grep -m1 '^ *version:' manifests/system-upgrade/01-k3s-plans.yaml \
             | awk '{print $2}')
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "Current Plan version: $CURRENT"
