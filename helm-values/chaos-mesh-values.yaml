@@ -3,6 +3,11 @@ chaosDaemon:
   runtime: containerd
   socketPath: /run/k3s/containerd/containerd.sock
 controllerManager:
+  env:
+    # k3s uses port 10250 for kubelet — the default WEBHOOK_PORT: 10250 causes
+    # the k3s tunnel proxy to route webhook calls to the kubelet instead of the
+    # chaos-mesh pod, returning 502. Port 9443 avoids this conflict.
+    WEBHOOK_PORT: "9443"
   resources:
     limits:
       cpu: 500m
