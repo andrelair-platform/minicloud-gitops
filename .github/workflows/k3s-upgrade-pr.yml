@@ -1,0 +1,135 @@
+name: k3s upgrade PR
+
+on:
+  schedule:
+    # Every Monday at 08:00 UTC — check for new k3s releases
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — print what would change, do not open PR'
+        type: boolean
+        default: false
+
+jobs:
+  check-and-bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Get latest k3s release
+        id: latest
+        run: |
+          # k3s releases follow the pattern: v1.X.Y+k3s1
+          # We query the GitHub API and pick the latest stable (non-RC) tag.
+          LATEST=$(curl -sf \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/k3s-io/k3s/releases/latest" \
+            | jq -r '.tag_name')
+
+          if [[ -z "$LATEST" || "$LATEST" == "null" ]]; then
+            echo "Failed to fetch latest k3s release" >&2
+            exit 1
+          fi
+
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "Latest k3s release: $LATEST"
+
+      - name: Get current version from Plan YAML
+        id: current
+        run: |
+          # Both plans are pinned to the same version — read from the server plan.
+          CURRENT=$(grep -m1 'version:' manifests/system-upgrade/01-k3s-plans.yaml \
+            | awk '{print $2}')
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "Current Plan version: $CURRENT"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          LATEST="${{ steps.latest.outputs.latest }}"
+          CURRENT="${{ steps.current.outputs.current }}"
+
+          if [[ "$LATEST" == "$CURRENT" ]]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+            echo "Already at latest: $CURRENT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+            echo "Upgrade available: $CURRENT → $LATEST"
+          fi
+
+      - name: Bump version in Plan YAML
+        if: steps.compare.outputs.up_to_date == 'false' && inputs.dry_run != true
+        run: |
+          LATEST="${{ steps.latest.outputs.latest }}"
+          CURRENT="${{ steps.current.outputs.current }}"
+
+          # Replace every occurrence of the current version string.
+          # Both plans (server + agent) share the same version line.
+          sed -i "s/${CURRENT}/${LATEST}/g" \
+            manifests/system-upgrade/01-k3s-plans.yaml
+
+          # Verify the replacement landed
+          grep 'version:' manifests/system-upgrade/01-k3s-plans.yaml
+
+      - name: Open upgrade PR
+        if: steps.compare.outputs.up_to_date == 'false' && inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+        run: |
+          LATEST="${{ steps.latest.outputs.latest }}"
+          CURRENT="${{ steps.current.outputs.current }}"
+          BRANCH="chore/k3s-upgrade-${LATEST//+/-}"
+
+          git config user.name  'AndreLiar'
+          git config user.email 'andrelaurelyvan.kanmegnetabouguie@ynov.com'
+
+          git checkout -b "$BRANCH"
+          git add manifests/system-upgrade/01-k3s-plans.yaml
+          git commit -m "chore(k3s): bump k3s version ${CURRENT} → ${LATEST}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore(k3s): upgrade k3s ${CURRENT} → ${LATEST}" \
+            --body "$(cat <<EOF
+## k3s Upgrade — ${CURRENT} → ${LATEST}
+
+Automated PR opened by the weekly k3s upgrade check.
+
+### Pre-merge checklist
+
+- [ ] Read the [k3s release notes](https://github.com/k3s-io/k3s/releases/tag/${LATEST}) for breaking changes or API deprecations
+- [ ] Check [containerd version bump](https://github.com/k3s-io/k3s/releases/tag/${LATEST}) — if containerd changes, verify chaos-mesh \`socketPath\` still matches
+- [ ] Verify no cluster workloads have a PodDisruptionBudget that would block drain
+- [ ] Check Longhorn volume replica counts: \`kubectl get volume -n longhorn-system\`
+- [ ] Take a kine/SQLite backup: \`ssh controller "bash ~/bin/kine-backup.sh"\`
+
+### What happens after merge
+
+1. ArgoCD syncs the Plan objects (pause auto-sync if \`selfHeal\` is active)
+2. system-upgrade-controller drains and upgrades **set-hog** first (server plan)
+3. Once set-hog is Ready, workers upgrade one at a time (agent plan, concurrency: 1)
+4. Monitor: \`ssh controller "kubectl get nodes -w"\` and \`kubectl get jobs -n system-upgrade -w\`
+5. swift-mac requires manual power-cycle if the upgrade stalls (Apple SMC limitation)
+
+### Rollback
+
+k3s does not have a built-in rollback. If the upgrade fails mid-flight:
+\`\`\`bash
+# Restore kine backup from before the upgrade
+ssh controller "bash ~/bin/kine-backup.sh --restore <backup-file>"
+# Reinstall old version on the affected node
+ssh ubuntu@<node-ip> -o ProxyJump=controller \
+  "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${CURRENT} sh -"
+\`\`\`
+EOF
+)"
