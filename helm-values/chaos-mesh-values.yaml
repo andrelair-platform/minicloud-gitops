@@ -30,4 +30,10 @@ dnsServer:
   create: false
 webhook:
   certManager:
-    enabled: false
+    # cert-manager cainjector automatically syncs caBundle in MWC/VWC.
+    # Required in k3s: the k3s API server does not re-read VWC/MWC caBundle
+    # updates from kubectl patches — only cert-manager's cainjector mechanism
+    # triggers a proper in-memory refresh. Without this, webhook cert rotation
+    # on pod restart causes permanent "x509: unknown authority" errors even
+    # after manual caBundle patches.
+    enabled: true
