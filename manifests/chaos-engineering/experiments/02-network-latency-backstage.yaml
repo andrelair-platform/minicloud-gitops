@@ -1,0 +1,56 @@
+---
+# EXPERIMENT 2 — Network Latency: Backstage → PostgreSQL
+#
+# Steady-state hypothesis:
+#   Backstage should remain functional with 200ms added latency on all
+#   traffic from the backstage pod to backstage-postgresql (:5432).
+#   - HTTP p95 stays < 3000ms (job:slo_latency_p95:seconds5m < 3)
+#   - No 5xx errors from Backstage UI
+#   - Backstage stays Healthy in ArgoCD
+#
+# Why this matters:
+#   Validates that Backstage's PostgreSQL connection pool handles network
+#   jitter without cascading timeouts. Tests the app's resilience to
+#   degraded DB connectivity — common in multi-AZ or cross-region setups.
+#
+# How to run (game day):
+#   kubectl apply -f 02-network-latency-backstage.yaml
+#   # Observe for 3 minutes (watch Grafana SLO dashboard):
+#   kubectl get networkchaos -n chaos-mesh -w
+#   # Cleanup:
+#   kubectl delete -f 02-network-latency-backstage.yaml
+#
+# Expected outcome: Backstage slows (page loads ~200ms slower) but no errors.
+# If it breaks: set explicit DB timeouts in Backstage app-config.
+# Risk level: LOW (additive latency only, reversible immediately)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: backstage-db-latency
+  namespace: chaos-mesh
+  labels:
+    experiment-id: "exp-02"
+    game-day: "true"
+    target-service: backstage
+    risk-level: low
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - backstage
+    labelSelectors:
+      app.kubernetes.io/component: backstage
+  delay:
+    latency: "200ms"
+    correlation: "25"
+    jitter: "50ms"
+  direction: to
+  target:
+    mode: all
+    selector:
+      namespaces:
+        - backstage
+      labelSelectors:
+        app.kubernetes.io/name: postgresql
+  duration: "3m"

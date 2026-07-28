@@ -1,0 +1,39 @@
+---
+# EXPERIMENT 1 — Pod Failure: platform-demo-staging resilience
+#
+# Steady-state hypothesis:
+#   With 3 replicas, killing 1 pod should cause zero user-visible errors.
+#   - HTTP availability: >99.9% (job:slo_availability:ratio5m ≥ 0.999)
+#   - Pod recovers and rejoins within 60s
+#   - NGINX routes to the 2 remaining healthy pods during recovery
+#
+# How to run (game day):
+#   kubectl apply -f 01-pod-failure-platform-demo.yaml
+#   # Observe for 5 minutes:
+#   kubectl get podchaos -n chaos-mesh -w
+#   kubectl get pods -n platform-demo-staging -w
+#   # Cleanup:
+#   kubectl delete -f 01-pod-failure-platform-demo.yaml
+#
+# Expected outcome: pod killed → Argo Rollouts creates replacement → ready in ~20s
+# Risk level: LOW (2/3 replicas remain, no data loss)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: platform-demo-pod-failure
+  namespace: chaos-mesh
+  labels:
+    experiment-id: "exp-01"
+    game-day: "true"
+    target-service: platform-demo
+    risk-level: low
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - platform-demo-staging
+    labelSelectors:
+      app: platform-demo
+  duration: "5m"
+  gracePeriod: 0

@@ -1,0 +1,35 @@
+---
+# Deploys ONLY the observability layer for chaos engineering:
+#   - ServiceMonitor for chaos-mesh controller metrics
+#   - PrometheusRules: ChaosGameDayActive alert + recovery tracking
+#
+# The chaos experiment manifests (experiments/) are NOT managed by ArgoCD.
+# They are applied manually during game days and deleted after:
+#   kubectl apply -f manifests/chaos-engineering/experiments/01-pod-failure-platform-demo.yaml
+#   kubectl delete -f manifests/chaos-engineering/experiments/01-pod-failure-platform-demo.yaml
+#
+# This separation is intentional: chaos experiments should require explicit
+# human intent to run, not auto-sync from a git push.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chaos-engineering
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: manifests/chaos-engineering/observability
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
