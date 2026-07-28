@@ -22,8 +22,10 @@ spec:
     - from:
         - podSelector: {}
 ---
-# kube-apiserver calls chaos-mesh mutation/validation webhooks from node IPs.
-# chaos-daemon also receives commands from chaos-controller via cluster node routing.
+# kube-apiserver calls chaos-mesh webhooks via flannel (VXLAN), so the source IP
+# is set-hog's flannel.1 interface (10.42.0.0), NOT the physical node IP (10.0.0.2).
+# 10.0.0.0/24 covers node-to-node direct traffic and chaos-daemon connections.
+# 10.42.0.0/24 covers the API server's flannel source IP for webhook admission calls.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -37,6 +39,9 @@ spec:
     - from:
         - ipBlock:
             cidr: 10.0.0.0/24
+    - from:
+        - ipBlock:
+            cidr: 10.42.0.0/24
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
