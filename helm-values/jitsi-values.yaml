@@ -6,6 +6,14 @@ tz: "Europe/Paris"
 # DNS: turn.devandre.sbs A 37.65.57.112 (unproxied).
 # coturn.enabled=false: we run Coturn externally as Docker+systemd on the controller.
 # TURN config injected into prosody via extraEnvFrom (chart gates it on coturn.enabled).
+#
+# IPv6 direct path (SFR DS-Lite / CGNAT clients): WebRTC browsers always request
+# REQUESTED-ADDRESS-FAMILY=IPv4 for TURN allocations, so TURN cannot relay for
+# DS-Lite clients whose inbound IPv4 is blocked at the AFTR. Instead JVB advertises
+# its own IPv6 host candidates (star-kitten has global /64 from SFR RA) and phones
+# connect directly over IPv6, bypassing TURN entirely.
+# PREREQUISITE on star-kitten: sudo ufw allow 10000/udp
+# SFR box GR140IG IPv6 rule (Sécurité→Accès→Réseau v6): dest=star-kitten IPv6, UDP 10000.
 turnHost: "turn.devandre.sbs"
 
 # No per-meeting JWT auth. Authentik forward-auth on the NGINX ingress
@@ -96,15 +104,18 @@ jicofo:
     limits:   { cpu: 500m, memory: 256Mi }
 
 jvb:
-  # Pin JVB to star-kitten (10.0.0.8). Tailscale clients connect directly
-  # via hostNetwork UDP 10000. External clients use TURN relay via coturn
-  # on the controller (turn.devandre.sbs:3478).
+  # Pin JVB to star-kitten (10.0.0.8). hostNetwork exposes all of star-kitten's
+  # interfaces: 10.0.0.8 (LAN/Tailscale), 2a02:8424:6ee0:be01:fa75:a4ff:fef9:2fe9
+  # and :fedd:dc5a (SFR RA global IPv6). JVB gathers all as host candidates.
+  # - Tailscale/LAN clients: direct UDP to 10.0.0.8:10000
+  # - SFR 5G clients (DS-Lite): direct UDP over IPv6 to star-kitten's IPv6:10000
+  # - Other external clients: TURN relay via coturn on the controller
   useHostNetwork: true
   nodeSelector:
     kubernetes.io/hostname: star-kitten
 
-  # Advertise star-kitten's IP for Tailscale clients (direct UDP).
-  # External clients fall back to TURN relay via turn.devandre.sbs.
+  # 10.0.0.8 advertised for Tailscale/LAN clients. IPv6 candidates are gathered
+  # automatically from host interfaces — no publicIPs entry needed for IPv6.
   publicIPs:
     - "10.0.0.8"
   stunServers: "turn.devandre.sbs:3478"
