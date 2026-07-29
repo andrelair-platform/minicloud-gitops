@@ -1,0 +1,44 @@
+# Verify targetRevision in apps/cilium.yaml is compatible with your k3s version
+# before syncing: helm search repo cilium/cilium --versions | head -10
+
+kubeProxyReplacement: true
+k8sServiceHost: "10.0.0.2"    # set-hog — k3s control plane
+k8sServicePort: "6443"
+
+ipam:
+  mode: kubernetes              # use pod CIDR managed by k3s (10.42.0.0/16)
+
+operator:
+  replicas: 1                   # single control plane, no anti-affinity needed
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - hubble.10.0.0.200.nip.io
+      tls:
+        - secretName: hubble-ui-tls
+          hosts:
+            - hubble.10.0.0.200.nip.io
+
+encryption:
+  enabled: true
+  type: wireguard               # transparent pod-to-pod encryption across nodes
+
+# L2 announcements replace MetalLB L2/ARP mode — same VIP range 10.0.0.200-10.0.0.250.
+# Do NOT enable bgpControlPlane: the cluster has no ToR switch or BGP-speaking
+# router on the LAN; BGP routes would be announced into a void.
+l2announcements:
+  enabled: true
+
+# cgroup v2 auto-mount — required on Ubuntu 22.04 / 24.04 (kernel >= 5.10)
+cgroup:
+  autoMount:
+    enabled: true
+  hostRoot: /sys/fs/cgroup
