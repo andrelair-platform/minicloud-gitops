@@ -59,6 +59,9 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: chaos-mesh
       server: https://kubernetes.default.svc
+    - namespace: cilium-secrets
+      server: https://kubernetes.default.svc
+      server: https://kubernetes.default.svc
     - namespace: collab
       server: https://kubernetes.default.svc
     - namespace: collab-dev
