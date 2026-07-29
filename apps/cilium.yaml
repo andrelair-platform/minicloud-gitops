@@ -28,10 +28,8 @@ spec:
     server: https://kubernetes.default.svc
     namespace: kube-system
   syncPolicy:
-    # Manual sync — CNI changes require the Ansible node migration playbook
-    # to run in lockstep. Do not enable automated sync until all nodes have
-    # been migrated off Flannel.
-    automated: null
+    # No automated sync — CNI changes must be coordinated with the Ansible
+    # node migration playbook. Enable automated after all nodes are on Cilium.
     syncOptions:
       - CreateNamespace=false
       - ServerSideApply=true
