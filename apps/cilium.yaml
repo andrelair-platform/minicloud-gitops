@@ -15,9 +15,8 @@ spec:
   sources:
     - repoURL: https://helm.cilium.io
       chart: cilium
-      # Verify this version supports your k3s Kubernetes version before syncing.
-      # Check: helm search repo cilium/cilium --versions | grep "^cilium"
-      targetRevision: "1.17.3"
+      # 1.19.6 confirmed: kubeVersion >= 1.21.0 (no upper bound), valid for k3s 1.36
+      targetRevision: "1.19.6"
       helm:
         releaseName: cilium
         valueFiles:
