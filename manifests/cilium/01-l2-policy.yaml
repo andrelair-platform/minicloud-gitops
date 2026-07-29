@@ -1,0 +1,15 @@
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: minicloud-l2
+  namespace: kube-system
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
+  # All cluster nodes use enp* interface naming (Ubuntu predictable network names).
+  # swift-mac uses enp1s0f0; ThinkPad nodes use enp0s31f6.
+  interfaces:
+    - ^enp.*
+  externalIPs: true
+  loadBalancerIPs: true
