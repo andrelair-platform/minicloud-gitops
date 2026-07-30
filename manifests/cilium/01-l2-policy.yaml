@@ -2,7 +2,6 @@ apiVersion: cilium.io/v2
 kind: CiliumL2AnnouncementPolicy
 metadata:
   name: minicloud-l2
-  namespace: kube-system
 spec:
   nodeSelector:
     matchLabels:
