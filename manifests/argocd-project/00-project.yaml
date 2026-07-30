@@ -185,6 +185,8 @@ spec:
       kind: CiliumL2AnnouncementPolicy
     - group: "cilium.io"
       kind: CiliumNode
+    - group: "cilium.io"
+      kind: CiliumClusterwideNetworkPolicy
 
   # Explicit group allowlist — group: "*" wildcard removed
   namespaceResourceWhitelist:
@@ -239,4 +241,7 @@ spec:
       kind: "*"
     # VPA objects (VerticalPodAutoscaler)
     - group: "autoscaling.k8s.io"
+      kind: "*"
+    # Cilium namespace-scoped network policies
+    - group: "cilium.io"
       kind: "*"

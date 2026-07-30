@@ -1,0 +1,26 @@
+---
+# Cilium identity model break: Kubernetes NetworkPolicy ipBlock rules map to
+# the Cilium "world" entity and do NOT match traffic from host or remote-node
+# entities. Every namespace has "allow-cluster-nodes" with ipBlock: 10.0.0.0/24
+# and ipBlock: 10.42.0.0/16, intended to allow kube-apiserver webhook calls,
+# kubelet health probes, and image pulls. With Cilium these rules are silently
+# ignored for node-origin traffic (remote-node identity).
+#
+# This CiliumClusterwideNetworkPolicy restores the expected behavior:
+# - host       = traffic from the local node's host network namespace
+# - remote-node = traffic from other cluster nodes (kube-apiserver on set-hog,
+#                 kubelets on any node, Cilium health probes, node exporter)
+#
+# Without this: kube-apiserver webhook calls fail (cert-manager, KEDA,
+# gatekeeper, chaos-mesh), kubelet image pulls time out, Cilium health
+# checks drop, node-to-pod monitoring breaks.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-remote-node-to-all
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
