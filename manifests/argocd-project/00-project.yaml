@@ -61,7 +61,6 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: cilium-secrets
       server: https://kubernetes.default.svc
-      server: https://kubernetes.default.svc
     - namespace: collab
       server: https://kubernetes.default.svc
     - namespace: collab-dev
@@ -115,8 +114,6 @@ spec:
     - namespace: minicloud-plane-staging
       server: https://kubernetes.default.svc
     - namespace: minicloud-plane-prod
-      server: https://kubernetes.default.svc
-    - namespace: metallb-system
       server: https://kubernetes.default.svc
     - namespace: monitoring
       server: https://kubernetes.default.svc
@@ -182,6 +179,12 @@ spec:
       kind: ConstraintTemplate
     - group: "constraints.gatekeeper.sh"
       kind: "*"
+    - group: "cilium.io"
+      kind: CiliumLoadBalancerIPPool
+    - group: "cilium.io"
+      kind: CiliumL2AnnouncementPolicy
+    - group: "cilium.io"
+      kind: CiliumNode
 
   # Explicit group allowlist — group: "*" wildcard removed
   namespaceResourceWhitelist:
