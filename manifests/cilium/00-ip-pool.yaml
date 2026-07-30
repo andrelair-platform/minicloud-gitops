@@ -2,7 +2,6 @@ apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: cluster-pool
-  namespace: kube-system
 spec:
   # Mirrors MetalLB cluster-pool: 10.0.0.200-10.0.0.250
   blocks:

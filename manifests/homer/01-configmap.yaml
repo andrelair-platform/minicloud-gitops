@@ -92,6 +92,12 @@ data:
         tag: internal
         url: https://polaris.10.0.0.200.nip.io
         target: _blank
+      - name: Hubble
+        icon: fas fa-network-wired
+        subtitle: "Cilium network observability — eBPF flow visibility, service map — Tailscale only"
+        tag: internal
+        url: https://hubble.10.0.0.200.nip.io
+        target: _blank
     - name: Identity & Secrets
       icon: fas fa-shield-alt
       items:
