@@ -1,26 +1,13 @@
----
-# Cilium identity model break: Kubernetes NetworkPolicy ipBlock rules map to
-# the Cilium "world" entity and do NOT match traffic from host or remote-node
-# entities. Every namespace has "allow-cluster-nodes" with ipBlock: 10.0.0.0/24
-# and ipBlock: 10.42.0.0/16, intended to allow kube-apiserver webhook calls,
-# kubelet health probes, and image pulls. With Cilium these rules are silently
-# ignored for node-origin traffic (remote-node identity).
+# This file is intentionally empty.
 #
-# This CiliumClusterwideNetworkPolicy restores the expected behavior:
-# - host       = traffic from the local node's host network namespace
-# - remote-node = traffic from other cluster nodes (kube-apiserver on set-hog,
-#                 kubelets on any node, Cilium health probes, node exporter)
+# The CiliumClusterwideNetworkPolicy allow-remote-node-to-all was removed.
+# It used endpointSelector: {} which applied an ingress restriction to ALL
+# pods cluster-wide — including pods with no prior NetworkPolicy (CoreDNS,
+# Longhorn). This silently broke DNS (pod-to-CoreDNS queries dropped) and
+# all cross-namespace connectivity for unprotected namespaces.
 #
-# Without this: kube-apiserver webhook calls fail (cert-manager, KEDA,
-# gatekeeper, chaos-mesh), kubelet image pulls time out, Cilium health
-# checks drop, node-to-pod monitoring breaks.
-apiVersion: cilium.io/v2
-kind: CiliumClusterwideNetworkPolicy
-metadata:
-  name: allow-remote-node-to-all
-spec:
-  endpointSelector: {}
-  ingress:
-    - fromEntities:
-        - host
-        - remote-node
+# Fix: per-namespace CiliumNetworkPolicy allow-node-entities (kind: CiliumNetworkPolicy,
+# not CiliumClusterwideNetworkPolicy) added to each file in this directory.
+# Namespace-scoped policies only restrict endpoints that already have a
+# default-deny NetworkPolicy — unprotected namespaces (kube-system, longhorn-system)
+# remain default-allow.

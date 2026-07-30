@@ -87,3 +87,18 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: observability
+---
+# Cilium entity-based replacement for ipBlock-based allow-cluster-nodes.
+# In Cilium, traffic from cluster nodes (kubelet, kube-apiserver) carries
+# remote-node or host identity — ipBlock CIDR rules do not match it.
+apiVersion: cilium.io/v1
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-node-entities
+  namespace: ingress-nginx
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
