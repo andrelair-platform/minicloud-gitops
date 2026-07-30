@@ -94,7 +94,7 @@ spec:
 # Cilium entity-based replacement for ipBlock-based allow-cluster-nodes.
 # In Cilium, traffic from cluster nodes (kubelet, kube-apiserver) carries
 # remote-node or host identity — ipBlock CIDR rules do not match it.
-apiVersion: cilium.io/v1
+apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: allow-node-entities
