@@ -42,6 +42,8 @@ spec:
 # Any in-cluster client (platform-demo, event-demo, etc.) may publish/subscribe.
 # NATS is a shared message bus — restrict by publisher identity at the NATS auth
 # level, not at the NetworkPolicy level.
+# namespaceSelector: {} required: Cilium applies ipBlock as world-entity rules
+# only, not to pods with known Cilium identity. Pod-to-NATS requires identity rule.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -55,8 +57,7 @@ spec:
     - Ingress
   ingress:
     - from:
-        - ipBlock:
-            cidr: 10.42.0.0/16
+        - namespaceSelector: {}
       ports:
         - port: 4222
           protocol: TCP

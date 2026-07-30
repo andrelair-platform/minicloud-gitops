@@ -22,8 +22,10 @@ spec:
     - from:
         - podSelector: {}
 ---
-# Internet traffic (Cloudflare Tunnel + direct) hits the NGINX controller on 80/443.
-# MetalLB assigns 10.0.0.200 as the LoadBalancer VIP — traffic arrives from any source.
+# Cilium L2 announces 10.0.0.200 as the LoadBalancer VIP — traffic arrives from any source.
+# ipBlock: 0.0.0.0/0 maps to the Cilium "world" entity (truly external traffic only).
+# namespaceSelector: {} is required for in-cluster pods whose traffic carries pod identity
+# (not world identity), e.g. kubelet image pulls via VIP, OIDC clients, Cloudflare Tunnel.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -39,6 +41,7 @@ spec:
     - from:
         - ipBlock:
             cidr: 0.0.0.0/0
+        - namespaceSelector: {}
       ports:
         - port: 80
           protocol: TCP
