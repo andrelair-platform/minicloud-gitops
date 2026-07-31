@@ -45,6 +45,10 @@ server:
       enabled: true
       interval: 30s
       scrapeTimeout: 10s
+  livenessProbe:
+    timeoutSeconds: 15
+  readinessProbe:
+    timeoutSeconds: 15
   ingress:
     enabled: false   # we add our own with cert-manager TLS — see ../../authentik-ingress.yaml
   # Bootstrap admin (one-time use; rotate to MFA-enrolled account after first login).
