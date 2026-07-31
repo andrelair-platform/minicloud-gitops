@@ -143,6 +143,8 @@ configs:
     scopes: '[groups]'
 
 server:
+  nodeSelector:
+    kubernetes.io/hostname: fast-skunk
   podLabels:
     backstage.io/kubernetes-id: argocd
   # F5 NGINX Ingress gets confused when the chart's default Service has both
@@ -189,11 +191,15 @@ server:
     limits:   { cpu: 500m, memory: 512Mi }
 
 repoServer:
+  nodeSelector:
+    kubernetes.io/hostname: fast-skunk
   resources:
     requests: { cpu: 50m,  memory: 256Mi }
     limits:   { cpu: 1000m, memory: 2500Mi }
 
 controller:
+  nodeSelector:
+    kubernetes.io/hostname: fast-skunk
   resources:
     requests: { cpu: 100m, memory: 512Mi }
     limits:   { cpu: 1000m, memory: 3Gi }
