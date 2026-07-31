@@ -161,3 +161,18 @@ spec:
     - fromEntities:
         - host
         - remote-node
+---
+# Cilium: allow-cluster-internal-egress uses ipBlock which does NOT match
+# intra-cluster endpoint identities. With Cilium as CNI, pod-to-pod traffic
+# (including service ClusterIPs) is tracked by endpoint identity, not CIDR.
+# This policy replaces the ipBlock for egress to any cluster endpoint.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-cluster-egress
+  namespace: ai
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - cluster
