@@ -14,6 +14,11 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
+  ignoreDifferences:
+    - group: monitoring.coreos.com
+      kind: PrometheusRule
+      jsonPointers:
+        - /metadata/annotations/prometheus-operator-validated
   syncPolicy:
     automated:
       prune: true
