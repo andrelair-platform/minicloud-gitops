@@ -17,6 +17,13 @@ nginx:
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits:   { cpu: 200m, memory: 256Mi }
+  affinity:
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: erpnext-gunicorn
+          topologyKey: kubernetes.io/hostname
 
 worker:
   gunicorn:
@@ -41,17 +48,38 @@ worker:
     resources:
       requests: { cpu: 50m, memory: 128Mi }
       limits:   { cpu: 200m, memory: 256Mi }
+    affinity:
+      podAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: erpnext-gunicorn
+            topologyKey: kubernetes.io/hostname
   long:
     replicaCount: 1
     resources:
       requests: { cpu: 50m, memory: 128Mi }
       limits:   { cpu: 200m, memory: 256Mi }
+    affinity:
+      podAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: erpnext-gunicorn
+            topologyKey: kubernetes.io/hostname
 
 socketio:
   replicaCount: 1
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits:   { cpu: 200m, memory: 256Mi }
+  affinity:
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: erpnext-gunicorn
+          topologyKey: kubernetes.io/hostname
 
 persistence:
   worker:
