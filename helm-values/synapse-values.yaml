@@ -39,6 +39,22 @@ synapse:
   strategy:
     type: Recreate
 
+  # Default probes have 1s timeout and 10s period. Under CPU pressure (load 30+
+  # observed 2026-07-31) the HTTP /health response takes >1s → 3 failures →
+  # liveness kills the container. Increased timeout/period + longer startup window.
+  livenessProbe:
+    timeoutSeconds: 5
+    periodSeconds: 30
+    failureThreshold: 5
+  readinessProbe:
+    timeoutSeconds: 5
+    periodSeconds: 30
+    failureThreshold: 5
+  startupProbe:
+    timeoutSeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
+
   resources:
     requests:
       cpu: 100m
