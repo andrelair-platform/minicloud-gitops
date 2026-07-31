@@ -126,6 +126,48 @@ spec:
         - port: 5432
           protocol: TCP
 ---
+# Langfuse uses postgresql-ai as its database backend (separate langfuse DB)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-langfuse-postgresql
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: langfuse
+      ports:
+        - port: 5432
+          protocol: TCP
+---
+# Grafana (monitoring ns) uses postgresql-ai as a data source for PromQL-over-Postgres
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-postgresql
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 5432
+          protocol: TCP
+---
 # Open WebUI web search: allow fetching full page content from search result URLs.
 # SearXNG returns titles + snippets (cluster-internal, already covered above).
 # This policy additionally lets Open WebUI retrieve full page HTML for richer context.
