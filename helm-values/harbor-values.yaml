@@ -39,26 +39,18 @@ metrics:
     interval: 30s
 
 core:
-  livenessProbe:
-    timeoutSeconds: 15
-    failureThreshold: 5
-  readinessProbe:
-    timeoutSeconds: 15
-    failureThreshold: 5
+  nodeSelector:
+    kubernetes.io/hostname: fast-skunk
 
 jobservice:
-  livenessProbe:
-    timeoutSeconds: 15
-    failureThreshold: 5
-  readinessProbe:
-    timeoutSeconds: 15
-    failureThreshold: 5
+  nodeSelector:
+    kubernetes.io/hostname: fast-skunk
 
 registry:
+  nodeSelector:
+    kubernetes.io/hostname: fast-skunk
   controller:
     livenessProbe:
       timeoutSeconds: 15
-      failureThreshold: 5
     readinessProbe:
       timeoutSeconds: 15
-      failureThreshold: 5
