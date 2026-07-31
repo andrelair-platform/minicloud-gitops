@@ -67,6 +67,14 @@ worker:
               matchLabels:
                 app.kubernetes.io/name: erpnext-gunicorn
             topologyKey: kubernetes.io/hostname
+  scheduler:
+    affinity:
+      podAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: erpnext-gunicorn
+            topologyKey: kubernetes.io/hostname
 
 socketio:
   replicaCount: 1
