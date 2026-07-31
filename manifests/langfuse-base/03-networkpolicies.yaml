@@ -97,3 +97,17 @@ spec:
             cidr: 10.0.0.0/24
         - ipBlock:
             cidr: 10.42.0.0/24
+---
+# Cilium: allow kubelet liveness/readiness probes (host + remote-node entities).
+# Without this, default-deny-ingress blocks probe traffic from the kubelet.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-node-entities
+  namespace: langfuse
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
