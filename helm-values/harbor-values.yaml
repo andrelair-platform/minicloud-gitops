@@ -37,3 +37,28 @@ metrics:
   serviceMonitor:
     enabled: true
     interval: 30s
+
+core:
+  livenessProbe:
+    timeoutSeconds: 15
+    failureThreshold: 5
+  readinessProbe:
+    timeoutSeconds: 15
+    failureThreshold: 5
+
+jobservice:
+  livenessProbe:
+    timeoutSeconds: 15
+    failureThreshold: 5
+  readinessProbe:
+    timeoutSeconds: 15
+    failureThreshold: 5
+
+registry:
+  controller:
+    livenessProbe:
+      timeoutSeconds: 15
+      failureThreshold: 5
+    readinessProbe:
+      timeoutSeconds: 15
+      failureThreshold: 5
