@@ -324,3 +324,12 @@ postgresql:
     resources:
       requests: { cpu: 50m, memory: 128Mi }
       limits:   { cpu: 500m, memory: 512Mi }
+    # Default pg_isready probes: timeout=5s period=10s — accumulate zombie processes.
+    livenessProbe:
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 6
+    readinessProbe:
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 6

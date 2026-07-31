@@ -506,3 +506,12 @@ prometheus-node-exporter:
       # headroom for scrape bursts without making it a CPU hog.
       cpu: 250m
       memory: 128Mi
+  # Default liveness: HTTP GET / timeout=1s — fails under CPU pressure (459 restarts
+  # on fast-heron over 83 days). HTTP probes don't accumulate zombies but restarts
+  # spike containerd load. 5s timeout, 30s period is safe for any node state.
+  livenessProbe:
+    timeoutSeconds: 5
+    periodSeconds: 30
+  readinessProbe:
+    timeoutSeconds: 5
+    periodSeconds: 30
