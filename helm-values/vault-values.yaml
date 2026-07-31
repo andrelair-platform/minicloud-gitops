@@ -16,6 +16,15 @@ server:
 
   updateStrategyType: RollingUpdate
 
+  # Default readinessProbe runs exec `vault status` every 5s with 3s timeout.
+  # Under CPU pressure the process hangs past 3s — containerd abandons it but the
+  # process keeps running. The next probe spawns another, accumulating until the
+  # node saturates (load 65+ observed 2026-07-31). Fix: 15s timeout + 30s period.
+  readinessProbe:
+    periodSeconds: 30
+    timeoutSeconds: 15
+    failureThreshold: 3
+
 
   statefulSet:
     securityContext:
