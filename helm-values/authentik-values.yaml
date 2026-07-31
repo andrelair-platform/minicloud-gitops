@@ -74,6 +74,20 @@ worker:
   resources:
     requests: { cpu: 50m,  memory: 256Mi }
     limits:   { cpu: 500m, memory: 512Mi }
+  # Default exec [ak healthcheck] timeout=3s period=10s accumulates zombie processes
+  # under CPU pressure (79 failures / load 118 on fast-heron, 2026-07-31).
+  livenessProbe:
+    periodSeconds: 30
+    timeoutSeconds: 15
+    failureThreshold: 3
+  readinessProbe:
+    periodSeconds: 30
+    timeoutSeconds: 15
+    failureThreshold: 3
+  startupProbe:
+    periodSeconds: 10
+    timeoutSeconds: 15
+    failureThreshold: 60
   envFrom:
     - secretRef:
         name: authentik-bootstrap
