@@ -78,3 +78,18 @@ spec:
     - to:
         - ipBlock:
             cidr: 10.0.0.0/8
+---
+# Cilium: allow kubelet liveness/readiness probes (host + remote-node entities).
+# Without this, default-deny-ingress blocks probe traffic from the kubelet,
+# causing the container to be killed before it can serve requests.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-node-entities
+  namespace: vaultwarden
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node

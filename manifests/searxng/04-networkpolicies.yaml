@@ -75,3 +75,17 @@ spec:
           protocol: TCP
         - port: 80
           protocol: TCP
+---
+# Cilium: allow kubelet liveness/readiness probes (host + remote-node entities).
+# Without this, default-deny-ingress blocks probe traffic from the kubelet.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-node-entities
+  namespace: searxng
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
