@@ -315,6 +315,8 @@ postgresql:
       userPasswordKey: password
 
   primary:
+    nodeSelector:
+      kubernetes.io/hostname: fast-heron
     persistence:
       enabled: true
       storageClass: longhorn

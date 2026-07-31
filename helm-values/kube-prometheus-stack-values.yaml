@@ -283,6 +283,8 @@ alertmanager:
               storage: 1Gi
 
 grafana:
+  nodeSelector:
+    kubernetes.io/hostname: star-kitten
   plugins:
     - yesoreyeram-infinity-datasource
   podLabels:
