@@ -27,11 +27,14 @@ spec:
   ignoreDifferences:
     # ESO owns the erpnext Secret (mariadb-root-password). Helm renders a
     # placeholder stringData value — ignore it so ESO wins field ownership.
+    # ESO also adds reconcile.external-secrets.io/* labels and annotations.
     - group: ""
       kind: Secret
       name: erpnext
       jsonPointers:
         - /data
+        - /metadata/labels
+        - /metadata/annotations
     # Jobs get timestamp annotations on each render — ignore to stop restart loop
     - group: batch
       kind: Job
