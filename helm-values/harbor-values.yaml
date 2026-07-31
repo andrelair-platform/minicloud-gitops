@@ -54,3 +54,16 @@ registry:
       timeoutSeconds: 15
     readinessProbe:
       timeoutSeconds: 15
+
+database:
+  internal:
+    # Default /docker-healthcheck.sh probes: timeout=1s period=10s — accumulate
+    # zombie processes under CPU pressure on fast-heron.
+    livenessProbe:
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3

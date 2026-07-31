@@ -47,9 +47,45 @@ spec:
       name: cilium-wireguard-keys
       jsonPointers:
         - /data
+    # Cilium generates TLS certs for Hubble at startup — not in git.
+    - group: ""
+      kind: Secret
+      namespace: kube-system
+      name: cilium-ca
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: Secret
+      namespace: kube-system
+      name: hubble-relay-client-certs
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: Secret
+      namespace: kube-system
+      name: hubble-server-certs
+      jsonPointers:
+        - /data
+    # cert-manager writes status after issuing the Hubble UI cert.
+    - group: cert-manager.io
+      kind: Certificate
+      namespace: kube-system
+      name: hubble-ui-tls
+      jsonPointers:
+        - /status
     # CiliumNode status is written by the agent, not the chart.
     - group: cilium.io
       kind: CiliumNode
+      jsonPointers:
+        - /status
+    # CiliumLoadBalancerIPPool status is written by the operator.
+    - group: cilium.io
+      kind: CiliumLoadBalancerIPPool
+      jsonPointers:
+        - /status
+    # CiliumL2AnnouncementPolicy status is written by the operator.
+    - group: cilium.io
+      kind: CiliumL2AnnouncementPolicy
       jsonPointers:
         - /status
     # CRD status and conversion webhook are managed by the operator.
