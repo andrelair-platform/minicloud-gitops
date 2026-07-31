@@ -93,3 +93,17 @@ spec:
     - fromEntities:
         - host
         - remote-node
+---
+# Cilium: allow-cluster-internal-egress uses ipBlock which does NOT match
+# intra-cluster endpoint identities. Vaultwarden needs to reach postgresql-ai
+# (ai ns), authentik (authentik ns), and vault (vault ns) — all intra-cluster.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-cluster-egress
+  namespace: vaultwarden
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - cluster
