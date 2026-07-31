@@ -12,11 +12,15 @@ spec:
   target:
     name: k3s-backup-minio
     creationPolicy: Owner
+    deletionPolicy: Retain
   data:
     - secretKey: password
       remoteRef:
         key: secret/platform/minio
         property: password
+        conversionStrategy: Default
+        decodingStrategy: None
+        metadataPolicy: None
 ---
 apiVersion: batch/v1
 kind: CronJob
