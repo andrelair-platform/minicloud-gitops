@@ -161,6 +161,13 @@ clickhouse:
   zookeeper:
     image:
       repository: bitnamilegacy/zookeeper
+    # Default healthcheck.sh probes: 10s period accumulates under CPU pressure.
+    livenessProbe:
+      periodSeconds: 30
+      timeoutSeconds: 10
+    readinessProbe:
+      periodSeconds: 30
+      timeoutSeconds: 10
     resources:
       requests:
         cpu: 100m
@@ -181,6 +188,14 @@ redis:
   primary:
     extraFlags:
       - "--maxmemory-policy noeviction"
+    # Default exec ping probes: liveness 6s timeout/5s period, readiness 2s/5s.
+    # Under CPU pressure these accumulate zombie processes (fast-heron 2026-07-31).
+    livenessProbe:
+      timeoutSeconds: 10
+      periodSeconds: 30
+    readinessProbe:
+      timeoutSeconds: 5
+      periodSeconds: 30
     resources:
       requests:
         cpu: 50m

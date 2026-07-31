@@ -158,12 +158,31 @@ mariadb-sts:
 # Valkey (Redis fork) for cache and queue — enabled by default, keep bundled
 "valkey-cache":
   enabled: true
+  # Default exec [valkey-cli ping] timeout=1s accumulates under CPU pressure.
+  primary:
+    livenessProbe:
+      timeoutSeconds: 5
+      periodSeconds: 30
+    readinessProbe:
+      timeoutSeconds: 5
+      periodSeconds: 30
+    startupProbe:
+      timeoutSeconds: 5
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits:   { cpu: 200m, memory: 256Mi }
 
 "valkey-queue":
   enabled: true
+  primary:
+    livenessProbe:
+      timeoutSeconds: 5
+      periodSeconds: 30
+    readinessProbe:
+      timeoutSeconds: 5
+      periodSeconds: 30
+    startupProbe:
+      timeoutSeconds: 5
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits:   { cpu: 200m, memory: 256Mi }
