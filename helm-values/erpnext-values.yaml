@@ -123,6 +123,8 @@ jobs:
   configure:
     enabled: true
     fixVolume: true
+    nodeSelector:
+      kubernetes.io/hostname: fast-skunk
 
   # Site erp.devandre.sbs created 2026-07-19. Disabled to avoid spurious Job
   # runs on every ArgoCD sync (each sync creates a new timestamped Job).
