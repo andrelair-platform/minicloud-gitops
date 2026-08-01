@@ -20,7 +20,10 @@ configs:
         elseif obj.status.phase == "Paused" then
           hs.status = "Suspended"
           hs.message = "Rollout is paused"
-        elseif obj.status.readyReplicas == obj.spec.replicas then
+        elseif obj.status.phase == "Healthy" then
+          hs.status = "Healthy"
+          hs.message = "Rollout is healthy"
+        elseif (obj.status.readyReplicas or 0) == (obj.spec.replicas or 0) then
           hs.status = "Healthy"
           hs.message = "Rollout is healthy"
         else
