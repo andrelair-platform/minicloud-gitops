@@ -144,9 +144,10 @@ admintools:
       cpu: 100m
       memory: 128Mi
 
-# Schema auto-setup via Helm hooks (v1.0.0-rc.2+ API)
+# Schema auto-setup as regular resources (not Helm hooks) so they deploy after
+# the ExternalSecret and PostgreSQL StatefulSet (managed in manifests/temporal/)
 schema:
-  useHelmHooks: true
+  useHelmHooks: false
   backoffLimit: 100
 
 # No bundled sub-charts in v1.0.0-rc.2+ — PostgreSQL deployed separately in manifests/temporal/04-postgresql.yaml
