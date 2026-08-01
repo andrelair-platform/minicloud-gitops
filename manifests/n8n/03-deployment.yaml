@@ -63,6 +63,8 @@ spec:
             runAsNonRoot: true
             runAsUser: 1000
             allowPrivilegeEscalation: false
+            capabilities:
+              drop: [NET_RAW]
           resources:
             requests:
               cpu: 100m
