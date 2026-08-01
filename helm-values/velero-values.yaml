@@ -17,7 +17,15 @@ configuration:
       name: default
       provider: aws
   defaultBackupStorageLocation: default
-  defaultVolumesToFsBackup: true
+  # Opt-in FS backup only — pods annotate with backup.velero.io/backup-volumes
+  # defaultVolumesToFsBackup: true caused 74 "context deadline exceeded" errors
+  # per backup: every pod triggered a node-agent list API call, saturating the
+  # default 5 QPS rate limiter (3030 items → queue depth >> timeout budget).
+  defaultVolumesToFsBackup: false
+  # Raised from defaults (5 QPS / 10 burst) to handle 3000+ item cluster backup
+  # without hitting the client rate limiter deadline.
+  clientQPS: 100
+  clientBurst: 200
   volumeSnapshotLocation: []
 
 credentials:
