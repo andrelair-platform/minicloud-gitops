@@ -57,12 +57,19 @@ spec:
               command: [pg_isready, -U, temporal]
             initialDelaySeconds: 5
             periodSeconds: 5
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
   volumeClaimTemplates:
-    - metadata:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
         storageClassName: longhorn
+        volumeMode: Filesystem
         resources:
           requests:
             storage: 5Gi
