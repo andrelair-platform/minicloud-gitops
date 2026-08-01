@@ -3,8 +3,23 @@ chaosDaemon:
   runtime: containerd
   socketPath: /run/k3s/containerd/containerd.sock
 controllerManager:
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: controller-manager
+            topologyKey: kubernetes.io/hostname
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 50
+          preference:
+            matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values: [fast-heron]
   env:
     # k3s uses port 10250 for kubelet — the default WEBHOOK_PORT: 10250 causes
     # the k3s tunnel proxy to route webhook calls to the kubelet instead of the
