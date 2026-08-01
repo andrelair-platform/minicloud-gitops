@@ -1,3 +1,9 @@
 auditInterval: 60
 constraintViolationsLimit: 100
 replicas: 1
+controllerManager:
+  nodeSelector:
+    kubernetes.io/hostname: fast-skunk
+audit:
+  nodeSelector:
+    kubernetes.io/hostname: fast-skunk
