@@ -59,11 +59,16 @@ spec:
               port: 5678
             initialDelaySeconds: 20
             periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
           resources:
             requests:
               cpu: 100m
               memory: 256Mi
             limits:
+              cpu: 500m
               memory: 512Mi
       volumes:
         - name: data
