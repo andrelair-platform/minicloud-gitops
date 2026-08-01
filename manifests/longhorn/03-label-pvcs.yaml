@@ -45,17 +45,29 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: labeler
-          image: registry.k8s.io/kubectl:v1.36.2
+          # alpine:3.21 has wget built in — no extra packages, no kubectl image needed.
+          # Patches PVC labels directly via the k8s REST API using the pod's SA token.
+          image: docker.io/alpine:3.21
           command: ["/bin/sh", "-c"]
           args:
             - |
               set -e
+              apk add --no-cache curl -q
+              TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              API=https://kubernetes.default.svc
+              PATCH='{"metadata":{"labels":{"recurring-job-group.longhorn.io/backup":"enabled"}}}'
+
               label() {
-                kubectl label pvc "$2" -n "$1" \
-                  recurring-job-group.longhorn.io/backup=enabled --overwrite
+                curl -sf --cacert "$CA" \
+                  -H "Authorization: Bearer $TOKEN" \
+                  -H "Content-Type: application/merge-patch+json" \
+                  -X PATCH -d "$PATCH" \
+                  "$API/api/v1/namespaces/$1/persistentvolumeclaims/$2" > /dev/null \
+                  && echo "labeled $1/$2" || echo "FAILED $1/$2"
               }
 
-              # Identity / auth / secrets — highest priority
+              # Identity / auth / secrets
               label authentik    data-authentik-postgresql-0
               label vault        data-vault-0
               label vaultwarden  vaultwarden-data
