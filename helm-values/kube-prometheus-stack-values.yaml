@@ -289,6 +289,8 @@ alertmanager:
 grafana:
   nodeSelector:
     kubernetes.io/hostname: star-kitten
+  deploymentStrategy:
+    type: Recreate
   plugins:
     - yesoreyeram-infinity-datasource
   podLabels:
