@@ -1,0 +1,99 @@
+# Main ingress — UI and API, protected by Authentik forward auth.
+# Requires an Authentik Proxy Provider for n8n.devandre.sbs (forward_single mode).
+# Setup: Authentik Admin → Applications → Providers → Create proxy provider
+#   external_host: https://n8n.devandre.sbs, mode: forward_single
+#   Then create an Application pointing to this provider.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: n8n
+  namespace: automation
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      auth_request     /outpost.goauthentik.io/auth/nginx;
+      error_page       401 = @goauthentik_proxy_signin;
+      auth_request_set $auth_cookie $upstream_http_set_cookie;
+      add_header       Set-Cookie $auth_cookie;
+      auth_request_set $authentik_username $upstream_http_x_authentik_username;
+      auth_request_set $authentik_groups   $upstream_http_x_authentik_groups;
+      auth_request_set $authentik_email    $upstream_http_x_authentik_email;
+      proxy_set_header X-authentik-username $authentik_username;
+      proxy_set_header X-authentik-groups   $authentik_groups;
+      proxy_set_header X-authentik-email    $authentik_email;
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location /outpost.goauthentik.io {
+          proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
+          proxy_set_header        Host $host;
+          proxy_set_header        X-Original-URL $scheme://$http_host$request_uri;
+          add_header              Set-Cookie $auth_cookie;
+          auth_request_set        $auth_cookie $upstream_http_set_cookie;
+          proxy_pass_request_body off;
+          proxy_set_header        Content-Length "";
+      }
+      location @goauthentik_proxy_signin {
+          internal;
+          add_header Set-Cookie $auth_cookie;
+          return 302 /outpost.goauthentik.io/start?rd=$request_uri;
+      }
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - n8n.10.0.0.200.nip.io
+        - n8n.devandre.sbs
+      secretName: n8n-tls
+  rules:
+    - host: n8n.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: n8n
+                port:
+                  number: 5678
+    - host: n8n.devandre.sbs
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: n8n
+                port:
+                  number: 5678
+---
+# Webhook ingress — /webhook/ and /webhook-test/ bypass Authentik so external
+# services (Plane, NATS, etc.) can POST without an Authentik session.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: n8n-webhooks
+  namespace: automation
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - n8n.devandre.sbs
+      secretName: n8n-tls
+  rules:
+    - host: n8n.devandre.sbs
+      http:
+        paths:
+          - path: /webhook
+            pathType: Prefix
+            backend:
+              service:
+                name: n8n
+                port:
+                  number: 5678
+          - path: /webhook-test
+            pathType: Prefix
+            backend:
+              service:
+                name: n8n
+                port:
+                  number: 5678
