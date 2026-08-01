@@ -1,0 +1,132 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: longhorn-backup-checker
+  namespace: longhorn-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: longhorn-backup-checker
+rules:
+  - apiGroups: ["longhorn.io"]
+    resources: ["backups"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: longhorn-backup-checker
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: longhorn-backup-checker
+subjects:
+  - kind: ServiceAccount
+    name: longhorn-backup-checker
+    namespace: longhorn-system
+---
+# Daily check at 03:30 UTC — 90 min after the daily-backup recurring job window.
+# Queries longhorn backup CRs, fires a critical Alertmanager alert if no backup
+# completed in the last 26h. Exits 1 on alert so the Job shows as Failed.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: longhorn-backup-check
+  namespace: longhorn-system
+spec:
+  schedule: "30 3 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: longhorn-backup-checker
+          restartPolicy: Never
+          containers:
+            - name: checker
+              image: docker.io/alpine:3.21
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  apk add --no-cache python3 -q
+                  python3 - <<'PYEOF'
+                  import sys, json, datetime, urllib.request, ssl
+
+                  TOKEN = open('/var/run/secrets/kubernetes.io/serviceaccount/token').read()
+                  CA    = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+                  API   = 'https://kubernetes.default.svc'
+                  AM    = 'http://kps-alertmanager.monitoring.svc:9093'
+
+                  ctx = ssl.create_default_context(cafile=CA)
+
+                  def k8s_get(path):
+                      req = urllib.request.Request(
+                          f'{API}{path}',
+                          headers={'Authorization': f'Bearer {TOKEN}'}
+                      )
+                      with urllib.request.urlopen(req, context=ctx) as r:
+                          return json.loads(r.read())
+
+                  data   = k8s_get('/apis/longhorn.io/v1beta2/namespaces/longhorn-system/backups')
+                  items  = data.get('items', [])
+                  cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=26)
+
+                  completed = 0
+                  errors    = 0
+                  for item in items:
+                      state = item.get('status', {}).get('state', '')
+                      ct    = item.get('status', {}).get('completionTime', '')
+                      if state == 'Error':
+                          errors += 1
+                      if state == 'Completed' and ct:
+                          try:
+                              ts = datetime.datetime.fromisoformat(ct.replace('Z', '+00:00'))
+                              if ts > cutoff:
+                                  completed += 1
+                          except Exception:
+                              pass
+
+                  print(f'Recent completed backups (last 26h): {completed}, error backups: {errors}')
+
+                  alert = completed < 1
+                  if not alert and errors > 5:
+                      alert = True
+
+                  if alert:
+                      now = datetime.datetime.now(datetime.timezone.utc)
+                      end = now + datetime.timedelta(hours=26)
+                      fmt = '%Y-%m-%dT%H:%M:%SZ'
+                      desc = (
+                          f'daily-backup recurring job should complete for 21 volumes by 03:00 UTC. '
+                          f'Found completed={completed}, errors={errors} in last 26h. '
+                          f'Check: kubectl get backups.longhorn.io -n longhorn-system && '
+                          f'~/.local/bin/mc ls minilocal/longhorn'
+                      )
+                      payload = json.dumps([{
+                          'labels': {
+                              'alertname': 'LonghornNoRecentBackup',
+                              'severity':  'critical',
+                              'namespace': 'longhorn-system',
+                          },
+                          'annotations': {
+                              'summary':     'No Longhorn MinIO backup completed in the last 26h',
+                              'description': desc,
+                          },
+                          'startsAt': now.strftime(fmt),
+                          'endsAt':   end.strftime(fmt),
+                      }]).encode()
+                      req2 = urllib.request.Request(
+                          f'{AM}/api/v2/alerts',
+                          data=payload,
+                          headers={'Content-Type': 'application/json'},
+                          method='POST',
+                      )
+                      urllib.request.urlopen(req2)
+                      print('LonghornNoRecentBackup alert fired to Alertmanager')
+                      sys.exit(1)
+                  else:
+                      print('Backup check OK')
+                  PYEOF
