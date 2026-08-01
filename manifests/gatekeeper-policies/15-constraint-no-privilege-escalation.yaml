@@ -41,3 +41,4 @@ spec:
             - system-upgrade    # Plane CE — chart does not expose allowPrivilegeEscalation in values
             - chat             # matrix-synapse signing key job — chart does not set allowPrivilegeEscalation
             - erp
+            - temporal          # schema Job containers — chart doesn't expose allowPrivilegeEscalation in schema Job values
