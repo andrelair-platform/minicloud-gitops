@@ -37,7 +37,9 @@ metadata:
   namespace: longhorn-system
   annotations:
     argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    # BeforeHookCreation: delete existing job before each sync → guarantees
+    # a fresh pod is created with the current image (Job spec is immutable).
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   template:
     spec:
