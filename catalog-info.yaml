@@ -384,6 +384,117 @@ spec:
   system: minicloud-platform
 ---
 apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: n8n
+  description: |
+    n8n — self-hosted workflow automation platform (Phase 83). Connects
+    internal services (Plane, NATS, ERPNext, Stalwart mail) and external
+    APIs without sending data off-platform. SQLite on Longhorn 5Gi PVC.
+    Authentik forward auth protects the UI; /webhook/ paths are open for
+    external triggers. Encryption key from Vault.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: n8n
+    backstage.io/kubernetes-id: n8n
+  tags:
+    - automation
+    - workflows
+    - phase-83
+  links:
+    - url: https://n8n.devandre.sbs
+      title: n8n UI (public)
+      icon: web
+    - url: https://n8n.10.0.0.200.nip.io
+      title: n8n UI (internal)
+      icon: web
+    - url: https://argocd.devandre.sbs/applications/n8n
+      title: ArgoCD Application
+      icon: dashboard
+    - url: https://andrelair-platform.github.io/minicloud-platform-docs/automation/n8n
+      title: Phase 83 documentation
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: stalwart-mail
+  description: |
+    Stalwart v0.16.13 — all-in-one mail server (SMTP, IMAP, JMAP) for
+    devandre.sbs (Phase 78). Outbound via Amazon SES eu-west-1 relay;
+    inbound via SES receipt rules → Lambda → Stalwart LMTP. Config
+    stored in RocksDB on Longhorn PVC (not in gitops). Internal SMTP
+    relay for cluster services (Alertmanager, n8n) on port 587 STARTTLS.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: stalwart
+    backstage.io/kubernetes-id: stalwart
+  tags:
+    - mail
+    - smtp
+    - imap
+    - phase-78
+  links:
+    - url: https://mail.devandre.sbs
+      title: Stalwart Admin UI
+      icon: web
+    - url: https://argocd.devandre.sbs/applications/stalwart
+      title: ArgoCD Application
+      icon: dashboard
+    - url: https://andrelair-platform.github.io/minicloud-platform-docs/developer-platform/stalwart-mail
+      title: Phase 78 documentation
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: jitsi-meet
+  description: |
+    Jitsi Meet v2.21.0 — self-hosted video conferencing (Phase 77).
+    Full stack: web, prosody, jicofo, JVB. JVB pinned to star-kitten
+    (10.0.0.8) with hostNetwork:true on UDP 10000. IPv6 direct path
+    confirmed working for SFR 5G callers (DS-Lite blocks inbound IPv4).
+    Coturn TURN server on controller (192.168.1.130:3478). Authentik
+    forward auth.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    github.com/project-slug: andrelair-platform/minicloud-gitops
+    argocd/app-name: jitsi
+    backstage.io/kubernetes-id: jitsi-web
+  tags:
+    - collab
+    - video
+    - webrtc
+    - phase-77
+  links:
+    - url: https://meet.devandre.sbs
+      title: Jitsi Meet (public)
+      icon: web
+    - url: https://argocd.devandre.sbs/applications/jitsi
+      title: ArgoCD Application
+      icon: dashboard
+    - url: https://andrelair-platform.github.io/minicloud-platform-docs/developer-platform/jitsi-meet
+      title: Phase 77 documentation
+      icon: docs
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+---
+apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
   name: andrelair-platform
