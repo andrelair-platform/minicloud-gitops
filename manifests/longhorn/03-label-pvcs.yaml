@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: longhorn-pvc-labeler
+  namespace: longhorn-system
+---
+# Minimal: only needs to patch PVC labels across namespaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: longhorn-pvc-labeler
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: longhorn-pvc-labeler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: longhorn-pvc-labeler
+subjects:
+  - kind: ServiceAccount
+    name: longhorn-pvc-labeler
+    namespace: longhorn-system
+---
+# PostSync hook: idempotent — safe to re-run on every ArgoCD sync.
+# Adds recurring-job-group.longhorn.io/backup=enabled to critical PVCs.
+# Longhorn propagates this label from PVC to the backing volume automatically.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: label-longhorn-backup-pvcs
+  namespace: longhorn-system
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      serviceAccountName: longhorn-pvc-labeler
+      restartPolicy: OnFailure
+      containers:
+        - name: labeler
+          image: docker.io/bitnami/kubectl:1.32.7
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              label() {
+                kubectl label pvc "$2" -n "$1" \
+                  recurring-job-group.longhorn.io/backup=enabled --overwrite
+              }
+
+              # Identity / auth / secrets — highest priority
+              label authentik    data-authentik-postgresql-0
+              label vault        data-vault-0
+              label vaultwarden  vaultwarden-data
+
+              # Core business data
+              label erp          data-erpnext-mariadb-sts-0
+              label erp          erpnext
+              label mail         data-stalwart-0
+              label productivity pvc-plane-ce-pgdb-vol-plane-ce-pgdb-wl-0
+              label productivity pvc-plane-ce-minio-vol-plane-ce-minio-wl-0
+
+              # Communication
+              label chat         matrix-synapse
+              label sign         docuseal-data
+
+              # AI / platform services
+              label ai           data-postgresql-ai-0
+              label ai           open-webui
+              label backstage    data-backstage-postgresql-0
+              label harbor       database-data-harbor-database-0
+              label harbor       harbor-registry
+              label langfuse     data-langfuse-clickhouse-shard0-0
+
+              # Messaging (NATS JetStream persistence)
+              label messaging    nats-js-nats-0
+              label messaging    nats-js-nats-1
+              label messaging    nats-js-nats-2
+
+              # Nextcloud
+              label nextcloud    data-nextcloud-postgresql-0
+              label nextcloud    nextcloud-nextcloud
+
+              echo "All PVCs labeled for Longhorn backup group"
