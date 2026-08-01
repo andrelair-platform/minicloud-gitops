@@ -391,24 +391,6 @@ data:
               "interval": "",
               "legendFormat": "",
               "refId": "H"
-            },
-            {
-              "expr": "node_os_info and on(node) kube_node_info",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "I"
-            },
-            {
-              "expr": "label_replace(node_uname_info, \"node\", \"$1\", \"nodename\", \"(.+)\") and on(node) kube_node_info",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "J"
             }
           ],
           "timeFrom": null,
@@ -427,8 +409,8 @@ data:
                     "role",
                     "Value #G",
                     "Value #H",
-                    "pretty_name",
-                    "release"
+                    "os_image",
+                    "kernel_version"
                   ]
                 }
               }
@@ -452,8 +434,8 @@ data:
                   "node": 0,
                   "pod_cidr": 3,
                   "role": 1,
-                  "pretty_name": 4,
-                  "release": 5
+                  "os_image": 4,
+                  "kernel_version": 5
                 },
                 "renameByName": {
                   "Value #C": "IP",
@@ -467,8 +449,8 @@ data:
                   "node": "Node name",
                   "pod_cidr": "Pod CIDR",
                   "provider_id": "",
-                  "pretty_name": "OS version",
-                  "release": "Kernel version"
+                  "os_image": "OS version",
+                  "kernel_version": "Kernel version"
                 }
               }
             }
