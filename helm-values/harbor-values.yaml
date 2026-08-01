@@ -39,10 +39,14 @@ metrics:
     interval: 30s
 
 core:
+  existingSecret: harbor-stable-secrets
+  existingSecretKey: secret
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
 
 jobservice:
+  existingSecret: harbor-stable-secrets
+  existingSecretKey: JOBSERVICE_SECRET
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
 
