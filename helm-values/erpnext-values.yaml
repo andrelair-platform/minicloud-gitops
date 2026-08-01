@@ -35,12 +35,16 @@ worker:
       tcpSocket:
         port: 8000
       initialDelaySeconds: 60
-      periodSeconds: 10
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
     readinessProbe:
       tcpSocket:
         port: 8000
       initialDelaySeconds: 30
-      periodSeconds: 10
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
     topologySpreadConstraints: []
     affinity:
       nodeAffinity:
@@ -100,6 +104,22 @@ socketio:
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits:   { cpu: 200m, memory: 256Mi }
+  # Default TCP socket probe: timeoutSeconds=1 fails under load. Node.js bind
+  # is slow; 5s timeout + 30s period prevents restart storms.
+  livenessProbe:
+    tcpSocket:
+      port: 9000
+    initialDelaySeconds: 15
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    tcpSocket:
+      port: 9000
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
   affinity:
     podAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
