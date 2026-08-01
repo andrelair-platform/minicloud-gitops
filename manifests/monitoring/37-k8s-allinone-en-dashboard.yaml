@@ -346,7 +346,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": " (count by (node)(container_spec_memory_reservation_limit_bytes{pod!=\"\"}))",
+              "expr": " (count by (node)(kube_pod_info))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -600,7 +600,7 @@ data:
           "pluginVersion": "7.0.3",
           "targets": [
             {
-              "expr": " count(count by (pod)(container_spec_memory_reservation_limit_bytes{pod!=\"\"}))",
+              "expr": " count(kube_pod_info)",
               "hide": false,
               "instant": true,
               "interval": "",
