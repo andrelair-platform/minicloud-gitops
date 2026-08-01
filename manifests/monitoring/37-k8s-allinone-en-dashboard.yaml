@@ -391,6 +391,15 @@ data:
               "interval": "",
               "legendFormat": "",
               "refId": "H"
+            },
+            {
+              "expr": "max by (node, os_image) (kube_node_info)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "I"
             }
           ],
           "timeFrom": null,
