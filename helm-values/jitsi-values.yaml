@@ -1,10 +1,11 @@
 publicURL: "https://meet.devandre.sbs"
 tz: "Europe/Paris"
 
-# External TURN server: Coturn on the controller (192.168.1.130), reachable
-# from the internet via home router port-forward 3478+49152-49199 → 192.168.1.130.
-# DNS: turn.devandre.sbs A 37.65.57.112 (unproxied).
-# coturn.enabled=false: we run Coturn externally as Docker+systemd on the controller.
+# External TURN server: Coturn on AWS Lightsail eu-west-1 (turn-coturn-eu).
+# Static IP: 54.171.137.209. DNS: turn.devandre.sbs A 54.171.137.209 (unproxied).
+# Lightsail instance joined Tailscale as turn-coturn-eu (100.77.251.92) so it
+# can relay media to JVB on star-kitten (10.0.0.8) via the Tailscale mesh.
+# coturn.enabled=false: we run Coturn externally on Lightsail.
 # TURN config injected into prosody via extraEnvFrom (chart gates it on coturn.enabled).
 #
 # IPv6 direct path (SFR DS-Lite / CGNAT clients): WebRTC browsers always request
