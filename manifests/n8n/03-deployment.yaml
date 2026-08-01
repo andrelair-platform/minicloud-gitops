@@ -47,6 +47,8 @@ spec:
               value: "n8n@devandre.sbs"
             - name: N8N_SMTP_SSL
               value: "false"
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=1024"
           envFrom:
             - secretRef:
                 name: n8n-credentials
@@ -68,10 +70,10 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
               memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1.5Gi
       volumes:
         - name: data
           persistentVolumeClaim:
