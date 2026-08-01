@@ -174,12 +174,4 @@ postgresql:
         cpu: 500m
         memory: 512Mi
 
-# Disable unused backends
-cassandra:
-  enabled: false
-
-mysql:
-  enabled: false
-
-elasticsearch:
-  enabled: false
+# No top-level cassandra/mysql/elasticsearch keys in chart v1.0+ — removed in v1.0.0-rc.2
