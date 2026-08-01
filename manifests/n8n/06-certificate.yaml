@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: n8n-tls
+  namespace: automation
+spec:
+  secretName: n8n-tls
+  issuerRef:
+    name: minicloud-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - n8n.10.0.0.200.nip.io
+    - n8n.devandre.sbs

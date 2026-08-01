@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: automation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: n8n
+          image: docker.io/n8nio/n8n:2.32.7
+          ports:
+            - containerPort: 5678
+          env:
+            - name: N8N_HOST
+              value: "n8n.devandre.sbs"
+            - name: N8N_PROTOCOL
+              value: "https"
+            - name: N8N_PORT
+              value: "5678"
+            - name: WEBHOOK_URL
+              value: "https://n8n.devandre.sbs/"
+            - name: GENERIC_TIMEZONE
+              value: "Europe/Paris"
+            - name: DB_TYPE
+              value: "sqlite"
+            - name: N8N_EMAIL_MODE
+              value: "smtp"
+            - name: N8N_SMTP_HOST
+              value: "stalwart.mail.svc.cluster.local"
+            - name: N8N_SMTP_PORT
+              value: "587"
+            - name: N8N_SMTP_USER
+              value: "admin@devandre.sbs"
+            - name: N8N_SMTP_SENDER
+              value: "n8n@devandre.sbs"
+            - name: N8N_SMTP_SSL
+              value: "false"
+          envFrom:
+            - secretRef:
+                name: n8n-credentials
+          volumeMounts:
+            - name: data
+              mountPath: /home/node/.n8n
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 5678
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: n8n-data
