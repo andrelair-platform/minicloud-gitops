@@ -44,6 +44,7 @@ spec:
     - https://jitsi-contrib.github.io/jitsi-helm/
     - https://helm.erpnext.com
     - https://open-telemetry.github.io/opentelemetry-helm-charts
+    - https://go.temporal.io/helm-charts
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
@@ -156,6 +157,8 @@ spec:
     - namespace: longhorn-system
       server: https://kubernetes.default.svc
     - namespace: automation
+      server: https://kubernetes.default.svc
+    - namespace: temporal
       server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:

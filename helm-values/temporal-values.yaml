@@ -1,0 +1,185 @@
+# Temporal v1.31.2 — durable execution engine
+# Deployed: phase 84 | Namespace: temporal
+# Web UI: temporal.devandre.sbs (Authentik forward auth)
+# Use case: multi-step business process orchestration (employee onboarding, provisioning flows)
+
+server:
+  replicaCount: 1
+
+  config:
+    logLevel: "info"
+    numHistoryShards: 4  # fixed at creation — cannot change later; 4 is minimum recommended
+
+    persistence:
+      datastores:
+        default:
+          sql:
+            pluginName: postgres12
+            driverName: postgres12
+            databaseName: temporal
+            connectAddr: "temporal-postgresql:5432"
+            connectProtocol: "tcp"
+            user: temporal
+            existingSecret: temporal-db-secret
+            secretKey: password
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+        visibility:
+          sql:
+            pluginName: postgres12
+            driverName: postgres12
+            databaseName: temporal_visibility
+            connectAddr: "temporal-postgresql:5432"
+            connectProtocol: "tcp"
+            user: temporal
+            existingSecret: temporal-db-secret
+            secretKey: password
+            maxConns: 10
+            maxIdleConns: 10
+            maxConnLifetime: "1h"
+
+      defaultStore: default
+      visibilityStore: visibility
+
+  # Gatekeeper: non-root, no privilege escalation
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+frontend:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  containerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [NET_RAW]
+
+history:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  containerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [NET_RAW]
+
+matching:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  containerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [NET_RAW]
+
+worker:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+  containerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [NET_RAW]
+
+web:
+  enabled: true
+  replicaCount: 1
+  # Ingress managed separately (Authentik forward auth pattern)
+  ingress:
+    enabled: false
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  containerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: [NET_RAW]
+
+admintools:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Schema auto-setup on first deploy
+schema:
+  setup:
+    enabled: true
+    backoffLimit: 100
+  update:
+    enabled: true
+    backoffLimit: 100
+
+# Bundled PostgreSQL — Bitnami chart
+postgresql:
+  enabled: true
+  auth:
+    username: temporal
+    database: temporal
+    existingSecret: temporal-db-secret
+    secretKeys:
+      userPasswordKey: password
+      adminPasswordKey: password
+  primary:
+    persistence:
+      enabled: true
+      storageClass: longhorn
+      size: 5Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# Disable unused backends
+cassandra:
+  enabled: false
+
+mysql:
+  enabled: false
+
+elasticsearch:
+  enabled: false
