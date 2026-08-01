@@ -114,6 +114,8 @@ postgresql:
     username: authentik
     database: authentik
   primary:
+    nodeSelector:
+      kubernetes.io/hostname: set-hog
     persistence:
       enabled: true
       storageClass: longhorn

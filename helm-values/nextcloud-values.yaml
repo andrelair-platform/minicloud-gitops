@@ -52,6 +52,9 @@ nextcloud:
       secure: false
       authtype: NONE
 
+nodeSelector:
+  kubernetes.io/hostname: set-hog
+
 persistence:
   enabled: true
   storageClass: longhorn
@@ -70,6 +73,8 @@ postgresql:
         secretKeys:
           userPasswordKey: nextcloud-db-password
   primary:
+    nodeSelector:
+      kubernetes.io/hostname: set-hog
     persistence:
       enabled: true
       storageClass: longhorn

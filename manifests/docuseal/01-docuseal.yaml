@@ -29,15 +29,8 @@ spec:
         app: docuseal
         backstage.io/kubernetes-id: docuseal
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values:
-                      - fast-heron
+      nodeSelector:
+        kubernetes.io/hostname: star-kitten
       securityContext:
         seccompProfile:
           type: RuntimeDefault

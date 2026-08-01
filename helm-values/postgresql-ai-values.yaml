@@ -21,6 +21,8 @@ auth:
   database: openwebui
 
 primary:
+  nodeSelector:
+    kubernetes.io/hostname: star-kitten
   podLabels:
     backstage.io/kubernetes-id: postgresql-ai
 
