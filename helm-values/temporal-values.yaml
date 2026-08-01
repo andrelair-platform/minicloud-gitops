@@ -151,27 +151,4 @@ schema:
     enabled: true
     backoffLimit: 100
 
-# Bundled PostgreSQL — Bitnami chart
-postgresql:
-  enabled: true
-  auth:
-    username: temporal
-    database: temporal
-    existingSecret: temporal-db-secret
-    secretKeys:
-      userPasswordKey: password
-      adminPasswordKey: password
-  primary:
-    persistence:
-      enabled: true
-      storageClass: longhorn
-      size: 5Gi
-    resources:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-
-# No top-level cassandra/mysql/elasticsearch keys in chart v1.0+ — removed in v1.0.0-rc.2
+# No bundled sub-charts in v1.0.0-rc.2+ — PostgreSQL deployed separately in manifests/temporal/04-postgresql.yaml
