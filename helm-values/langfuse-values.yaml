@@ -21,6 +21,8 @@ langfuse:
     pod:
       labels:
         backstage.io/kubernetes-id: langfuse
+      nodeSelector:
+        kubernetes.io/hostname: star-kitten
 
   securityContext:
     capabilities:
