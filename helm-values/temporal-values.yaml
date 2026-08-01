@@ -14,6 +14,7 @@ server:
       datastores:
         default:
           sql:
+            manageSchema: true
             pluginName: postgres12
             driverName: postgres12
             databaseName: temporal
@@ -27,6 +28,7 @@ server:
             maxConnLifetime: "1h"
         visibility:
           sql:
+            manageSchema: true
             pluginName: postgres12
             driverName: postgres12
             databaseName: temporal_visibility
@@ -142,13 +144,9 @@ admintools:
       cpu: 100m
       memory: 128Mi
 
-# Schema auto-setup on first deploy
+# Schema auto-setup via Helm hooks (v1.0.0-rc.2+ API)
 schema:
-  setup:
-    enabled: true
-    backoffLimit: 100
-  update:
-    enabled: true
-    backoffLimit: 100
+  useHelmHooks: true
+  backoffLimit: 100
 
 # No bundled sub-charts in v1.0.0-rc.2+ — PostgreSQL deployed separately in manifests/temporal/04-postgresql.yaml
