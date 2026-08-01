@@ -51,10 +51,14 @@ jobservice:
   existingSecretKey: JOBSERVICE_SECRET
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
+  strategy:
+    type: Recreate
 
 registry:
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
+  strategy:
+    type: Recreate
   controller:
     livenessProbe:
       timeoutSeconds: 15
