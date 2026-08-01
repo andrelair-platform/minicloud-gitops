@@ -39,3 +39,4 @@ spec:
             - system-upgrade     # Plane CE bundled PG/Redis/RabbitMQ/MinIO StatefulSets don't expose resource limits in values
             - chat              # matrix-synapse signing key job (batch/v1 Job) has no resource limits in chart defaults
             - erp
+            - temporal          # Temporal server chart generates init/config containers without resource limits — cannot override in chart values
