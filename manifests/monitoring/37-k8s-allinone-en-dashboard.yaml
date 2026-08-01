@@ -393,7 +393,7 @@ data:
               "refId": "H"
             },
             {
-              "expr": "node_os_info",
+              "expr": "node_os_info and on(node) kube_node_info",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -402,7 +402,7 @@ data:
               "refId": "I"
             },
             {
-              "expr": "label_replace(node_uname_info, \"node\", \"$1\", \"nodename\", \"(.+)\")",
+              "expr": "label_replace(node_uname_info, \"node\", \"$1\", \"nodename\", \"(.+)\") and on(node) kube_node_info",
               "format": "table",
               "hide": false,
               "instant": true,
