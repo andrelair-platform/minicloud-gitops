@@ -41,3 +41,4 @@ spec:
             - monitoring
             - chat
             - erp
+            - temporal          # schema Job init containers don't drop NET_RAW — chart doesn't expose capabilities.drop for schema Job
