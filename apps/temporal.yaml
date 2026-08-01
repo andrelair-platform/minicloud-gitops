@@ -39,6 +39,15 @@ spec:
       name: temporal-postgresql
       jqPathExpressions:
         - .data
+    # Kubernetes mutates VolumeClaimTemplates after creation — cannot patch on live StatefulSet
+    - group: apps
+      kind: StatefulSet
+      name: temporal-postgresql
+      jqPathExpressions:
+        - .spec.volumeClaimTemplates[].metadata.resourceVersion
+        - .spec.volumeClaimTemplates[].metadata.uid
+        - .spec.volumeClaimTemplates[].metadata.creationTimestamp
+        - .spec.volumeClaimTemplates[].status
   syncPolicy:
     automated:
       prune: true
