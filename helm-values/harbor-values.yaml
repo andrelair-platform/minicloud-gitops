@@ -31,6 +31,8 @@ persistence:
       storageClass: longhorn
 trivy:
   enabled: true
+  nodeSelector:
+    kubernetes.io/hostname: set-hog
 
 metrics:
   enabled: true
@@ -59,7 +61,13 @@ registry:
     readinessProbe:
       timeoutSeconds: 15
 
+redis:
+  nodeSelector:
+    kubernetes.io/hostname: set-hog
+
 database:
+  nodeSelector:
+    kubernetes.io/hostname: set-hog
   internal:
     # Default /docker-healthcheck.sh probes: timeout=1s period=10s — accumulate
     # zombie processes under CPU pressure on fast-heron.

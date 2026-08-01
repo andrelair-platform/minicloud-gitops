@@ -58,6 +58,8 @@ spec:
         app: stalwart
         backstage.io/kubernetes-id: stalwart
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: set-hog
       securityContext:
         fsGroup: 1000
       containers:

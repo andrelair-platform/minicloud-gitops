@@ -315,6 +315,8 @@ postgresql:
       userPasswordKey: password
 
   primary:
+    nodeSelector:
+      kubernetes.io/hostname: set-hog
     persistence:
       enabled: true
       storageClass: longhorn
