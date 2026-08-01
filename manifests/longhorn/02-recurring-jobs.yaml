@@ -5,12 +5,14 @@ metadata:
   name: daily-snapshot
   namespace: longhorn-system
 spec:
+  name: daily-snapshot
   cron: "0 1 * * *"
   task: snapshot
   groups:
     - backup
   retain: 7
   concurrency: 5
+  labels: {}
 ---
 # Daily offsite backup — kopia to MinIO bucket "longhorn" for DR.
 # Runs after the snapshot job to avoid I/O contention.
@@ -21,9 +23,11 @@ metadata:
   name: daily-backup
   namespace: longhorn-system
 spec:
+  name: daily-backup
   cron: "0 2 * * *"
   task: backup
   groups:
     - backup
   retain: 14
   concurrency: 2
+  labels: {}
