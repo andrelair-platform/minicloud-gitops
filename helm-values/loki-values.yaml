@@ -68,6 +68,8 @@ read:
 resultsCache:
   enabled: false
 singleBinary:
+  nodeSelector:
+    kubernetes.io/hostname: set-hog
   persistence:
     accessModes:
     - ReadWriteOnce

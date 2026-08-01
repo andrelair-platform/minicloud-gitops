@@ -163,6 +163,8 @@ jobs:
 # Server-Side Apply race (SSA field ownership).
 mariadb-sts:
   enabled: true
+  nodeSelector:
+    kubernetes.io/hostname: set-hog
   image:
     repository: mariadb
     tag: "10.6"

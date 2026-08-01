@@ -16,6 +16,8 @@ spec:
       labels:
         app: vaultwarden
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: star-kitten
       serviceAccountName: default
       automountServiceAccountToken: false
       securityContext:

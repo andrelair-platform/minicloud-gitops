@@ -17,6 +17,9 @@ ollama:
 ollamaUrls: []
 ollamaUrlsFromExtraEnv: false
 
+nodeSelector:
+  kubernetes.io/hostname: star-kitten
+
 podLabels:
   backstage.io/kubernetes-id: open-webui
 

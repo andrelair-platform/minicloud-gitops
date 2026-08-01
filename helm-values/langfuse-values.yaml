@@ -134,6 +134,8 @@ clickhouse:
   clusterEnabled: false
   replicaCount: 1
   shards: 1
+  nodeSelector:
+    kubernetes.io/hostname: star-kitten
   resourcesPreset: "none"
   resources:
     requests:
@@ -188,6 +190,8 @@ redis:
     enabled: false
     password: ""
   primary:
+    nodeSelector:
+      kubernetes.io/hostname: set-hog
     extraFlags:
       - "--maxmemory-policy noeviction"
     # Default exec ping probes: liveness 6s timeout/5s period, readiness 2s/5s.
