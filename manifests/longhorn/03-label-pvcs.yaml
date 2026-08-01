@@ -4,7 +4,7 @@ metadata:
   name: longhorn-pvc-labeler
   namespace: longhorn-system
 ---
-# Minimal: only needs to patch PVC labels across namespaces.
+# Needs to GET PVCs (to resolve volume name) and PATCH Longhorn volumes.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -12,7 +12,10 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumeclaims"]
-    verbs: ["get", "list", "patch"]
+    verbs: ["get", "list"]
+  - apiGroups: ["longhorn.io"]
+    resources: ["volumes"]
+    verbs: ["get", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -28,17 +31,17 @@ subjects:
     namespace: longhorn-system
 ---
 # PostSync hook: idempotent — safe to re-run on every ArgoCD sync.
-# Adds recurring-job-group.longhorn.io/backup=enabled to critical PVCs.
-# Longhorn propagates this label from PVC to the backing volume automatically.
+# Labels Longhorn volume CRs directly (not PVCs — Longhorn v1.6 does not
+# auto-propagate PVC labels to volume objects for existing volumes).
+# BeforeHookCreation ensures Job spec is re-created fresh each sync
+# (Kubernetes Jobs are immutable; SSA cannot update the pod template).
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: label-longhorn-backup-pvcs
+  name: label-longhorn-backup-volumes
   namespace: longhorn-system
   annotations:
     argocd.argoproj.io/hook: PostSync
-    # BeforeHookCreation: delete existing job before each sync → guarantees
-    # a fresh pod is created with the current image (Job spec is immutable).
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   template:
@@ -47,8 +50,6 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: labeler
-          # alpine:3.21 has wget built in — no extra packages, no kubectl image needed.
-          # Patches PVC labels directly via the k8s REST API using the pod's SA token.
           image: docker.io/alpine:3.21
           command: ["/bin/sh", "-c"]
           args:
@@ -58,48 +59,56 @@ spec:
               TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
               CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
               API=https://kubernetes.default.svc
-              PATCH='{"metadata":{"labels":{"recurring-job-group.longhorn.io/backup":"enabled"}}}'
+              LABEL_PATCH='{"metadata":{"labels":{"recurring-job-group.longhorn.io/backup":"enabled"}}}'
 
-              label() {
+              # Resolve PVC → Longhorn volume name, then PATCH the volume CR.
+              # Longhorn reads recurring job groups from the volume object labels.
+              labelVol() {
+                ns=$1; pvc=$2
+                volname=$(curl -sf --cacert "$CA" \
+                  -H "Authorization: Bearer $TOKEN" \
+                  "$API/api/v1/namespaces/$ns/persistentvolumeclaims/$pvc" \
+                  | grep -o '"volumeName":"[^"]*"' | cut -d'"' -f4)
+                if [ -z "$volname" ]; then echo "SKIP $ns/$pvc (not found)"; return; fi
                 curl -sf --cacert "$CA" \
                   -H "Authorization: Bearer $TOKEN" \
                   -H "Content-Type: application/merge-patch+json" \
-                  -X PATCH -d "$PATCH" \
-                  "$API/api/v1/namespaces/$1/persistentvolumeclaims/$2" > /dev/null \
-                  && echo "labeled $1/$2" || echo "FAILED $1/$2"
+                  -X PATCH -d "$LABEL_PATCH" \
+                  "$API/apis/longhorn.io/v1beta2/namespaces/longhorn-system/volumes/$volname" \
+                  > /dev/null && echo "labeled $ns/$pvc -> $volname" || echo "FAILED $ns/$pvc"
               }
 
               # Identity / auth / secrets
-              label authentik    data-authentik-postgresql-0
-              label vault        data-vault-0
-              label vaultwarden  vaultwarden-data
+              labelVol authentik    data-authentik-postgresql-0
+              labelVol vault        data-vault-0
+              labelVol vaultwarden  vaultwarden-data
 
               # Core business data
-              label erp          data-erpnext-mariadb-sts-0
-              label erp          erpnext
-              label mail         data-stalwart-0
-              label productivity pvc-plane-ce-pgdb-vol-plane-ce-pgdb-wl-0
-              label productivity pvc-plane-ce-minio-vol-plane-ce-minio-wl-0
+              labelVol erp          data-erpnext-mariadb-sts-0
+              labelVol erp          erpnext
+              labelVol mail         data-stalwart-0
+              labelVol productivity pvc-plane-ce-pgdb-vol-plane-ce-pgdb-wl-0
+              labelVol productivity pvc-plane-ce-minio-vol-plane-ce-minio-wl-0
 
               # Communication
-              label chat         matrix-synapse
-              label sign         docuseal-data
+              labelVol chat         matrix-synapse
+              labelVol sign         docuseal-data
 
               # AI / platform services
-              label ai           data-postgresql-ai-0
-              label ai           open-webui
-              label backstage    data-backstage-postgresql-0
-              label harbor       database-data-harbor-database-0
-              label harbor       harbor-registry
-              label langfuse     data-langfuse-clickhouse-shard0-0
+              labelVol ai           data-postgresql-ai-0
+              labelVol ai           open-webui
+              labelVol backstage    data-backstage-postgresql-0
+              labelVol harbor       database-data-harbor-database-0
+              labelVol harbor       harbor-registry
+              labelVol langfuse     data-langfuse-clickhouse-shard0-0
 
               # Messaging (NATS JetStream persistence)
-              label messaging    nats-js-nats-0
-              label messaging    nats-js-nats-1
-              label messaging    nats-js-nats-2
+              labelVol messaging    nats-js-nats-0
+              labelVol messaging    nats-js-nats-1
+              labelVol messaging    nats-js-nats-2
 
               # Nextcloud
-              label nextcloud    data-nextcloud-postgresql-0
-              label nextcloud    nextcloud-nextcloud
+              labelVol nextcloud    data-nextcloud-postgresql-0
+              labelVol nextcloud    nextcloud-nextcloud
 
-              echo "All PVCs labeled for Longhorn backup group"
+              echo "All Longhorn volumes labeled for backup recurring job group"
