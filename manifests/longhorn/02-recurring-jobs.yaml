@@ -1,0 +1,29 @@
+# Daily local snapshot — low-cost, fast rollback for all labeled volumes.
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: daily-snapshot
+  namespace: longhorn-system
+spec:
+  cron: "0 1 * * *"
+  task: snapshot
+  groups:
+    - backup
+  retain: 7
+  concurrency: 5
+---
+# Daily offsite backup — kopia to MinIO bucket "longhorn" for DR.
+# Runs after the snapshot job to avoid I/O contention.
+# concurrency: 2 avoids saturating the 10.0.0.1:9000 connection on backup day.
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: daily-backup
+  namespace: longhorn-system
+spec:
+  cron: "0 2 * * *"
+  task: backup
+  groups:
+    - backup
+  retain: 14
+  concurrency: 2

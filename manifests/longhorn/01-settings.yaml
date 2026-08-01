@@ -1,0 +1,15 @@
+# Longhorn backup target: MinIO at 10.0.0.1:9000, bucket "longhorn".
+# Region string is arbitrary for MinIO — Longhorn uses AWS_ENDPOINTS from the secret.
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: backup-target
+  namespace: longhorn-system
+value: "s3://longhorn@us-east-1/"
+---
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: backup-target-credential-secret
+  namespace: longhorn-system
+value: longhorn-backup-credentials

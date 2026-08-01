@@ -153,6 +153,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: erp
       server: https://kubernetes.default.svc
+    - namespace: longhorn-system
+      server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
     - group: ""
@@ -244,4 +246,7 @@ spec:
       kind: "*"
     # Cilium namespace-scoped network policies
     - group: "cilium.io"
+      kind: "*"
+    # Longhorn backup CRs (RecurringJob, Setting — namespace-scoped in longhorn-system)
+    - group: "longhorn.io"
       kind: "*"
