@@ -1,7 +1,7 @@
 ---
-# ai namespace: LiteLLM, Open WebUI, docling, markitdown, RAG ingest, presidio
-# Ollama removed 2026-08-02. Remaining limits: ~12 CPU / ~24Gi across ~11 pods.
-# Ceiling set 2x remaining usage.
+# ai namespace: LiteLLM, Open WebUI, docling, markitdown, RAG ingest, presidio, minicloud-agent
+# Bumped requests.memory 8→12Gi 2026-08-02: minicloud-agent (256Mi) pushed LiteLLM rolling
+# update over quota (7.05Gi used, new pod needs 2Gi headroom for RollingUpdate concurrency).
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -11,7 +11,7 @@ spec:
   hard:
     requests.cpu: "6"
     limits.cpu: "24"
-    requests.memory: 8Gi
+    requests.memory: 12Gi
     limits.memory: 40Gi
     count/pods: "20"
 ---
