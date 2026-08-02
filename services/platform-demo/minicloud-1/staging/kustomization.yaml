@@ -10,7 +10,7 @@ resources:
 # Tag promoted manually: after dev is validated, open a PR bumping newTag here.
 images:
   - name: harbor.10.0.0.200.nip.io/library/platform-demo
-    newTag: "0b7cb75"
+    newTag: "7d6f9c0"
 patches:
   - path: patch-resources.yaml
     target:
