@@ -521,3 +521,28 @@ prometheus-node-exporter:
   readinessProbe:
     timeoutSeconds: 5
     periodSeconds: 30
+
+# Blackbox exporter — used to probe k3s API server TLS cert expiry.
+# insecure_skip_verify: true so it doesn't need to trust the minicloud CA;
+# probe_ssl_earliest_cert_expiry is populated for any HTTPS probe regardless
+# of TLS validation outcome.
+prometheus-blackbox-exporter:
+  enabled: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  podAnnotations:
+    vault.hashicorp.com/agent-inject: "false"
+  config:
+    modules:
+      https_skip_verify:
+        prober: http
+        timeout: 10s
+        http:
+          tls_config:
+            insecure_skip_verify: true
+          preferred_ip_protocol: "ip4"

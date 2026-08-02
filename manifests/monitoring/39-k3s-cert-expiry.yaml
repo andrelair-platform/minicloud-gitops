@@ -1,0 +1,108 @@
+---
+# Probe the k3s API server TLS endpoint to track serving cert expiry.
+# The module uses insecure_skip_verify so the blackbox exporter doesn't
+# need to trust the minicloud CA — cert content is read regardless of
+# chain validation, and probe_ssl_earliest_cert_expiry is always populated.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: k3s-apiserver-tls
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  jobName: k3s-apiserver-tls
+  prober:
+    url: kps-prometheus-blackbox-exporter.monitoring:9115
+    scheme: http
+    path: /probe
+  module: https_skip_verify
+  targets:
+    staticConfig:
+      static:
+        - https://kubernetes.default.svc:443
+  metricRelabelings:
+    - sourceLabels: [__name__]
+      action: keep
+      regex: probe_ssl_earliest_cert_expiry|probe_success
+---
+# Alert when the k3s API server serving cert (or any cert in the chain)
+# expires within 60 days. At that point the 90-day auto-rotate window
+# (triggered by restarting k3s on set-hog) has already opened.
+#
+# k3s cert expiry reference (all certs issued 2026-04-26):
+#   - CAs (server-ca, client-ca, etcd): expire 2036-04-23 — no action needed
+#   - Leaf certs (serving-kube-apiserver, client-*, kube-scheduler, etcd peer/server/client):
+#     expire 2027-04-26 — k3s auto-rotates on restart if < 90 days remain
+#
+# Rotation procedure:
+#   ssh set-hog "sudo systemctl restart k3s"
+#   # k3s detects < 90 days and rotates all leaf certs automatically on startup
+#   # Verify: sudo openssl x509 -noout -dates -in /var/lib/rancher/k3s/server/tls/serving-kube-apiserver.crt
+#   # A second restart is required to load the new serving cert into the API server process
+#   ssh set-hog "sudo systemctl restart k3s"
+#
+# OR: run the explicit rotate subcommand (does not require restart):
+#   ssh set-hog "sudo k3s certificate rotate"
+#   ssh set-hog "sudo systemctl restart k3s"  # restart once to load new certs
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k3s-cert-expiry-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: k3s.certificates
+      rules:
+        - alert: K3sServingCertExpiringSoon
+          expr: >-
+            (
+              probe_ssl_earliest_cert_expiry{job="k3s-apiserver-tls"}
+              - time()
+            ) / 86400 < 60
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/observability/controlplane-node-monitoring-gaps"
+            summary: "k3s API server TLS cert expires in {{ $value | humanizeDuration }} (threshold: 60 days)"
+            description: |
+              The k3s API server serving certificate is expiring in fewer than 60 days.
+              k3s auto-rotates leaf certificates on startup when they are within 90 days
+              of expiry. This alert fires at 60 days to give 30 days of lead time before
+              the auto-rotate window opens.
+
+              Current expiry: 2027-04-26 (next expected alert: ~2027-02-25)
+
+              Rotation procedure (takes ~30s, brief API server unavailability):
+                1. ssh set-hog "sudo k3s certificate rotate"
+                2. ssh set-hog "sudo systemctl restart k3s"
+                3. Verify: ssh set-hog "sudo openssl x509 -noout -dates \
+                     -in /var/lib/rancher/k3s/server/tls/serving-kube-apiserver.crt"
+                4. Confirm ArgoCD reconnects: kubectl --context minicloud get nodes
+                5. Confirm kured and system-upgrade-controller still running
+
+              Note: kube-prometheus-stack ServiceMonitors reconnect automatically.
+              Grafana dashboards may show a brief data gap during the restart (~30s).
+
+        - alert: K3sServingCertProbeFailing
+          expr: probe_success{job="k3s-apiserver-tls"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/observability/controlplane-node-monitoring-gaps"
+            summary: "Blackbox probe of k3s API server TLS endpoint is failing"
+            description: |
+              The blackbox exporter cannot probe https://kubernetes.default.svc:443.
+              This may indicate the blackbox exporter itself has no network path to
+              the API server, or that the API server is not responding.
+
+              Check:
+                kubectl --context minicloud get pods -n monitoring | grep blackbox
+                kubectl --context minicloud logs -n monitoring deploy/kps-prometheus-blackbox-exporter
+                ssh set-hog "sudo systemctl status k3s"

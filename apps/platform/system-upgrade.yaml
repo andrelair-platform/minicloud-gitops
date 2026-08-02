@@ -1,4 +1,15 @@
 ---
+# UPGRADE WINDOW PROCEDURE:
+# 1. Before bumping version in 01-k3s-plans.yaml, pause auto-sync on this
+#    Application so ArgoCD does not interfere with SUC Job pods:
+#      argocd app set system-upgrade --sync-policy none
+# 2. Commit + push the version bump. ArgoCD detects OutOfSync but does not act.
+# 3. Manually sync once to push the updated Plan to the cluster:
+#      argocd app sync system-upgrade
+# 4. SUC picks up the new Plan and creates upgrade Job pods. Monitor:
+#      kubectl get jobs -n system-upgrade -w
+# 5. After all Jobs complete (all nodes upgraded), re-enable auto-sync:
+#      argocd app set system-upgrade --sync-policy automated --self-heal --auto-prune
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
