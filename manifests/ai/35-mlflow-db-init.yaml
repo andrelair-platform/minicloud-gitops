@@ -1,0 +1,85 @@
+---
+# One-time Job that creates the mlflow Postgres user + database in postgresql-ai.
+# Runs as an ArgoCD PreSync hook before the MLflow Deployment is applied.
+# Safe to re-run: DO NOTHING guards prevent errors on re-sync.
+#
+# Secret bootstrap (run once):
+#   vault kv put secret/ai/mlflow \
+#     database-password="$(openssl rand -hex 20)"
+#
+#   kubectl create secret generic mlflow-credentials -n ai \
+#     --from-literal=database-password=<value>
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mlflow-db-init
+  namespace: ai
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: mlflow-db-init
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: init
+          image: docker.io/postgres:16-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: PGHOST
+              value: postgresql-ai.ai.svc.cluster.local
+            - name: PGPORT
+              value: "5432"
+            - name: PGUSER
+              value: postgres
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-postgresql-secret
+                  key: postgres-password
+            - name: MLFLOW_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-credentials
+                  key: database-password
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Creating mlflow user..."
+              psql -c "DO \$\$
+              BEGIN
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'mlflow') THEN
+                  CREATE ROLE mlflow LOGIN PASSWORD '$(MLFLOW_DB_PASSWORD)';
+                END IF;
+              END
+              \$\$;"
+              echo "Creating mlflow database..."
+              psql -c "SELECT 1 FROM pg_database WHERE datname = 'mlflow'" \
+                | grep -q 1 \
+                || psql -c "CREATE DATABASE mlflow OWNER mlflow;"
+              echo "Granting privileges..."
+              psql -c "GRANT ALL PRIVILEGES ON DATABASE mlflow TO mlflow;"
+              psql -d mlflow -c "GRANT ALL ON SCHEMA public TO mlflow;"
+              echo "Done."
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

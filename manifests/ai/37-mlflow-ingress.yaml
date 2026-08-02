@@ -1,34 +1,32 @@
 ---
-# Internal + public TLS certificate for Flowise.
+# Internal + public TLS certificate for MLflow.
 # After merge, add the Cloudflare DNS route:
-#   ssh controller "~/.local/bin/cloudflared tunnel route dns minicloud flowise.devandre.sbs"
+#   ssh controller "~/.local/bin/cloudflared tunnel route dns minicloud mlflow.devandre.sbs"
 # Then create the Authentik application in the Authentik UI:
 #   Provider type: Proxy (Forward auth single application)
-#   External host: https://flowise.devandre.sbs
-#   Internal host: http://flowise.ai.svc.cluster.local:3000
+#   External host: https://mlflow.devandre.sbs
+#   Internal host: http://mlflow.ai.svc.cluster.local:5000
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: flowise-tls
+  name: mlflow-tls
   namespace: ai
 spec:
-  secretName: flowise-tls
+  secretName: mlflow-tls
   issuerRef:
     name: minicloud-ca
     kind: ClusterIssuer
   dnsNames:
-    - flowise.10.0.0.200.nip.io
-    - flowise.devandre.sbs
+    - mlflow.10.0.0.200.nip.io
+    - mlflow.devandre.sbs
 ---
-# Authentik configuration-snippet and server-snippet copied from n8n (same outpost).
-# Flowise has its own username/password, but Authentik adds SSO single-sign-on on top.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: flowise-ingress
+  name: mlflow-ingress
   namespace: ai
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
     nginx.ingress.kubernetes.io/configuration-snippet: |
@@ -61,27 +59,27 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - flowise.10.0.0.200.nip.io
-        - flowise.devandre.sbs
-      secretName: flowise-tls
+        - mlflow.10.0.0.200.nip.io
+        - mlflow.devandre.sbs
+      secretName: mlflow-tls
   rules:
-    - host: flowise.10.0.0.200.nip.io
+    - host: mlflow.10.0.0.200.nip.io
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: flowise
+                name: mlflow
                 port:
-                  number: 3000
-    - host: flowise.devandre.sbs
+                  number: 5000
+    - host: mlflow.devandre.sbs
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: flowise
+                name: mlflow
                 port:
-                  number: 3000
+                  number: 5000
