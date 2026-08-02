@@ -17,10 +17,7 @@ spec:
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
-      - ServerSideDiff=true
       - RespectIgnoreDifferences=true
-      - SkipDryRunOnMissingResource=true
   ignoreDifferences:
     - group: argoproj.io
       kind: Rollout
@@ -29,5 +26,3 @@ spec:
       jqPathExpressions:
         - .spec.replicas
         - .spec.template.metadata.annotations
-      managedFieldsManagers:
-        - rollouts-controller
