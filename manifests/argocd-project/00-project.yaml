@@ -45,6 +45,7 @@ spec:
     - https://helm.erpnext.com
     - https://open-telemetry.github.io/opentelemetry-helm-charts
     - https://go.temporal.io/helm-charts
+    - https://charts.deliveryhero.io/
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
@@ -105,6 +106,8 @@ spec:
     - namespace: keda
       server: https://kubernetes.default.svc
     - namespace: kured
+      server: https://kubernetes.default.svc
+    - namespace: node-problem-detector
       server: https://kubernetes.default.svc
     - namespace: kube-system
       server: https://kubernetes.default.svc
