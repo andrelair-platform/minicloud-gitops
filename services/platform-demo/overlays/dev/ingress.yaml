@@ -35,8 +35,21 @@ spec:
     - hosts:
         - platform-demo-dev.10.0.0.200.nip.io
       secretName: platform-demo-dev-tls
+    - hosts:
+        - dev.demo.devandre.sbs
+      secretName: platform-demo-dev-tls
   rules:
     - host: platform-demo-dev.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: platform-demo
+                port:
+                  name: http
+    - host: dev.demo.devandre.sbs
       http:
         paths:
           - path: /
