@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: minicloud-plane-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/minicloud-plane/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: minicloud-plane-staging
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Rollout
+      jsonPointers:
+        - /spec/replicas
+        - /spec/template/metadata/annotations
+  syncPolicy:
+    # Staging sync is intentionally manual — no automated promotion.
+    # Tag promoted by opening a PR bumping newTag in overlays/staging/kustomization.yaml.
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
