@@ -1,6 +1,7 @@
 ---
 # Build image: cd services/minicloud-agent && docker buildx build --platform linux/amd64 \
-#   -t harbor.10.0.0.200.nip.io/library/minicloud-agent:latest --push .
+#   -t harbor.10.0.0.200.nip.io/library/minicloud-agent:1.0.0 --push .
+# Bump the tag for each new release (Gatekeeper blocks :latest tags).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: minicloud-agent
-          image: harbor.10.0.0.200.nip.io/library/minicloud-agent:latest
+          image: harbor.10.0.0.200.nip.io/library/minicloud-agent:1.0.0
           ports:
             - containerPort: 8080
           env:
