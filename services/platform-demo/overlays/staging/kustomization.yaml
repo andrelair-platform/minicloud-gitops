@@ -4,6 +4,7 @@ namespace: platform-demo-staging
 resources:
   - ../../base
   - scaledobject.yaml
+  - configmap.yaml
 # Tag promoted manually: after dev is validated, open a PR bumping newTag here.
 images:
   - name: harbor.10.0.0.200.nip.io/library/platform-demo
