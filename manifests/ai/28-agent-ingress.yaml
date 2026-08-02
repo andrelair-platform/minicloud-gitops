@@ -1,0 +1,28 @@
+---
+# Internal-only ingress (nip.io). Not exposed via Cloudflare tunnel —
+# external consumers go through LiteLLM (model: research-agent).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minicloud-agent-ingress
+  namespace: ai
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - agent.10.0.0.200.nip.io
+      secretName: minicloud-agent-tls
+  rules:
+    - host: agent.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minicloud-agent
+                port:
+                  number: 8080

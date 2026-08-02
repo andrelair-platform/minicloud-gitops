@@ -1,6 +1,7 @@
 ---
-# Allow LiteLLM pods to reach cloud model providers (Groq, etc.) on port 443.
-# Scoped to app=litellm only — Ollama egress is handled by a separate policy below.
+# Allow LiteLLM pods to reach cloud model providers (Groq, Mistral, OpenAI, etc.) on port 443.
+# The default-deny-egress + allow-cluster-egress (CiliumNetworkPolicy) in manifests/network-policies/ai.yaml
+# block all internet egress by default; pods that need internet access get an explicit policy here.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -10,6 +11,24 @@ spec:
   podSelector:
     matchLabels:
       app: litellm
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 443
+          protocol: TCP
+---
+# Allow minicloud-agent to reach DuckDuckGo (web_search tool) and any public HTTPS endpoint.
+# Cluster-internal egress (LiteLLM, rag-ingest) is already covered by allow-cluster-egress.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-agent-internet-egress
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels:
+      app: minicloud-agent
   policyTypes:
     - Egress
   egress:
