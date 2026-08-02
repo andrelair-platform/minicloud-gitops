@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           FAILED=0
-          for overlay in services/*/overlays/*/; do
+          for overlay in services/*/minicloud-1/*/; do
             echo "── $overlay"
             if ! kustomize build "$overlay" \
               | kubeconform \

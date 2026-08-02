@@ -15,7 +15,7 @@ spec:
       targetRevision: 2.21.0
       helm:
         valueFiles:
-          - $values/helm-values/jitsi-values.yaml
+          - $values/helm-values/minicloud-1/jitsi-values.yaml
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
       ref: values

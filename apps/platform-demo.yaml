@@ -10,13 +10,13 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: services/platform-demo/overlays/prod
+    path: services/platform-demo/minicloud-1/prod
   destination:
     server: https://kubernetes.default.svc
     namespace: platform-demo-prod
   syncPolicy:
     # Production sync is intentionally manual — no automated promotion.
-    # To deploy: bump newTag in overlays/prod/kustomization.yaml via PR,
+    # To deploy: bump newTag in minicloud-1/prod/kustomization.yaml via PR,
     # then click Sync in ArgoCD UI or run: argocd app sync platform-demo
     syncOptions:
       - CreateNamespace=true

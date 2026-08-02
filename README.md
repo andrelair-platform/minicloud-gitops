@@ -58,7 +58,7 @@ Every resource running in the minicloud k3s cluster originates from this repo. A
 - **Secrets via Vault + ESO** — all credentials in HashiCorp Vault; External Secrets Operator syncs them to Kubernetes Secrets at runtime; nothing committed to git
 - **Enterprise AI stack** — LiteLLM gateway routing cloud and local LLM providers (Groq, OpenAI, Anthropic, Mistral, Gemini, Ollama); RAG pipeline (bge-m3 + pgvector HNSW + BM25 + cross-encoder + Docling OCR)
 - **Full supply chain** — all custom images Trivy-scanned, Cosign-signed (keyless via GitHub OIDC → Sigstore Fulcio), syft CycloneDX SBOM as OCI referrer; GPG-signed gitops bump commits
-- **Kustomize Combo 1** — base+overlays (dev/staging/prod) for internal services; CI promotes via `kustomize edit set image` to dev only; staging and prod require PR
+- **Kustomize Combo 1** — base + `minicloud-1/{dev,staging,prod}` overlays for internal services; CI promotes via `kustomize edit set image` to dev only; staging and prod require PR
 
 ---
 
@@ -73,8 +73,8 @@ git push → GitHub             MAAS + OpenTofu (bare metal)
 minicloud-gitops (this repo — ArgoCD app-of-apps)
 +-- bootstrap/      root-app.yaml (one-time apply)
 +-- apps/           ArgoCD Application per workload
-+-- helm-values/    all Helm overrides (canonical)
-+-- services/       Kustomize base+overlays (dev/staging/prod)
++-- helm-values/    all Helm overrides per cluster (helm-values/minicloud-1/)
++-- services/       Kustomize base + minicloud-1/{dev,staging,prod} overlays
 +-- manifests/      cluster-wide resources (CRDs, RBAC, policies)
      |
      v (ArgoCD reconciles on every push)
@@ -174,14 +174,14 @@ LiteLLM config is managed in [minicloud-litellm-custom](https://github.com/andre
 
 ```
 services/<name>/
-├── base/                   # no namespace, no image tag
+├── base/                       # no namespace, no image tag
 │   ├── kustomization.yaml
 │   ├── deployment.yaml
 │   └── service.yaml
-└── overlays/
-    ├── dev/                # CI auto-updates newTag here
-    ├── staging/            # PR to promote
-    └── prod/               # ingress + cert here
+└── minicloud-1/                 # cluster dimension
+    ├── dev/                     # CI auto-updates newTag here
+    ├── staging/                 # PR to promote
+    └── prod/                    # ingress + cert here
 ```
 
 **Checklist:**
@@ -190,7 +190,7 @@ services/<name>/
 2. Add the namespace to `manifests/argocd-project/00-project.yaml` (destinations list)
 3. Add ArgoCD Application YAMLs in `apps/`
 4. Update the Vault Kubernetes auth role: add `<name>-dev` + `<name>-staging` to `bound_service_account_namespaces`
-5. Add `overlays/prod/ingress.yaml` + `certificate.yaml` for a public URL
+5. Add `minicloud-1/prod/ingress.yaml` + `certificate.yaml` for a public URL
 
 ---
 
