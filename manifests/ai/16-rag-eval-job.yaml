@@ -52,7 +52,7 @@ spec:
             - name: GENERATION_MODEL
               value: mistral-small
             - name: EVAL_WORKERS
-              value: "5"
+              value: "1"
             - name: FAITHFULNESS_THRESHOLD
               value: "0.70"
             - name: HIT_RATE_THRESHOLD
