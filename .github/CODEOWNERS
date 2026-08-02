@@ -1,0 +1,21 @@
+# Production overlay paths — any PR touching prod requires @AndreLair review.
+# Staging paths — require review but not from a separate reviewer list.
+# Platform Helm values — all require @AndreLair review.
+
+# Production overlays (all services)
+services/*/overlays/prod/     @AndreLair
+services/*/minicloud-1/prod/  @AndreLair
+
+# Production quota and network-policy manifests
+manifests/quotas/*-prod.yaml  @AndreLair
+manifests/network-policies/*-prod.yaml @AndreLair
+
+# Helm values — any change here affects running platform tools
+helm-values/                  @AndreLair
+helm-values/minicloud-1/      @AndreLair
+
+# Bootstrap — changing root-app.yaml affects the entire cluster
+bootstrap/                    @AndreLair
+
+# RBAC — security-sensitive
+manifests/rbac/               @AndreLair
