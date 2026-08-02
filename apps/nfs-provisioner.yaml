@@ -17,7 +17,7 @@ spec:
       helm:
         releaseName: nfs-provisioner
         valueFiles:
-          - $values/helm-values/nfs-provisioner-values.yaml
+          - $values/helm-values/minicloud-1/nfs-provisioner-values.yaml
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
       ref: values
