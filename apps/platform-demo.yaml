@@ -13,7 +13,7 @@ spec:
     path: services/platform-demo/overlays/prod
   destination:
     server: https://kubernetes.default.svc
-    namespace: gitops-demo
+    namespace: platform-demo-prod
   syncPolicy:
     # Production sync is intentionally manual — no automated promotion.
     # To deploy: bump newTag in overlays/prod/kustomization.yaml via PR,
@@ -25,7 +25,7 @@ spec:
     - group: argoproj.io
       kind: Rollout
       name: platform-demo
-      namespace: gitops-demo
+      namespace: platform-demo-prod
       jqPathExpressions:
         - .spec.replicas
         - .spec.template.metadata.annotations
