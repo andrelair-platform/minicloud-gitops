@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: temporal
         valueFiles:
-          - $values/helm-values/temporal-values.yaml
+          - $values/helm-values/minicloud-1/temporal-values.yaml
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
       ref: values
