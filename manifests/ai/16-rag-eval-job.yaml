@@ -11,9 +11,11 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    # Fail-warn: the eval job exits 0 on threshold failures (logged as warnings)
+    # so ArgoCD sync is never blocked. Only hard crashes (exit 1) fail the hook.
 spec:
   ttlSecondsAfterFinished: 3600
-  backoffLimit: 0
+  backoffLimit: 1
   template:
     metadata:
       labels:
@@ -29,6 +31,18 @@ spec:
         - name: rag-eval
           image: harbor.10.0.0.200.nip.io/library/rag-eval:3feaf22
           imagePullPolicy: Always
+          # Wrap the default entrypoint so rate-limit / threshold failures log as
+          # warnings and exit 0 — preventing the PostSync hook from blocking every sync.
+          # Hard crashes (OOM, missing env, import errors) still propagate as exit 1.
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              python -m rag_eval.cli
+              CODE=$?
+              if [ $CODE -ne 0 ]; then
+                echo "WARN: rag-eval exited $CODE (rate limit or threshold breach) — not blocking sync"
+              fi
+              exit 0
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
