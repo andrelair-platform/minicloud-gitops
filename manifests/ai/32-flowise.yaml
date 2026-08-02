@@ -1,0 +1,142 @@
+---
+# Flowise — visual drag-and-drop LLM workflow builder for non-technical stakeholders.
+# Backed by postgresql-ai (flowise DB) — SQLite is explicitly disabled.
+# LiteLLM is pre-wired as the OpenAI-compatible endpoint inside the pod.
+#
+# Secret bootstrap (run once, then ESO keeps it in sync):
+#   vault kv put secret/ai/flowise \
+#     database-password="$(openssl rand -hex 20)" \
+#     flowise-username="admin" \
+#     flowise-password="$(openssl rand -hex 16)" \
+#     flowise-secretkey="$(openssl rand -hex 32)"
+#
+# Then create the k8s secret (until ESO ExternalSecret is wired):
+#   kubectl create secret generic flowise-credentials -n ai \
+#     --from-literal=database-password=<value> \
+#     --from-literal=flowise-username=admin \
+#     --from-literal=flowise-password=<value> \
+#     --from-literal=flowise-secretkey=<value>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flowise
+  namespace: ai
+  labels:
+    app: flowise
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flowise
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: flowise
+        backstage.io/kubernetes-id: flowise
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: flowise
+          image: docker.io/flowiseai/flowise:2.2.7
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3000"
+            # ── Database (PostgreSQL — SQLite disabled) ──────────────────
+            - name: DATABASE_TYPE
+              value: postgres
+            - name: DATABASE_HOST
+              value: postgresql-ai.ai.svc.cluster.local
+            - name: DATABASE_PORT
+              value: "5432"
+            - name: DATABASE_USER
+              value: flowise
+            - name: DATABASE_NAME
+              value: flowise
+            - name: DATABASE_SSL
+              value: "false"
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: flowise-credentials
+                  key: database-password
+            # ── Admin auth ───────────────────────────────────────────────
+            - name: FLOWISE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: flowise-credentials
+                  key: flowise-username
+            - name: FLOWISE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: flowise-credentials
+                  key: flowise-password
+            # ── Encryption key for stored credentials ────────────────────
+            - name: FLOWISE_SECRETKEY_OVERWRITE
+              valueFrom:
+                secretKeyRef:
+                  name: flowise-credentials
+                  key: flowise-secretkey
+            # ── Storage + telemetry ───────────────────────────────────────
+            - name: APIKEY_STORAGE_TYPE
+              value: db
+            - name: DISABLE_FLOWISE_TELEMETRY
+              value: "true"
+            - name: LOG_LEVEL
+              value: info
+            # ── LiteLLM pre-wired (stakeholders add it as a credential) ──
+            - name: LITELLM_BASE_URL
+              value: "http://litellm.ai.svc.cluster.local:4000"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /api/v1/ping
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/v1/ping
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flowise
+  namespace: ai
+spec:
+  selector:
+    app: flowise
+  ports:
+    - port: 3000
+      targetPort: 3000
