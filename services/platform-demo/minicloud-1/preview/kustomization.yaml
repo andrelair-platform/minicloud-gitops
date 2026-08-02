@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# No namespace field — ArgoCD destination.namespace (preview-pd-<number>) applies.
+resources:
+  - ../../base
+  - configmap.yaml
+patches:
+  # Simplify the canary strategy: no analysis gate, immediate full rollout.
+  # Single replica is enough for a short-lived review environment.
+  - path: patch-preview.yaml
+    target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Rollout
+      name: platform-demo
+  # PDB minAvailable: 1 would block node drain for a single-replica preview.
+  - patch: |-
+      - op: replace
+        path: /spec/minAvailable
+        value: 0
+    target:
+      group: policy
+      version: v1
+      kind: PodDisruptionBudget
+      name: platform-demo
