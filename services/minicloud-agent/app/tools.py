@@ -46,7 +46,7 @@ async def web_search(query: str) -> str:
     or facts not available in the internal knowledge base. Use for recent events,
     external regulatory updates, market data, or general knowledge questions."""
     try:
-        from duckduckgo_search import DDGS
+        from ddgs import DDGS
         results = list(DDGS().text(query, max_results=5))
         if not results:
             return "No web results found for this query."
