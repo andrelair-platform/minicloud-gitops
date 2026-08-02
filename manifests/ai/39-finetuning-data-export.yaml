@@ -1,0 +1,227 @@
+---
+# Fine-tuning data export pipeline.
+# Exports Langfuse traces for phi3-financial as Alpaca-format JSONL for Colab QLoRA training.
+#
+# Source: Langfuse traces where model=phi3-financial, no error, score >= 0 (user didn't reject).
+# Output: /export/training-YYYYMMDD.jsonl on the finetuning-datasets PVC.
+#
+# Schedule: weekly Sunday 02:00 UTC (accumulates ~7 days of production queries).
+# Manual trigger: kubectl create job ft-export-manual --from=cronjob/finetuning-data-export -n ai
+#
+# To retrieve the JSONL for Colab:
+#   kubectl cp ai/<pod-name>:/export/training-YYYYMMDD.jsonl ./training-data.jsonl
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: finetuning-datasets
+  namespace: ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: finetuning-export-script
+  namespace: ai
+data:
+  export.py: |
+    #!/usr/bin/env python3
+    """
+    Export Langfuse phi3-financial traces → Alpaca JSONL for QLoRA fine-tuning.
+
+    Alpaca format per line:
+      {"instruction": "<user question>", "input": "<retrieved context>", "output": "<assistant answer>"}
+
+    Filters applied:
+      - name contains "phi3-financial"
+      - no error in output
+      - output length >= 50 chars (exclude empty/error responses)
+      - deduplication on (instruction, output) pair
+    """
+    import json
+    import os
+    import sys
+    from datetime import datetime, timedelta
+    from pathlib import Path
+
+    import requests
+
+    LANGFUSE_HOST = os.environ["LANGFUSE_HOST"]
+    PUBLIC_KEY    = os.environ["LANGFUSE_PUBLIC_KEY"]
+    SECRET_KEY    = os.environ["LANGFUSE_SECRET_KEY"]
+    OUTPUT_DIR    = Path(os.environ.get("OUTPUT_DIR", "/export"))
+    LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "7"))
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output_file = OUTPUT_DIR / f"training-{datetime.utcnow().strftime('%Y%m%d')}.jsonl"
+
+    since = (datetime.utcnow() - timedelta(days=LOOKBACK_DAYS)).isoformat() + "Z"
+
+    print(f"Fetching traces since {since} from {LANGFUSE_HOST}...")
+
+    auth = (PUBLIC_KEY, SECRET_KEY)
+    page, limit, total_exported, seen = 1, 100, 0, set()
+
+    with output_file.open("w") as fh:
+        while True:
+            resp = requests.get(
+                f"{LANGFUSE_HOST}/api/public/traces",
+                auth=auth,
+                params={"page": page, "limit": limit, "fromTimestamp": since},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            traces = data.get("data", [])
+            if not traces:
+                break
+
+            for trace in traces:
+                name = trace.get("name", "")
+                if "phi3-financial" not in name:
+                    continue
+
+                # Extract user input and assistant output from observations
+                obs_resp = requests.get(
+                    f"{LANGFUSE_HOST}/api/public/observations",
+                    auth=auth,
+                    params={"traceId": trace["id"], "limit": 50},
+                    timeout=30,
+                )
+                obs_resp.raise_for_status()
+                observations = obs_resp.json().get("data", [])
+
+                user_input, context, assistant_output = "", "", ""
+                for obs in observations:
+                    if obs.get("type") == "GENERATION":
+                        inp = obs.get("input") or {}
+                        out = obs.get("output") or {}
+                        # Extract messages if present
+                        messages = []
+                        if isinstance(inp, dict):
+                            messages = inp.get("messages", [])
+                        elif isinstance(inp, list):
+                            messages = inp
+                        for msg in messages:
+                            role = msg.get("role", "")
+                            content = msg.get("content", "")
+                            if role == "user" and not user_input:
+                                user_input = content[:2000]
+                            elif role == "system" and "context" in content.lower():
+                                context = content[:3000]
+                        if isinstance(out, dict):
+                            assistant_output = out.get("content", "")[:3000]
+                        elif isinstance(out, str):
+                            assistant_output = out[:3000]
+                        break
+
+                if not user_input or not assistant_output:
+                    continue
+                if len(assistant_output) < 50:
+                    continue
+                if "error" in assistant_output.lower()[:20]:
+                    continue
+
+                key = (user_input[:100], assistant_output[:100])
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                record = {
+                    "instruction": user_input,
+                    "input": context,
+                    "output": assistant_output,
+                }
+                fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+                total_exported += 1
+
+            if len(traces) < limit:
+                break
+            page += 1
+
+    print(f"Exported {total_exported} training examples → {output_file}")
+    if total_exported < 10:
+        print("WARNING: fewer than 10 examples — not enough data for fine-tuning yet.")
+        sys.exit(0)
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: finetuning-data-export
+  namespace: ai
+spec:
+  schedule: "0 2 * * 0"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: finetuning-data-export
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: exporter
+              image: docker.io/python:3.11-slim
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  pip install requests --quiet --no-cache-dir
+                  python /scripts/export.py
+              env:
+                - name: LANGFUSE_HOST
+                  value: "http://langfuse-web.langfuse.svc.cluster.local:3000"
+                - name: LANGFUSE_PUBLIC_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rag-eval-credentials
+                      key: langfuse-public-key
+                - name: LANGFUSE_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rag-eval-credentials
+                      key: langfuse-secret-key
+                - name: OUTPUT_DIR
+                  value: /export
+                - name: LOOKBACK_DAYS
+                  value: "7"
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                - name: datasets
+                  mountPath: /export
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: script
+              configMap:
+                name: finetuning-export-script
+            - name: datasets
+              persistentVolumeClaim:
+                claimName: finetuning-datasets
