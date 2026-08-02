@@ -9,8 +9,7 @@ import asyncio
 import logging
 import os
 
-from crewai import Agent, Crew, Process, Task
-from langchain_openai import ChatOpenAI
+from crewai import Agent, Crew, LLM, Process, Task
 
 from .tools import RagSearchTool, WebSearchTool
 
@@ -23,9 +22,11 @@ LARGE_MODEL = os.getenv("CREW_LARGE_MODEL", "mistral-large")
 MAX_ITER = int(os.getenv("CREW_MAX_ITER", "8"))
 
 
-def _llm(model: str) -> ChatOpenAI:
-    return ChatOpenAI(
-        model=model,
+def _llm(model: str) -> LLM:
+    # "openai/<model>" tells litellm to use OpenAI-compatible format against
+    # the proxy's base_url, which maps the virtual model name to the real provider.
+    return LLM(
+        model=f"openai/{model}",
         base_url=f"{LITELLM_BASE_URL}/v1",
         api_key=LITELLM_API_KEY,
         temperature=0.1,
