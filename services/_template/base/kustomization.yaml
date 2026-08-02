@@ -4,3 +4,5 @@ resources:
   - deployment.yaml
   - service.yaml
   - vpa.yaml
+  - networkpolicy-deny.yaml
+  - networkpolicy-ingress.yaml

@@ -3,7 +3,9 @@ kind: Kustomization
 namespace: SERVICE_NAME-prod
 resources:
   - ../../base
-  # Add ingress.yaml and certificate.yaml here for prod.
+  - ingress.yaml
+  - certificate.yaml
+  - quota.yaml
 # Promoted manually: PR bumping newTag after staging is approved.
 # ArgoCD Application for prod should have syncPolicy.automated disabled.
 images:
