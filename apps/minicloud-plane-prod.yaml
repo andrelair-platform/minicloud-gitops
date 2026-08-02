@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: minicloud-plane-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/minicloud-plane/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: minicloud-plane-prod
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Rollout
+      jsonPointers:
+        - /spec/replicas
+        - /spec/template/metadata/annotations
+  syncPolicy:
+    # Production sync is intentionally manual — no automated promotion.
+    # To deploy: bump newTag in overlays/prod/kustomization.yaml via PR,
+    # then click Sync in ArgoCD UI or run: argocd app sync minicloud-plane-prod
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
