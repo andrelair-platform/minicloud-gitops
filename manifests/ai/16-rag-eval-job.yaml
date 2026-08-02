@@ -48,9 +48,9 @@ spec:
             - name: EVAL_FAST_MODE
               value: "true"
             - name: JUDGE_MODEL
-              value: gpt-4o
+              value: mistral-large
             - name: GENERATION_MODEL
-              value: gpt-4o-mini
+              value: mistral-small
             - name: EVAL_WORKERS
               value: "5"
             - name: FAITHFULNESS_THRESHOLD
