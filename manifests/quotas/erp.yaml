@@ -1,0 +1,35 @@
+---
+# erp namespace: ERPNext gunicorn/nginx/socketio/workers + MariaDB + Valkey
+# erpnext-scheduler and conf-bench Job run without limits (Gatekeeper excludes erp ns).
+# LimitRange injects defaults on next pod restart.
+# Measured limits (9 capped pods): ~2.5 CPU / ~2.5Gi. Ceiling sized for MariaDB growth.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: erp-quota
+  namespace: erp
+spec:
+  hard:
+    requests.cpu: "1"
+    limits.cpu: "8"
+    requests.memory: 2Gi
+    limits.memory: 12Gi
+    count/pods: "25"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: erp-limits
+  namespace: erp
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi

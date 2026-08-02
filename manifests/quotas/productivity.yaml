@@ -1,0 +1,35 @@
+---
+# productivity namespace: Plane CE — web/api/worker/beat/live/space/admin + MinIO + Postgres + RabbitMQ + Redis
+# Several StatefulSet pods (pgdb, minio, rabbitmq, redis) run without explicit limits.
+# LimitRange injects defaults on next pod restart.
+# Ceiling sized for 11 pods + headroom for job replicas.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: productivity-quota
+  namespace: productivity
+spec:
+  hard:
+    requests.cpu: "1"
+    limits.cpu: "8"
+    requests.memory: 2Gi
+    limits.memory: 10Gi
+    count/pods: "20"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: productivity-limits
+  namespace: productivity
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi

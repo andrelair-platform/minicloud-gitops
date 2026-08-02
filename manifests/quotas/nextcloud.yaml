@@ -1,0 +1,33 @@
+---
+# nextcloud namespace: Nextcloud, OnlyOffice document server
+# OnlyOffice can spike to 2+ CPU during document conversion — limit set accordingly.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: nextcloud-quota
+  namespace: nextcloud
+spec:
+  hard:
+    requests.cpu: 500m
+    limits.cpu: "6"
+    requests.memory: 1Gi
+    limits.memory: 8Gi
+    count/pods: "15"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: nextcloud-limits
+  namespace: nextcloud
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "4"
+        memory: 4Gi

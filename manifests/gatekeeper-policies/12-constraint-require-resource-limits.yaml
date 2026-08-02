@@ -30,13 +30,12 @@ spec:
             - harbor           # multi-service chart; LimitRange injects runtime defaults
             - messaging        # nats reloader/prom-exporter sidecars; LimitRange covers runtime
             - nfs-provisioner  # infrastructure component with variable I/O
-            - productivity
-            - mail
+            - productivity     # Plane CE bundled PG/Redis/RabbitMQ/MinIO StatefulSets don't expose resource limits in chart values
+            - mail             # ses-inbound sidecar container has resources:{} — chart doesn't support per-sidecar limits
             - sign
-            - collab
-            - argo-rollouts
+            - argo-rollouts    # argo-rollouts and argo-rollouts-dashboard Deployments have no limits in upstream chart
             - vpa-system
-            - system-upgrade     # Plane CE bundled PG/Redis/RabbitMQ/MinIO StatefulSets don't expose resource limits in values
-            - chat              # matrix-synapse signing key job (batch/v1 Job) has no resource limits in chart defaults
-            - erp
-            - temporal          # Temporal server chart generates init/config containers without resource limits — cannot override in chart values
+            - system-upgrade
+            - chat             # matrix-synapse-redis StatefulSet has no limits; signing key Job lacks chart limit support
+            - erp              # erpnext-scheduler Deployment has no limits in chart values
+            - temporal         # Temporal server chart generates init/config containers without resource limits — cannot override in chart values
