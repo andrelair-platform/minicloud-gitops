@@ -1,0 +1,79 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: controlplane-latency-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: apiserver.latency
+      rules:
+        - alert: KubeAPIReadLatencyHigh
+          expr: >-
+            max(
+              cluster_quantile:apiserver_request_sli_duration_seconds:histogram_quantile{
+                quantile="0.99",
+                verb="read"
+              }
+            ) > 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/runbooks/apiserver-latency"
+            summary: "API server read p99 latency is {{ $value | humanizeDuration }} (threshold: 1s)"
+            description: |
+              The kube-apiserver p99 read latency (LIST/GET/WATCH) has exceeded 1 second
+              for more than 5 minutes.
+
+              Recording rule: cluster_quantile:apiserver_request_sli_duration_seconds:histogram_quantile
+              quantile=0.99, verb=read
+
+              Immediate checks:
+                ssh controller "kubectl --context minicloud top nodes"
+                ssh controller "kubectl --context minicloud get --raw /metrics/slis | grep -i apiserver_request_sli_duration"
+                ssh controller "kubectl --context minicloud get pods -n kube-system | grep apiserver"
+
+              Common causes:
+                - etcd/kine overloaded (check KineSQLWriteLatencyHigh alert)
+                - set-hog CPU/disk I/O saturation
+                - large LIST calls (watch storm from many controllers)
+
+              If set-hog is the bottleneck: check disk I/O on SQLite at
+                ssh set-hog "iostat -x 1 5"
+                ssh set-hog "df -h /var/lib/rancher/k3s/"
+
+        - alert: KubeAPIWriteLatencyHigh
+          expr: >-
+            max(
+              cluster_quantile:apiserver_request_sli_duration_seconds:histogram_quantile{
+                quantile="0.99",
+                verb="write"
+              }
+            ) > 4
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/runbooks/apiserver-latency"
+            summary: "API server write p99 latency is {{ $value | humanizeDuration }} (threshold: 4s)"
+            description: |
+              The kube-apiserver p99 write latency (POST/PUT/PATCH/DELETE) has exceeded 4
+              seconds for more than 5 minutes.
+
+              Recording rule: cluster_quantile:apiserver_request_sli_duration_seconds:histogram_quantile
+              quantile=0.99, verb=write
+
+              Write latency > 4s means kine/SQLite commit latency is high or set-hog is
+              under heavy disk pressure. Controller reconciliation loops and admission
+              webhooks will start timing out.
+
+              Immediate checks:
+                ssh controller "kubectl --context minicloud get --raw /metrics | grep kine_sql_time"
+                ssh set-hog "sudo journalctl -u k3s -n 50 --no-pager | grep -i 'slow\|timeout\|latency'"
+                ssh set-hog "sudo sqlite3 /var/lib/rancher/k3s/server/db/state.db '.stat'"
+
+              If this fires alongside KineSQLWriteLatencyHigh, the root cause is SQLite.
+              Reduce write pressure or migrate heavy workloads off set-hog.

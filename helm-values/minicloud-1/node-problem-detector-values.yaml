@@ -1,0 +1,50 @@
+# node-problem-detector — deliveryhero chart v2.3.14
+# Detects kernel deadlocks, OOM kills, disk pressure, hung tasks, and
+# unresponsive NFS/containerd. Exposes /metrics on port 20257 (scraped by kps).
+
+# Run on every node including control plane
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  - operator: Exists
+    effect: NoExecute
+  - operator: Exists
+    effect: NoSchedule
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+podAnnotations:
+  vault.hashicorp.com/agent-inject: "false"
+
+# Expose Prometheus metrics so kube-prometheus-stack scrapes them
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: kps
+
+# hostPID required for kernel-level problem detection
+hostPID: true
+
+# Persist to node filesystem so NPD can read kernel logs / sysfs
+hostNetwork: false
+
+settings:
+  # Grace period before marking a condition as problem
+  heartBeatPeriod: 5m
+
+  # Enable default system log monitor (kernel OOM, BTRFS errors, etc.)
+  log_monitors:
+    - /config/kernel-monitor.json
+    - /config/docker-monitor.json
+
+  # Enable custom plugin monitors for hung tasks and disk pressure
+  custom_plugin_monitors: []
