@@ -35,3 +35,20 @@ spec:
     - ports:
         - port: 443
           protocol: TCP
+---
+# Allow minicloud-crew-agent to reach DuckDuckGo (web_search) and public HTTPS endpoints.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-crew-agent-internet-egress
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels:
+      app: minicloud-crew-agent
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 443
+          protocol: TCP
