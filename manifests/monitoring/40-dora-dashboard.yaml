@@ -44,12 +44,12 @@ data:
             "name": "window",
             "type": "custom",
             "label": "Window",
-            "query": "7d : Last 7 days,30d : Last 30 days,90d : Last 90 days",
-            "current": {"value": "30d", "text": "Last 30 days"},
+            "query": "7d,30d,90d",
+            "current": {"value": "30d", "text": "30d"},
             "options": [
-              {"value": "7d",  "text": "Last 7 days",  "selected": false},
-              {"value": "30d", "text": "Last 30 days", "selected": true},
-              {"value": "90d", "text": "Last 90 days", "selected": false}
+              {"value": "7d",  "text": "7d",  "selected": false},
+              {"value": "30d", "text": "30d", "selected": true},
+              {"value": "90d", "text": "90d", "selected": false}
             ],
             "multi": false,
             "includeAll": false
@@ -295,7 +295,7 @@ data:
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum by (le) (rate(rollout_reconcile_bucket{exported_namespace=~\".*-$env\"}[$window]))) / 60",
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(rollout_reconcile_bucket[$window]))) / 60",
               "legendFormat": "p99 min",
               "instant": true
             }
@@ -329,7 +329,7 @@ data:
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
           "targets": [
             {
-              "expr": "histogram_quantile(0.50, sum by (le) (rate(rollout_reconcile_bucket{exported_namespace=~\".*-$env\"}[$window]))) / 60",
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(rollout_reconcile_bucket[$window]))) / 60",
               "legendFormat": "p50 min",
               "instant": true
             }
@@ -363,15 +363,15 @@ data:
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
           "targets": [
             {
-              "expr": "histogram_quantile(0.50, sum by (le) (rate(rollout_reconcile_bucket{exported_namespace=~\".*-$env\"}[1h]))) / 60",
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(rollout_reconcile_bucket[1h]))) / 60",
               "legendFormat": "p50"
             },
             {
-              "expr": "histogram_quantile(0.95, sum by (le) (rate(rollout_reconcile_bucket{exported_namespace=~\".*-$env\"}[1h]))) / 60",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(rollout_reconcile_bucket[1h]))) / 60",
               "legendFormat": "p95"
             },
             {
-              "expr": "histogram_quantile(0.99, sum by (le) (rate(rollout_reconcile_bucket{exported_namespace=~\".*-$env\"}[1h]))) / 60",
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(rollout_reconcile_bucket[1h]))) / 60",
               "legendFormat": "p99"
             }
           ],
@@ -440,7 +440,7 @@ data:
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
           "targets": [
             {
-              "expr": "avg(ALERTS_FOR_STATE{severity=~\"critical|warning\"}) / 60",
+              "expr": "avg(time() - ALERTS_FOR_STATE{severity=~\"critical|warning\"}) / 60",
               "legendFormat": "avg duration min",
               "instant": true
             }
@@ -454,7 +454,7 @@ data:
             "defaults": {
               "unit": "m",
               "decimals": 0,
-              "noValue": "0",
+              "noValue": "0 min",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
