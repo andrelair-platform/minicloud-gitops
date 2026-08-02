@@ -1,0 +1,32 @@
+---
+# mail namespace: Stalwart (1 CPU/1Gi), ses-inbound (200m/128Mi)
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: mail-quota
+  namespace: mail
+spec:
+  hard:
+    requests.cpu: 250m
+    limits.cpu: "3"
+    requests.memory: 512Mi
+    limits.memory: 4Gi
+    count/pods: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: mail-limits
+  namespace: mail
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 2Gi

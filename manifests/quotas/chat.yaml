@@ -1,0 +1,35 @@
+---
+# chat namespace: Matrix Synapse (500m/1Gi), Element Web (100m/128Mi), Redis (no limits — see note)
+# Gatekeeper require-resource-limits excludes this ns; matrix-synapse-redis has no limits.
+# LimitRange injects defaults on next pod restart. Helm values need updating before
+# removing chat from the Gatekeeper exclusion list.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: chat-quota
+  namespace: chat
+spec:
+  hard:
+    requests.cpu: 500m
+    limits.cpu: "4"
+    requests.memory: 1Gi
+    limits.memory: 6Gi
+    count/pods: "15"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: chat-limits
+  namespace: chat
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
