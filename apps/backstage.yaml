@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: backstage
         valueFiles:
-          - $values/helm-values/backstage-values.yaml
+          - $values/helm-values/minicloud-1/backstage-values.yaml
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
       ref: values

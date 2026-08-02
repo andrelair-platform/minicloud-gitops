@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: services/minicloud-plane/overlays/staging
+    path: services/minicloud-plane/minicloud-1/staging
   destination:
     server: https://kubernetes.default.svc
     namespace: minicloud-plane-staging

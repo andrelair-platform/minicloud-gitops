@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: kured
         valueFiles:
-          - $values/helm-values/kured-values.yaml
+          - $values/helm-values/minicloud-1/kured-values.yaml
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
       ref: values
