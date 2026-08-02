@@ -1,0 +1,58 @@
+---
+# Dev namespaces — Développeurs group gets edit access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oidc-dev-edit
+  namespace: platform-demo-dev
+subjects:
+  - kind: Group
+    name: "oidc:Développeurs"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oidc-dev-edit
+  namespace: minicloud-plane-dev
+subjects:
+  - kind: Group
+    name: "oidc:Développeurs"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+# Staging namespaces — QA group gets view access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oidc-staging-view
+  namespace: platform-demo-staging
+subjects:
+  - kind: Group
+    name: "oidc:QA"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: view
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oidc-staging-view
+  namespace: minicloud-plane-staging
+subjects:
+  - kind: Group
+    name: "oidc:QA"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: view
+  apiGroup: rbac.authorization.k8s.io
