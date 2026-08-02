@@ -1,0 +1,78 @@
+---
+# One-time Job that creates the flowise Postgres user + database in postgresql-ai.
+# Runs as an ArgoCD PreSync hook before the Flowise Deployment is applied.
+# Safe to re-run: CREATE IF NOT EXISTS / DO NOTHING guards prevent errors on re-sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: flowise-db-init
+  namespace: ai
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: flowise-db-init
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: init
+          image: docker.io/bitnami/postgresql:16
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: PGHOST
+              value: postgresql-ai.ai.svc.cluster.local
+            - name: PGPORT
+              value: "5432"
+            - name: PGUSER
+              value: postgres
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-postgresql-secret
+                  key: postgres-password
+            - name: FLOWISE_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: flowise-credentials
+                  key: database-password
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Creating flowise user..."
+              psql -c "DO \$\$
+              BEGIN
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'flowise') THEN
+                  CREATE ROLE flowise LOGIN PASSWORD '$(FLOWISE_DB_PASSWORD)';
+                END IF;
+              END
+              \$\$;"
+              echo "Creating flowise database..."
+              psql -c "SELECT 1 FROM pg_database WHERE datname = 'flowise'" \
+                | grep -q 1 \
+                || psql -c "CREATE DATABASE flowise OWNER flowise;"
+              echo "Granting privileges..."
+              psql -c "GRANT ALL PRIVILEGES ON DATABASE flowise TO flowise;"
+              psql -d flowise -c "GRANT ALL ON SCHEMA public TO flowise;"
+              echo "Done."
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
