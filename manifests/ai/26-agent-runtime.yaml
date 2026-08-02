@@ -1,0 +1,86 @@
+---
+# Build image: cd services/minicloud-agent && docker buildx build --platform linux/amd64 \
+#   -t harbor.10.0.0.200.nip.io/library/minicloud-agent:latest --push .
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minicloud-agent
+  namespace: ai
+  labels:
+    app: minicloud-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minicloud-agent
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: minicloud-agent
+        backstage.io/kubernetes-id: minicloud-agent
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: minicloud-agent
+          image: harbor.10.0.0.200.nip.io/library/minicloud-agent:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: LITELLM_BASE_URL
+              value: "http://litellm.ai.svc.cluster.local:4000"
+            - name: LITELLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: master-key
+            - name: RAG_INGEST_URL
+              value: "http://rag-ingest.ai.svc.cluster.local:8001"
+            - name: AGENT_DEFAULT_MODEL
+              value: "mistral-small"
+            - name: AGENT_MAX_ITERATIONS
+              value: "6"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minicloud-agent
+  namespace: ai
+spec:
+  selector:
+    app: minicloud-agent
+  ports:
+    - port: 8080
+      targetPort: 8080

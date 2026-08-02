@@ -115,6 +115,9 @@ spec:
             - name: prompt-handler
               mountPath: /app/langfuse_prompt_handler.py
               subPath: handler.py
+            - name: llamaguard-handler
+              mountPath: /app/llamaguard_handler.py
+              subPath: handler.py
           resources:
             requests:
               cpu: 200m
@@ -149,3 +152,6 @@ spec:
         - name: prompt-handler
           configMap:
             name: langfuse-prompt-handler
+        - name: llamaguard-handler
+          configMap:
+            name: llamaguard-handler

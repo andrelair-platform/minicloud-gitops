@@ -21,6 +21,16 @@ data:
           model: deepseek/deepseek-reasoner
           api_key: os.environ/DEEPSEEK_API_KEY
 
+      # ── AGENT RUNTIME ─────────────────────────────────────────────────────
+      # research-agent: multi-step ReAct agent (LangGraph) with RAG + web search.
+      # Routes through the minicloud-agent FastAPI service in the same namespace.
+      # Selecting this model in Open WebUI activates the full agent loop.
+      - model_name: research-agent
+        litellm_params:
+          model: openai/research-agent
+          api_base: http://minicloud-agent.ai.svc.cluster.local:8080/v1
+          api_key: none
+
       # ── EMBEDDINGS ────────────────────────────────────────────────────────
       # text-embedding-3-small — OpenAI 1536-dim cloud embedding model.
       # Used by rag-ingest: 359 chunks embed in ~3s.
@@ -132,7 +142,9 @@ data:
         port: 6379
         ttl: 600
         namespace: litellm
-      callbacks: ["langfuse_prompt_handler.LangfusePromptHandler"]
+      # LlamaGuard runs first (list order) — blocks unsafe content before prompt injection.
+      # Presidio PII masking runs independently via the guardrails section (pre_call).
+      callbacks: ["llamaguard_handler.LlamaGuardHandler", "langfuse_prompt_handler.LangfusePromptHandler"]
       success_callback: ["langfuse", "prometheus"]
       failure_callback: ["prometheus"]
 
