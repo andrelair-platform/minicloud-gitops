@@ -3,6 +3,9 @@ kind: Kustomization
 namespace: SERVICE_NAME-dev
 resources:
   - ../../base
+  - ingress.yaml
+  - quota.yaml
+  - rolebinding.yaml
 # CI updates newTag on every push to main.
 images:
   - name: harbor.10.0.0.200.nip.io/library/SERVICE_NAME
