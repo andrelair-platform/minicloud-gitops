@@ -1,0 +1,148 @@
+---
+# vLLM — OpenAI-compatible model serving for fine-tuned Phi-3-mini adapters.
+# Pinned to fast-heron (8 cores, ~10Gi RAM free) — the only node with enough
+# headroom for Phi-3-mini-4k-instruct in float16 (~7.6Gi model weights).
+#
+# CPU-only mode: inference is slow (~30-90s/request) but functional for demo.
+# When a GPU node is available, remove --device cpu and add nvidia.com/gpu resource.
+#
+# First startup downloads ~7.6Gi from HuggingFace Hub — allow 15-20 minutes.
+# Subsequent restarts use the model cache PVC and start in ~2 minutes.
+#
+# LoRA adapter workflow (after Colab training):
+#   1. Push adapter to HuggingFace Hub private repo: andrelair-platform/phi3-financial-ft
+#   2. Update --lora-modules arg below with the HF repo path + sha
+#   3. ArgoCD syncs → vLLM hot-reloads the adapter (no pod restart needed)
+#
+# HuggingFace token secret bootstrap (run once):
+#   kubectl create secret generic hf-credentials -n ai \
+#     --from-literal=token=hf_xxxx
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vllm-model-cache
+  namespace: ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 12Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: ai
+  labels:
+    app: vllm
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: vllm
+        backstage.io/kubernetes-id: vllm
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: fast-heron
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+        fsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vllm
+          image: docker.io/vllm/vllm-openai:v0.6.6
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          args:
+            - --model=microsoft/Phi-3-mini-4k-instruct
+            - --device=cpu
+            - --dtype=float16
+            - --max-model-len=1024
+            - --enable-lora
+            - --max-lora-rank=64
+            - --trust-remote-code
+            - --host=0.0.0.0
+            - --port=8000
+          env:
+            - name: HF_HOME
+              value: /model-cache
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-credentials
+                  key: token
+                  optional: true
+            # Bound KV cache to 4Gi on CPU
+            - name: VLLM_CPU_KVCACHE_SPACE
+              value: "4"
+          volumeMounts:
+            - name: model-cache
+              mountPath: /model-cache
+            - name: shm
+              mountPath: /dev/shm
+          resources:
+            requests:
+              cpu: 2000m
+              memory: 6Gi
+            limits:
+              cpu: 7000m
+              memory: 12Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            # 40 × 30s = 20 minutes max for first-boot model download
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 40
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 4
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 5
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: vllm-model-cache
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm
+  namespace: ai
+spec:
+  selector:
+    app: vllm
+  ports:
+    - port: 8000
+      targetPort: 8000
