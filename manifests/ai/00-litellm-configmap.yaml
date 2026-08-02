@@ -21,6 +21,16 @@ data:
           model: deepseek/deepseek-reasoner
           api_key: os.environ/DEEPSEEK_API_KEY
 
+      # ── FINE-TUNED LOCAL MODELS (vLLM on-cluster) ────────────────────────
+      # phi3-financial-ft: fine-tuned Phi-3-mini served by vLLM (CPU, fast-heron).
+      # Adapter loaded from HuggingFace Hub after Colab QLoRA training run.
+      # Expect 30-90s latency until a GPU node is available.
+      - model_name: phi3-financial-ft
+        litellm_params:
+          model: openai/Phi-3-mini-4k-instruct
+          api_base: http://vllm.ai.svc.cluster.local:8000/v1
+          api_key: none
+
       # ── AGENT RUNTIMES ────────────────────────────────────────────────────
       # research-agent: single ReAct agent (LangGraph), fast, simple queries.
       - model_name: research-agent
