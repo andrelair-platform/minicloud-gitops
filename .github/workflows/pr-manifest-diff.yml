@@ -1,0 +1,217 @@
+name: PR Manifest Diff
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/**/overlays/**'
+      - 'services/**/minicloud-1/**'
+      - 'helm-values/**'
+      - 'manifests/**'
+      - 'environments/**'
+
+jobs:
+  kustomize-diff:
+    name: Kustomize overlay diff
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install kustomize
+        uses: imranismail/setup-kustomize@v3
+        with:
+          kustomize-version: "5.6.0"
+
+      - name: Find changed overlays
+        id: changed
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+
+          # Find unique overlay directories that have changed files
+          CHANGED_OVERLAYS=$(git diff --name-only "$BASE"..."$HEAD" \
+            | grep -E '^services/.+/overlays/[^/]+/' \
+            | sed 's|/[^/]*$||' \
+            | sort -u \
+            || true)
+
+          echo "overlays<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_OVERLAYS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          echo "Changed overlays:"
+          echo "$CHANGED_OVERLAYS"
+
+      - name: Render and diff changed overlays
+        id: diff
+        if: steps.changed.outputs.overlays != ''
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          FULL_DIFF=""
+
+          while IFS= read -r overlay; do
+            [ -z "$overlay" ] && continue
+            echo "── Diffing: $overlay"
+
+            # Build HEAD version
+            if kustomize build "$overlay" > /tmp/after.yaml 2>&1; then
+              HEAD_OK=true
+            else
+              HEAD_OK=false
+              cat /tmp/after.yaml
+            fi
+
+            # Build BASE version (checkout base, build, restore HEAD)
+            git stash --include-untracked --quiet
+            git checkout "$BASE" --quiet -- "$overlay" 2>/dev/null || true
+
+            if [ -d "$overlay" ]; then
+              kustomize build "$overlay" > /tmp/before.yaml 2>&1 || true
+            else
+              # Overlay is new (didn't exist in base)
+              touch /tmp/before.yaml
+            fi
+
+            # Restore HEAD state
+            git checkout HEAD -- "$overlay" 2>/dev/null || true
+            git stash pop --quiet 2>/dev/null || true
+
+            # Compute diff
+            DIFF=$(diff -u /tmp/before.yaml /tmp/after.yaml || true)
+
+            if [ -z "$DIFF" ]; then
+              SUMMARY="No rendered output changes (label/annotation-only change or kustomization.yaml restructure)."
+            else
+              LINES=$(echo "$DIFF" | wc -l)
+              if [ "$LINES" -gt 400 ]; then
+                DIFF=$(echo "$DIFF" | head -400)
+                SUMMARY="_(diff truncated at 400 lines)_"
+              else
+                SUMMARY=""
+              fi
+            fi
+
+            FULL_DIFF="${FULL_DIFF}
+          <details>
+          <summary><b>${overlay}</b></summary>
+
+          \`\`\`diff
+          ${DIFF}
+          \`\`\`
+          ${SUMMARY}
+
+          </details>
+          "
+          done <<< "${{ steps.changed.outputs.overlays }}"
+
+          echo "full_diff<<EODIFF" >> $GITHUB_OUTPUT
+          echo "$FULL_DIFF" >> $GITHUB_OUTPUT
+          echo "EODIFF" >> $GITHUB_OUTPUT
+
+      - name: Find changed helm-values
+        id: helm-changed
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+
+          CHANGED_VALUES=$(git diff --name-only "$BASE"..."$HEAD" \
+            | grep -E '^helm-values/.*\.yaml$' \
+            || true)
+
+          echo "values<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_VALUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Diff helm-values files
+        id: helm-diff
+        if: steps.helm-changed.outputs.values != ''
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          FULL_DIFF=""
+
+          while IFS= read -r values_file; do
+            [ -z "$values_file" ] && continue
+            echo "── Diffing helm-values: $values_file"
+
+            # Before
+            git show "$BASE:$values_file" > /tmp/before-values.yaml 2>/dev/null || touch /tmp/before-values.yaml
+            cp "$values_file" /tmp/after-values.yaml
+
+            DIFF=$(diff -u --label "a/$values_file" --label "b/$values_file" \
+              /tmp/before-values.yaml /tmp/after-values.yaml || true)
+
+            if [ -z "$DIFF" ]; then
+              DIFF="(no changes)"
+            fi
+
+            FULL_DIFF="${FULL_DIFF}
+          <details>
+          <summary><b>${values_file}</b></summary>
+
+          \`\`\`diff
+          ${DIFF}
+          \`\`\`
+
+          </details>
+          "
+          done <<< "${{ steps.helm-changed.outputs.values }}"
+
+          echo "full_diff<<EODIFF" >> $GITHUB_OUTPUT
+          echo "$FULL_DIFF" >> $GITHUB_OUTPUT
+          echo "EODIFF" >> $GITHUB_OUTPUT
+
+      - name: Post diff comment
+        if: steps.changed.outputs.overlays != '' || steps.helm-changed.outputs.values != ''
+        uses: actions/github-script@v9
+        env:
+          KUSTOMIZE_DIFF: ${{ steps.diff.outputs.full_diff }}
+          HELM_DIFF: ${{ steps.helm-diff.outputs.full_diff }}
+        with:
+          script: |
+            const kustomizeDiff = process.env.KUSTOMIZE_DIFF || '';
+            const helmDiff = process.env.HELM_DIFF || '';
+
+            let body = '## Manifest diff\n\n';
+
+            if (kustomizeDiff) {
+              body += '### Kustomize overlays\n\n' + kustomizeDiff + '\n\n';
+            }
+
+            if (helmDiff) {
+              body += '### Helm values\n\n' + helmDiff + '\n\n';
+            }
+
+            body += '\n---\n_Generated by pr-manifest-diff.yml — rendered output diff, not a live cluster diff._';
+
+            // Find and update existing bot comment, or create new one
+            const marker = '## Manifest diff';
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.data.find(c =>
+              c.user.type === 'Bot' && c.body.startsWith(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body,
+              });
+            }
