@@ -5,6 +5,7 @@ resources:
   - 00-namespace.yaml
   - 01-resourcequota.yaml
   - 02-limitrange.yaml
+  - 03-rolebinding.yaml
 commonLabels:
   env: dev
   team: collab
