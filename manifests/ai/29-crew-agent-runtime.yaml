@@ -1,0 +1,89 @@
+---
+# Build image: cd services/minicloud-crew-agent && docker buildx build --platform linux/amd64 \
+#   -t harbor.10.0.0.200.nip.io/library/minicloud-crew-agent:1.0.0 --push .
+# Bump the tag for each new release (Gatekeeper blocks :latest tags).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minicloud-crew-agent
+  namespace: ai
+  labels:
+    app: minicloud-crew-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minicloud-crew-agent
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: minicloud-crew-agent
+        backstage.io/kubernetes-id: minicloud-crew-agent
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: minicloud-crew-agent
+          image: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent:1.0.0
+          ports:
+            - containerPort: 8081
+          env:
+            - name: LITELLM_BASE_URL
+              value: "http://litellm.ai.svc.cluster.local:4000"
+            - name: LITELLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: master-key
+            - name: RAG_INGEST_URL
+              value: "http://rag-ingest.ai.svc.cluster.local:8001"
+            - name: CREW_SMALL_MODEL
+              value: "mistral-small"
+            - name: CREW_LARGE_MODEL
+              value: "mistral-large"
+            - name: CREW_MAX_ITER
+              value: "8"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minicloud-crew-agent
+  namespace: ai
+spec:
+  selector:
+    app: minicloud-crew-agent
+  ports:
+    - port: 8081
+      targetPort: 8081
