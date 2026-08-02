@@ -21,14 +21,21 @@ data:
           model: deepseek/deepseek-reasoner
           api_key: os.environ/DEEPSEEK_API_KEY
 
-      # ── AGENT RUNTIME ─────────────────────────────────────────────────────
-      # research-agent: multi-step ReAct agent (LangGraph) with RAG + web search.
-      # Routes through the minicloud-agent FastAPI service in the same namespace.
-      # Selecting this model in Open WebUI activates the full agent loop.
+      # ── AGENT RUNTIMES ────────────────────────────────────────────────────
+      # research-agent: single ReAct agent (LangGraph), fast, simple queries.
       - model_name: research-agent
         litellm_params:
           model: openai/research-agent
           api_base: http://minicloud-agent.ai.svc.cluster.local:8080/v1
+          api_key: none
+
+      # deep-research-agent: three-agent CrewAI crew (Researcher → Analyst →
+      # Compliance Checker). Use for complex advisory tasks that need synthesis
+      # and regulatory validation. Slower than research-agent (~60–120s).
+      - model_name: deep-research-agent
+        litellm_params:
+          model: openai/deep-research-agent
+          api_base: http://minicloud-crew-agent.ai.svc.cluster.local:8081/v1
           api_key: none
 
       # ── EMBEDDINGS ────────────────────────────────────────────────────────

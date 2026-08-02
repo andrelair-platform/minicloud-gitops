@@ -1,0 +1,29 @@
+---
+# Internal-only ingress (nip.io). Not exposed via Cloudflare tunnel —
+# external consumers go through LiteLLM (model: deep-research-agent).
+# Longer timeouts than research-agent: 3 agents × 8 iterations each.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minicloud-crew-agent-ingress
+  namespace: ai
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - crew-agent.10.0.0.200.nip.io
+      secretName: minicloud-crew-agent-tls
+  rules:
+    - host: crew-agent.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minicloud-crew-agent
+                port:
+                  number: 8081
