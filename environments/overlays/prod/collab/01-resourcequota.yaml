@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: prod-quota
+  namespace: collab-prod
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: "4Gi"
+    limits.cpu: "6"
+    limits.memory: "12Gi"
+    pods: "30"
+    persistentvolumeclaims: "10"
+    requests.storage: "100Gi"
