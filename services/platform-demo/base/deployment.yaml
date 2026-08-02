@@ -52,6 +52,9 @@ spec:
           # Image tag is not set here — each overlay pins its own tag via
           # the images: block in kustomization.yaml.
           image: harbor.10.0.0.200.nip.io/library/platform-demo:placeholder
+          envFrom:
+            - configMapRef:
+                name: platform-demo
           ports:
             - containerPort: 9898
               name: http
