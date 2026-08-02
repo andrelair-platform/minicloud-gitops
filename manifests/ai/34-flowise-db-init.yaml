@@ -21,12 +21,12 @@ spec:
       restartPolicy: OnFailure
       securityContext:
         runAsNonRoot: true
-        runAsUser: 999
+        runAsUser: 70
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: init
-          image: docker.io/bitnami/postgresql:16
+          image: docker.io/postgres:16-alpine
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
