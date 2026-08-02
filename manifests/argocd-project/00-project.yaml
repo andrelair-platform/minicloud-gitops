@@ -88,6 +88,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: platform-demo-prod
       server: https://kubernetes.default.svc
+    - namespace: "preview-pd-*"
+      server: https://kubernetes.default.svc
     - namespace: harbor
       server: https://kubernetes.default.svc
     - namespace: homer
