@@ -1,7 +1,7 @@
 ---
-# ai namespace: Ollama (4 CPU/8Gi limit ea), LiteLLM, Open WebUI, docling, markitdown, RAG ingest, presidio
-# Measured limits total ~24 CPU / ~46Gi across 14 pods (2026-08-02).
-# Ceiling set 2x measured to allow model additions without unbounded scaling.
+# ai namespace: LiteLLM, Open WebUI, docling, markitdown, RAG ingest, presidio
+# Ollama removed 2026-08-02. Remaining limits: ~12 CPU / ~24Gi across ~11 pods.
+# Ceiling set 2x remaining usage.
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -9,14 +9,12 @@ metadata:
   namespace: ai
 spec:
   hard:
-    requests.cpu: "12"
-    limits.cpu: "50"
-    requests.memory: 20Gi
-    limits.memory: 80Gi
-    count/pods: "30"
+    requests.cpu: "6"
+    limits.cpu: "24"
+    requests.memory: 8Gi
+    limits.memory: 40Gi
+    count/pods: "20"
 ---
-# Default limit for inference containers is high — Ollama and docling need headroom.
-# Max cap prevents accidental mis-configured containers from consuming the entire node.
 apiVersion: v1
 kind: LimitRange
 metadata:
@@ -26,11 +24,11 @@ spec:
   limits:
     - type: Container
       default:
-        cpu: "1"
-        memory: 2Gi
+        cpu: 500m
+        memory: 1Gi
       defaultRequest:
-        cpu: 200m
-        memory: 512Mi
+        cpu: 100m
+        memory: 256Mi
       max:
-        cpu: "8"
-        memory: 16Gi
+        cpu: "4"
+        memory: 8Gi
