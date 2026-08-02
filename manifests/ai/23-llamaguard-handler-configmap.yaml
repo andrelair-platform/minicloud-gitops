@@ -7,50 +7,71 @@ metadata:
     # Mounted into the LiteLLM pod at /app/llamaguard_handler.py
     # Registered in litellm_settings.callbacks alongside LangfusePromptHandler.
     # Update this ConfigMap + restart LiteLLM to change classification behaviour.
+    #
+    # Model history:
+    #   groq/llama-guard-3-8b        — decommissioned 2025-06-06
+    #   groq/meta-llama/llama-guard-4-12b — deprecated 2026-03-05
+    #   groq/openai/gpt-oss-safeguard-20b — current (custom-policy JSON format)
 data:
   handler.py: |
     """
     LlamaGuardHandler — LiteLLM pre-call content safety filter.
 
-    Classifies every user message with Meta LlamaGuard-3-8B served via Groq.
-    Blocks requests that violate the enterprise safety profile (see BLOCKED_CATEGORIES).
+    Classifies every user message with openai/gpt-oss-safeguard-20b served via Groq.
+    The model uses a custom safety policy (SAFETY_POLICY_PROMPT) and returns JSON:
+      {"violation": 0|1, "category": "<name>", "reasoning": "<text>"}
 
-    Enterprise safety profile — blocked:
-      S1  Violent Crimes          S2  Non-Violent Crimes
-      S3  Sex-Related Crimes      S4  Child Sexual Exploitation
-      S5  Defamation              S9  Indiscriminate Weapons
-      S10 Hate                    S11 Suicide & Self-Harm
+    Blocked categories (defined in SAFETY_POLICY_PROMPT and BLOCKED_CATEGORIES):
+      violent_crimes, weapons, terrorism, csam, hate_speech,
+      self_harm, non_violent_crimes
 
     Allowed through (business advisory use cases):
-      S6  Specialized Advice (financial / insurance / legal advisory is the platform's purpose)
-      S7  Privacy (handled separately by Presidio PII masking pre-call)
-      S8  Intellectual Property
-      S12 Sexual Content
-      S13 Elections
-      S14 Code Interpreter Abuse
+      financial/insurance/legal advisory, medical information, general knowledge,
+      professional/business topics (platform purpose is regulated-industry advisory)
 
     Fail-open: if Groq is unavailable, the request proceeds with a warning log.
     The Presidio guardrail (default_on: true) is not affected by this handler.
     """
 
+    import json
     import logging
     import os
     from typing import Optional
 
     logger = logging.getLogger(__name__)
 
-    BLOCKED_CATEGORIES = {"S1", "S2", "S3", "S4", "S5", "S9", "S10", "S11"}
-
-    CATEGORY_LABELS = {
-        "S1": "Violent Crimes",
-        "S2": "Non-Violent Crimes",
-        "S3": "Sex-Related Crimes",
-        "S4": "Child Sexual Exploitation",
-        "S5": "Defamation",
-        "S9": "Indiscriminate Weapons",
-        "S10": "Hate",
-        "S11": "Suicide & Self-Harm",
+    BLOCKED_CATEGORIES = {
+        "violent_crimes",
+        "weapons",
+        "terrorism",
+        "csam",
+        "hate_speech",
+        "self_harm",
+        "non_violent_crimes",
     }
+
+    SAFETY_POLICY_PROMPT = """\
+You are a content safety classifier for an enterprise financial and insurance advisory platform.
+Evaluate the user message and return ONLY a JSON object with exactly these fields:
+  {"violation": <0 or 1>, "category": "<category name or empty string>", "reasoning": "<brief>"}
+
+Blocked categories (violation=1):
+  violent_crimes   — instructions for violence, murder, assault
+  weapons          — instructions for creating weapons, explosives, pipe bombs, etc.
+  terrorism        — planning or facilitating terrorist or mass-casualty acts
+  csam             — any sexual content involving minors
+  hate_speech      — incitement against people based on protected characteristics
+  self_harm        — detailed methods for suicide or self-injury
+  non_violent_crimes — step-by-step instructions for fraud, hacking, drug synthesis, etc.
+
+Always allowed (violation=0) regardless of sensitivity:
+  Financial and insurance advisory (regulation, compliance, products, risk)
+  Legal information and professional guidance
+  Medical information (general health, not self-harm methods)
+  General knowledge, history, science, business topics
+  Coding assistance and technical questions
+
+Return ONLY the JSON object — no markdown, no extra text."""
 
 
     def _extract_user_message(messages: list) -> Optional[str]:
@@ -69,38 +90,40 @@ data:
         return None
 
 
-    async def _classify(user_message: str) -> tuple[bool, list[str]]:
-        """Call LlamaGuard-3-8B via Groq and return (is_safe, [violated_category_codes])."""
+    async def _classify(user_message: str) -> tuple[bool, str]:
+        """Call gpt-oss-safeguard-20b via Groq and return (is_safe, category_name)."""
         try:
             import litellm
 
             response = await litellm.acompletion(
-                model="groq/llama-guard-3-8b",
-                messages=[{"role": "user", "content": user_message}],
+                model="groq/openai/gpt-oss-safeguard-20b",
+                messages=[
+                    {"role": "system", "content": SAFETY_POLICY_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
                 api_key=os.environ.get("GROQ_API_KEY"),
-                max_tokens=50,
+                max_tokens=150,
                 temperature=0,
             )
             raw = response.choices[0].message.content.strip()
-            lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
-            if not lines:
-                return True, []
-
-            verdict = lines[0].lower()
-            if verdict == "safe":
-                return True, []
-
-            categories: list[str] = []
-            if len(lines) > 1:
-                categories = [c.strip() for c in lines[1].split(",") if c.strip()]
-            return False, categories
+            # Strip markdown code fences if the model adds them
+            if raw.startswith("```"):
+                raw = raw.split("```")[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            result = json.loads(raw)
+            violation = int(result.get("violation", 0))
+            category = str(result.get("category", "")).strip().lower()
+            if violation == 1 and category:
+                return False, category
+            return True, ""
 
         except Exception as exc:
             logger.warning(
                 "[LlamaGuardHandler] Groq classification failed (%s) — fail-open, request proceeds.",
                 exc,
             )
-            return True, []
+            return True, ""
 
 
     try:
@@ -129,27 +152,23 @@ data:
             if not user_message:
                 return data
 
-            is_safe, violated = await _classify(user_message)
+            is_safe, category = await _classify(user_message)
 
             if is_safe:
                 return data
 
-            blocked = [c for c in violated if c in BLOCKED_CATEGORIES]
-            if not blocked:
-                # Flagged categories are not in our blocked set — log and allow
+            if category not in BLOCKED_CATEGORIES:
                 logger.info(
-                    "[LlamaGuardHandler] Non-blocked categories flagged: %s — allowed through.",
-                    ", ".join(violated),
+                    "[LlamaGuardHandler] Category '%s' not in blocked set — allowed through.",
+                    category,
                 )
                 return data
 
-            labels = [CATEGORY_LABELS.get(c, c) for c in blocked]
             logger.warning(
-                "[LlamaGuardHandler] Request blocked — safety categories: %s",
-                ", ".join(labels),
+                "[LlamaGuardHandler] Request blocked — safety category: %s", category
             )
             raise ValueError(
-                f"Content safety policy violation: {', '.join(labels)}. "
+                f"Content safety policy violation: {category}. "
                 "This request has been blocked by the platform content safety guardrail."
             )
 
