@@ -1,0 +1,31 @@
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: prod-quota
+  namespace: minicloud-plane-prod
+spec:
+  hard:
+    requests.cpu: "1"
+    requests.memory: "1Gi"
+    limits.cpu: "3"
+    limits.memory: "4Gi"
+    pods: "20"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: prod-limits
+  namespace: minicloud-plane-prod
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "200m"
+        memory: "256Mi"
+      defaultRequest:
+        cpu: "10m"
+        memory: "32Mi"
+      max:
+        cpu: "2"
+        memory: "2Gi"
