@@ -9,3 +9,4 @@ resources:
   - servicemonitor.yaml
   - analysis-template.yaml
   - analysis-template-preview.yaml
+  - poddisruptionbudget.yaml
