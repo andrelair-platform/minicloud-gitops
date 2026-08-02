@@ -8,6 +8,49 @@ metadata:
     release: kps
 spec:
   groups:
+    - name: kine.latency
+      rules:
+        - alert: KineSQLWriteLatencyHigh
+          expr: >-
+            histogram_quantile(
+              0.99,
+              sum by (name, le) (
+                rate(
+                  kine_sql_time_seconds_bucket{
+                    error_code="",
+                    name=~"InsertLastInsertID|UpdateCompact|PostCompactSQL"
+                  }[5m]
+                )
+              )
+            ) > 0.5
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/runbooks/kine-sqlite"
+            summary: "Kine/SQLite write p99 latency is {{ $value | humanizeDuration }} on {{ $labels.name }} (threshold: 500ms)"
+            description: |
+              The kine/SQLite write operation p99 latency has exceeded 500ms for more
+              than 5 minutes. This directly impacts kube-apiserver write throughput and
+              will manifest as slow kubectl apply, controller reconciliation timeouts,
+              and eventually KubeAPIWriteLatencyHigh.
+
+              Operation: {{ $labels.name }}
+              Tracked ops: InsertLastInsertID (new objects), UpdateCompact (compaction),
+                           PostCompactSQL (WAL checkpoint)
+
+              Diagnose:
+                ssh set-hog "df -h /var/lib/rancher/k3s/"
+                ssh set-hog "iostat -x 2 5"
+                ssh set-hog "sudo sqlite3 /var/lib/rancher/k3s/server/db/state.db 'PRAGMA wal_checkpoint(TRUNCATE);'"
+
+              If disk I/O is saturated: check Longhorn replicas on set-hog for excessive
+              sync traffic. Longhorn volume I/O shares the same NVMe as SQLite.
+
+              If WAL is growing: a long-running read transaction may be blocking
+              checkpoints. Check for stuck API watches:
+                ssh controller "kubectl --context minicloud get --raw /metrics | grep apiserver_watch"
+
     - name: kine.sqlite
       rules:
         - alert: KineSQLError
