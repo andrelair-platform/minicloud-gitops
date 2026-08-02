@@ -1,0 +1,655 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-dora
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  dora-metrics.json: |
+    {
+      "title": "DORA Metrics",
+      "uid": "minicloud-dora",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "5m",
+      "time": {"from": "now-30d", "to": "now"},
+      "tags": ["dora", "deployment", "reliability"],
+      "description": "Four DORA metrics sourced from Argo Rollouts events and ArgoCD sync data.",
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "prometheus",
+            "label": "Prometheus",
+            "hide": 0,
+            "refresh": 1
+          },
+          {
+            "name": "env",
+            "type": "custom",
+            "label": "Environment",
+            "query": "prod,staging,dev",
+            "current": {"value": "prod", "text": "prod"},
+            "options": [
+              {"value": "prod", "text": "prod", "selected": true},
+              {"value": "staging", "text": "staging", "selected": false},
+              {"value": "dev", "text": "dev", "selected": false}
+            ],
+            "multi": false,
+            "includeAll": false
+          },
+          {
+            "name": "window",
+            "type": "custom",
+            "label": "Window",
+            "query": "7d : Last 7 days,30d : Last 30 days,90d : Last 90 days",
+            "current": {"value": "30d", "text": "Last 30 days"},
+            "options": [
+              {"value": "7d",  "text": "Last 7 days",  "selected": false},
+              {"value": "30d", "text": "Last 30 days", "selected": true},
+              {"value": "90d", "text": "Last 90 days", "selected": false}
+            ],
+            "multi": false,
+            "includeAll": false
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "row",
+          "title": "Deployment Frequency",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+          "collapsed": false
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Deployments to Prod (window)",
+          "description": "Count of successful Rollout completions in *-prod namespaces over the selected window. Sourced from rollout_events_total{reason='RolloutCompleted'}.",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "increase(rollout_events_total{reason=\"RolloutCompleted\", exported_namespace=~\".*-$env\"}[$window])",
+              "legendFormat": "{{exported_namespace}} / {{name}}",
+              "instant": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["sum"]},
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value_and_name"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red",   "value": null},
+                  {"color": "yellow","value": 1},
+                  {"color": "green", "value": 4}
+                ]
+              },
+              "mappings": []
+            }
+          }
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Daily Deployment Rate",
+          "description": "Average deployments per day = total completions / window days. Elite: ≥1/day. High: ≥1/week. Medium: ≥1/month.",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "sum(increase(rollout_events_total{reason=\"RolloutCompleted\", exported_namespace=~\".*-$env\"}[$window])) / scalar(count_over_time(vector(1)[$window]))",
+              "legendFormat": "deploys/day",
+              "instant": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value_and_name"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red",   "value": null},
+                  {"color": "yellow","value": 0.14},
+                  {"color": "green", "value": 1}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Deployment Events Over Time",
+          "description": "Daily rate of successful rollout completions per namespace. Successes (green) vs failures (red).",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 1},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "increase(rollout_events_total{reason=\"RolloutCompleted\", exported_namespace=~\".*-$env\"}[1d])",
+              "legendFormat": "✓ {{exported_namespace}}/{{name}}"
+            },
+            {
+              "expr": "increase(rollout_events_total{reason=~\"Error|Failed|ProgressDeadlineExceeded\", exported_namespace=~\".*-$env\"}[1d])",
+              "legendFormat": "✗ {{exported_namespace}}/{{name}}"
+            }
+          ],
+          "options": {
+            "tooltip": {"mode": "multi"},
+            "legend": {"displayMode": "table", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"lineWidth": 2, "fillOpacity": 10}
+            },
+            "overrides": [
+              {
+                "matcher": {"id": "byRegexp", "options": "^✗.*"},
+                "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]
+              },
+              {
+                "matcher": {"id": "byRegexp", "options": "^✓.*"},
+                "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]
+              }
+            ]
+          }
+        },
+        {
+          "id": 5,
+          "type": "row",
+          "title": "Change Failure Rate",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 9},
+          "collapsed": false
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "Change Failure Rate (%)",
+          "description": "Failed rollouts / (completed + failed) × 100. Elite: <5%. High: <10%. Medium: <15%. Failures = Error + Failed + ProgressDeadlineExceeded reasons.",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 10},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "100 * sum(increase(rollout_events_total{reason=~\"Error|Failed|ProgressDeadlineExceeded\", exported_namespace=~\".*-$env\"}[$window])) / (sum(increase(rollout_events_total{reason=~\"RolloutCompleted|Error|Failed|ProgressDeadlineExceeded\", exported_namespace=~\".*-$env\"}[$window])) > 0)",
+              "legendFormat": "CFR %",
+              "instant": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "value_and_name"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green",  "value": null},
+                  {"color": "yellow", "value": 5},
+                  {"color": "red",    "value": 15}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 7,
+          "type": "stat",
+          "title": "Failed Rollouts (window)",
+          "description": "Absolute count of rollout failures (Error, Failed, ProgressDeadlineExceeded) in the selected environment over the window.",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 10},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "sum(increase(rollout_events_total{reason=~\"Error|Failed|ProgressDeadlineExceeded\", exported_namespace=~\".*-$env\"}[$window]))",
+              "legendFormat": "failures",
+              "instant": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green",  "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red",    "value": 3}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "CFR Over Time (7-day rolling)",
+          "description": "7-day rolling change failure rate per environment. Shows trend — spikes indicate batch of failed deployments.",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "100 * sum by (exported_namespace) (increase(rollout_events_total{reason=~\"Error|Failed|ProgressDeadlineExceeded\", exported_namespace=~\".*-$env\"}[7d])) / (sum by (exported_namespace) (increase(rollout_events_total{reason=~\"RolloutCompleted|Error|Failed|ProgressDeadlineExceeded\", exported_namespace=~\".*-$env\"}[7d])) > 0)",
+              "legendFormat": "{{exported_namespace}}"
+            }
+          ],
+          "options": {
+            "tooltip": {"mode": "multi"},
+            "legend": {"displayMode": "table", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {"lineWidth": 2, "fillOpacity": 10},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green",  "value": null},
+                  {"color": "yellow", "value": 5},
+                  {"color": "red",    "value": 15}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 9,
+          "type": "row",
+          "title": "Lead Time for Changes (proxy)",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18},
+          "collapsed": false
+        },
+        {
+          "id": 10,
+          "type": "stat",
+          "title": "P99 Rollout Duration (min)",
+          "description": "Proxy for lead time: p99 time from rollout start to Healthy phase. Does not include CI build time. Elite: <1h. This metric captures the deploy phase only.",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 19},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(rollout_reconcile_bucket{exported_namespace=~\".*-$env\"}[$window]))) / 60",
+              "legendFormat": "p99 min",
+              "instant": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "m",
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green",  "value": null},
+                  {"color": "yellow", "value": 15},
+                  {"color": "red",    "value": 60}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 11,
+          "type": "stat",
+          "title": "P50 Rollout Duration (min)",
+          "description": "Median rollout reconcile time across all rollouts in the selected environment.",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 19},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(rollout_reconcile_bucket{exported_namespace=~\".*-$env\"}[$window]))) / 60",
+              "legendFormat": "p50 min",
+              "instant": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "m",
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green",  "value": null},
+                  {"color": "yellow", "value": 5},
+                  {"color": "red",    "value": 30}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 12,
+          "type": "timeseries",
+          "title": "Rollout Duration Distribution Over Time",
+          "description": "P50/P95/P99 rollout duration trend. Spikes indicate degraded rollout performance (slow image pull, health check timeout, etc.).",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 19},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(rollout_reconcile_bucket{exported_namespace=~\".*-$env\"}[1h]))) / 60",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(rollout_reconcile_bucket{exported_namespace=~\".*-$env\"}[1h]))) / 60",
+              "legendFormat": "p95"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(rollout_reconcile_bucket{exported_namespace=~\".*-$env\"}[1h]))) / 60",
+              "legendFormat": "p99"
+            }
+          ],
+          "options": {
+            "tooltip": {"mode": "multi"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "m",
+              "custom": {"lineWidth": 2, "fillOpacity": 10}
+            },
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "p99"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]},
+              {"matcher": {"id": "byName", "options": "p95"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}]},
+              {"matcher": {"id": "byName", "options": "p50"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]}
+            ]
+          }
+        },
+        {
+          "id": 13,
+          "type": "row",
+          "title": "Mean Time to Restore (MTTR proxy)",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 27},
+          "collapsed": false
+        },
+        {
+          "id": 14,
+          "type": "stat",
+          "title": "Active Critical/Warning Alerts",
+          "description": "Count of currently firing alerts at critical or warning severity. Lower = better. Zero is the DORA elite target. High count signals unresolved incidents.",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 28},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "count(ALERTS{alertstate=\"firing\", severity=~\"critical|warning\"}) or vector(0)",
+              "legendFormat": "active alerts",
+              "instant": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green",  "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red",    "value": 3}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 15,
+          "type": "stat",
+          "title": "Avg Alert Duration (last 30d, min)",
+          "description": "Average time critical/warning alerts were firing over the last 30 days. Proxy for MTTR — how long incidents lasted before resolving. Lower = faster recovery.",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 28},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "avg(ALERTS_FOR_STATE{severity=~\"critical|warning\"}) / 60",
+              "legendFormat": "avg duration min",
+              "instant": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "m",
+              "decimals": 0,
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green",  "value": null},
+                  {"color": "yellow", "value": 30},
+                  {"color": "red",    "value": 120}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 16,
+          "type": "timeseries",
+          "title": "Active Alerts Over Time",
+          "description": "Number of critical + warning alerts firing per hour. Sustained high counts indicate unresolved incidents. DORA elite: no multi-hour incidents.",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "count(ALERTS{alertstate=\"firing\", severity=\"critical\"}) or vector(0)",
+              "legendFormat": "critical"
+            },
+            {
+              "expr": "count(ALERTS{alertstate=\"firing\", severity=\"warning\"}) or vector(0)",
+              "legendFormat": "warning"
+            }
+          ],
+          "options": {
+            "tooltip": {"mode": "multi"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"lineWidth": 2, "fillOpacity": 20}
+            },
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "critical"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]},
+              {"matcher": {"id": "byName", "options": "warning"},  "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}]}
+            ]
+          }
+        },
+        {
+          "id": 17,
+          "type": "row",
+          "title": "ArgoCD Sync Health",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 36},
+          "collapsed": false
+        },
+        {
+          "id": 18,
+          "type": "stat",
+          "title": "ArgoCD Apps Synced",
+          "description": "Count of ArgoCD Applications currently in Synced state. Complements deployment frequency — shows GitOps pipeline health.",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 37},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "sum(argocd_app_info{sync_status=\"Synced\"}) or vector(0)",
+              "legendFormat": "synced",
+              "instant": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red",    "value": null},
+                  {"color": "yellow", "value": 50},
+                  {"color": "green",  "value": 70}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 19,
+          "type": "stat",
+          "title": "ArgoCD Apps OutOfSync",
+          "description": "Count of Applications not in Synced state. OutOfSync apps = git drift not yet reconciled. Should stay near zero for a healthy GitOps platform.",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 37},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "sum(argocd_app_info{sync_status!=\"Synced\"}) or vector(0)",
+              "legendFormat": "out-of-sync",
+              "instant": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "colorMode": "background",
+            "graphMode": "none"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green",  "value": null},
+                  {"color": "yellow", "value": 3},
+                  {"color": "red",    "value": 10}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 20,
+          "type": "timeseries",
+          "title": "ArgoCD Sync Operations Over Time",
+          "description": "Rate of ArgoCD sync operations (success vs error). Spikes = deploy bursts. Errors = sync failures requiring investigation.",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 37},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "sum(increase(argocd_app_sync_total{phase=\"Succeeded\"}[1h]))",
+              "legendFormat": "sync succeeded"
+            },
+            {
+              "expr": "sum(increase(argocd_app_sync_total{phase=\"Failed\"}[1h]))",
+              "legendFormat": "sync failed"
+            }
+          ],
+          "options": {
+            "tooltip": {"mode": "multi"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"lineWidth": 2, "fillOpacity": 10}
+            },
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "sync succeeded"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]},
+              {"matcher": {"id": "byName", "options": "sync failed"},    "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]}
+            ]
+          }
+        },
+        {
+          "id": 21,
+          "type": "table",
+          "title": "Rollout Event Breakdown",
+          "description": "Per-namespace and per-rollout summary of all event types over the selected window. Use to identify which rollout has the highest failure count.",
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 45},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {
+              "expr": "sum by (exported_namespace, name, reason) (increase(rollout_events_total{exported_namespace=~\".*-$env\"}[$window]))",
+              "legendFormat": "{{exported_namespace}} / {{name}} — {{reason}}",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "options": {
+            "sortBy": [{"displayName": "Value", "desc": true}]
+          },
+          "transformations": [
+            {"id": "organize", "options": {
+              "renameByName": {
+                "exported_namespace": "Namespace",
+                "name": "Rollout",
+                "reason": "Event",
+                "Value": "Count"
+              }
+            }}
+          ],
+          "fieldConfig": {
+            "defaults": {"unit": "short"},
+            "overrides": [
+              {
+                "matcher": {"id": "byName", "options": "Count"},
+                "properties": [
+                  {"id": "custom.displayMode", "value": "color-background"},
+                  {"id": "thresholds", "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {"color": "green",  "value": null},
+                      {"color": "yellow", "value": 1},
+                      {"color": "red",    "value": 5}
+                    ]
+                  }}
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }

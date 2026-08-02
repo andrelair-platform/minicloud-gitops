@@ -189,6 +189,12 @@ server:
                   name: argo-cd-argocd-server
                   port:
                     number: 80
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: kps
   resources:
     requests: { cpu: 50m,  memory: 128Mi }
     limits:   { cpu: 500m, memory: 512Mi }
@@ -203,6 +209,12 @@ repoServer:
 controller:
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: kps
   resources:
     requests: { cpu: 100m, memory: 512Mi }
     limits:   { cpu: 1000m, memory: 3Gi }
