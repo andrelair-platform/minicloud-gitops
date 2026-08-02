@@ -7,19 +7,79 @@ on:
 
 jobs:
   change-record:
-    if: github.event.pull_request.merged == true
+    # Only create a change record when the PR is merged AND touches
+    # production/security-sensitive paths that require an audit trail.
+    if: |
+      github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       issues: write
       pull-requests: read
+      contents: read
 
     steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect whether PR touches production paths
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || \
+                    git diff --name-only HEAD~1 HEAD)
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Detect prod-scope: overlays/prod/, helm-values/, manifests/rbac/, bootstrap/
+          IS_PROD=false
+          if echo "$CHANGED" | grep -qE \
+            '(overlays/prod/|minicloud-1/prod/|^helm-values/|^manifests/rbac/|^manifests/network-policies/|^bootstrap/)'; then
+            IS_PROD=true
+          fi
+
+          echo "is_prod=$IS_PROD" >> $GITHUB_OUTPUT
+
+          # Extract affected services (unique service names from changed paths)
+          SERVICES=$(echo "$CHANGED" \
+            | grep -oE 'services/[^/]+' \
+            | sed 's|services/||' \
+            | sort -u \
+            | tr '\n' ', ' \
+            | sed 's/, $//' \
+            || true)
+
+          # Add helm-values tool names
+          TOOLS=$(echo "$CHANGED" \
+            | grep -oE 'helm-values/[^/]+-values\.yaml' \
+            | sed 's|helm-values/||; s|-values\.yaml||' \
+            | sort -u \
+            | tr '\n' ', ' \
+            | sed 's/, $//' \
+            || true)
+
+          if [ -n "$SERVICES" ] && [ -n "$TOOLS" ]; then
+            AFFECTED="$SERVICES (Helm: $TOOLS)"
+          elif [ -n "$TOOLS" ]; then
+            AFFECTED="Helm: $TOOLS"
+          elif [ -n "$SERVICES" ]; then
+            AFFECTED="$SERVICES"
+          else
+            AFFECTED="platform manifests"
+          fi
+
+          echo "affected=$AFFECTED" >> $GITHUB_OUTPUT
+          echo "Affected: $AFFECTED"
+          echo "Is prod: $IS_PROD"
+
       - name: Extract change classification from PR body
         id: classify
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          # Detect change type from checked checkboxes in PR template
           if echo "$PR_BODY" | grep -q '\- \[x\] `emergency`'; then
             echo "change_type=emergency" >> $GITHUB_OUTPUT
           elif echo "$PR_BODY" | grep -q '\- \[x\] `normal`'; then
@@ -37,10 +97,18 @@ jobs:
           fi
 
       - name: Create change record issue
+        # Always create for prod-touching PRs; also create for high/medium risk
+        # non-prod PRs (e.g. staging changes that need tracking).
+        if: |
+          steps.scope.outputs.is_prod == 'true' ||
+          steps.classify.outputs.risk == 'high' ||
+          steps.classify.outputs.risk == 'medium'
         uses: actions/github-script@v9
         env:
           CHANGE_TYPE: ${{ steps.classify.outputs.change_type }}
           RISK: ${{ steps.classify.outputs.risk }}
+          AFFECTED: ${{ steps.scope.outputs.affected }}
+          IS_PROD: ${{ steps.scope.outputs.is_prod }}
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -49,15 +117,20 @@ jobs:
             const timeStr = mergedAt.toISOString().split('T')[1].slice(0, 5) + ' UTC';
             const changeType = process.env.CHANGE_TYPE;
             const risk = process.env.RISK;
+            const affected = process.env.AFFECTED || 'unknown';
+            const isProd = process.env.IS_PROD === 'true';
+
+            const prodBadge = isProd ? ' 🔴 PRODUCTION' : '';
 
             const body = [
-              '## Change Record',
+              '## Change Record' + prodBadge,
               '',
               `**PR:** [#${pr.number} — ${pr.title}](${pr.html_url})`,
               `**Merged by:** @${pr.merged_by.login}`,
               `**Date:** ${dateStr} at ${timeStr}`,
               `**Change type:** ${changeType}`,
               `**Risk level:** ${risk}`,
+              `**Affected services:** ${affected}`,
               `**Files changed:** ${pr.changed_files} | **Commits:** ${pr.commits}`,
               '',
               '---',
@@ -81,11 +154,12 @@ jobs:
             ].join('\n');
 
             const labels = ['change-record', `change-type: ${changeType}`, `risk: ${risk}`];
+            if (isProd) labels.push('scope: production');
 
             const issue = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `[CHANGE] ${dateStr} — ${pr.title}`,
+              title: `[CHANGE] ${dateStr}${isProd ? ' [PROD]' : ''} — ${pr.title}`,
               body: body,
               labels: labels,
             });
