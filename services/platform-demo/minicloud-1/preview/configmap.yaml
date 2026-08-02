@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-demo
+data:
+  APP_ENV: preview
+  LOG_LEVEL: debug

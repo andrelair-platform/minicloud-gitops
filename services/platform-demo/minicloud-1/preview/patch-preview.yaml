@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: platform-demo
+spec:
+  replicas: 1
+  strategy:
+    canary:
+      # No analysis step for previews — deploy immediately at full weight.
+      steps:
+        - setWeight: 100
+  template:
+    metadata:
+      annotations:
+        # Disable Vault injection: preview namespaces are not in the platform-demo
+        # Vault auth role, and preview pods don't need secrets.
+        vault.hashicorp.com/agent-inject: "false"
