@@ -6,3 +6,4 @@ resources:
   - vpa.yaml
   - networkpolicy-deny.yaml
   - networkpolicy-ingress.yaml
+  - poddisruptionbudget.yaml

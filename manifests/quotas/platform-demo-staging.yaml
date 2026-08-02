@@ -6,10 +6,10 @@ metadata:
   namespace: platform-demo-staging
 spec:
   hard:
-    requests.cpu: "500m"
-    requests.memory: "512Mi"
-    limits.cpu: "2"
-    limits.memory: "2Gi"
+    requests.cpu: "1"
+    requests.memory: "1Gi"
+    limits.cpu: "4"
+    limits.memory: "4Gi"
     pods: "20"
 ---
 apiVersion: v1
