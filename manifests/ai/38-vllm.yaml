@@ -60,32 +60,43 @@ spec:
             - python3
             - -c
             - |
-              import sys, time, signal
+              import sys, time, multiprocessing
               from pathlib import Path
               cache_dir = "/model-cache"
               model_id = "microsoft/Phi-3-mini-4k-instruct"
               blobs_dir = Path(cache_dir) / "hub" / "models--microsoft--Phi-3-mini-4k-instruct" / "blobs"
               def is_cached():
                   if not blobs_dir.exists(): return False
-                  incomplete = list(blobs_dir.glob("*.incomplete"))
-                  if incomplete: return False
-                  size = sum(f.stat().st_size for f in blobs_dir.glob("*"))
-                  return size > 7_000_000_000
+                  if list(blobs_dir.glob("*.incomplete")): return False
+                  return sum(f.stat().st_size for f in blobs_dir.glob("*")) > 7_000_000_000
+              def do_download(model_id, cache_dir):
+                  from huggingface_hub import snapshot_download
+                  snapshot_download(model_id, cache_dir=cache_dir)
               if is_cached():
-                  print(f"Model fully cached, skipping download")
+                  print("Model fully cached, skipping download", flush=True)
                   sys.exit(0)
-              from huggingface_hub import snapshot_download
               for attempt in range(1, 20):
-                  try:
-                      incomplete = list(blobs_dir.glob("*.incomplete")) if blobs_dir.exists() else []
-                      done = sum(f.stat().st_size for f in blobs_dir.glob("*") if not f.name.endswith(".incomplete")) if blobs_dir.exists() else 0
-                      print(f"Attempt {attempt}: incomplete={len(incomplete)} cached_MB={done//1048576}")
-                      snapshot_download(model_id, cache_dir=cache_dir)
-                      print("Download complete")
+                  inc_size = lambda: sum(f.stat().st_size for f in blobs_dir.glob("*.incomplete")) if blobs_dir.exists() else 0
+                  print(f"Attempt {attempt}: downloaded_GB={inc_size()/1e9:.2f}", flush=True)
+                  p = multiprocessing.Process(target=do_download, args=(model_id, cache_dir))
+                  p.start()
+                  prev, stall = inc_size(), 0
+                  while p.is_alive():
+                      time.sleep(60)
+                      curr = inc_size()
+                      stall = stall + 1 if curr == prev else 0
+                      prev = curr
+                      print(f"  progress_GB={curr/1e9:.2f} stall_min={stall}", flush=True)
+                      if stall >= 10:
+                          print("Stall >10 min, killing downloader", flush=True)
+                          p.kill()
+                          break
+                  p.join()
+                  if is_cached():
+                      print("Download complete", flush=True)
                       sys.exit(0)
-                  except Exception as e:
-                      print(f"Attempt {attempt} failed: {e}", flush=True)
-                      time.sleep(30)
+                  print(f"Attempt {attempt} ended (exit={p.exitcode}), retrying in 30s", flush=True)
+                  time.sleep(30)
               sys.exit(1)
           env:
             - name: HF_HOME
