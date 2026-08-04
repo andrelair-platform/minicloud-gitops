@@ -60,20 +60,33 @@ spec:
             - python3
             - -c
             - |
-              import sys
+              import sys, time, signal
               from pathlib import Path
               cache_dir = "/model-cache"
               model_id = "microsoft/Phi-3-mini-4k-instruct"
               blobs_dir = Path(cache_dir) / "hub" / "models--microsoft--Phi-3-mini-4k-instruct" / "blobs"
-              incomplete = list(blobs_dir.glob("*.incomplete")) if blobs_dir.exists() else ["sentinel"]
-              completed_size = sum(f.stat().st_size for f in blobs_dir.glob("*") if not f.name.endswith(".incomplete")) if blobs_dir.exists() else 0
-              if not incomplete and completed_size > 7_000_000_000:
-                  print(f"Model fully cached ({completed_size/1e9:.1f} GB), skipping download")
+              def is_cached():
+                  if not blobs_dir.exists(): return False
+                  incomplete = list(blobs_dir.glob("*.incomplete"))
+                  if incomplete: return False
+                  size = sum(f.stat().st_size for f in blobs_dir.glob("*"))
+                  return size > 7_000_000_000
+              if is_cached():
+                  print(f"Model fully cached, skipping download")
                   sys.exit(0)
-              print(f"Downloading model (incomplete={len(incomplete)}, cached={completed_size/1e9:.1f} GB)...")
               from huggingface_hub import snapshot_download
-              snapshot_download(model_id, cache_dir=cache_dir)
-              print("Download complete")
+              for attempt in range(1, 20):
+                  try:
+                      incomplete = list(blobs_dir.glob("*.incomplete")) if blobs_dir.exists() else []
+                      done = sum(f.stat().st_size for f in blobs_dir.glob("*") if not f.name.endswith(".incomplete")) if blobs_dir.exists() else 0
+                      print(f"Attempt {attempt}: incomplete={len(incomplete)} cached_MB={done//1048576}")
+                      snapshot_download(model_id, cache_dir=cache_dir)
+                      print("Download complete")
+                      sys.exit(0)
+                  except Exception as e:
+                      print(f"Attempt {attempt} failed: {e}", flush=True)
+                      time.sleep(30)
+              sys.exit(1)
           env:
             - name: HF_HOME
               value: /model-cache
