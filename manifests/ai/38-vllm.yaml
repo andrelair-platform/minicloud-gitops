@@ -140,6 +140,21 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
+          # The GPU vllm image's version string lacks "cpu", so vllm.platforms
+          # detects UnspecifiedPlatform instead of CpuPlatform, making
+          # check_and_update_config a no-op (cpu_kvcache_space_bytes never set).
+          # The command wrapper patches current_platform to CpuPlatform before
+          # any vllm.config import, then runs the API server via run_module so
+          # sys.argv (the args below) is passed through unchanged.
+          command:
+            - python3
+            - -c
+            - |
+              import vllm.platforms as _vp
+              from vllm.platforms.cpu import CpuPlatform as _CpuPlatform
+              _vp.current_platform = _CpuPlatform()
+              from runpy import run_module
+              run_module("vllm.entrypoints.openai.api_server", run_name="__main__")
           args:
             - --model=microsoft/Phi-3-mini-4k-instruct
             - --device=cpu
