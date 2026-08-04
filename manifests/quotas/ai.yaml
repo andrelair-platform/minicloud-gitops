@@ -1,7 +1,9 @@
 ---
-# ai namespace: LiteLLM, Open WebUI, docling, markitdown, RAG ingest, presidio, minicloud-agent
-# Bumped requests.memory 8→12Gi 2026-08-02: minicloud-agent (256Mi) pushed LiteLLM rolling
-# update over quota (7.05Gi used, new pod needs 2Gi headroom for RollingUpdate concurrency).
+# ai namespace: LiteLLM, Open WebUI, docling, markitdown, RAG ingest, presidio, minicloud-agent,
+# MLflow, vLLM (Phi-3-mini CPU mode).
+# Bumped requests.memory 8→12Gi 2026-08-02: minicloud-agent rolling update headroom.
+# Bumped LimitRange max cpu 4→8 / memory 8→14Gi 2026-08-02: vLLM needs 7 CPU / 12Gi.
+# Bumped pods 20→25 and requests.cpu 6→10 for vLLM + MLflow.
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -9,11 +11,11 @@ metadata:
   namespace: ai
 spec:
   hard:
-    requests.cpu: "6"
-    limits.cpu: "24"
-    requests.memory: 12Gi
-    limits.memory: 40Gi
-    count/pods: "20"
+    requests.cpu: "10"
+    limits.cpu: "32"
+    requests.memory: 16Gi
+    limits.memory: 56Gi
+    count/pods: "25"
 ---
 apiVersion: v1
 kind: LimitRange
@@ -30,5 +32,5 @@ spec:
         cpu: 100m
         memory: 256Mi
       max:
-        cpu: "4"
-        memory: 8Gi
+        cpu: "8"
+        memory: 14Gi
