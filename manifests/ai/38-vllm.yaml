@@ -89,6 +89,9 @@ spec:
             # Bound KV cache to 4Gi on CPU
             - name: VLLM_CPU_KVCACHE_SPACE
               value: "4"
+            # hf_transfer parallel downloader hits semaphore exhaustion on CPU nodes
+            - name: HF_HUB_ENABLE_HF_TRANSFER
+              value: "0"
           volumeMounts:
             - name: model-cache
               mountPath: /model-cache
