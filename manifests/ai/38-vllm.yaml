@@ -8,8 +8,8 @@
 # Note: --enable-lora is incompatible with --device=cpu in vLLM v0.6.6.
 #       Re-enable it (with --max-lora-rank=64) when switching to GPU.
 #
-# First startup downloads ~7.6Gi from HuggingFace Hub — allow 15-20 minutes.
-# Subsequent restarts use the model cache PVC and start in ~2 minutes.
+# First startup: init container downloads ~7.6Gi from HuggingFace (no probe timeout).
+# Subsequent restarts: init container exits in ~2s (cache check), main container ready in ~5 min.
 #
 # HuggingFace token secret bootstrap (run once):
 #   kubectl create secret generic hf-credentials -n ai \
@@ -52,6 +52,55 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: fast-heron
       enableServiceLinks: false
+      initContainers:
+        - name: model-downloader
+          image: docker.io/vllm/vllm-openai:v0.6.6
+          imagePullPolicy: IfNotPresent
+          command:
+            - python3
+            - -c
+            - |
+              import sys
+              from pathlib import Path
+              cache_dir = "/model-cache"
+              model_id = "microsoft/Phi-3-mini-4k-instruct"
+              blobs_dir = Path(cache_dir) / "hub" / "models--microsoft--Phi-3-mini-4k-instruct" / "blobs"
+              incomplete = list(blobs_dir.glob("*.incomplete")) if blobs_dir.exists() else ["sentinel"]
+              completed_size = sum(f.stat().st_size for f in blobs_dir.glob("*") if not f.name.endswith(".incomplete")) if blobs_dir.exists() else 0
+              if not incomplete and completed_size > 7_000_000_000:
+                  print(f"Model fully cached ({completed_size/1e9:.1f} GB), skipping download")
+                  sys.exit(0)
+              print(f"Downloading model (incomplete={len(incomplete)}, cached={completed_size/1e9:.1f} GB)...")
+              from huggingface_hub import snapshot_download
+              snapshot_download(model_id, cache_dir=cache_dir)
+              print("Download complete")
+          env:
+            - name: HF_HOME
+              value: /model-cache
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: HF_HUB_ENABLE_HF_TRANSFER
+              value: "0"
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-credentials
+                  key: token
+                  optional: true
+          volumeMounts:
+            - name: model-cache
+              mountPath: /model-cache
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
       securityContext:
         runAsNonRoot: false
         runAsUser: 0
