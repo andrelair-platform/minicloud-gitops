@@ -71,7 +71,10 @@ spec:
                   return sum(f.stat().st_size for f in blobs_dir.glob("*")) > 7_000_000_000
               def do_download(model_id, cache_dir):
                   from huggingface_hub import snapshot_download
-                  snapshot_download(model_id, cache_dir=cache_dir)
+                  # No cache_dir arg — HF_HOME env var routes to /model-cache/hub/
+                  # which is where vLLM reads from. Passing cache_dir="/model-cache"
+                  # would write to /model-cache/models--.../ (wrong, no hub subdir).
+                  snapshot_download(model_id)
               if is_cached():
                   print("Model fully cached, skipping download", flush=True)
                   sys.exit(0)
