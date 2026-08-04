@@ -5,8 +5,8 @@
 #   → Upgrade path: replace with s3://mlflow-artifacts pointing to MinIO when ready.
 #
 # Image: harbor.10.0.0.200.nip.io/library/mlflow:v2.16.0-psycopg2
-#   Built from ghcr.io/mlflow/mlflow:v2.16.0 + pip install psycopg2-binary
-#   (base image omits the PostgreSQL driver; offline cluster cannot pip-install at runtime)
+#   FROM ghcr.io/mlflow/mlflow:v2.16.0 + psycopg2-binary + /usr/local/bin/server wrapper
+#   Base image has CMD ["python3"] not ENTRYPOINT — command: ["mlflow"] is required here.
 #
 # Secret bootstrap (run once, then ESO keeps it in sync):
 #   vault kv put secret/ai/mlflow \
