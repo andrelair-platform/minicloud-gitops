@@ -1,18 +1,15 @@
 ---
-# vLLM — OpenAI-compatible model serving for fine-tuned Phi-3-mini adapters.
+# vLLM — OpenAI-compatible model serving for Phi-3-mini-4k-instruct.
 # Pinned to fast-heron (8 cores, ~10Gi RAM free) — the only node with enough
 # headroom for Phi-3-mini-4k-instruct in float16 (~7.6Gi model weights).
 #
 # CPU-only mode: inference is slow (~30-90s/request) but functional for demo.
 # When a GPU node is available, remove --device cpu and add nvidia.com/gpu resource.
+# Note: --enable-lora is incompatible with --device=cpu in vLLM v0.6.6.
+#       Re-enable it (with --max-lora-rank=64) when switching to GPU.
 #
 # First startup downloads ~7.6Gi from HuggingFace Hub — allow 15-20 minutes.
 # Subsequent restarts use the model cache PVC and start in ~2 minutes.
-#
-# LoRA adapter workflow (after Colab training):
-#   1. Push adapter to HuggingFace Hub private repo: andrelair-platform/phi3-financial-ft
-#   2. Update --lora-modules arg below with the HF repo path + sha
-#   3. ArgoCD syncs → vLLM hot-reloads the adapter (no pod restart needed)
 #
 # HuggingFace token secret bootstrap (run once):
 #   kubectl create secret generic hf-credentials -n ai \
@@ -71,8 +68,6 @@ spec:
             - --device=cpu
             - --dtype=float16
             - --max-model-len=1024
-            - --enable-lora
-            - --max-lora-rank=64
             - --trust-remote-code
             - --disable-async-output-proc
             - --host=0.0.0.0
