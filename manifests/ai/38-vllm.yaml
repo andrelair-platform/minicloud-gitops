@@ -140,19 +140,28 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
-          # The GPU vllm image's version string lacks "cpu", so vllm.platforms
-          # detects UnspecifiedPlatform instead of CpuPlatform, making
-          # check_and_update_config a no-op (cpu_kvcache_space_bytes never set).
-          # The command wrapper patches current_platform to CpuPlatform before
-          # any vllm.config import, then runs the API server via run_module so
-          # sys.argv (the args below) is passed through unchanged.
+          # The GPU vllm image detects UnspecifiedPlatform (no GPU hardware),
+          # so CpuPlatform.check_and_update_config never runs and
+          # cache_config.cpu_kvcache_space_bytes is never set from
+          # VLLM_CPU_KVCACHE_SPACE. Patching current_platform doesn't work
+          # because `import vllm.platforms` triggers vllm/__init__.py which
+          # imports vllm.config, which captures the stale UnspecifiedPlatform
+          # in its module-level `from vllm.platforms import current_platform`
+          # before our patch runs.
+          #
+          # Fix: set cpu_kvcache_space_bytes as a CacheConfig CLASS attribute
+          # after normal import. Instance attribute lookup falls back to the
+          # class, so self.cache_config.cpu_kvcache_space_bytes finds it
+          # regardless of when CacheConfig instances are created.
           command:
             - python3
             - -c
             - |
-              import vllm.platforms as _vp
-              from vllm.platforms.cpu import CpuPlatform as _CpuPlatform
-              _vp.current_platform = _CpuPlatform()
+              import os
+              from vllm.config import CacheConfig
+              CacheConfig.cpu_kvcache_space_bytes = (
+                  int(os.environ.get("VLLM_CPU_KVCACHE_SPACE", 4)) * (1024 ** 3)
+              )
               from runpy import run_module
               run_module("vllm.entrypoints.openai.api_server", run_name="__main__")
           args:
