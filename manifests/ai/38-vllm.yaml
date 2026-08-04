@@ -77,6 +77,8 @@ spec:
           env:
             - name: HF_HOME
               value: /model-cache
+            - name: PYTHONUNBUFFERED
+              value: "1"
             - name: HUGGING_FACE_HUB_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -106,10 +108,10 @@ spec:
             httpGet:
               path: /health
               port: 8000
-            # 40 × 30s = 20 minutes max for first-boot model download
+            # 120 × 30s + 60s = 61 minutes max; CPU loading takes ~45 min from PVC
             initialDelaySeconds: 60
             periodSeconds: 30
-            failureThreshold: 40
+            failureThreshold: 120
           readinessProbe:
             httpGet:
               path: /health
