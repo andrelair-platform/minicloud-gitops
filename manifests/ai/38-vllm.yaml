@@ -51,6 +51,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: fast-heron
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: false
         runAsUser: 0
