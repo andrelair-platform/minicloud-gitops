@@ -71,6 +71,7 @@ spec:
             - --max-model-len=1024
             - --trust-remote-code
             - --disable-async-output-proc
+            - --worker-cls=vllm.worker.cpu_worker.CPUWorker
             - --host=0.0.0.0
             - --port=8000
           env:
