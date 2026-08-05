@@ -62,6 +62,19 @@ spec:
             - |
               import sys, time, multiprocessing
               from pathlib import Path
+              # Write sitecustomize.py so the engine subprocess (spawned fresh
+              # via multiprocessing.get_context("spawn")) also patches CacheConfig
+              # before determine_num_available_blocks runs.
+              with open("/model-cache/sitecustomize.py", "w") as _f:
+                  _f.write(
+                      "import os\n"
+                      "try:\n"
+                      "    from vllm.config import CacheConfig\n"
+                      "    CacheConfig.cpu_kvcache_space_bytes = (\n"
+                      "        int(os.environ.get('VLLM_CPU_KVCACHE_SPACE', 4)) * (1024 ** 3))\n"
+                      "except Exception:\n"
+                      "    pass\n"
+                  )
               cache_dir = "/model-cache"
               model_id = "microsoft/Phi-3-mini-4k-instruct"
               blobs_dir = Path(cache_dir) / "hub" / "models--microsoft--Phi-3-mini-4k-instruct" / "blobs"
@@ -181,6 +194,11 @@ spec:
               value: /model-cache
             - name: PYTHONUNBUFFERED
               value: "1"
+            # Makes Python find /model-cache/sitecustomize.py at startup of
+            # every Python process including the engine subprocess (spawned
+            # fresh via spawn, so parent-process monkey-patches don't carry).
+            - name: PYTHONPATH
+              value: /model-cache
             - name: HUGGING_FACE_HUB_TOKEN
               valueFrom:
                 secretKeyRef:
