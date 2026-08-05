@@ -97,6 +97,25 @@ spec:
         - port: 9090
           protocol: TCP
 ---
+# KEDA operator queries Prometheus to evaluate ScaledObject triggers (port 9090)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-keda
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: keda
+      ports:
+        - port: 9090
+          protocol: TCP
+---
 # Falco Sidekick pushes runtime security events to Alertmanager (port 9093)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
