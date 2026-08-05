@@ -205,9 +205,12 @@ spec:
                   name: hf-credentials
                   key: token
                   optional: true
-            # Bound KV cache to 4Gi on CPU
+            # Model weights ~9.4Gi RSS + 2Gi KV cache = ~11.4Gi < 12Gi limit.
+            # 4Gi caused OOMKill (13.4Gi > 12Gi). fast-heron has 16Gi total
+            # but only ~4.7Gi available; 2Gi KV cache = ~341 blocks,
+            # enough for ~5 concurrent 1024-token sequences.
             - name: VLLM_CPU_KVCACHE_SPACE
-              value: "4"
+              value: "2"
             # hf_transfer parallel downloader hits semaphore exhaustion on CPU nodes
             - name: HF_HUB_ENABLE_HF_TRANSFER
               value: "0"
