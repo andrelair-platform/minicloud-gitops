@@ -1,5 +1,6 @@
 ---
-# Valkey (Redis-compatible) cache for LiteLLM exact-match prompt caching.
+# Valkey (Redis-compatible) cache for LiteLLM semantic prompt caching.
+# Stores both exact-match keys and embedding vectors for similarity lookup (threshold 0.8).
 # Single-node, no auth — internal cluster service only, not exposed externally.
 apiVersion: apps/v1
 kind: StatefulSet

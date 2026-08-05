@@ -164,11 +164,13 @@ data:
       drop_params: true
       cache: true
       cache_params:
-        type: redis
+        type: redis-semantic
         host: litellm-cache.ai.svc.cluster.local
         port: 6379
         ttl: 600
         namespace: litellm
+        similarity_threshold: 0.8
+        embedding_model: text-embedding-3-small
       # LlamaGuard runs first (list order) — blocks unsafe content before prompt injection.
       # Presidio PII masking runs independently via the guardrails section (pre_call).
       callbacks: ["llamaguard_handler.LlamaGuardHandler", "langfuse_prompt_handler.LangfusePromptHandler"]
