@@ -4,6 +4,7 @@
 # Bumped requests.memory 8→12Gi 2026-08-02: minicloud-agent rolling update headroom.
 # Bumped LimitRange max cpu 4→8 / memory 8→14Gi 2026-08-02: vLLM needs 7 CPU / 12Gi.
 # Bumped pods 20→25 and requests.cpu 6→10 for vLLM + MLflow.
+# Bumped requests.memory 16→20Gi 2026-08-05: litellm rolling update needs 2×2.12Gi surge headroom.
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -13,7 +14,7 @@ spec:
   hard:
     requests.cpu: "10"
     limits.cpu: "32"
-    requests.memory: 16Gi
+    requests.memory: 20Gi
     limits.memory: 56Gi
     count/pods: "25"
 ---
