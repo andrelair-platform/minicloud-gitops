@@ -165,8 +165,7 @@ data:
       cache: true
       cache_params:
         type: redis-semantic
-        host: litellm-cache.ai.svc.cluster.local
-        port: 6379
+        redis_url: redis://litellm-cache.ai.svc.cluster.local:6379
         ttl: 600
         namespace: litellm
         similarity_threshold: 0.8
