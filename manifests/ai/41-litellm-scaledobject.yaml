@@ -1,0 +1,35 @@
+---
+# KEDA ScaledObject: autoscales the LiteLLM gateway between 1 and 3 replicas.
+# Dual triggers:
+#   - Prometheus: sum(rate(litellm_proxy_total_requests_metric_total[2m])) per replica
+#     → scale to 2 replicas at 10 req/s, 3 replicas at 20 req/s
+#   - CPU: 70% average utilization (catches compute-heavy batch eval bursts)
+# ai-quota allows 20Gi requests; 3 × 512Mi = 1.5Gi extra — well within headroom.
+# ArgoCD ignoreDifferences on spec.replicas (see apps/workloads/litellm.yaml) prevents
+# ArgoCD from reverting the KEDA-managed replica count on each sync.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: litellm
+  namespace: ai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: litellm
+  minReplicaCount: 1
+  maxReplicaCount: 3
+  cooldownPeriod: 300
+  pollingInterval: 30
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://kps-prometheus.monitoring.svc.cluster.local:9090
+        metricName: litellm_request_rate
+        query: sum(rate(litellm_proxy_total_requests_metric_total[2m]))
+        threshold: "10"
+        activationThreshold: "1"
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "70"
