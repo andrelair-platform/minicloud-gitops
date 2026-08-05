@@ -14,9 +14,17 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: ai
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: litellm
+      namespace: ai
+      jsonPointers:
+        - /spec/replicas
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
