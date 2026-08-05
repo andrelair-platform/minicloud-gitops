@@ -8,12 +8,22 @@ data:
     model_list:
       # ── phi3-financial — domain-restricted AI financial assistant ─────────
       # System prompt injected at request time by LangfusePromptHandler.
-      # Groq llama-3.1-8b-instant: sub-1s responses on LPU hardware.
+      # Two backends registered under the same virtual name; LiteLLM routes
+      # by least-busy + weight:
+      #   Groq llama-3.1-8b-instant: sub-1s cloud inference (primary, weight 10).
+      #   vLLM Phi-3-mini-4k-instruct: on-cluster CPU inference, ~30-90s (fallback, weight 1).
       - model_name: phi3-financial
         litellm_params:
           model: groq/llama-3.1-8b-instant
           api_key: os.environ/GROQ_API_KEY
           weight: 10
+
+      - model_name: phi3-financial
+        litellm_params:
+          model: openai/microsoft/Phi-3-mini-4k-instruct
+          api_base: http://vllm.ai.svc.cluster.local:8000/v1
+          api_key: none
+          weight: 1
 
       # deepseek-r1:7b — cloud reasoning specialist (DeepSeek API)
       - model_name: deepseek-r1:7b
