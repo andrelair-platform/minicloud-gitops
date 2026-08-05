@@ -9,7 +9,7 @@ spec:
   hard:
     requests.cpu: 100m
     limits.cpu: "2"
-    requests.memory: 256Mi
+    requests.memory: 1Gi
     limits.memory: 2Gi
     count/pods: "10"
 ---
