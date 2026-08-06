@@ -25,12 +25,12 @@ spec:
       restartPolicy: OnFailure
       securityContext:
         runAsNonRoot: true
-        runAsUser: 65534
+        runAsUser: 100
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: seeder
-          image: docker.io/alpine:3.21
+          image: docker.io/curlimages/curl:8.11.1
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -45,8 +45,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              apk add --no-cache curl -q
-
+              set -e
               BASE_URL="http://litellm.ai.svc.cluster.local:4000"
 
               echo "Waiting for LiteLLM..."
