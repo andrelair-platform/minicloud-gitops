@@ -189,8 +189,10 @@ alertmanager:
       repeat_interval: 12h
       receiver: webhook-default
       routes:
-        # GAP 1 fix: Watchdog → healthchecks.io dead-man's switch (period 3m, grace 5m).
-        # repeat_interval 1m ensures hc-ping receives a heartbeat every minute.
+        # GAP 1 fix: Watchdog → healthchecks.io dead-man's switch (period 5m, grace 8m).
+        # Actual ping cadence = 5m: group_interval 5m gates group re-evaluation,
+        # so repeat_interval 1m fires once per group flush window (every 5m in practice).
+        # Healthchecks.io configured: period=5m, grace=8m → alert fires after ~13m silence.
         - matchers: ['alertname = "Watchdog"']
           receiver: watchdog
           repeat_interval: 1m
