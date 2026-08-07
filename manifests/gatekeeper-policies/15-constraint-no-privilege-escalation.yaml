@@ -42,3 +42,4 @@ spec:
             - chat             # matrix-synapse signing key job — chart does not set allowPrivilegeEscalation
             - erp
             - temporal          # schema Job containers — chart doesn't expose allowPrivilegeEscalation in schema Job values
+            - node-problem-detector  # NPD DaemonSet requires allowPrivilegeEscalation to read kernel logs via /dev/kmsg
