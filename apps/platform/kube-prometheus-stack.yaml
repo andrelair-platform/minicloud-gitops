@@ -44,3 +44,10 @@ spec:
       jsonPointers:
         - /status
         - /spec/preserveUnknownFields
+    - group: apps
+      kind: StatefulSet
+      name: prometheus-kps-prometheus
+      namespace: monitoring
+      jsonPointers:
+        - /spec/template/spec/containers/0/startupProbe/failureThreshold
+        - /spec/template/spec/containers/0/startupProbe/periodSeconds
