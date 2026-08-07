@@ -202,12 +202,13 @@ alertmanager:
       repeat_interval: 12h
       receiver: webhook-default
       routes:
-        # GAP 1 fix: Watchdog → healthchecks.io dead-man's switch (period 5m, grace 8m).
-        # Actual ping cadence = 5m: group_interval 5m gates group re-evaluation,
-        # so repeat_interval 1m fires once per group flush window (every 5m in practice).
-        # Healthchecks.io configured: period=5m, grace=8m → alert fires after ~13m silence.
+        # GAP 1 fix: Watchdog → healthchecks.io dead-man's switch.
+        # group_interval: 1m overrides parent 5m so repeat_interval: 1m actually fires every 1m.
+        # Healthchecks.io: period=1m, grace=25m → DOWN after 26m silence.
+        # 26m > Prometheus WAL replay time (15-20m) → no false DOWN during node reboots.
         - matchers: ['alertname = "Watchdog"']
           receiver: watchdog
+          group_interval: 1m
           repeat_interval: 1m
         # KubeProxyDown: k3s has no kube-proxy — this alert is structurally impossible.
         # KubeControllerManagerDown + KubeSchedulerDown: now have socat proxy (Gap 5, PR #157)
