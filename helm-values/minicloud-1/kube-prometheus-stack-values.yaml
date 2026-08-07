@@ -98,6 +98,8 @@ prometheus:
     # so Grafana can render scatter-plot dots with clickable trace IDs.
     enableFeatures:
       - exemplar-storage
+      - memory-snapshot-on-shutdown
+    walCompression: true
     retention: 10d
     retentionSize: 27GB
     resources:
@@ -121,6 +123,7 @@ prometheus:
     # WAL replay on 30Gi TSDB takes 15-20 min after node reboot.
     # Default probe (3 × 10s = 30s) kills the pod before replay completes → restart loop.
     # Prometheus Operator propagates this to the StatefulSet startupProbe.
+    # failureThreshold=240: 80 min budget — covers degraded-Longhorn replay stalls.
     containers:
       - name: prometheus
         startupProbe:
@@ -128,7 +131,7 @@ prometheus:
             path: /-/ready
             port: http-web
             scheme: HTTP
-          failureThreshold: 120
+          failureThreshold: 240
           periodSeconds: 20
           timeoutSeconds: 3
     additionalScrapeConfigs:
