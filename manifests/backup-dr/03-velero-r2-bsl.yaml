@@ -1,0 +1,23 @@
+---
+# Velero BackupStorageLocation targeting Cloudflare R2.
+# Bucket: minicloud-velero-offsite (created 2026-08-07).
+# Endpoint: R2 S3-compatible API — no egress fees for reads.
+# This is a secondary BSL (default=false); the primary MinIO BSL remains default.
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: cloudflare-r2
+  namespace: velero
+spec:
+  provider: aws
+  default: false
+  accessMode: ReadWrite
+  objectStorage:
+    bucket: minicloud-velero-offsite
+  config:
+    region: auto
+    s3ForcePathStyle: "true"
+    s3Url: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
+  credential:
+    name: velero-r2-credentials
+    key: cloud
