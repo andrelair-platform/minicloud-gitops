@@ -8,3 +8,10 @@ resources:
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-plane
   newTag: 3e511ce
+patches:
+- path: patch-replicas.yaml
+  target:
+    group: argoproj.io
+    version: v1alpha1
+    kind: Rollout
+    name: minicloud-plane
