@@ -115,6 +115,12 @@ prometheus:
           resources:
             requests:
               storage: 30Gi
+    # WAL replay after node reboots takes 15-20 minutes on a 30Gi TSDB.
+    # Default startup probe budget (~15 min) is not enough — Prometheus gets
+    # killed and restarts in a loop. 120 * 20s = 40 min gives enough headroom.
+    startupProbe:
+      failureThreshold: 120
+      periodSeconds: 20
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
