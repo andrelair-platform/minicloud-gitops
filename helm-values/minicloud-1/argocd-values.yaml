@@ -35,6 +35,14 @@ configs:
         hs.message = "Waiting for rollout status"
       end
       return hs
+    # KEDA ScaledObject: trigger readiness is dynamic (metric source may be temporarily
+    # unavailable during WAL replay or restarts). Report Healthy once the object exists
+    # so a transient Prometheus outage never fails the ArgoCD sync operation.
+    resource.customizations.health.keda.sh_ScaledObject: |
+      hs = {}
+      hs.status = "Healthy"
+      hs.message = "ScaledObject configured"
+      return hs
     # Disable local admin — OIDC (Authentik) is the only login path.
     # Break-glass: kubectl --context minicloud-break-glass + kubectl exec into argocd-server.
     admin.enabled: "false"
