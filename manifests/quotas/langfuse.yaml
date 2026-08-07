@@ -7,9 +7,9 @@ metadata:
   namespace: langfuse
 spec:
   hard:
-    requests.cpu: "1"
+    requests.cpu: "2"
     limits.cpu: "6"
-    requests.memory: 2Gi
+    requests.memory: 4Gi
     limits.memory: 12Gi
     count/pods: "15"
 ---
