@@ -17,6 +17,8 @@ ollama:
 ollamaUrls: []
 ollamaUrlsFromExtraEnv: false
 
+priorityClassName: minicloud-workload
+
 nodeSelector:
   kubernetes.io/hostname: star-kitten
 

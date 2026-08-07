@@ -38,6 +38,7 @@ externalPostgresql:
 synapse:
   strategy:
     type: Recreate
+  priorityClassName: minicloud-workload
 
   # Default probes have 1s timeout and 10s period. Under CPU pressure (load 30+
   # observed 2026-07-31) the HTTP /health response takes >1s → 3 failures →
