@@ -1,0 +1,56 @@
+# PostgreSQL dedicated to matrix-synapse in the chat namespace.
+# Decoupled from postgresql-ai so star-kitten maintenance does not affect Matrix.
+# Pinned to set-hog (co-located with matrix-synapse) for data locality.
+# Credentials from Vault via ESO: manifests/matrix/03-eso-postgresql-synapse-secret.yaml
+
+global:
+  security:
+    allowInsecureImages: true
+
+image:
+  registry: harbor.10.0.0.200.nip.io
+  repository: library/postgresql
+  tag: "18.4.0-noavx512"
+
+auth:
+  existingSecret: postgresql-synapse-secret
+  secretKeys:
+    adminPasswordKey: postgres-password
+    userPasswordKey: pg-password
+  username: synapse
+  database: synapse
+
+primary:
+  nodeSelector:
+    kubernetes.io/hostname: set-hog
+  podLabels:
+    backstage.io/kubernetes-id: postgresql-synapse
+
+  # Synapse requires locale C for correct text handling.
+  # Bitnami creates the DB with system locale before initdb runs —
+  # drop and recreate with C locale so pg_restore succeeds cleanly.
+  initdb:
+    scripts:
+      01-recreate-c-locale.sh: |
+        #!/bin/bash
+        set -e
+        psql -U postgres <<SQL
+        DROP DATABASE IF EXISTS synapse;
+        CREATE DATABASE synapse OWNER synapse ENCODING 'UTF8' LC_COLLATE='C' LC_CTYPE='C' TEMPLATE template0;
+        SQL
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+  persistence:
+    enabled: true
+    storageClass: longhorn
+    size: 5Gi
+
+metrics:
+  enabled: false
