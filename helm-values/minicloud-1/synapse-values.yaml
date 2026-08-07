@@ -36,8 +36,6 @@ externalPostgresql:
   database: synapse
 
 synapse:
-  nodeSelector:
-    kubernetes.io/hostname: set-hog
   strategy:
     type: Recreate
 

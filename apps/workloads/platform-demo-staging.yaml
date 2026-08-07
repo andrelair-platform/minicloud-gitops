@@ -15,6 +15,9 @@ spec:
     server: https://kubernetes.default.svc
     namespace: platform-demo-staging
   syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
