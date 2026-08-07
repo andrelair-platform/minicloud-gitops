@@ -21,8 +21,9 @@ spec:
         - /spec/replicas
         - /spec/template/metadata/annotations
   syncPolicy:
-    # Staging sync is intentionally manual — no automated promotion.
-    # Tag promoted by opening a PR bumping newTag in overlays/staging/kustomization.yaml.
+    automated:
+      selfHeal: true
+      prune: true
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
