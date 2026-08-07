@@ -18,7 +18,6 @@ spec:
     - group: argoproj.io
       kind: Rollout
       jsonPointers:
-        - /spec/replicas
         - /spec/template/metadata/annotations
   syncPolicy:
     # Production sync is intentionally manual — no automated promotion.
