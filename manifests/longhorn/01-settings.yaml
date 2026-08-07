@@ -13,3 +13,24 @@ metadata:
   name: backup-target-credential-secret
   namespace: longhorn-system
 value: longhorn-backup-credentials
+---
+# Gradually rebalances replicas to underutilised nodes (fast-heron currently
+# holds almost no replicas). least-effort moves one replica at a time and
+# only when a healthier placement exists — no disruption to running volumes.
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: replica-auto-balance
+  namespace: longhorn-system
+value: "least-effort"
+---
+# Run a lightweight data-integrity check immediately after every snapshot
+# (daily at 01:00 UTC via the daily-snapshot recurring job).
+# Catches replica divergence the same day instead of waiting for the
+# weekly standalone scan (snapshot-data-integrity-cronjob: 0 0 */7 * *).
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: snapshot-data-integrity-immediate-check-after-snapshot-creation
+  namespace: longhorn-system
+value: "true"
