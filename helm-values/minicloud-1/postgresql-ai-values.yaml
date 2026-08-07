@@ -21,6 +21,7 @@ auth:
   database: openwebui
 
 primary:
+  priorityClassName: minicloud-critical
   nodeSelector:
     kubernetes.io/hostname: star-kitten
   podLabels:

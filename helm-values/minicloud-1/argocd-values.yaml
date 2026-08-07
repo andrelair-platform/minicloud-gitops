@@ -154,6 +154,7 @@ configs:
     scopes: '[groups]'
 
 server:
+  priorityClassName: minicloud-platform
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
   podLabels:
@@ -215,6 +216,7 @@ repoServer:
     limits:   { cpu: 1000m, memory: 2500Mi }
 
 controller:
+  priorityClassName: minicloud-platform
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
   metrics:

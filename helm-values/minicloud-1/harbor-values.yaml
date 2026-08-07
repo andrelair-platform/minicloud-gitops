@@ -41,6 +41,7 @@ metrics:
     interval: 30s
 
 core:
+  priorityClassName: minicloud-critical
   existingSecret: harbor-stable-secrets
   existingSecretKey: secret
   nodeSelector:
@@ -50,12 +51,14 @@ updateStrategy:
   type: Recreate
 
 jobservice:
+  priorityClassName: minicloud-critical
   existingSecret: harbor-stable-secrets
   existingSecretKey: JOBSERVICE_SECRET
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
 
 registry:
+  priorityClassName: minicloud-critical
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
   controller:

@@ -92,6 +92,7 @@ prometheus:
           - prometheus.10.0.0.200.nip.io
         secretName: prometheus-tls
   prometheusSpec:
+    priorityClassName: minicloud-platform
     nodeSelector:
       kubernetes.io/hostname: set-hog
     # Gap E: store exemplars (trace IDs embedded in histogram observations)
@@ -282,6 +283,7 @@ alertmanager:
     templates:
       - /etc/alertmanager/config/*.tmpl
   alertmanagerSpec:
+    priorityClassName: minicloud-platform
     nodeSelector:
       kubernetes.io/hostname: set-hog
     # Mount the alertmanager-slack k8s Secret (synced from Vault via ESO) so
