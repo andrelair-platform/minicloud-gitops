@@ -115,20 +115,6 @@ prometheus:
           resources:
             requests:
               storage: 30Gi
-    # WAL replay after node reboots takes 15-20 min on a 30Gi TSDB.
-    # CRD .spec.startupProbe isn't exposed via prometheusSpec; patch the
-    # container directly via containers override (name must match exactly).
-    # 120 * 20s = 40 min budget covers worst-case WAL replay.
-    containers:
-      - name: prometheus
-        startupProbe:
-          httpGet:
-            path: /-/ready
-            port: http-web
-            scheme: HTTP
-          failureThreshold: 120
-          periodSeconds: 20
-          timeoutSeconds: 3
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
