@@ -16,6 +16,7 @@ All repos cloned under `~/Developer/cloudplateform/`:
 | [minicloud-plane](https://github.com/andrelair-platform/minicloud-plane) | `minicloud-plane/` | Go Level 4: Plane API + webhook→NATS + REST |
 | [platform-demo](https://github.com/andrelair-platform/platform-demo) | `platform-demo/` | Go CI/CD demo service |
 | [ktayl-solution-web](https://github.com/andrelair-platform/ktayl-solution-web) | `ktayl-solution-web/` | Astro + Tailwind public website (7 LOB) |
+| [minicloud-ops](https://github.com/andrelair-platform/minicloud-ops) | controller `~/minicloud-ops` only | Python platform recovery check + systemd services |
 
 ## Docs Site (minicloud-platform-docs)
 
