@@ -33,3 +33,4 @@ spec:
             - velero            # node-agent: /var/lib/kubelet/pods
             - kured             # mounts /var/run hostPath to read reboot-required sentinel
             - system-upgrade    # upgrade Jobs mount /var/run/secrets for node access
+            - node-problem-detector  # NPD mounts /etc/localtime (TZ) and /var/log/ (kernel log tailing)

@@ -51,3 +51,4 @@ spec:
             - chat              # matrix-synapse signing key job (bitnami/kubectl init) — chart doesn't set runAsNonRoot
             - erp               # ERPNext — frappe runs as UID 1000 but chart doesn't set runAsNonRoot explicitly
             - temporal          # schema Job init containers don't set runAsNonRoot — Helm chart doesn't expose containerSecurityContext for schema Job
+            - node-problem-detector  # NPD DaemonSet runs as root to read kernel logs and /dev/kmsg
