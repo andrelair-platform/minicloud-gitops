@@ -32,3 +32,5 @@ spec:
       jqPathExpressions:
         - .spec.replicas
         - .spec.template.metadata.annotations
+        - .spec.restartAt
+        - .metadata.annotations["rollout.argoproj.io/revision"]
