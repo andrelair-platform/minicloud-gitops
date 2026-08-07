@@ -52,6 +52,7 @@ spec:
         app: element-web
         backstage.io/kubernetes-id: element-web
     spec:
+      priorityClassName: minicloud-workload
       enableServiceLinks: false
       securityContext:
         runAsNonRoot: true

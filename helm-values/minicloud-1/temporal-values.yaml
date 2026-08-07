@@ -52,6 +52,7 @@ server:
 
 frontend:
   replicaCount: 1
+  priorityClassName: minicloud-workload
   resources:
     requests:
       cpu: 50m
@@ -68,6 +69,7 @@ frontend:
 
 history:
   replicaCount: 1
+  priorityClassName: minicloud-workload
   resources:
     requests:
       cpu: 50m
@@ -84,6 +86,7 @@ history:
 
 matching:
   replicaCount: 1
+  priorityClassName: minicloud-workload
   resources:
     requests:
       cpu: 50m
@@ -100,6 +103,7 @@ matching:
 
 worker:
   replicaCount: 1
+  priorityClassName: minicloud-workload
   resources:
     requests:
       cpu: 50m
@@ -117,6 +121,7 @@ worker:
 web:
   enabled: true
   replicaCount: 1
+  priorityClassName: minicloud-workload
   # Ingress managed separately (Authentik forward auth pattern)
   ingress:
     enabled: false
