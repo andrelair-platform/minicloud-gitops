@@ -1,5 +1,25 @@
 # Ops Runbooks (Mac-side)
 
+## Platform Recovery Check (minicloud-ops)
+
+Installed on controller only. Entry point: `/usr/local/bin/minicloud-recovery-check`
+
+```bash
+ssh controller "minicloud-recovery-check"
+ssh controller "cat /var/log/minicloud-recovery.log"   # last run report
+ssh controller "cd ~/minicloud-ops && git pull origin main"   # update
+```
+
+NAT persistence is **automated** (`restore-cluster-nat.service`). After power failure, only MinIO needs a manual restart (caches disk-full state in memory):
+```bash
+ssh controller "docker restart minio"
+```
+
+**ArgoCD SSA + argocd-cm gotcha:** New `configs.cm:` keys in `argocd-values.yaml` silently fail to appear after sync (helm CSA manager owns `.`). Apply directly via kubectl patch:
+```bash
+ssh controller "kubectl patch configmap argocd-cm -n argocd --type merge -p '{\"data\":{\"<key>\":\"<value>\"}}'"
+```
+
 ## ktayl-solution-web — Emergency Manual Push (if CI is down)
 
 ```bash
