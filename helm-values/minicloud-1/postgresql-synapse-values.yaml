@@ -26,18 +26,16 @@ primary:
   podLabels:
     backstage.io/kubernetes-id: postgresql-synapse
 
-  # Synapse requires locale C for correct text handling.
-  # Bitnami creates the DB with system locale before initdb runs —
-  # drop and recreate with C locale so pg_restore succeeds cleanly.
+  # Synapse requires LC_COLLATE=C / LC_CTYPE=C for correct text handling.
+  # Bitnami creates the DB before initdb runs; PGPASSWORD must be set
+  # explicitly because the postgres user already has a password at this point.
   initdb:
     scripts:
       01-recreate-c-locale.sh: |
         #!/bin/bash
         set -e
-        psql -U postgres <<SQL
-        DROP DATABASE IF EXISTS synapse;
-        CREATE DATABASE synapse OWNER synapse ENCODING 'UTF8' LC_COLLATE='C' LC_CTYPE='C' TEMPLATE template0;
-        SQL
+        PGPASSWORD="$POSTGRESQL_POSTGRES_PASSWORD" psql -U postgres -c "DROP DATABASE IF EXISTS synapse;"
+        PGPASSWORD="$POSTGRESQL_POSTGRES_PASSWORD" psql -U postgres -c "CREATE DATABASE synapse OWNER synapse ENCODING 'UTF8' LC_COLLATE='C' LC_CTYPE='C' TEMPLATE template0;"
 
   resources:
     requests:
