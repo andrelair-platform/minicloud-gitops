@@ -118,6 +118,19 @@ prometheus:
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
+    # WAL replay on 30Gi TSDB takes 15-20 min after node reboot.
+    # Default probe (3 × 10s = 30s) kills the pod before replay completes → restart loop.
+    # Prometheus Operator propagates this to the StatefulSet startupProbe.
+    containers:
+      - name: prometheus
+        startupProbe:
+          httpGet:
+            path: /-/ready
+            port: http-web
+            scheme: HTTP
+          failureThreshold: 120
+          periodSeconds: 20
+          timeoutSeconds: 3
     additionalScrapeConfigs:
       - job_name: controller-node
         static_configs:
