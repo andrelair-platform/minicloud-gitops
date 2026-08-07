@@ -1,0 +1,36 @@
+---
+# minicloud-critical — identity, secrets, storage, container registry.
+# These pods must survive node pressure evictions that would kill workloads.
+# value=1000000 puts them above system-cluster-critical (2000000 is reserved
+# for system-node-critical — we stay below that to avoid interfering with
+# kubelet + CNI startup on nodes).
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: minicloud-critical
+value: 1000000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "Vault, Authentik, Harbor, PostgreSQL, Longhorn"
+---
+# minicloud-platform — GitOps, observability, developer platform.
+# Survives workload evictions but yields to minicloud-critical.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: minicloud-platform
+value: 500000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "ArgoCD, Grafana, Loki, Tempo, Backstage, Alertmanager"
+---
+# minicloud-workload — business applications.
+# Default tier; evicted first under node pressure.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: minicloud-workload
+value: 100000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "n8n, Temporal, Plane, Open WebUI, ERPNext, Matrix, Jitsi"

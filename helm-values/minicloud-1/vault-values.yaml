@@ -11,6 +11,8 @@ injector:
       memory: 128Mi
 
 server:
+  priorityClassName: minicloud-critical
+
   extraLabels:
     backstage.io/kubernetes-id: vault
 
