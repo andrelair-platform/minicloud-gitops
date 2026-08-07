@@ -1,0 +1,28 @@
+---
+# Weekly off-site backup to Cloudflare R2 — Sunday 04:00 UTC.
+# Runs after the nightly MinIO backup (03:00 UTC) and kine backup (03:30 UTC).
+# Excludes the same expendable/large namespaces as the daily MinIO schedule.
+# ttl: 672h = 4 weeks retention.
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: weekly-r2-offsite
+  namespace: velero
+spec:
+  schedule: "0 4 * * 0"
+  template:
+    storageLocation: cloudflare-r2
+    ttl: 672h
+    itemOperationTimeout: 8h
+    includedNamespaces:
+      - "*"
+    excludedNamespaces:
+      - velero
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - backup-test
+      - monitoring
+      - harbor
+      - ai
+      - langfuse
