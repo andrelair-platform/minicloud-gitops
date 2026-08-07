@@ -28,10 +28,10 @@ postgresql:
   enabled: false
 
 externalPostgresql:
-  host: postgresql-ai.ai.svc.cluster.local
+  host: postgresql-synapse.chat.svc.cluster.local
   port: 5432
   username: synapse
-  existingSecret: synapse-secrets
+  existingSecret: postgresql-synapse-secret
   existingSecretPasswordKey: pg-password
   database: synapse
 
