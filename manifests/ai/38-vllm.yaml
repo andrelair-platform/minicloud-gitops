@@ -269,9 +269,32 @@ kind: Service
 metadata:
   name: vllm
   namespace: ai
+  labels:
+    app: vllm
 spec:
   selector:
     app: vllm
   ports:
-    - port: 8000
+    - name: metrics
+      port: 8000
       targetPort: 8000
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vllm
+  namespace: ai
+  labels:
+    app: vllm
+spec:
+  selector:
+    matchLabels:
+      app: vllm
+  namespaceSelector:
+    matchNames:
+      - ai
+  endpoints:
+    - port: metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      path: /metrics
