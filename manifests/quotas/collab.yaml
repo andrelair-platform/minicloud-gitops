@@ -1,7 +1,7 @@
 ---
-# collab namespace: Jitsi Meet — JVB (1 CPU/512Mi), prosody/jicofo/web (500m/256Mi each)
+# collab namespace: Jitsi Meet — JVB (256Mi req), prosody/jicofo/web (128Mi req each)
+# Steady state: 4 pods × ~160Mi avg = 640Mi. Extra 360Mi covers one RollingUpdate surge.
 # JVB uses hostNetwork for media — quota applies to pod CPU/memory, not network bandwidth.
-# Measured limits total: ~2.5 CPU / ~1.25Gi. Ceiling sized for JVB horizontal scaling.
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -11,7 +11,7 @@ spec:
   hard:
     requests.cpu: 500m
     limits.cpu: "6"
-    requests.memory: 512Mi
+    requests.memory: 1Gi
     limits.memory: 4Gi
     count/pods: "15"
 ---
