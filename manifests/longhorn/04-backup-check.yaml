@@ -78,7 +78,7 @@ spec:
                   errors    = 0
                   for item in items:
                       state = item.get('status', {}).get('state', '')
-                      ct    = item.get('status', {}).get('completionTime', '')
+                      ct    = item.get('status', {}).get('backupCreatedAt', '')
                       if state == 'Error':
                           errors += 1
                       if state == 'Completed' and ct:
