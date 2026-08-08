@@ -37,7 +37,7 @@ data:
       # Expect 30-90s latency until a GPU node is available.
       - model_name: phi3-financial-ft
         litellm_params:
-          model: openai/Phi-3-mini-4k-instruct
+          model: openai/microsoft/Phi-3-mini-4k-instruct
           api_base: http://vllm.ai.svc.cluster.local:8000/v1
           api_key: none
 
