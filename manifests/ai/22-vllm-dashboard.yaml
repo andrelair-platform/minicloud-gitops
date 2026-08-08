@@ -1,0 +1,212 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vllm-inference-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  vllm-inference-dashboard.json: |
+    {
+      "id": null,
+      "uid": "vllm-inference-v1",
+      "title": "vLLM — Inference Engine (CPU)",
+      "tags": ["ai", "vllm", "inference", "llm"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30",
+      "time": {"from": "now-6h", "to": "now"},
+      "panels": [
+        {
+          "id": 10,
+          "title": "",
+          "type": "text",
+          "gridPos": {"h": 3, "w": 24, "x": 0, "y": 0},
+          "options": {
+            "mode": "markdown",
+            "content": "**Model:** `microsoft/Phi-3-mini-4k-instruct` — **Node:** fast-heron (i7-8565U, 16 GB RAM, no GPU) — **Backend:** CPU (`--device=cpu --dtype=float16`, 7 cores, 2 GB KV cache)\n\n> **vLLM v0.6.6** does not expose `time_to_first_token` or `e2e_request_latency` histograms — these metrics were added in later versions. Use generation throughput and queue depth as latency proxies under load."
+          }
+        },
+        {
+          "id": 1,
+          "title": "Requests Running / Waiting",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 3},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {"lineWidth": 2, "fillOpacity": 10},
+              "unit": "short",
+              "min": 0
+            }
+          },
+          "options": {
+            "tooltip": {"mode": "multi"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "targets": [
+            {"expr": "vllm:num_requests_running", "legendFormat": "running", "refId": "A"},
+            {"expr": "vllm:num_requests_waiting", "legendFormat": "waiting (queue depth)", "refId": "B"}
+          ]
+        },
+        {
+          "id": 2,
+          "title": "KV Cache Usage — CPU (memory pressure proxy)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 3},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 0.6},
+                  {"color": "red", "value": 0.85}
+                ]
+              },
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "custom": {"lineWidth": 2, "fillOpacity": 20}
+            }
+          },
+          "options": {
+            "tooltip": {"mode": "single"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "targets": [
+            {"expr": "vllm:cpu_cache_usage_perc", "legendFormat": "CPU KV cache %", "refId": "A"}
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Token Throughput — generation + prefill (tok/s)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 3},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {"lineWidth": 2, "fillOpacity": 10},
+              "unit": "short",
+              "min": 0
+            }
+          },
+          "options": {
+            "tooltip": {"mode": "multi"},
+            "legend": {"displayMode": "list", "placement": "bottom"}
+          },
+          "targets": [
+            {"expr": "vllm:avg_generation_throughput_toks_per_s", "legendFormat": "generation tok/s", "refId": "A"},
+            {"expr": "vllm:avg_prompt_throughput_toks_per_s", "legendFormat": "prompt (prefill) tok/s", "refId": "B"}
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Generation Tokens (24h)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 11},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]},
+              "unit": "short"
+            }
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "textMode": "auto",
+            "colorMode": "background",
+            "graphMode": "area"
+          },
+          "targets": [
+            {"expr": "increase(vllm:generation_tokens_total[24h])", "legendFormat": "tokens generated", "refId": "A"}
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Prompt Tokens Processed (24h)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 11},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]},
+              "unit": "short"
+            }
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "textMode": "auto",
+            "colorMode": "background",
+            "graphMode": "area"
+          },
+          "targets": [
+            {"expr": "increase(vllm:prompt_tokens_total[24h])", "legendFormat": "prompt tokens", "refId": "A"}
+          ]
+        },
+        {
+          "id": 6,
+          "title": "Queue Depth (now)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 11},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 1},
+                  {"color": "red", "value": 5}
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "textMode": "auto",
+            "colorMode": "background"
+          },
+          "targets": [
+            {"expr": "vllm:num_requests_waiting", "legendFormat": "waiting", "refId": "A"}
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Active Requests (now)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 11},
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "blue", "value": 1}
+                ]
+              },
+              "unit": "short"
+            }
+          },
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"]},
+            "textMode": "auto",
+            "colorMode": "background"
+          },
+          "targets": [
+            {"expr": "vllm:num_requests_running", "legendFormat": "running", "refId": "A"}
+          ]
+        }
+      ]
+    }
