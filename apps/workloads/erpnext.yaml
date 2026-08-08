@@ -41,6 +41,15 @@ spec:
       jsonPointers:
         - /spec/template/metadata
         - /spec/selector
+    # priorityClassName set via kubectl patch — chart doesn't template this field
+    - group: apps
+      kind: Deployment
+      jqPathExpressions:
+        - .spec.template.spec.priorityClassName
+    - group: apps
+      kind: StatefulSet
+      jqPathExpressions:
+        - .spec.template.spec.priorityClassName
   syncPolicy:
     automated:
       prune: true
