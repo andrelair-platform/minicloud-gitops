@@ -24,6 +24,12 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: chat
+  ignoreDifferences:
+    # priorityClassName set via kubectl patch — chart doesn't template this field
+    - group: apps
+      kind: Deployment
+      jqPathExpressions:
+        - .spec.template.spec.priorityClassName
   syncPolicy:
     automated:
       prune: true
