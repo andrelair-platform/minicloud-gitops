@@ -137,14 +137,20 @@ extraEnvVars:
   - name: DATABASE_URL
     value: "postgresql://aiplatform:$(PG_PASSWORD)@postgresql-ai.ai.svc.cluster.local:5432/openwebui"
 
-  # ── RAG / Vector Search (pgvector) ──────────────────────────────────────
-  # Vector store: pgvector on the existing postgresql-ai instance (ragdb database).
+  # ── RAG / Vector Search (Qdrant) ────────────────────────────────────────
+  # Vector store: Qdrant v1.11.0 — dedicated vector DB in the ai namespace.
+  # Collections map 1:1 to Open WebUI Knowledge Base UUIDs.
+  # Hybrid search: HNSW dense (nomic-embed-text 768-dim) + BM25 sparse via RRF.
   - name: VECTOR_DB
-    value: "pgvector"
-  - name: PGVECTOR_DB_URL
-    value: "postgresql://aiplatform:$(PG_PASSWORD)@postgresql-ai.ai.svc.cluster.local:5432/ragdb"
+    value: "qdrant"
+  - name: QDRANT_URI
+    value: "http://qdrant.ai.svc.cluster.local:6333"
+  - name: QDRANT_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: qdrant-api-key
+        key: api-key
   # Embedding: nomic-embed-text via LiteLLM → Ollama (768-dim, local CPU).
-  # Switched from text-embedding-3-small (OpenAI 1536-dim) after OpenAI quota exhaustion.
   # nomic-embed-text: 274MB, best-in-class for CPU RAG, available on all Ollama nodes.
   - name: RAG_EMBEDDING_ENGINE
     value: "openai"
@@ -165,8 +171,8 @@ extraEnvVars:
     value: "10"
   - name: ENABLE_RAG_HYBRID_SEARCH
     value: "true"
-  # Hybrid: HNSW vector search (pgvector) + Python BM25Retriever (rank_bm25), merged via RRF.
-  # 0.5 = equal weight; raise toward 1.0 for exact-term queries, lower for semantic questions.
+  # Hybrid: HNSW dense + BM25 sparse merged via RRF. 0.5 = equal weight.
+  # Raise toward 1.0 for exact-term queries, lower for semantic questions.
   - name: RAG_HYBRID_BM25_WEIGHT
     value: "0.5"
   # ── Document extraction (Docling OCR) ───────────────────────────────
@@ -183,16 +189,6 @@ extraEnvVars:
     value: "cross-encoder/ms-marco-MiniLM-L-6-v2"
   - name: RAG_TOP_K_RERANKER
     value: "3"
-  - name: VECTOR_LENGTH
-    value: "768"
-  - name: PGVECTOR_INITIALIZE_MAX_VECTOR_LENGTH
-    value: "768"
-  - name: PGVECTOR_INDEX_METHOD
-    value: "hnsw"
-  - name: PGVECTOR_HNSW_M
-    value: "16"
-  - name: PGVECTOR_HNSW_EF_CONSTRUCTION
-    value: "64"
   - name: SSL_CERT_FILE
     value: /ca-bundle.crt
 
