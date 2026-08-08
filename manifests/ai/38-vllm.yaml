@@ -247,14 +247,8 @@ spec:
             periodSeconds: 15
             failureThreshold: 4
             timeoutSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8000
-            initialDelaySeconds: 180
-            periodSeconds: 30
-            failureThreshold: 10
-            timeoutSeconds: 30
+          # No livenessProbe: startup probe handles the 45min CPU model load;
+          # liveness kills the pod under inference load before threshold is reached.
       volumes:
         - name: model-cache
           persistentVolumeClaim:
