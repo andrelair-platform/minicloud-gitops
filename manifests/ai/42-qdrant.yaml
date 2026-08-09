@@ -57,6 +57,8 @@ spec:
                 secretKeyRef:
                   name: qdrant-api-key
                   key: api-key
+            - name: QDRANT__STORAGE__SNAPSHOTS_PATH
+              value: /qdrant/storage/snapshots
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
