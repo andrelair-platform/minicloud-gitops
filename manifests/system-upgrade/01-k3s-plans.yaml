@@ -14,7 +14,7 @@
 #   may delete them if selfHeal is enabled. Pause auto-sync or add an ignoreDifferences
 #   entry for Job resources during active upgrade windows.
 #
-# Current cluster version: v1.36.2+k3s1 (all 5 nodes as of 2026-07-28).
+# Current cluster version: v1.36.3+k3s1 (all 5 nodes as of 2026-07-28).
 # Next target: bump version below when a new k3s release is validated.
 ---
 apiVersion: upgrade.cattle.io/v1
@@ -38,7 +38,7 @@ spec:
     deleteEmptydirData: true
     # timeout matches the default kubectl drain --timeout
     timeout: 120
-  version: v1.36.2+k3s1
+  version: v1.36.3+k3s1
   upgrade:
     image: rancher/k3s-upgrade
   tolerations:
@@ -73,7 +73,7 @@ spec:
     args:
       - prepare
       - k3s-server
-  version: v1.36.2+k3s1
+  version: v1.36.3+k3s1
   upgrade:
     image: rancher/k3s-upgrade
   tolerations:
