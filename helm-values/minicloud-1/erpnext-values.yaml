@@ -10,7 +10,7 @@
 
 image:
   repository: harbor.10.0.0.200.nip.io/library/erpnext-ktayl
-  tag: "v16.28.0-facturx-0e487d8"
+  tag: "v16.28.0-facturx-0a52e56"
   pullPolicy: IfNotPresent
 
 nginx:
