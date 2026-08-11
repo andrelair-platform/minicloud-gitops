@@ -18,6 +18,9 @@ nginx:
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits:   { cpu: 200m, memory: 256Mi }
+  # topologySpreadConstraints: [] prevents rolling update deadlock when nginx is
+  # pinned to one node via podAffinity (same fix applied to gunicorn).
+  topologySpreadConstraints: []
   affinity:
     podAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
