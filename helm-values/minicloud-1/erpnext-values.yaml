@@ -73,8 +73,6 @@ worker:
     envVars:
       - name: DSN_TEST_MODE
         value: "true"
-      - name: DSN_ENDPOINT
-        value: "https://qualif01.net-entreprises.fr/srm/service/dsn-api/depot"
       - name: DSN_LOGIN
         valueFrom:
           secretKeyRef:
@@ -95,6 +93,11 @@ worker:
           secretKeyRef:
             name: erpnext-dsn-config
             key: DSN_COMPANY_NAME
+      - name: DSN_ENDPOINT
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-dsn-config
+            key: DSN_ENDPOINT
     affinity:
       podAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
