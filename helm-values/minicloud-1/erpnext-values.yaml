@@ -1,6 +1,7 @@
-# ERPNext v16.28.0 — Phase 79 — HR source of truth
+# ERPNext v16.28.0 — Phase 79 — HR source of truth + ERP-1 French IS config
 # Chart: erpnext/erpnext 8.0.67
 # Namespace: erp | URL: https://erp.devandre.sbs
+# Custom image: harbor.10.0.0.200.nip.io/library/erpnext-ktayl (adds factur-x + pypdf)
 #
 # Site name = domain — ERPNext routes requests by $host header to the right site.
 # mariadb-sts.rootPassword is intentionally left empty here: the ESO ExternalSecret
@@ -8,8 +9,8 @@
 # mariadb-root-password. ArgoCD ignoreDifferences prevents Helm from overwriting it.
 
 image:
-  repository: frappe/erpnext
-  tag: v16.28.0
+  repository: harbor.10.0.0.200.nip.io/library/erpnext-ktayl
+  tag: v16.28.0-facturx
   pullPolicy: IfNotPresent
 
 nginx:
