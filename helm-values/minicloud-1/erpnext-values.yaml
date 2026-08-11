@@ -73,31 +73,34 @@ worker:
     envVars:
       - name: DSN_TEST_MODE
         value: "true"
+      # DSN_ENDPOINT points to the on-cluster mock during dev/demo.
+      # Flip to real Net-Entreprises URL once a real SIRET is available.
+      - name: DSN_ENDPOINT
+        value: "http://mock-net-entreprises.erp.svc.cluster.local:8080/depot"
       - name: DSN_LOGIN
         valueFrom:
           secretKeyRef:
             name: erpnext-dsn-config
             key: DSN_LOGIN
+            optional: true
       - name: DSN_PASSWORD
         valueFrom:
           secretKeyRef:
             name: erpnext-dsn-config
             key: DSN_PASSWORD
+            optional: true
       - name: DSN_SIRET
         valueFrom:
           secretKeyRef:
             name: erpnext-dsn-config
             key: DSN_SIRET
+            optional: true
       - name: DSN_COMPANY_NAME
         valueFrom:
           secretKeyRef:
             name: erpnext-dsn-config
             key: DSN_COMPANY_NAME
-      - name: DSN_ENDPOINT
-        valueFrom:
-          secretKeyRef:
-            name: erpnext-dsn-config
-            key: DSN_ENDPOINT
+            optional: true
     affinity:
       podAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
