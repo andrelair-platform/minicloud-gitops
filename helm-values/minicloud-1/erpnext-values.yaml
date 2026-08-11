@@ -1,12 +1,17 @@
-# ERPNext v16.28.0 — Phase 79 — HR source of truth + ERP-1 French IS config
+# ERPNext v16.28.0 — Phase 79 — HR source of truth + ERP-1/DSN French IS config
 # Chart: erpnext/erpnext 8.0.67
 # Namespace: erp | URL: https://erp.devandre.sbs
-# Custom image: harbor.10.0.0.200.nip.io/library/erpnext-ktayl (adds factur-x + pypdf)
+# Custom image: harbor.10.0.0.200.nip.io/library/erpnext-ktayl
+#   adds: factur-x, pypdf, erpnext_facturx, erpnext_dsn
 #
 # Site name = domain — ERPNext routes requests by $host header to the right site.
 # mariadb-sts.rootPassword is intentionally left empty here: the ESO ExternalSecret
 # erpnext-mariadb-root pre-creates the k8s secret named "erpnext" with key
 # mariadb-root-password. ArgoCD ignoreDifferences prevents Helm from overwriting it.
+#
+# DSN credentials: Vault secret/platform/net-entreprises → ESO ExternalSecret
+# erpnext-dsn-config → k8s Secret erpnext-dsn-config (keys: login, password,
+# siret, company_name). Injected as env vars to gunicorn + worker pods.
 
 image:
   repository: harbor.10.0.0.200.nip.io/library/erpnext-ktayl
@@ -63,6 +68,33 @@ worker:
     resources:
       requests: { cpu: 100m, memory: 256Mi }
       limits:   { cpu: 500m, memory: 512Mi }
+    # DSN env vars — injected into all worker pods so erpnext_dsn can submit
+    # to Net-Entreprises from background jobs triggered via the API.
+    envVars:
+      - name: DSN_TEST_MODE
+        value: "true"
+      - name: DSN_ENDPOINT
+        value: "https://qualif01.net-entreprises.fr/srm/service/dsn-api/depot"
+      - name: DSN_LOGIN
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-dsn-config
+            key: DSN_LOGIN
+      - name: DSN_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-dsn-config
+            key: DSN_PASSWORD
+      - name: DSN_SIRET
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-dsn-config
+            key: DSN_SIRET
+      - name: DSN_COMPANY_NAME
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-dsn-config
+            key: DSN_COMPANY_NAME
     affinity:
       podAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
