@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: SERVICE_NAME-tls
+spec:
+  secretName: SERVICE_NAME-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - SERVICE_NAME.devandre.sbs
