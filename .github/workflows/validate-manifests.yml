@@ -54,6 +54,7 @@ jobs:
 
       # Validate raw manifests/ YAML files. kustomization.yaml files and CRD
       # definition files are excluded (kubeconform validates instances, not schemas).
+      # xargs passes file paths as arguments (not stdin) so kubeconform reads file contents.
       - name: Validate manifests/
         run: |
           set -euo pipefail
@@ -61,9 +62,8 @@ jobs:
             ! -name "kustomization.yaml" \
             ! -path "*/gatekeeper-policies/*" \
             | sort \
-            | kubeconform \
+            | xargs -r kubeconform \
                 -strict \
                 -kubernetes-version "$K8S_VERSION" \
                 -ignore-missing-schemas \
-                -summary \
-                -
+                -summary
