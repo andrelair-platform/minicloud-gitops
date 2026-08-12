@@ -55,6 +55,37 @@ worker:
       timeoutSeconds: 5
       failureThreshold: 3
     topologySpreadConstraints: []
+    # DSN env vars must be in gunicorn as well — the /api/method/ endpoint runs
+    # in gunicorn, not in a background worker.
+    envVars:
+      - name: DSN_TEST_MODE
+        value: "true"
+      - name: DSN_ENDPOINT
+        value: "http://mock-net-entreprises.erp.svc.cluster.local:8080/depot"
+      - name: DSN_LOGIN
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-dsn-config
+            key: DSN_LOGIN
+            optional: true
+      - name: DSN_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-dsn-config
+            key: DSN_PASSWORD
+            optional: true
+      - name: DSN_SIRET
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-dsn-config
+            key: DSN_SIRET
+            optional: true
+      - name: DSN_COMPANY_NAME
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-dsn-config
+            key: DSN_COMPANY_NAME
+            optional: true
     affinity:
       nodeAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
