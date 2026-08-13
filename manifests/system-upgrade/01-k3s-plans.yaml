@@ -16,6 +16,12 @@
 #
 # Current cluster version: v1.36.3+k3s1 (all 5 nodes as of 2026-07-28).
 # Next target: bump version below when a new k3s release is validated.
+#
+# DRAIN GOTCHA — set-hog hosts many PDB-protected StatefulSets (Prometheus,
+# Loki, postgresql-synapse, Stalwart) pinned via nodeSelector. Standard eviction
+# is blocked by PDBs, causing drain timeout. Fix: disableEviction: true skips
+# the eviction API and directly deletes pods, bypassing PDB checks. Pinned
+# StatefulSets restart on the same node after upgrade (cannot reschedule).
 ---
 apiVersion: upgrade.cattle.io/v1
 kind: Plan
@@ -36,8 +42,8 @@ spec:
     force: true
     ignoreDaemonSets: true
     deleteEmptydirData: true
-    # timeout matches the default kubectl drain --timeout
-    timeout: 120
+    disableEviction: true        # bypass PDB checks — set-hog has many pinned StatefulSets
+    timeout: 300
   version: v1.36.3+k3s1
   upgrade:
     image: rancher/k3s-upgrade
@@ -66,7 +72,8 @@ spec:
     force: true
     ignoreDaemonSets: true       # required: Longhorn and other DaemonSet pods
     deleteEmptydirData: true     # required: many system pods use emptyDir
-    timeout: 120
+    disableEviction: true        # bypass PDB checks — consistent with server plan
+    timeout: 300
   prepare:
     # Blocks agent upgrades until the server plan has completed.
     image: rancher/k3s-upgrade
