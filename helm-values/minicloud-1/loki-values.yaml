@@ -97,6 +97,35 @@ singleBinary:
   # directory left at /var/loki/rules/fake/minicloud by PR #233 — the ruler
   # skips directories when listing, so the stale dir is silently ignored.
   # API path: GET /loki/api/v1/rules/minicloud-alerts
+  # One-time recovery: loki_index_20673 was zeroed during unclean node reboot
+  # (2026-08-13 ThinkPad sprint). mmap size=0 crash on startup. rm -rf is safe
+  # — tsdb-shipper-cache is a local read-cache rebuilt from /var/loki/chunks.
+  # Init container is idempotent: rm -rf on non-existent dir is a no-op.
+  initContainers:
+    - name: clean-corrupted-tsdb-cache
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          rm -rf /var/loki/tsdb-shipper-cache/loki_index_20673
+          echo "tsdb cache clean: $(ls /var/loki/tsdb-shipper-cache/ 2>/dev/null | tr '\n' ' ')"
+      volumeMounts:
+        - name: storage
+          mountPath: /var/loki
+      securityContext:
+        runAsUser: 10001
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
   extraVolumes:
     - name: loki-rules
       configMap:
