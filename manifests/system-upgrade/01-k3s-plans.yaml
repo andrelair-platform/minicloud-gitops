@@ -64,12 +64,9 @@ spec:
         operator: DoesNotExist
   serviceAccountName: system-upgrade
   cordon: true
-  drain:
-    force: true
-    ignoreDaemonSets: true       # required: Longhorn and other DaemonSet pods
-    deleteEmptydirData: true     # required: many system pods use emptyDir
-    disableEviction: true        # bypass PDB checks — consistent with server plan
-    timeout: 300
+  # No drain: Longhorn instance-manager pods have finalizers that block pod
+  # deletion until iSCSI volumes detach — all nodes have active volumes.
+  # k3s-agent upgrade is in-place (~30s); cordoning prevents new scheduling.
   prepare:
     # Blocks agent upgrades until the server plan has completed.
     image: rancher/k3s-upgrade
