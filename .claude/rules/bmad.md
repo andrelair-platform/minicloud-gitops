@@ -121,3 +121,24 @@ The script auto-creates missing labels with a grey default colour. Add proper de
 3. Runs the bridge script for each changed directory
 
 The action uses `GITOPS_TOKEN` (org-level secret, already set). It is idempotent — running it twice creates no duplicates.
+
+## Official BMAD tools (Claude Code skills)
+
+Install in any project repo:
+```bash
+npx bmad-method install --directory . --modules bmm --tools claude-code --yes
+# Creates _bmad/ — add to .gitignore
+```
+
+| Phase | Tool | What it does |
+|-------|------|--------------|
+| Pre-sprint | `/bmad-forge-idea` | Adversarial pressure-test: hardened / killed / clearer |
+| Sprint kick-off | `/bmad-sprint-planning` | Readiness gate (PASS/CONCERNS/FAIL) + sprint-status.yaml |
+| Writing ACs / specs | `/bmad-advanced-elicitation` | Pre-mortem, red-team, first-principles |
+| Architecture | `/bmad-party-mode` | Multi-agent design discussion |
+| Research | `/bmad-deep-recon` | 6 research types × 3 modes (discovery/targeted/validation) |
+| Story build | `/bmad-build` | Spec-driven loop: clarify → implement → review → report |
+| Multi-story autonomous | `/bmad-build-auto` | Unattended loop; terminal statuses: blocked / done |
+| Post-sprint | `/bmad-review` (via agent) | Evidence-based retrospective |
+
+Named agents for co-authoring stories: `/bmad-agent-mary` (BA), `/bmad-agent-john` (PM), `/bmad-agent-winston` (Architect), `/bmad-agent-amelia` (Dev).
