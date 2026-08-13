@@ -1,0 +1,246 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  namespace: cloudflare-tunnel
+data:
+  config.yml: |
+    tunnel: bf5117ec-5986-47f0-a3ce-b96ab8854d21
+    credentials-file: /etc/cloudflared/credentials.json
+    no-autoupdate: true
+
+    ingress:
+      - hostname: homer.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: homer.10.0.0.200.nip.io
+
+      - hostname: demo.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: platform-demo.10.0.0.200.nip.io
+
+      - hostname: grafana.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: grafana.10.0.0.200.nip.io
+
+      - hostname: argocd.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: argocd.10.0.0.200.nip.io
+
+      - hostname: harbor.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: harbor.10.0.0.200.nip.io
+          httpHostHeader: harbor.devandre.sbs
+
+      - hostname: backstage.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: backstage.10.0.0.200.nip.io
+
+      - hostname: auth.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: auth.10.0.0.200.nip.io
+
+      - hostname: chat.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: chat.10.0.0.200.nip.io
+
+      - hostname: nats.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: nats.10.0.0.200.nip.io
+
+      - hostname: ktayl.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: ktayl.10.0.0.200.nip.io
+
+      - hostname: onlyoffice.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: onlyoffice.10.0.0.200.nip.io
+
+      - hostname: vault-pw.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: vault-pw.10.0.0.200.nip.io
+
+      - hostname: vault.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: vault.10.0.0.200.nip.io
+
+      - hostname: cloud.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: cloud.devandre.sbs
+
+      # ── dev environment ──────────────────────────────────────────────
+      - hostname: dev.erp.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: dev.erp.10.0.0.200.nip.io
+
+      - hostname: dev.intranet.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: dev.intranet.10.0.0.200.nip.io
+
+      - hostname: dev.wiki.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: dev.wiki.10.0.0.200.nip.io
+
+      - hostname: dev.chat.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: dev.chat.10.0.0.200.nip.io
+
+      - hostname: dev.mail.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: dev.mail.10.0.0.200.nip.io
+
+      # ── staging environment ──────────────────────────────────────────
+      - hostname: staging.erp.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: staging.erp.10.0.0.200.nip.io
+
+      - hostname: staging.intranet.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: staging.intranet.10.0.0.200.nip.io
+
+      - hostname: staging.wiki.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: staging.wiki.10.0.0.200.nip.io
+
+      - hostname: staging.chat.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: staging.chat.10.0.0.200.nip.io
+
+      - hostname: staging.mail.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: staging.mail.10.0.0.200.nip.io
+
+      # ── prod environment ─────────────────────────────────────────────
+      - hostname: erp.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: erp.devandre.sbs
+
+      - hostname: intranet.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: intranet.10.0.0.200.nip.io
+
+      - hostname: wiki.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: wiki.10.0.0.200.nip.io
+
+      - hostname: mail.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: mail.10.0.0.200.nip.io
+
+      - hostname: sign.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: sign.10.0.0.200.nip.io
+
+      - hostname: langfuse.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: langfuse.10.0.0.200.nip.io
+
+      - hostname: litellm.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: litellm.10.0.0.200.nip.io
+
+      - hostname: plane.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: plane.devandre.sbs
+
+      - hostname: matrix.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: matrix.10.0.0.200.nip.io
+
+      - hostname: element.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: element.10.0.0.200.nip.io
+
+      - hostname: meet.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: meet.10.0.0.200.nip.io
+
+      - hostname: n8n.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: n8n.10.0.0.200.nip.io
+
+      - hostname: temporal.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: temporal.10.0.0.200.nip.io
+
+      - hostname: flowise.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: flowise.10.0.0.200.nip.io
+
+      - service: http_status:404
