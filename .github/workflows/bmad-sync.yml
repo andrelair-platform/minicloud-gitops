@@ -1,0 +1,69 @@
+name: BMAD → GitHub Issues sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bmad/stories/**/*.md'
+
+jobs:
+  sync:
+    name: Sync changed stories to platform-backlog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Find changed story directories
+        id: dirs
+        run: |
+          changed=$(git diff --name-only HEAD~1 HEAD -- 'bmad/stories/**/*.md' || true)
+          if [[ -z "$changed" ]]; then
+            echo "No story files changed."
+            echo "dirs=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Unique sprint directories at depth bmad/stories/<project>/<milestone>/
+          dirs=$(echo "$changed" \
+            | grep '^bmad/stories/' \
+            | awk -F/ '{print $1"/"$2"/"$3"/"$4}' \
+            | sort -u \
+            | tr '\n' ' ')
+          echo "dirs=$dirs" >> "$GITHUB_OUTPUT"
+          echo "Changed sprint directories: $dirs"
+
+      - name: Sync stories to GitHub Issues
+        if: steps.dirs.outputs.dirs != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+        run: |
+          for dir in ${{ steps.dirs.outputs.dirs }}; do
+            [[ -d "$dir" ]] || continue
+            echo ""
+            echo "===> Syncing: $dir"
+
+            # Extract milestone from first story's frontmatter
+            first_story=$(ls "$dir"/S*.md 2>/dev/null | sort | head -1)
+            if [[ -z "$first_story" ]]; then
+              echo "No S*.md files in $dir — skipping"
+              continue
+            fi
+
+            milestone=$(python3 - "$first_story" <<'PYEOF'
+import sys, re
+with open(sys.argv[1]) as f:
+    content = f.read()
+m = re.search(r'milestone:\s*["\'](.+?)["\']', content)
+print(m.group(1) if m else '')
+PYEOF
+            )
+
+            bash scripts/bmad-to-github.sh "$dir" \
+              --repo andrelair-platform/platform-backlog \
+              --project 1 \
+              ${milestone:+--milestone "$milestone"}
+          done
