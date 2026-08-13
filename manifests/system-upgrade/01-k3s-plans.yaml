@@ -14,7 +14,7 @@
 #   may delete them if selfHeal is enabled. Pause auto-sync or add an ignoreDifferences
 #   entry for Job resources during active upgrade windows.
 #
-# Current cluster version: v1.36.3+k3s1 (all 5 nodes as of 2026-07-28).
+# Current cluster version: v1.36.3+k3s1 (all 5 nodes upgraded 2026-08-13).
 # Next target: bump version below when a new k3s release is validated.
 #
 # DRAIN GOTCHA — set-hog (control plane) hosts active Longhorn volumes with
