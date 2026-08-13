@@ -243,4 +243,7 @@ data:
           noTLSVerify: true
           originServerName: flowise.10.0.0.200.nip.io
 
+      - hostname: controller.devandre.sbs
+        service: ssh://10.0.0.1:22
+
       - service: http_status:404
