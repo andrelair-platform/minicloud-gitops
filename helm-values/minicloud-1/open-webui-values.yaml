@@ -189,8 +189,8 @@ extraEnvVars:
     value: "cross-encoder/ms-marco-MiniLM-L-6-v2"
   - name: RAG_TOP_K_RERANKER
     value: "3"
-  - name: SSL_CERT_FILE
-    value: /ca-bundle.crt
+  # SSL_CERT_FILE removed: all internal connections use http://, OIDC uses
+  # auth.devandre.sbs (Cloudflare public cert). Minicloud CA not needed here.
 
 extraEnvFrom:
   - secretRef:
