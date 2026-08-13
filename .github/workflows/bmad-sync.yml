@@ -53,14 +53,8 @@ jobs:
               continue
             fi
 
-            milestone=$(python3 - "$first_story" <<'PYEOF'
-import sys, re
-with open(sys.argv[1]) as f:
-    content = f.read()
-m = re.search(r'milestone:\s*["\'](.+?)["\']', content)
-print(m.group(1) if m else '')
-PYEOF
-            )
+            milestone=$(grep -m1 '^milestone:' "$first_story" \
+              | sed "s/^milestone:[[:space:]]*//; s/^['\"]//; s/['\"][[:space:]]*$//")
 
             bash scripts/bmad-to-github.sh "$dir" \
               --repo andrelair-platform/platform-backlog \
