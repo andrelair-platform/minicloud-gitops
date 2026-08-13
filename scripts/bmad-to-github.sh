@@ -199,9 +199,9 @@ for story_file in "$STORY_DIR"/S*.md; do
     done
   fi
 
-  # Add milestone
-  if [[ -n "$MILESTONE_NUMBER" ]]; then
-    gh_args+=(--milestone "$MILESTONE_NUMBER")
+  # Add milestone (gh issue create accepts title or number)
+  if [[ -n "$MILESTONE_TITLE" ]]; then
+    gh_args+=(--milestone "$MILESTONE_TITLE")
   fi
 
   issue_url=$(gh "${gh_args[@]}" 2>&1)
