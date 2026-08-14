@@ -1,5 +1,3 @@
-do ig
-
 # GitHub Repos & Docs Site
 
 ## GitHub Repos (org: `andrelair-platform`)
@@ -20,6 +18,7 @@ All repos cloned under `~/Developer/cloudplateform/`:
 | [ktayl-solution-web](https://github.com/andrelair-platform/ktayl-solution-web)           | `ktayl-solution-web/`            | Astro + Tailwind public website (7 LOB)           |
 | [minicloud-agent](https://github.com/andrelair-platform/minicloud-agent)                 | `minicloud-agent/`               | LangGraph ReAct research agent (model: research-agent) |
 | [minicloud-crew-agent](https://github.com/andrelair-platform/minicloud-crew-agent)       | `minicloud-crew-agent/`          | CrewAI 3-agent pipeline (model: deep-research-agent) |
+| [aisystemmaster](https://github.com/andrelair-platform/aisystemmaster)                   | `aisystemmaster/`                | AI Systems Engineer playbook + 3 flagship project specs |
 | [minicloud-ops](https://github.com/andrelair-platform/minicloud-ops)                     | controller`~/minicloud-ops` only | Python platform recovery check + systemd services |
 
 ## Docs Site (minicloud-platform-docs)
