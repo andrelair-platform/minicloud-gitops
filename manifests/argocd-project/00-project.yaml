@@ -111,8 +111,6 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: kube-system
       server: https://kubernetes.default.svc
-    - namespace: ktayl-web
-      server: https://kubernetes.default.svc
     - namespace: langfuse
       server: https://kubernetes.default.svc
     - namespace: messaging
