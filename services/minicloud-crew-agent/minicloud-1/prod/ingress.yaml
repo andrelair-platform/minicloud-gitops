@@ -1,7 +1,3 @@
----
-# Internal-only ingress (nip.io). Not exposed via Cloudflare tunnel —
-# external consumers go through LiteLLM (model: deep-research-agent).
-# Longer timeouts than research-agent: 3 agents × 8 iterations each.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
