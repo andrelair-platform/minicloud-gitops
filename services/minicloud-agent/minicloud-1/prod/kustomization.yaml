@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ai
+resources:
+  - ../../base
+  - certificate.yaml
+  - ingress.yaml
+# CI bumps newTag here on every push to main in the minicloud-agent repo.
+images:
+  - name: harbor.10.0.0.200.nip.io/library/minicloud-agent
+    newTag: "1.0.1"
