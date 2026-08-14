@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: minicloud-agent-dev
+resources:
+  - ../../base
+  - externalsecret.yaml
+# Relax PDB for dev: single replica can be disrupted during node drains.
+patches:
+  - patch: |-
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: minicloud-agent
+      spec:
+        maxUnavailable: 1
+# CI bumps newTag here on every push to the dev branch in minicloud-agent repo.
+images:
+  - name: harbor.10.0.0.200.nip.io/library/minicloud-agent
+    newTag: "33031bb"
