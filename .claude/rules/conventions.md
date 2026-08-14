@@ -208,3 +208,93 @@ Every repo must have these three files at the root:
 - [ ] `CONTRIBUTING.md` — branch rules, commit style, PR requirements
 - [ ] Docusaurus `website/` — see Per-repo static documentation section above
 - [ ] GitHub Pages enabled — `gh api repos/.../pages --method POST -f "build_type=workflow"`
+- [ ] Release automation — see Automated releases section below
+
+---
+
+## Automated releases (release-please)
+
+Every custom-built repo uses **release-please** to publish GitHub Releases automatically from conventional commits (`feat:` → minor bump, `fix:` → patch bump, `feat!:` → major bump).
+
+### How it works
+
+1. On every push to `main`, the `release.yml` workflow runs release-please
+2. release-please opens a **"release PR"** (e.g. `chore: release v1.2.0`) that bumps `version.txt` + updates `CHANGELOG.md`
+3. When that PR is merged to `main`, release-please creates the git tag (`v1.2.0`) and a GitHub Release with auto-generated notes
+
+Zero manual steps. The release PR accumulates changes and only merges when you decide to cut a release.
+
+### Required files per repo
+
+**`.github/workflows/release.yml`** (copy verbatim):
+```yaml
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name:        ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          token:         ${{ secrets.GITHUB_TOKEN }}
+          config-file:   release-please-config.json
+          manifest-file: .release-please-manifest.json
+```
+
+**`release-please-config.json`** — adjust `package-name` per repo:
+```json
+{
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "<repo-name>",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true
+    }
+  }
+}
+```
+
+Use `release-type: node` for Node.js repos (bumps `package.json` version automatically).
+
+**`.release-please-manifest.json`** — tracks current version:
+```json
+{
+  ".": "0.1.0"
+}
+```
+
+**`version.txt`** — current version string (updated by release-please):
+```
+0.1.0
+```
+
+**`CHANGELOG.md`** — initial file (release-please populates it):
+```markdown
+# Changelog
+
+All notable changes to <repo-name> are documented here.
+
+This file is maintained by [release-please](https://github.com/googleapis/release-please).
+```
+
+### Reference implementation
+
+`ktayl-policy-service` — all 5 files committed, first release created when S003 merged to main.
+
+### Node.js repos
+
+Use `"release-type": "node"` in `release-please-config.json` — release-please will also bump the `version` field in `package.json` automatically. No `version.txt` needed.
