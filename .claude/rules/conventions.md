@@ -114,3 +114,97 @@ themes: ['@docusaurus/theme-mermaid'],
 ```
 
 **MDX gotcha:** curly braces `{...}` in markdown text are evaluated as JavaScript. Use backtick code or HTML entities (`&#123;`) instead of literal `{value1, value2}` in prose.
+
+---
+
+## Repo standardisation (GitHub About + README + LICENSE)
+
+Every custom-built repo must be fully standardised before merging S001 to `main`. Reference implementation: `ktayl-policy-service`.
+
+### 1. GitHub About panel
+
+Set via `gh api` — do this once when creating the repo:
+
+```bash
+# Description, homepage (docs site), topics
+gh api repos/andrelair-platform/<repo> \
+  --method PATCH \
+  -f description="<one-line description of the service>" \
+  -f homepage="https://andrelair-platform.github.io/<repo>/"
+
+gh api repos/andrelair-platform/<repo>/topics \
+  --method PUT \
+  -f 'names[]=go' -f 'names[]=kubernetes' -f 'names[]=microservice' \
+  # add service-specific topics: insurance, postgresql, python, etc.
+```
+
+**Required fields:**
+- `description` — one sentence, no trailing period, mentions the tech stack
+- `homepage` — always the GitHub Pages docs URL (`https://andrelair-platform.github.io/<repo>/`)
+- `topics` — at minimum: language + `kubernetes` + `microservice`; add domain tags (e.g. `insurance`, `argocd`)
+
+### 2. Required root files
+
+Every repo must have these three files at the root:
+
+| File | Content |
+|---|---|
+| `README.md` | Full structured README (see template below) |
+| `LICENSE` | MIT — copy from `ktayl-policy-service/LICENSE`, update copyright year |
+| `CONTRIBUTING.md` | Branch rules, commit style, PR requirements — copy from `ktayl-policy-service/CONTRIBUTING.md` |
+
+### 3. README structure (mandatory sections in order)
+
+```markdown
+# <repo-name>
+
+[![CI](https://github.com/andrelair-platform/<repo>/actions/workflows/ci.yml/badge.svg)](...)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![<Language>](https://img.shields.io/badge/<Lang>-<version>-blue)](<lang url>)
+[![Supply chain: cosign](https://img.shields.io/badge/supply%20chain-cosign%20signed-green)](https://github.com/sigstore/cosign)
+
+> <one-paragraph italic description — what it does, what platform it runs on, why it matters>
+
+**Live demo:** <URL if publicly accessible>          ← omit if no public URL
+**Live docs:** <https://andrelair-platform.github.io/<repo>/>
+**Platform docs:** <https://andrelair-platform.github.io/minicloud-platform-docs/>
+
+---
+
+## Table of Contents
+## <Domain model / Data model>   ← for services with a DB
+## Architecture                  ← diagram + component table
+## Getting Started               ← prerequisites, run locally, test, build
+## CI/CD Pipeline                ← step-by-step + branch strategy + secrets table
+## Endpoints                     ← method/path/description table
+## Environment variables         ← variable/default/description table
+## Database migrations           ← only if applicable
+## Contributing
+## License
+```
+
+**Badges to include:**
+- CI badge — always
+- License badge — always (MIT yellow)
+- Language/framework badge — always (Go blue, Python blue, Node green, etc.)
+- cosign badge — always (supply chain green)
+- Extra badges optional: version, coverage, etc.
+
+**One-liner description rules:**
+- Use `>` blockquote format
+- Mention: what it does + platform context (self-hosted k8s / ktayl-solution IS / etc.) + key tech
+- No bullet points — single flowing paragraph
+
+**Architecture section must include:**
+- ASCII diagram showing CI → ArgoCD → Pod flow
+- Component table: Runtime, Router/Framework, Database, Registry, GitOps, Sprint
+
+### 4. Checklist (apply when creating a new repo)
+
+- [ ] `gh api PATCH` — set description + homepage
+- [ ] `gh api PUT /topics` — set topics
+- [ ] `README.md` — full structure with all mandatory sections
+- [ ] `LICENSE` — MIT, correct year
+- [ ] `CONTRIBUTING.md` — branch rules, commit style, PR requirements
+- [ ] Docusaurus `website/` — see Per-repo static documentation section above
+- [ ] GitHub Pages enabled — `gh api repos/.../pages --method POST -f "build_type=workflow"`
