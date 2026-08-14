@@ -1,9 +1,9 @@
-import type {{SidebarsConfig}} from '@docusaurus/plugin-content-docs';
+import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
-const sidebars: SidebarsConfig = {{
+const sidebars: SidebarsConfig = {
   docs: [
-    {{type: 'doc', id: 'intro', label: 'Overview'}},
+    {type: 'doc', id: 'intro', label: 'Overview'},
   ],
-}};
+};
 
 export default sidebars;
