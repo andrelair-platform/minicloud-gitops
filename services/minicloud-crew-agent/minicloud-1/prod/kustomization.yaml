@@ -8,4 +8,4 @@ resources:
 # CI bumps newTag here on every push to main in the minicloud-crew-agent repo.
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
-  newTag: f44c4c9
+  newTag: a4f71eb
