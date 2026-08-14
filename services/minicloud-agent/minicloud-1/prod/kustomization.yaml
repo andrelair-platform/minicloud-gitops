@@ -8,4 +8,4 @@ resources:
 # CI bumps newTag here on every push to main in the minicloud-agent repo.
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-agent
-  newTag: d3a20e5
+  newTag: 33031bb
