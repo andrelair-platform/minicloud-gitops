@@ -115,6 +115,10 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: messaging
       server: https://kubernetes.default.svc
+    - namespace: minicloud-agent-dev
+      server: https://kubernetes.default.svc
+    - namespace: minicloud-crew-agent-dev
+      server: https://kubernetes.default.svc
     - namespace: minicloud-plane-dev
       server: https://kubernetes.default.svc
     - namespace: minicloud-plane-staging
