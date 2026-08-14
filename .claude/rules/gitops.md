@@ -33,6 +33,29 @@ cd ~/Developer/cloudplateform/minicloud-gitops
 kustomize build services/platform-demo/minicloud-1/dev
 ```
 
+## ESO + ArgoCD SSA ignoreDifferences (mandatory for any ExternalSecret)
+
+When an Application uses `ServerSideApply=true` and contains an `ExternalSecret`, ESO's admission webhook injects four default fields at creation time that are never in git: `conversionStrategy: Default`, `decodingStrategy: None`, `metadataPolicy: None`, `deletionPolicy: Retain`. ArgoCD SSA diff sees these as drift → app is permanently `OutOfSync` (even though pods are Healthy and the secret is synced).
+
+**Fix — add to every Application that contains an ExternalSecret:**
+
+```yaml
+ignoreDifferences:
+  - group: external-secrets.io
+    kind: ExternalSecret
+    jqPathExpressions:
+      - .spec.data[].remoteRef.conversionStrategy
+      - .spec.data[].remoteRef.decodingStrategy
+      - .spec.data[].remoteRef.metadataPolicy
+      - .spec.target.deletionPolicy
+syncOptions:
+  - RespectIgnoreDifferences=true   # must be here alongside CreateNamespace/ServerSideApply
+```
+
+`RespectIgnoreDifferences=true` is required — without it ArgoCD still overwrites the ignored fields on each sync, causing ESO to re-inject them in an endless loop.
+
+Reference: PRs #729 (minicloud-agent-dev + minicloud-crew-agent-dev fix).
+
 ## Backstage Custom Image
 
 Source at `~/Developer/cloudplateform/minicloud-backstage`. CI is fully automated.
