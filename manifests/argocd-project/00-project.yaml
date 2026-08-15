@@ -185,6 +185,8 @@ spec:
       kind: ValidatingWebhookConfiguration
     - group: "admissionregistration.k8s.io"
       kind: MutatingWebhookConfiguration
+    - group: "cert-manager.io"
+      kind: ClusterIssuer
     - group: "external-secrets.io"
       kind: ClusterSecretStore
     - group: "storage.k8s.io"
