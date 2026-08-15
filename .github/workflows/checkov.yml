@@ -1,0 +1,48 @@
+name: Checkov IaC Security Scan
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'manifests/**'
+      - 'services/**'
+      - 'apps/**'
+      - 'helm-values/**'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  checkov:
+    name: checkov
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: kubernetes,helm
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          # Skip checks that are k3s false positives or covered by other controls
+          # CKV_K8S_8  — liveness probe: not enforced here (SRE responsibility per workload)
+          # CKV_K8S_9  — readiness probe: same
+          # CKV_K8S_28 — IfNotPresent: we pin digest in CI; ArgoCD syncs pinned tags
+          # CKV_K8S_14 — image tag not latest: helm-values use explicit versions
+          # CKV_K8S_43 — image digest: pinned in CI, ArgoCD uses tag from kustomize
+          # CKV_K8S_35 — secrets from files: we use ESO → Vault, not env vars for secrets
+          # CKV_K8S_36 — capabilities drop ALL: not universally enforced yet (ph27 Gatekeeper covers subset)
+          # CKV2_K8S_6 — minimize wildcard RBAC: Helm charts often include these; tracked separately
+          skip_check: CKV_K8S_8,CKV_K8S_9,CKV_K8S_28,CKV_K8S_14,CKV_K8S_43,CKV_K8S_35,CKV_K8S_36,CKV2_K8S_6
+          soft_fail: false
+          download_external_modules: false
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-results.sarif
