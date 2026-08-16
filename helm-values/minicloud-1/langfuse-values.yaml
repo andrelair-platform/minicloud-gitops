@@ -105,6 +105,12 @@ langfuse:
     # during the OIDC token exchange without SSL verification failures.
     - name: NODE_EXTRA_CA_CERTS
       value: "/etc/ssl/minicloud/ca.crt"
+    # Full Redis URL with auth — value provided by ESO from Vault secret/platform/langfuse.
+    - name: REDIS_URL
+      valueFrom:
+        secretKeyRef:
+          name: langfuse-secrets
+          key: redis-url
 
   extraVolumes:
     - name: minicloud-ca
@@ -180,15 +186,16 @@ clickhouse:
         cpu: 500m
         memory: 768Mi
 
-# Redis/Valkey — internal standalone, no auth (Langfuse connects without password)
+# Redis/Valkey — internal standalone, password via Vault secret (langfuse-secrets.redis-password)
 redis:
   deploy: true
   architecture: standalone
   image:
     repository: bitnamilegacy/valkey
   auth:
-    enabled: false
-    password: ""
+    enabled: true
+    existingSecret: langfuse-secrets
+    existingSecretPasswordKey: redis-password
   primary:
     nodeSelector:
       kubernetes.io/hostname: set-hog
