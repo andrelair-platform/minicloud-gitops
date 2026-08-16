@@ -1,7 +1,7 @@
 ---
 id: S006-nats-publisher
 title: "NATS JetStream event publisher — policy lifecycle events"
-status: Ready
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"
