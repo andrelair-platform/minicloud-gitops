@@ -40,20 +40,14 @@ metrics:
     enabled: true
     interval: 30s
 
+caBundleSecretName: minicloud-ca-bundle
+
 core:
   priorityClassName: minicloud-critical
   existingSecret: harbor-stable-secrets
   existingSecretKey: secret
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
-  extraVolumes:
-    - name: minicloud-ca
-      configMap:
-        name: minicloud-ca-bundle
-  extraVolumeMounts:
-    - name: minicloud-ca
-      mountPath: /etc/ssl/certs/minicloud-ca.crt
-      subPath: ca.crt
 
 updateStrategy:
   type: Recreate
