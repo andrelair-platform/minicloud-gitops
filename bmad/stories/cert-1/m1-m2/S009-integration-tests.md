@@ -1,7 +1,7 @@
 ---
 id: S009-integration-tests
 title: "L2 integration test suite — testcontainers PostgreSQL + NATS"
-status: Ready
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"

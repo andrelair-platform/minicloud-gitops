@@ -31,10 +31,10 @@ generation, NATS event publishing, JWT auth — deployed on minicloud via ArgoCD
 | S005 | PDF attestation + MinIO storage | 3 | ✅ Done | #254 | PR #17 |
 | S006 | NATS JetStream event publisher | 3 | ✅ Done | #255 | PR #18 |
 | S008 | Unit test suite + golangci-lint CI | 2 | ✅ Done | #257 | PR #19 |
-| S009 | Integration tests (testcontainers) | 3 | 🔵 Ready | #258 | — |
+| S009 | Integration tests (Docker Compose) | 3 | ✅ Done | #258 | PR #20 |
 | S010 | k8s manifests + ArgoCD Application | 3 | 🔵 Ready | #259 | — |
 
-**Progress:** 24 / 30 SP done (80%)
+**Progress:** 27 / 30 SP done (90%)
 
 ---
 
