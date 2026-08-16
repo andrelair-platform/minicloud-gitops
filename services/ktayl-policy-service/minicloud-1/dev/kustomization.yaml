@@ -9,4 +9,4 @@ resources:
 # Staging and prod tags are promoted manually via PRs.
 images:
   - name: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
-    newTag: latest
+    newTag: staging-8962ee0
