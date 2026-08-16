@@ -45,6 +45,14 @@ spec:
       remoteRef:
         key: platform/langfuse
         property: salt
+    - secretKey: redis-password
+      remoteRef:
+        key: platform/langfuse
+        property: redis-password
+    - secretKey: redis-url
+      remoteRef:
+        key: platform/langfuse
+        property: redis-url
 ---
 # langfuse-oidc-env — mapped as env vars via additionalEnvFrom.
 # Key names match NextAuth env var names directly.

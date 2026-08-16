@@ -94,7 +94,7 @@ In addition to the conventions.md repo standardization checklist, every new cust
 
 | Repo | BMAD Installed | project-context.md | PRD | Architecture | Epics | Sprint Gate |
 |---|---|---|---|---|---|---|
-| ktayl-policy-service | ✅ 2026-08-16 | ✅ | ✅ (local) | ✅ (local) | ✅ (local) | ❌ need `/bmad-sprint-planning` |
+| ktayl-policy-service | ✅ 2026-08-16 | ✅ | ✅ (local) | ✅ (local) | ✅ (local) | ✅ 2026-08-16 PASS |
 | minicloud-plane | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | platform-demo | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | minicloud-agent | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |

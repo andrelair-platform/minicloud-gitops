@@ -1,7 +1,7 @@
 ---
 id: S007-auth-middleware
 title: "Authentik M2M JWT middleware — JWKS validation + scope-based authz"
-status: Ready
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"
@@ -21,13 +21,13 @@ CdCF §7.3 (sécurité) — Authentik is the OIDC/OAuth2 provider. Two token flo
 
 ## Acceptance Criteria
 
-- [ ] AC-1: All endpoints except `/healthz` require `Authorization: Bearer <token>`; missing token → 401
-- [ ] AC-2: Token signature validated against Authentik JWKS (`AUTHENTIK_JWKS_URL` env var); invalid signature → 401
-- [ ] AC-3: Token expiry enforced; expired token → 401 with `{"error":"token_expired"}`
-- [ ] AC-4: `policy:read` scope required for GET endpoints; missing scope → 403
-- [ ] AC-5: `policy:write` scope required for POST/PUT/DELETE; missing scope → 403
-- [ ] AC-6: `sub` claim (user or service account ID) stored in request context and used as `actor_id` in audit log (S004 AC-6)
-- [ ] AC-7: JWKS keys cached in memory with 5-minute TTL (avoid JWKS lookup on every request)
+- [x] AC-1: All endpoints except `/healthz` require `Authorization: Bearer <token>`; missing token → 401
+- [x] AC-2: Token signature validated against Authentik JWKS (`AUTHENTIK_JWKS_URL` env var); invalid signature → 401
+- [x] AC-3: Token expiry enforced; expired token → 401 with `{"error":"token_expired"}`
+- [x] AC-4: `policy:read` scope required for GET endpoints; missing scope → 403
+- [x] AC-5: `policy:write` scope required for POST/PUT/DELETE; missing scope → 403
+- [x] AC-6: `sub` claim (user or service account ID) stored in request context and used as `actor_id` in audit log (S004 AC-6)
+- [x] AC-7: JWKS keys cached in memory with 5-minute TTL (avoid JWKS lookup on every request)
 
 ## Technical Notes
 

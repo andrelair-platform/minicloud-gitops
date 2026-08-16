@@ -42,7 +42,8 @@ dashboard:
       cpu: 100m
       memory: 256Mi
   securityMode: true
-  serviceType: ClusterIP
+  service:
+    type: ClusterIP
 dnsServer:
   create: false
 webhook:
