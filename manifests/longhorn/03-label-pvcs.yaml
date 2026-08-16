@@ -99,8 +99,10 @@ spec:
               labelVol ai           open-webui
               labelVol backstage    data-backstage-postgresql-0
               labelVol harbor       database-data-harbor-database-0
-              labelVol harbor       harbor-registry
-              labelVol langfuse     data-langfuse-clickhouse-shard0-0
+              # harbor-registry (20Gi) excluded: images are re-pullable via proxy cache.
+              # langfuse-clickhouse excluded: ClickHouse telemetry, re-ingestible from
+              # LiteLLM logs; was the largest MinIO consumer after harbor-registry.
+              # Both removed 2026-08-16 as bridge until NAS (#239).
 
               # Messaging (NATS JetStream persistence)
               labelVol messaging    nats-js-nats-0

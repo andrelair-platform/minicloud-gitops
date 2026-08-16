@@ -1,19 +1,22 @@
 ---
-# Weekly off-site backup to Cloudflare R2 — Sunday 04:00 UTC.
-# Runs after the nightly MinIO backup (03:00 UTC) and kine backup (03:30 UTC).
+# Daily off-site backup to Cloudflare R2 — 03:30 UTC (after MinIO daily at 03:00 UTC).
+# Backs up k8s objects only (defaultVolumesToFsBackup: false globally) — no PVC data.
+# Typical backup size: ~100 MB compressed (manifests + secrets). At 3-day TTL and
+# kopia deduplication the R2 bucket stays well under the 10 GB free tier.
+# Was weekly/4-week-TTL; changed 2026-08-16 to daily/72h as bridge until NAS (#239).
 # Excludes the same expendable/large namespaces as the daily MinIO schedule.
-# ttl: 672h = 4 weeks retention.
+# ttl: 72h = 3 days retention — keeps steady-state R2 usage near 300 MB.
 apiVersion: velero.io/v1
 kind: Schedule
 metadata:
   name: weekly-r2-offsite
   namespace: velero
 spec:
-  schedule: "0 4 * * 0"
+  schedule: "30 3 * * *"
   template:
     storageLocation: cloudflare-r2
-    ttl: 672h
-    itemOperationTimeout: 8h
+    ttl: 72h
+    itemOperationTimeout: 4h
     includedNamespaces:
       - "*"
     excludedNamespaces:
