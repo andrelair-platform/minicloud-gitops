@@ -1,7 +1,7 @@
 ---
 id: S005-document-generation
 title: "Policy attestation PDF generation — template + MinIO storage"
-status: Ready
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"
@@ -21,12 +21,12 @@ CdCF §6.1 BF-POL-05 — document generation. The attestation is a legal documen
 
 ## Acceptance Criteria
 
-- [ ] AC-1: `POST /v1/policies/:id/documents/attestation` — generates PDF, stores in MinIO, returns `{document_id, url, expires_at}`
-- [ ] AC-2: PDF contains: policy number, holder name, product name, LOB, effective/expiry dates, coverage summary, generated_at timestamp
-- [ ] AC-3: Signed MinIO URL expires in 1 hour (configurable via `DOCUMENT_URL_TTL`)
-- [ ] AC-4: `GET /v1/policies/:id/documents` — lists all documents for a policy (type, created_at, url)
-- [ ] AC-5: Only policies in ACTIVE or AMENDED status can generate attestations; DRAFT returns 409
-- [ ] AC-6: MinIO bucket `policy-documents` created with lifecycle rule: 7-year retention (ACPR archive requirement)
+- [x] AC-1: `POST /v1/policies/:id/documents/attestation` — generates PDF, stores in MinIO, returns `{document_id, url, expires_at}`
+- [x] AC-2: PDF contains: policy number, holder name, product name, LOB, effective/expiry dates, coverage summary, generated_at timestamp
+- [x] AC-3: Signed MinIO URL expires in 1 hour (configurable via `DOCUMENT_URL_TTL`)
+- [x] AC-4: `GET /v1/policies/:id/documents` — lists all documents for a policy (type, created_at, url)
+- [x] AC-5: Only policies in ACTIVE or AMENDED status can generate attestations; DRAFT returns 409
+- [x] AC-6: MinIO bucket `policy-documents` created with lifecycle rule: 7-year retention (ACPR archive requirement)
 
 ## Technical Notes
 
@@ -39,20 +39,20 @@ CdCF §6.1 BF-POL-05 — document generation. The attestation is a legal documen
 
 ## Definition of Done
 
-- [ ] Code implements all ACs
-- [ ] L0: golangci-lint passes
-- [ ] L1: unit test — PDF generation with mock data produces non-empty byte slice
-- [ ] L1: unit test — MinIO client mocked; correct bucket/key pattern verified
-- [ ] PR merged to `staging`
+- [x] Code implements all ACs
+- [x] L0: golangci-lint passes
+- [x] L1: unit test — PDF generation with mock data produces non-empty byte slice
+- [x] L1: unit test — MinIO client mocked; correct bucket/key pattern verified
+- [x] PR merged to `staging` (PR #17)
 
 ## Tasks
 
-- [ ] TASK-1: Write `migrations/V3__documents.sql`
-- [ ] TASK-2: Write `internal/documents/pdf_generator.go` (template + render)
-- [ ] TASK-3: Write `internal/documents/minio_store.go` (upload + presigned URL)
-- [ ] TASK-4: Write `internal/api/handlers/document_handler.go`
-- [ ] TASK-5: Create MinIO bucket + lifecycle rule (via minicloud-gitops manifest or startup code)
-- [ ] TASK-6: Write unit tests
+- [x] TASK-1: Write `migrations/V3__documents.sql`
+- [x] TASK-2: Write `internal/documents/pdf_generator.go` (template + render)
+- [x] TASK-3: Write `internal/documents/minio_store.go` (upload + presigned URL)
+- [x] TASK-4: Write `internal/api/handlers/document_handler.go`
+- [x] TASK-5: Create MinIO bucket + lifecycle rule (via minicloud-gitops manifest or startup code)
+- [x] TASK-6: Write unit tests
 
 ## Dependencies
 
