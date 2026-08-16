@@ -1,7 +1,7 @@
 ---
 id: S002-domain-model
 title: "Policy domain model — structs, PostgreSQL schema, Flyway migrations"
-status: Ready
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"

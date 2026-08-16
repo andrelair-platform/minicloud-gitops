@@ -1,0 +1,76 @@
+name: BMAD Compliance Check
+
+on:
+  pull_request:
+    paths:
+      - 'bmad/stories/**'
+
+jobs:
+  bmad-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check BMAD sprint artefacts
+        run: |
+          set -euo pipefail
+          ERRORS=0
+
+          # Find every sprint directory (contains at least one S*.md story file)
+          SPRINT_DIRS=$(find bmad/stories -name 'S*.md' -printf '%h\n' | sort -u)
+
+          for dir in $SPRINT_DIRS; do
+            echo "Checking sprint directory: $dir"
+
+            # 1. SPRINT-OVERVIEW.md must exist
+            if [ ! -f "$dir/SPRINT-OVERVIEW.md" ]; then
+              echo "  ❌ MISSING: $dir/SPRINT-OVERVIEW.md"
+              echo "     Fix: copy from bmad/stories/cert-1/m1-m2/SPRINT-OVERVIEW.md and adapt"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "  ✅ SPRINT-OVERVIEW.md"
+            fi
+
+            # 2. All story files must have valid status values
+            for story in "$dir"/S*.md; do
+              STATUS=$(grep -m1 '^status:' "$story" | awk '{print $2}' || echo "missing")
+              VALID="Draft Ready In Progress Done Blocked"
+              if echo "$VALID" | grep -qw "$STATUS"; then
+                echo "  ✅ $(basename $story) — status: $STATUS"
+              else
+                echo "  ❌ INVALID STATUS: $(basename $story) — status: '$STATUS'"
+                echo "     Valid values: Draft | Ready | In Progress | Done | Blocked"
+                ERRORS=$((ERRORS + 1))
+              fi
+            done
+
+            # 3. Warn if any story has been in "In Progress" for > 7 days without PR
+            # (informational only — does not block merge)
+            for story in "$dir"/S*.md; do
+              STATUS=$(grep -m1 '^status:' "$story" | awk '{print $2}')
+              if [ "$STATUS" = "In" ]; then
+                # "In Progress" detected (awk split cuts off "Progress")
+                STORY_ID=$(grep -m1 '^id:' "$story" | awk '{print $2}')
+                echo "  ⚠️  WARN: $STORY_ID is In Progress — ensure feature branch is open"
+              fi
+            done
+          done
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo ""
+            echo "❌ BMAD compliance check failed: $ERRORS error(s)"
+            echo ""
+            echo "Required artefacts for each sprint directory:"
+            echo "  - SPRINT-OVERVIEW.md (sprint manifest with tracker, dependency graph, sprint gate)"
+            echo "  - Story .md files with valid status: (Draft | Ready | In Progress | Done | Blocked)"
+            echo ""
+            echo "BMAD pre-sprint artefacts (per service repo, not checked here):"
+            echo "  - docs/project-context.md"
+            echo "  - _bmad-output/planning-artifacts/prd.md"
+            echo "  - _bmad-output/planning-artifacts/architecture.md"
+            echo "  - _bmad-output/planning-artifacts/epics.md"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ BMAD compliance check passed ($ERRORS errors)"

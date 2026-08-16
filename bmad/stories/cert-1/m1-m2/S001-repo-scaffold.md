@@ -1,7 +1,7 @@
 ---
 id: S001-repo-scaffold
 title: "ktayl-policy-service — Go module scaffold, Makefile, CI skeleton"
-status: Ready
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"
