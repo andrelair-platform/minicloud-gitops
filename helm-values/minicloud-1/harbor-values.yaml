@@ -46,6 +46,14 @@ core:
   existingSecretKey: secret
   nodeSelector:
     kubernetes.io/hostname: fast-skunk
+  extraVolumes:
+    - name: minicloud-ca
+      configMap:
+        name: minicloud-ca-bundle
+  extraVolumeMounts:
+    - name: minicloud-ca
+      mountPath: /etc/ssl/certs/minicloud-ca.crt
+      subPath: ca.crt
 
 updateStrategy:
   type: Recreate
