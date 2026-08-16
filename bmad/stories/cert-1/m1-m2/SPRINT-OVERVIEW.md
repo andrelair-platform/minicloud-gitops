@@ -25,33 +25,30 @@ generation, NATS event publishing, JWT auth — deployed on minicloud via ArgoCD
 |---|---|---|---|---|---|
 | S001 | Repo scaffold + CI skeleton | 2 | ✅ Done | #250 | #1–#11 |
 | S002 | Domain model + PostgreSQL schema | 3 | ✅ Done | #251 | merged |
-| S003 | Policy REST API — CRUD + OpenAPI | 5 | ✅ Done | #252 | feat/s003 |
-| S004 | State machine + DORA audit log | 3 | 🔵 Ready | #253 | — |
+| S003 | Policy REST API — CRUD + OpenAPI | 5 | ✅ Done | #252 | #16 |
+| S004 | State machine + DORA audit log | 3 | ✅ Done | #253 | #17 |
+| S005 | PDF attestation + MinIO storage | 3 | ✅ Done | #254 | #18 |
+| S006 | NATS JetStream event publisher | 3 | ✅ Done | #255 | #18 |
 | S007 | Auth middleware — Authentik JWKS | 3 | ✅ Done | #256 | feat/s007 |
-| S005 | PDF attestation + MinIO storage | 3 | 🔵 Ready | #254 | — |
-| S006 | NATS JetStream event publisher | 3 | 🔵 Ready | #255 | — |
-| S008 | Unit test suite + golangci-lint CI | 2 | 🔵 Ready | #257 | — |
-| S009 | Integration tests (testcontainers) | 3 | 🔵 Ready | #258 | — |
-| S010 | k8s manifests + ArgoCD Application | 3 | 🔵 Ready | #259 | — |
+| S008 | Unit test suite + golangci-lint CI | 2 | ✅ Done | #257 | #19 |
+| S009 | Integration tests (Docker Compose) | 3 | ✅ Done | #258 | #20 |
+| S010 | k8s manifests + ArgoCD Application | 3 | ✅ Done | #259 | #21 |
 
-**Progress:** 13 / 30 SP done (43%)
+**Progress:** 30 / 30 SP done (100%) 🎉
 
 ---
 
 ## Dependency Graph
 
 ```
-S001 ✅ → S002 ✅ → S003 → S004 → S006
+S001 ✅ → S002 ✅ → S003 ✅ → S004 ✅ → S006 ✅
                   ↓         ↓
-                 S007      S005
+                 S007 ✅   S005 ✅
                   ↓
-              S008 / S009
+              S008 ✅ / S009 ✅
                   ↓
-                S010
+                S010 ✅
 ```
-
-S003 blocks everything. S007 and S005 can be developed in parallel after S003 merges.
-S009 requires S003–S007 all merged to staging.
 
 ---
 
@@ -86,6 +83,22 @@ GET  /v1/policies/:id/history  → 200, 4 audit rows
 
 Target URL: `https://ktayl-policy.10.0.0.200.nip.io`
 
+**Vault secrets to populate before sync (manual step):**
+```bash
+ssh controller "VAULT_TOKEN=\$(cat ~/.vault-root-token) vault kv put \
+  secret/ktayl/policy-service/postgres \
+  password=<STRONG_PASSWORD>"
+
+ssh controller "VAULT_TOKEN=\$(cat ~/.vault-root-token) vault kv put \
+  secret/ktayl/policy-service/app \
+  DSN='postgres://ktayl:<STRONG_PASSWORD>@ktayl-postgres.ktayl.svc.cluster.local:5432/ktayl_policy?sslmode=disable' \
+  NATS_URL='nats://nats.nats.svc.cluster.local:4222' \
+  AUTHENTIK_JWKS_URL='https://auth.10.0.0.200.nip.io/application/o/ktayl-policy-service/jwks/' \
+  MINIO_ENDPOINT='minio.minio.svc.cluster.local:9000' \
+  MINIO_ACCESS_KEY='<ACCESS_KEY>' \
+  MINIO_SECRET_KEY='<SECRET_KEY>'"
+```
+
 ---
 
 ## New Go Dependencies (to add before S003)
@@ -99,7 +112,6 @@ github.com/cloudevents/sdk-go/v2         # S006
 github.com/minio/minio-go/v7             # S005
 github.com/go-pdf/fpdf                   # S005 (no CGO)
 github.com/nats-io/nats-server/v2        # unit test embedded NATS
-github.com/testcontainers/testcontainers-go  # S009 L2 tests
 ```
 
 ---
@@ -111,6 +123,8 @@ github.com/testcontainers/testcontainers-go  # S009 L2 tests
 - **Events**: publish after `tx.Commit()` (goroutine); outbox pattern deferred until load tests prove it needed.
 - **PDF**: `go-pdf/fpdf` (no CGO — distroless image compatible).
 - **MinIO bucket**: `policy-documents`, 7-year lifecycle (ACPR Art.L113-5).
+- **ESO**: two ExternalSecrets in `ktayl` ns — `ktayl-postgres-secret` (DB password) + `ktayl-policy-service-secret` (app config).
+- **ArgoCD**: `ktayl-base` app (platform tier, sync-wave 1) manages namespace + postgres + netpols + ESO. `ktayl-policy-service-dev` (workloads tier, auto-sync) manages the Deployment.
 
 ---
 

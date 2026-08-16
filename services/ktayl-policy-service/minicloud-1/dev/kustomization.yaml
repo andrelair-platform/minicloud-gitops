@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ktayl
+resources:
+  - ../../base
+  - ingress.yaml
+  - certificate.yaml
+# CI updates newTag here on every push to dev branch.
+# Staging and prod tags are promoted manually via PRs.
+images:
+  - name: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
+    newTag: latest

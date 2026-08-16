@@ -1,0 +1,96 @@
+---
+# Dedicated PostgreSQL for ktayl-policy-service.
+# Pinned to set-hog (10.0.0.2) — same node as control plane, consistent I/O.
+# 5Gi Longhorn RWO PVC; C-locale prevents collation drift across upgrades.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ktayl-postgres
+  namespace: ktayl
+spec:
+  serviceName: ktayl-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ktayl-postgres
+  template:
+    metadata:
+      labels:
+        app: ktayl-postgres
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: set-hog
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+        runAsNonRoot: true
+      containers:
+        - name: postgresql
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: ktayl
+            - name: POSTGRES_DB
+              value: ktayl_policy
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ktayl-postgres-secret
+                  key: postgres-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: LANG
+              value: C
+            - name: LC_ALL
+              value: C
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [NET_RAW]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: [pg_isready, -U, ktayl, -d, ktayl_policy]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: longhorn
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ktayl-postgres
+  namespace: ktayl
+  labels:
+    app: ktayl-postgres
+spec:
+  selector:
+    app: ktayl-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

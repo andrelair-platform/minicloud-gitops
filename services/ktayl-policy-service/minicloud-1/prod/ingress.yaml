@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ktayl-policy-service
+  namespace: ktayl-prod
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - ktayl-policy.10.0.0.200.nip.io
+      secretName: ktayl-policy-service-tls
+  rules:
+    - host: ktayl-policy.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ktayl-policy-service
+                port:
+                  name: http

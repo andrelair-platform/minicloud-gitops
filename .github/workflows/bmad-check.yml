@@ -16,8 +16,9 @@ jobs:
           set -euo pipefail
           ERRORS=0
 
-          # Find every sprint directory (contains at least one S*.md story file)
-          SPRINT_DIRS=$(find bmad/stories -name 'S*.md' -printf '%h\n' | sort -u)
+          # Find every sprint directory (contains at least one S[0-9]*.md story file)
+          # Note: use S[0-9]* not S* to avoid matching SPRINT-OVERVIEW.md
+          SPRINT_DIRS=$(find bmad/stories -name 'S[0-9]*.md' -printf '%h\n' | sort -u)
 
           for dir in $SPRINT_DIRS; do
             echo "Checking sprint directory: $dir"
@@ -32,7 +33,7 @@ jobs:
             fi
 
             # 2. All story files must have valid status values
-            for story in "$dir"/S*.md; do
+            for story in "$dir"/S[0-9]*.md; do
               STATUS=$(grep -m1 '^status:' "$story" | awk '{print $2}' || echo "missing")
               VALID="Draft Ready In Progress Done Blocked"
               if echo "$VALID" | grep -qw "$STATUS"; then
@@ -46,7 +47,7 @@ jobs:
 
             # 3. Warn if any story has been in "In Progress" for > 7 days without PR
             # (informational only — does not block merge)
-            for story in "$dir"/S*.md; do
+            for story in "$dir"/S[0-9]*.md; do
               STATUS=$(grep -m1 '^status:' "$story" | awk '{print $2}')
               if [ "$STATUS" = "In" ]; then
                 # "In Progress" detected (awk split cuts off "Progress")
