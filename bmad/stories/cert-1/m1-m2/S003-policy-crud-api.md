@@ -1,7 +1,7 @@
 ---
 id: S003-policy-crud-api
 title: "Policy REST API — CRUD endpoints + OpenAPI spec"
-status: Ready
+status: In Progress
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"
