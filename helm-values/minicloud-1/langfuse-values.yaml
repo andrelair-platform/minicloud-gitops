@@ -105,8 +105,9 @@ langfuse:
     # during the OIDC token exchange without SSL verification failures.
     - name: NODE_EXTRA_CA_CERTS
       value: "/etc/ssl/minicloud/ca.crt"
-    # Full Redis URL with auth — value provided by ESO from Vault secret/platform/langfuse.
-    - name: REDIS_URL
+    # Override chart-generated REDIS_CONNECTION_STRING with auth — value from Vault via ESO.
+    # Format: redis://default:<password>@<host>:6379/0 (Valkey ACL default user)
+    - name: REDIS_CONNECTION_STRING
       valueFrom:
         secretKeyRef:
           name: langfuse-secrets
