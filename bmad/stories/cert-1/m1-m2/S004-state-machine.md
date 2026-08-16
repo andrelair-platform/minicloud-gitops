@@ -1,7 +1,7 @@
 ---
 id: S004-state-machine
 title: "Policy state machine — transitions, validation, audit log"
-status: Ready
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"
@@ -21,7 +21,7 @@ CdCF §6.1 BF-POL-03 defines the state machine. DORA Art.9 requires every busine
 
 ## Acceptance Criteria
 
-- [ ] AC-1: Valid transitions enforced — invalid transitions return 409 Conflict with reason
+- [x] AC-1: Valid transitions enforced — invalid transitions return 409 Conflict with reason
   ```
   DRAFT      → SUBMITTED (souscripteur submits for underwriting review)
   SUBMITTED  → ACTIVE    (underwriter approves)
@@ -31,12 +31,12 @@ CdCF §6.1 BF-POL-03 defines the state machine. DORA Art.9 requires every busine
   ACTIVE     → CANCELLED (POST /v1/policies/:id/cancel, reason required)
   ACTIVE     → EXPIRED   (automatic on expiry_date, triggered by batch)
   ```
-- [ ] AC-2: `POST /v1/policies/:id/submit` — DRAFT → SUBMITTED
-- [ ] AC-3: `POST /v1/policies/:id/activate` — SUBMITTED → ACTIVE
-- [ ] AC-4: `POST /v1/policies/:id/cancel` — ACTIVE → CANCELLED (body: `{reason, effective_date}`)
-- [ ] AC-5: `policy_audit_log` table created in `V2__audit_log.sql` (policy_id, from_status, to_status, actor_id, reason, occurred_at)
-- [ ] AC-6: Every transition writes one row to `policy_audit_log` within the same DB transaction
-- [ ] AC-7: `GET /v1/policies/:id/history` returns ordered audit log
+- [x] AC-2: `POST /v1/policies/:id/submit` — DRAFT → SUBMITTED
+- [x] AC-3: `POST /v1/policies/:id/activate` — SUBMITTED → ACTIVE
+- [x] AC-4: `POST /v1/policies/:id/cancel` — ACTIVE → CANCELLED (body: `{reason, effective_date}`)
+- [x] AC-5: `policy_audit_log` table created in `V2__audit_log.sql` (policy_id, from_status, to_status, actor_id, reason, occurred_at)
+- [x] AC-6: Every transition writes one row to `policy_audit_log` within the same DB transaction
+- [x] AC-7: `GET /v1/policies/:id/history` returns ordered audit log
 
 ## Technical Notes
 
@@ -48,19 +48,19 @@ CdCF §6.1 BF-POL-03 defines the state machine. DORA Art.9 requires every busine
 
 ## Definition of Done
 
-- [ ] Code implements all ACs
-- [ ] L0: golangci-lint passes
-- [ ] L1: state machine unit tests cover all valid transitions AND all invalid transitions (table-driven tests)
-- [ ] PR merged to `staging`
-- [ ] DORA Art.9 traceability demonstrated: every transition has actor_id + timestamp + reason
+- [x] Code implements all ACs
+- [x] L0: golangci-lint passes
+- [x] L1: state machine unit tests cover all valid transitions AND all invalid transitions (table-driven tests)
+- [x] PR merged to `staging` (PR #16)
+- [x] DORA Art.9 traceability demonstrated: every transition has actor_id + timestamp + reason
 
 ## Tasks
 
-- [ ] TASK-1: Write `internal/domain/state_machine.go` (transition table + Transition function)
-- [ ] TASK-2: Write `migrations/V2__audit_log.sql`
-- [ ] TASK-3: Write transition endpoints in `internal/api/handlers/transition_handler.go`
-- [ ] TASK-4: Write `internal/repository/postgres/audit_log_postgres.go`
-- [ ] TASK-5: Write state machine unit tests (table-driven, all transitions)
+- [x] TASK-1: Write `internal/domain/state_machine.go` (transition table + Transition function)
+- [x] TASK-2: Write `migrations/V2__audit_log.sql`
+- [x] TASK-3: Write transition endpoints in `internal/api/handlers/transition_handler.go`
+- [x] TASK-4: Write `internal/repository/postgres/audit_log_postgres.go`
+- [x] TASK-5: Write state machine unit tests (table-driven, all transitions)
 
 ## Dependencies
 
