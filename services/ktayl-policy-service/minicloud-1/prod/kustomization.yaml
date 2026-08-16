@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ktayl-prod
+resources:
+  - ../../base
+  - ingress.yaml
+  - certificate.yaml
+# Tag promoted manually from staging after UAT sign-off.
+images:
+  - name: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
+    newTag: latest
+patches:
+  - target:
+      kind: Deployment
+      name: ktayl-policy-service
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2

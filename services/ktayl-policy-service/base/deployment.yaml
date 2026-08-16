@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ktayl-policy-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ktayl-policy-service
+  labels:
+    app: ktayl-policy-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ktayl-policy-service
+  template:
+    metadata:
+      labels:
+        app: ktayl-policy-service
+        backstage.io/kubernetes-id: ktayl-policy-service
+    spec:
+      serviceAccountName: ktayl-policy-service
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: ktayl-policy-service
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: ktayl-policy-service
+          # Image tag is not set here — each overlay pins its own tag via
+          # the images: block in kustomization.yaml.
+          image: harbor.10.0.0.200.nip.io/library/ktayl-policy-service:placeholder
+          envFrom:
+            - secretRef:
+                name: ktayl-policy-service-secret
+          env:
+            - name: PORT
+              value: "8080"
+          ports:
+            - containerPort: 8080
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0

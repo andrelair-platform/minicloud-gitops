@@ -171,6 +171,12 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: cloudflare-tunnel
       server: https://kubernetes.default.svc
+    - namespace: ktayl
+      server: https://kubernetes.default.svc
+    - namespace: ktayl-staging
+      server: https://kubernetes.default.svc
+    - namespace: ktayl-prod
+      server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
     - group: ""
