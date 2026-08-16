@@ -45,6 +45,10 @@ jobs:
           skip_check: CKV_K8S_8,CKV_K8S_9,CKV_K8S_28,CKV_K8S_14,CKV_K8S_43,CKV_K8S_35,CKV_K8S_36,CKV2_K8S_6,CKV_K8S_21,CKV_K8S_15,CKV_K8S_40,CKV_K8S_152,CKV_K8S_153,CKV_K8S_154
           soft_fail: false
           download_external_modules: false
+          # Exclude scaffolding template directory — contains placeholder values (SERVICE_NAME),
+          # Kustomize patch files (partial specs without securityContext), and VPA objects not
+          # intended to be deployed directly.
+          skip_path: services/_template
 
       - name: Upload SARIF to GitHub Code Scanning
         if: always()
