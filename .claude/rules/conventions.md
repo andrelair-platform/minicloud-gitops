@@ -201,6 +201,7 @@ Every repo must have these three files at the root:
 
 ### 4. Checklist (apply when creating a new repo)
 
+**Standardisation (before S001 merges to main):**
 - [ ] `gh api PATCH` — set description + homepage
 - [ ] `gh api PUT /topics` — set topics
 - [ ] `README.md` — full structure with all mandatory sections
@@ -209,6 +210,18 @@ Every repo must have these three files at the root:
 - [ ] Docusaurus `website/` — see Per-repo static documentation section above
 - [ ] GitHub Pages enabled — `gh api repos/.../pages --method POST -f "build_type=workflow"`
 - [ ] Release automation — see Automated releases section below
+
+**BMAD setup (before any story implementation begins):**
+- [ ] `npx bmad-method install --directory . --modules bmm --tools claude-code --yes`
+- [ ] Add `_bmad/`, `_bmad-output/`, `.claude/` to `.gitignore`
+- [ ] Create `docs/project-context.md` (stack, compliance constraints, domain model, sprint state)
+- [ ] Run `/bmad-agent-pm` → generate PRD in `_bmad-output/planning-artifacts/prd.md`
+- [ ] Run `/bmad-agent-architect` → generate architecture doc
+- [ ] Run `/bmad-create-epics-and-stories` → generate epic map
+- [ ] Run `/bmad-sprint-planning` → readiness gate (must PASS before coding)
+- [ ] Add `SPRINT-OVERVIEW.md` to the relevant sprint dir in `minicloud-gitops/bmad/stories/<project>/<milestone>/`
+
+See `.claude/rules/bmad-compliance.md` for the full workflow and per-repo compliance tracker.
 
 ---
 
