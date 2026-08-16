@@ -34,7 +34,7 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      activeDeadlineSeconds: 3600
+      activeDeadlineSeconds: 7200
       template:
         spec:
           nodeSelector:
