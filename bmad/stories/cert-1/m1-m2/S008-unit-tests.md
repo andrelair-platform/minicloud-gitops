@@ -1,7 +1,7 @@
 ---
 id: S008-unit-tests
 title: "L1 unit test suite — 70% coverage gate, golangci-lint CI"
-status: Ready
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"
