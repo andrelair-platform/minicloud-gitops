@@ -17,6 +17,9 @@ spec:
 # Daily offsite backup — kopia to MinIO bucket "longhorn" for DR.
 # Runs after the snapshot job to avoid I/O contention.
 # concurrency: 2 avoids saturating the 10.0.0.1:9000 connection on backup day.
+# retain: 3 — bridge value until NAS (#239) arrives; was 7 (2026-08-16).
+# harbor-registry and langfuse-clickhouse removed from backup group (re-buildable,
+# largest MinIO consumers) — see 03-label-pvcs.yaml.
 apiVersion: longhorn.io/v1beta2
 kind: RecurringJob
 metadata:
@@ -28,6 +31,6 @@ spec:
   task: backup
   groups:
     - backup
-  retain: 7
+  retain: 3
   concurrency: 2
   labels: {}
