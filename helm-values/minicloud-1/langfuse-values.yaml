@@ -105,13 +105,6 @@ langfuse:
     # during the OIDC token exchange without SSL verification failures.
     - name: NODE_EXTRA_CA_CERTS
       value: "/etc/ssl/minicloud/ca.crt"
-    # Override chart-generated REDIS_CONNECTION_STRING with auth — value from Vault via ESO.
-    # Format: redis://default:<password>@<host>:6379/0 (Valkey ACL default user)
-    - name: REDIS_CONNECTION_STRING
-      valueFrom:
-        secretKeyRef:
-          name: langfuse-secrets
-          key: redis-url
 
   extraVolumes:
     - name: minicloud-ca
@@ -188,15 +181,18 @@ clickhouse:
         memory: 768Mi
 
 # Redis/Valkey — internal standalone, password via Vault secret (langfuse-secrets.redis-password)
+# redis.auth.*: Langfuse chart app-level config (builds REDIS_CONNECTION_STRING)
+# redis.primary.auth.*: bitnami/valkey subchart config (sets requirepass on the server)
 redis:
   deploy: true
   architecture: standalone
   image:
     repository: bitnamilegacy/valkey
   auth:
-    enabled: true
+    username: "default"
     existingSecret: langfuse-secrets
     existingSecretPasswordKey: redis-password
+    enabled: true
   primary:
     nodeSelector:
       kubernetes.io/hostname: set-hog
