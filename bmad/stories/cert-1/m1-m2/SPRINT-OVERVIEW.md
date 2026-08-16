@@ -27,14 +27,14 @@ generation, NATS event publishing, JWT auth — deployed on minicloud via ArgoCD
 | S002 | Domain model + PostgreSQL schema | 3 | ✅ Done | #251 | merged |
 | S003 | Policy REST API — CRUD + OpenAPI | 5 | ✅ Done | #252 | feat/s003 |
 | S004 | State machine + DORA audit log | 3 | 🔵 Ready | #253 | — |
-| S007 | Auth middleware — Authentik JWKS | 3 | 🔵 Ready | #256 | — |
+| S007 | Auth middleware — Authentik JWKS | 3 | ✅ Done | #256 | feat/s007 |
 | S005 | PDF attestation + MinIO storage | 3 | 🔵 Ready | #254 | — |
 | S006 | NATS JetStream event publisher | 3 | 🔵 Ready | #255 | — |
 | S008 | Unit test suite + golangci-lint CI | 2 | 🔵 Ready | #257 | — |
 | S009 | Integration tests (testcontainers) | 3 | 🔵 Ready | #258 | — |
 | S010 | k8s manifests + ArgoCD Application | 3 | 🔵 Ready | #259 | — |
 
-**Progress:** 10 / 30 SP done (33%)
+**Progress:** 13 / 30 SP done (43%)
 
 ---
 
