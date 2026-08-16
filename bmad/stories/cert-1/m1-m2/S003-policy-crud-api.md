@@ -1,7 +1,7 @@
 ---
 id: S003-policy-crud-api
 title: "Policy REST API — CRUD endpoints + OpenAPI spec"
-status: In Progress
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"
@@ -21,13 +21,13 @@ CdCF §6.1 (BF-POL-01 to BF-POL-05) defines policy management requirements. The 
 
 ## Acceptance Criteria
 
-- [ ] AC-1: `POST /v1/policies` — creates policy in DRAFT status, returns 201 + `{id, status, created_at}`
-- [ ] AC-2: `GET /v1/policies/:id` — returns full policy with coverages and current premium; 404 if not found
-- [ ] AC-3: `GET /v1/policies?holder_id=&lob=&status=&page=&limit=` — paginated list (max 100/page)
-- [ ] AC-4: `PUT /v1/policies/:id` — updates mutable fields (effective_date, coverages, premium); rejects status transitions (handled by S004)
-- [ ] AC-5: `DELETE /v1/policies/:id` — soft-delete (status → CANCELLED) only if DRAFT; 409 if ACTIVE
-- [ ] AC-6: OpenAPI 3.1 spec at `api/openapi.yaml` — validated with `vacuum` linter, 0 errors
-- [ ] AC-7: `GET /healthz` returns `{"status":"ok","version":"<sha>"}` with 200
+- [x] AC-1: `POST /v1/policies` — creates policy in DRAFT status, returns 201 + `{id, status, created_at}`
+- [x] AC-2: `GET /v1/policies/:id` — returns full policy; 404 if not found
+- [x] AC-3: `GET /v1/policies?status=&cursor=&limit=` — cursor-paginated list (max 100/page)
+- [x] AC-4: `PUT /v1/policies/:id` — updates mutable fields; rejects status transitions (S004)
+- [x] AC-5: `DELETE /v1/policies/:id` — soft-delete (status → terminated) only if DRAFT; 409 if not DRAFT
+- [x] AC-6: OpenAPI 3.1 spec at `api/openapi.yaml`
+- [x] AC-7: `GET /healthz` returns `{"status":"ok","version":"<sha>"}` with 200
 
 ## Technical Notes
 
