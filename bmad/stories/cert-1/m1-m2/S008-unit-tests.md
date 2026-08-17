@@ -1,7 +1,7 @@
 ---
 id: S008-unit-tests
 title: "L1 unit test suite — 70% coverage gate, golangci-lint CI"
-status: Ready
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"
@@ -21,12 +21,12 @@ Testing standard `testing.md` — Tier A repo, L0+L1 required on every push to `
 
 ## Acceptance Criteria
 
-- [ ] AC-1: `make lint` runs `golangci-lint run ./...` and exits 0 on clean code
-- [ ] AC-2: `make test` runs `go test ./internal/... -count=1 -race` and exits 0
-- [ ] AC-3: `make test-cov` adds `-coverprofile=coverage.out -covermode=atomic`; `go tool cover -func coverage.out` shows ≥70% total coverage on `internal/` packages
-- [ ] AC-4: GitHub Actions CI job `lint` runs on every push to `dev` and every PR; `test-unit` runs after (needs: lint)
-- [ ] AC-5: Test file naming mirrors module (`state_machine.go` → `state_machine_test.go`)
-- [ ] AC-6: Zero use of `t.Skip()` or `//nolint` without inline justification comment
+- [x] AC-1: `make lint` runs `golangci-lint run ./...` and exits 0 on clean code
+- [x] AC-2: `make test` runs `go test ./internal/... -count=1 -race` and exits 0
+- [x] AC-3: `make test-cov` adds `-coverprofile=coverage.out -covermode=atomic`; `go tool cover -func coverage.out` shows ≥70% total coverage on `internal/` packages
+- [x] AC-4: GitHub Actions CI job `lint` runs on every push to `dev` and every PR; `test-unit` runs after (needs: lint)
+- [x] AC-5: Test file naming mirrors module (`state_machine.go` → `state_machine_test.go`)
+- [x] AC-6: Zero use of `t.Skip()` or `//nolint` without inline justification comment
 
 ## Technical Notes
 
@@ -39,19 +39,19 @@ Testing standard `testing.md` — Tier A repo, L0+L1 required on every push to `
 
 ## Definition of Done
 
-- [ ] `.golangci.yml` present and enforced in CI
-- [ ] `Makefile` targets: `lint`, `test`, `test-cov`, `build`
-- [ ] GitHub Actions workflow `.github/workflows/ci.yml` with `lint` + `test-unit` jobs
-- [ ] Coverage ≥70% on `internal/` confirmed in PR
-- [ ] L0 + L1 jobs pass in CI on `dev` branch
+- [x] `.golangci.yml` present and enforced in CI
+- [x] `Makefile` targets: `lint`, `test`, `test-cov`, `build`
+- [x] GitHub Actions workflow `.github/workflows/ci.yml` with `lint` + `test-unit` jobs
+- [x] Coverage ≥70% on `internal/` confirmed in PR
+- [x] L0 + L1 jobs pass in CI on `dev` branch
 
 ## Tasks
 
-- [ ] TASK-1: Write `.golangci.yml`
-- [ ] TASK-2: Write/update `Makefile` with `lint`, `test`, `test-cov` targets
-- [ ] TASK-3: Write `tests/fixtures/policy_builder.go` (fluent builder for test policies)
-- [ ] TASK-4: Write missing unit tests to reach 70%: state machine table tests, handler tests, middleware tests
-- [ ] TASK-5: Write `.github/workflows/ci.yml` (lint → test-unit, triggered on push + PR)
+- [x] TASK-1: Write `.golangci.yml`
+- [x] TASK-2: Write/update `Makefile` with `lint`, `test`, `test-cov` targets
+- [x] TASK-3: Write `tests/fixtures/policy_builder.go` (fluent builder for test policies)
+- [x] TASK-4: Write missing unit tests to reach 70%: state machine table tests, handler tests, middleware tests
+- [x] TASK-5: Write `.github/workflows/ci.yml` (lint → test-unit, triggered on push + PR)
 
 ## Dependencies
 

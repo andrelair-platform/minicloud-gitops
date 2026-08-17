@@ -1,7 +1,7 @@
 ---
 id: S006-nats-publisher
 title: "NATS JetStream event publisher — policy lifecycle events"
-status: Ready
+status: Done
 type: Story
 epic: ktayl-policy-service
 milestone: "CERT-1 M1-M2 — ktayl-policy-service (Go)"
@@ -21,12 +21,12 @@ CdCF §8 — event-driven architecture. NATS JetStream is the backbone for inter
 
 ## Acceptance Criteria
 
-- [ ] AC-1: Events published on every state transition (from S004): `policy.created`, `policy.submitted`, `policy.activated`, `policy.amended`, `policy.cancelled`, `policy.expired`
-- [ ] AC-2: All events follow CloudEvents 1.0 spec: `specversion`, `id` (UUID), `source` (`ktayl-policy-service`), `type` (`com.ktayl.policy.<event>`), `datacontenttype`, `time`, `data`
-- [ ] AC-3: JetStream stream `POLICY_EVENTS` created at startup if not exists (subjects: `policy.>`, retention: 7 days, storage: File)
-- [ ] AC-4: Publisher is transactional — event is only sent AFTER the DB transaction commits (no phantom events)
-- [ ] AC-5: Failed publishes logged as ERROR + retried up to 3x with exponential backoff (5s, 25s, 125s)
-- [ ] AC-6: `GET /healthz` includes NATS connection status: `{"nats":"connected"}` or `{"nats":"disconnected"}`
+- [x] AC-1: Events published on every state transition (from S004): `policy.created`, `policy.submitted`, `policy.activated`, `policy.amended`, `policy.cancelled`, `policy.expired`
+- [x] AC-2: All events follow CloudEvents 1.0 spec: `specversion`, `id` (UUID), `source` (`ktayl-policy-service`), `type` (`com.ktayl.policy.<event>`), `datacontenttype`, `time`, `data`
+- [x] AC-3: JetStream stream `POLICY_EVENTS` created at startup if not exists (subjects: `policy.>`, retention: 7 days, storage: File)
+- [x] AC-4: Publisher is transactional — event is only sent AFTER the DB transaction commits (no phantom events)
+- [x] AC-5: Failed publishes logged as ERROR + retried up to 3x with exponential backoff (5s, 25s, 125s)
+- [x] AC-6: `GET /healthz` includes NATS connection status: `{"nats":"connected"}` or `{"nats":"disconnected"}`
 
 ## Technical Notes
 
@@ -39,18 +39,18 @@ CdCF §8 — event-driven architecture. NATS JetStream is the backbone for inter
 
 ## Definition of Done
 
-- [ ] Code implements all ACs
-- [ ] L0: golangci-lint passes
-- [ ] L1: publisher unit tests with `nats-server` embedded test server (`natsserver "github.com/nats-io/nats-server/v2/server"`)
-- [ ] PR merged to `staging`
+- [x] Code implements all ACs
+- [x] L0: golangci-lint passes
+- [x] L1: publisher unit tests with `nats-server` embedded test server (`natsserver "github.com/nats-io/nats-server/v2/server"`)
+- [x] PR merged to `staging`
 
 ## Tasks
 
-- [ ] TASK-1: Write `internal/events/publisher.go` (JetStream client + stream setup)
-- [ ] TASK-2: Write `internal/events/policy_events.go` (CloudEvents envelope per event type)
-- [ ] TASK-3: Integrate publisher call in `internal/domain/policy_service.go` post-transition
-- [ ] TASK-4: Add NATS health check to `/healthz`
-- [ ] TASK-5: Write unit tests with embedded NATS server
+- [x] TASK-1: Write `internal/events/publisher.go` (JetStream client + stream setup)
+- [x] TASK-2: Write `internal/events/policy_events.go` (CloudEvents envelope per event type)
+- [x] TASK-3: Integrate publisher call in `internal/domain/policy_service.go` post-transition
+- [x] TASK-4: Add NATS health check to `/healthz`
+- [x] TASK-5: Write unit tests with embedded NATS server
 
 ## Dependencies
 
