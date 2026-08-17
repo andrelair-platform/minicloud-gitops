@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.1.2](https://github.com/andrelair-platform/minicloud-gitops/compare/minicloud-gitops-v0.1.1...minicloud-gitops-v0.1.2) (2026-08-17)
+
+
+### Features
+
+* **agents:** add dev overlays for minicloud-agent and minicloud-crew-agent ([65f26f3](https://github.com/andrelair-platform/minicloud-gitops/commit/65f26f34954f087d829015d7946cba57593e43b0))
+* **ci:** add Checkov IaC security scan on PR to main ([#732](https://github.com/andrelair-platform/minicloud-gitops/issues/732)) ([3dee62d](https://github.com/andrelair-platform/minicloud-gitops/commit/3dee62d07fc0c4723d72bedf09cb9981bca498c1))
+* **ktayl-web:** decommission cluster deployment, serve via GitHub Pages ([9f8b605](https://github.com/andrelair-platform/minicloud-gitops/commit/9f8b605dcd4997a356ba79235c9a1b50ab98e1a7))
+* **ktayl:** add ktayl-base ArgoCD app for postgres + ESO infrastructure ([#753](https://github.com/andrelair-platform/minicloud-gitops/issues/753)) ([2a9a226](https://github.com/andrelair-platform/minicloud-gitops/commit/2a9a226fc6dac24241ddf5c8d76cb95b8adaa829))
+* **pki:** migrate minicloud CA to Vault PKI secrets engine ([64be8ee](https://github.com/andrelair-platform/minicloud-gitops/commit/64be8ee256d735f4e45b6ed3c4b5e9d3d7afb9b5))
+* **s010:** ktayl-policy-service k8s manifests + ArgoCD Application + security hardening ([70a6777](https://github.com/andrelair-platform/minicloud-gitops/commit/70a67776dc214f05d943dec2d3c7ebc3b78c551b))
+* **storage:** R2 bridge — free controller MinIO until NAS ([#239](https://github.com/andrelair-platform/minicloud-gitops/issues/239)) arrives ([28e00d4](https://github.com/andrelair-platform/minicloud-gitops/commit/28e00d44e5c80a551605acfaa10899e4dfb3b876))
+* **storage:** R2 bridge — free controller MinIO until NAS ([#239](https://github.com/andrelair-platform/minicloud-gitops/issues/239)) arrives ([28e00d4](https://github.com/andrelair-platform/minicloud-gitops/commit/28e00d44e5c80a551605acfaa10899e4dfb3b876))
+* **storage:** R2 bridge — free controller MinIO until NAS arrives ([bf39bdd](https://github.com/andrelair-platform/minicloud-gitops/commit/bf39bdd786bd4200ab87383fa5ed7d1b7af006e2))
+
+
+### Bug Fixes
+
+* **agents:** ignore ESO-injected defaults in dev ArgoCD apps ([6f20f4f](https://github.com/andrelair-platform/minicloud-gitops/commit/6f20f4fc529a2cbfd4ead366f454c8c32820423a))
+* **backup:** raise k3s backup deadline to 7200s for 635MB DB ([731b2f6](https://github.com/andrelair-platform/minicloud-gitops/commit/731b2f6b06af4dc43f9b0473d8ef7516c7186e0c))
+* **erpnext:** ignore topologySpreadConstraints to unblock rolling updates ([00a05ad](https://github.com/andrelair-platform/minicloud-gitops/commit/00a05adaa447672a8718608f1cd33a7ec0d680e5))
+* **erpnext:** ignore topologySpreadConstraints to unblock rolling updates ([00a05ad](https://github.com/andrelair-platform/minicloud-gitops/commit/00a05adaa447672a8718608f1cd33a7ec0d680e5))
+* **erpnext:** ignore topologySpreadConstraints to unblock rolling updates ([ba8de20](https://github.com/andrelair-platform/minicloud-gitops/commit/ba8de20d2c378f484579455ab02f6b646e88ba6f))
+* **harbor:** inject minicloud CA cert to restore OIDC login ([ffc7b24](https://github.com/andrelair-platform/minicloud-gitops/commit/ffc7b243735b8476d611e06b02046bf253f65eb3))
+* **harbor:** use caBundleSecretName for minicloud CA injection ([c68b82f](https://github.com/andrelair-platform/minicloud-gitops/commit/c68b82f9f888f64dfbba20c6b4a5cacde0f7d390))
+* **ktayl:** egress to authentik uses pod ports 9000/9443 ([#756](https://github.com/andrelair-platform/minicloud-gitops/issues/756)) ([5ac0f64](https://github.com/andrelair-platform/minicloud-gitops/commit/5ac0f64fd0619eadf950bc20619adb3238175048))
+* **ktayl:** NATS is in messaging namespace ([#757](https://github.com/andrelair-platform/minicloud-gitops/issues/757)) ([165c625](https://github.com/andrelair-platform/minicloud-gitops/commit/165c625b50bc1225483bea67e3070298762562ba))
+* **ktayl:** pin dev overlay to staging-8962ee0 for smoke test ([#755](https://github.com/andrelair-platform/minicloud-gitops/issues/755)) ([4cf6eaf](https://github.com/andrelair-platform/minicloud-gitops/commit/4cf6eafbd2ae3420483857d72f51221306428c65))
+* **ktayl:** policy-service readiness + network + probe fixes ([#758](https://github.com/andrelair-platform/minicloud-gitops/issues/758)) ([cb2dcb8](https://github.com/andrelair-platform/minicloud-gitops/commit/cb2dcb8a0408aba9ad242f38f9dd11dcc71aca28))
+* **ktayl:** use docker.io/library/postgres prefix for Gatekeeper ([#754](https://github.com/andrelair-platform/minicloud-gitops/issues/754)) ([b0cbcd6](https://github.com/andrelair-platform/minicloud-gitops/commit/b0cbcd6e57da915e387261aca4c55abe51bb171b))
+* raise k3s-sqlite-backup activeDeadlineSeconds 1800→3600 ([3ca5792](https://github.com/andrelair-platform/minicloud-gitops/commit/3ca57928d0a877ef3898c0a86779671efc8d11ea))
+* **security:** correct Redis connection string env var for Langfuse auth ([c26bf09](https://github.com/andrelair-platform/minicloud-gitops/commit/c26bf0964d586d0bc2163e65e136baadefdc7753))
+* **security:** correct Redis connection string env var for Langfuse auth ([c26bf09](https://github.com/andrelair-platform/minicloud-gitops/commit/c26bf0964d586d0bc2163e65e136baadefdc7753))
+* **security:** correct Redis connection string env var for Langfuse auth ([2174a4f](https://github.com/andrelair-platform/minicloud-gitops/commit/2174a4f7716f9eb6ed3333e1b9dd8b4172a15e1a))
+* **security:** remediate pentest quick wins — CRIT-01 + HIGH-03 + MED-04 ([4246682](https://github.com/andrelair-platform/minicloud-gitops/commit/42466820f688bb2a13df5b86a41eb7d723a8ba57))
+* **security:** remediate pentest quick wins — CRIT-01 + HIGH-03 + MED-04 ([4246682](https://github.com/andrelair-platform/minicloud-gitops/commit/42466820f688bb2a13df5b86a41eb7d723a8ba57))
+* **security:** remediate pentest quick wins — CRIT-01 + HIGH-03 + MED-04 ([2f20948](https://github.com/andrelair-platform/minicloud-gitops/commit/2f2094807fd1d8db65eacd6260bdf705c65c2436))
+* **security:** use Langfuse chart native redis.auth for REDIS_CONNECTION_STRING ([8374be7](https://github.com/andrelair-platform/minicloud-gitops/commit/8374be7def8519ca78717ee42f72d81238c5f251))
+* **security:** use Langfuse chart native redis.auth for REDIS_CONNECTION_STRING ([8374be7](https://github.com/andrelair-platform/minicloud-gitops/commit/8374be7def8519ca78717ee42f72d81238c5f251))
+* **security:** use Langfuse chart native redis.auth.existingSecret for REDIS_CONNECTION_STRING ([c7c4148](https://github.com/andrelair-platform/minicloud-gitops/commit/c7c41484f644aeef91a1c9a7319928b1befe11c1))
+* **website:** correct sidebars.ts brace syntax ([c8e003c](https://github.com/andrelair-platform/minicloud-gitops/commit/c8e003c7c2e42132d05a1d60e9d0b1b451124232))
+
 ## [0.1.1](https://github.com/andrelair-platform/minicloud-gitops/compare/minicloud-gitops-v0.1.0...minicloud-gitops-v0.1.1) (2026-08-14)
 
 
