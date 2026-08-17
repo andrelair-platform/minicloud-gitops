@@ -3,6 +3,8 @@
 **Milestone:** CERT-1 M1-M2 — ktayl-policy-service (Go)
 **Sprint start:** 2026-08-13
 **Sprint target:** 2026-09-14 (4 weeks)
+**Sprint closed:** 2026-08-17 ✅
+**Release:** [ktayl-policy-service v0.1.2](https://github.com/andrelair-platform/ktayl-policy-service/releases/tag/ktayl-policy-service-v0.1.2)
 **Total SP:** 30
 **Tech lead:** AndreLiar
 **Repo:** https://github.com/andrelair-platform/ktayl-policy-service
@@ -63,7 +65,7 @@ S001 ✅ → S002 ✅ → S003 ✅ → S004 ✅ → S006 ✅
 | PR-E | feat/s006-nats-publisher | staging | #255 |
 | PR-F | feat/s008-unit-tests | staging | #257 |
 | PR-G | feat/s009-integration-tests | staging | #258 |
-| PR-H | sprint-close | main | — |
+| PR-H | sprint-close (ktayl-policy-service #21) | main | #252–#258 |
 | PR-I | feat/s010-k8s-manifests (minicloud-gitops) | main | #259 |
 
 ---
@@ -82,6 +84,8 @@ GET  /v1/policies/:id/history  → 200, 4 audit rows
 ```
 
 Target URL: `https://ktayl-policy.10.0.0.200.nip.io`
+
+**REC-POL-01 PASSED — 2026-08-17.** Full lifecycle verified end-to-end from Mac (Tailscale + minicloud CA).
 
 **Vault secrets to populate before sync (manual step):**
 ```bash
