@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Run Renovate
-        uses: renovatebot/github-action@v46.2.1
+        uses: renovatebot/github-action@v46.2.2
         with:
           # Global config lists all repos; each repo's own renovate.json
           # provides manager-specific rules (Dockerfile, go.mod, npm, etc.)
