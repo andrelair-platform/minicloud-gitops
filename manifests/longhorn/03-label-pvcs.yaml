@@ -78,6 +78,30 @@ spec:
                   > /dev/null && echo "labeled $ns/$pvc -> $volname" || echo "FAILED $ns/$pvc"
               }
 
+              # Actively REMOVE the backup-group label from volumes that must never
+              # be backed up (re-creatable + large). This is the enforcing counterpart
+              # to the exclusions below: leaving a volume merely off the labelVol list
+              # only stops *re-adding* — a stale label (e.g. set before an exclusion
+              # was introduced) keeps the volume in the daily-backup group forever.
+              # JSON-merge-patch a null value to delete the label key. Idempotent.
+              # Root cause of the 2026-08-18 disk-full incident: harbor-registry +
+              # langfuse-clickhouse kept a stale label after PR #740 and rebuilt 54GB.
+              UNLABEL_PATCH='{"metadata":{"labels":{"recurring-job-group.longhorn.io/backup":null}}}'
+              unlabelVol() {
+                ns=$1; pvc=$2
+                volname=$(curl -sf --cacert "$CA" \
+                  -H "Authorization: Bearer $TOKEN" \
+                  "$API/api/v1/namespaces/$ns/persistentvolumeclaims/$pvc" \
+                  | grep -o '"volumeName":"[^"]*"' | cut -d'"' -f4)
+                if [ -z "$volname" ]; then echo "SKIP $ns/$pvc (not found)"; return; fi
+                curl -sf --cacert "$CA" \
+                  -H "Authorization: Bearer $TOKEN" \
+                  -H "Content-Type: application/merge-patch+json" \
+                  -X PATCH -d "$UNLABEL_PATCH" \
+                  "$API/apis/longhorn.io/v1beta2/namespaces/longhorn-system/volumes/$volname" \
+                  > /dev/null && echo "unlabeled $ns/$pvc -> $volname (excluded from backup)" || echo "FAILED unlabel $ns/$pvc"
+              }
+
               # Identity / auth / secrets
               labelVol authentik    data-authentik-postgresql-0
               labelVol vault        data-vault-0
@@ -102,7 +126,11 @@ spec:
               # harbor-registry (20Gi) excluded: images are re-pullable via proxy cache.
               # langfuse-clickhouse excluded: ClickHouse telemetry, re-ingestible from
               # LiteLLM logs; was the largest MinIO consumer after harbor-registry.
-              # Both removed 2026-08-16 as bridge until NAS (#239).
+              # Both removed 2026-08-16 as bridge until NAS (#239). Enforce the
+              # exclusion on every sync so a stale label can never rebuild 54GB
+              # (2026-08-18 disk-full → cluster DNS outage post-mortem):
+              unlabelVol harbor       harbor-registry
+              unlabelVol langfuse     data-langfuse-clickhouse-shard0-0
 
               # Messaging (NATS JetStream persistence)
               labelVol messaging    nats-js-nats-0
