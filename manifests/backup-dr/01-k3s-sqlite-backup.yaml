@@ -47,14 +47,18 @@ spec:
                 type: Directory
           containers:
             - name: backup
-              image: alpine:3.20
+              # Self-contained image (sqlite + rclone baked in) built from
+              # alpine:3.20 — see the k3s-backup image in Harbor. The old
+              # `apk add` at runtime failed whenever DNS/CDN was unavailable
+              # (i.e. exactly mid-incident: 2026-08-19 the backup was broken
+              # for days because bind9 flapping blocked the Alpine package
+              # fetch on set-hog). A DR backup must not depend on the internet.
+              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
               command:
                 - /bin/sh
                 - -c
                 - |
                   set -e
-                  apk add --no-cache sqlite rclone > /dev/null 2>&1
-
                   DATE=$(date +%Y%m%d-%H%M%S)
                   BACKUP_FILE="/tmp/k3s-state-${DATE}.db"
 
@@ -100,8 +104,11 @@ spec:
                   drop: [NET_RAW]
               resources:
                 limits:
-                  cpu: 200m
-                  memory: 256Mi
+                  cpu: 500m
+                  # Raised 256Mi -> 512Mi: the k3s SQLite DB has grown to
+                  # ~1.4GB (476MB state.db + ~900MB WAL) and sqlite .backup +
+                  # gzip + rclone need headroom as it grows.
+                  memory: 512Mi
                 requests:
                   cpu: 50m
                   memory: 64Mi
