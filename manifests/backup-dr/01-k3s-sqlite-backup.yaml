@@ -62,8 +62,13 @@ spec:
                   DATE=$(date +%Y%m%d-%H%M%S)
                   BACKUP_FILE="/tmp/k3s-state-${DATE}.db"
 
-                  # Consistent binary snapshot via SQLite Backup API (handles WAL)
-                  sqlite3 /db/state.db ".backup ${BACKUP_FILE}"
+                  # Consistent snapshot via VACUUM INTO. Unlike ".backup" (the
+                  # online-backup API, which RESTARTS whenever the source is
+                  # written and therefore livelocks against kine's constant
+                  # writes — it hung >10min on the hot ~1.4GB DB on 2026-08-19),
+                  # VACUUM INTO uses a single read transaction: it completes in
+                  # ~3s and also compacts the DB (drops free pages).
+                  sqlite3 /db/state.db "VACUUM INTO '${BACKUP_FILE}'"
                   gzip "${BACKUP_FILE}"
 
                   # Configure rclone for MinIO
