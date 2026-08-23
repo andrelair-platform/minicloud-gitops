@@ -15,9 +15,19 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: default
+  # Cilium's operator adds a .status field to every CiliumNetworkPolicy after
+  # creation (its own bookkeeping, never in git). Without this, ArgoCD flags
+  # every CNP as OutOfSync forever even though nothing is wrong — burying real
+  # drift in cosmetic noise. Ignore the operator-managed status field.
+  ignoreDifferences:
+    - group: cilium.io
+      kind: CiliumNetworkPolicy
+      jsonPointers:
+        - /status
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
