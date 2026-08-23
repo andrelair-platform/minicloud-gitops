@@ -25,6 +25,7 @@ spec:
             - metallb-system
             - longhorn-system
             - nfs-provisioner
+            - node-problem-detector  # NPD DaemonSet is privileged (kernel/node monitoring) — NET_RAW is moot under privileged; exempt for consistency with no-privileged (#11) / require-non-root (#14) / no-priv-esc (#15) / no-hostpath (#18)
             - cert-manager
             - ingress-nginx
             - chaos-mesh
