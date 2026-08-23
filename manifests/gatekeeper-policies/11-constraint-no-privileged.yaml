@@ -24,6 +24,7 @@ spec:
             - metallb-system
             - longhorn-system
             - nfs-provisioner
+            - node-problem-detector  # NPD DaemonSet runs privileged (hostPID + /var/log + /dev/kmsg) to monitor kernel/node health. Already exempted from require-non-root (#14), no-privilege-escalation (#15), no-hostpath (#18); this line closes the gap so it can be re-admitted after node reboot/drain.
             - cert-manager
             - ingress-nginx
             - chaos-mesh
