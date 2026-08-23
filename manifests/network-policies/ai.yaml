@@ -189,6 +189,33 @@ spec:
         - port: 80
           protocol: TCP
 ---
+# HIGH-02 reciprocal ingress: the AI agent namespaces (minicloud-agent-dev,
+# minicloud-crew-agent-dev) call ONLY litellm + rag-ingest in this namespace
+# (LITELLM_BASE_URL / RAG_INGEST_URL). ai's default-deny-ingress otherwise blocks
+# them — this both enables the egress-hardened agent namespaces AND fixes a
+# pre-existing bug where the dev agents could not reach litellm at all.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-agents-to-litellm-ragingest
+  namespace: ai
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: [litellm, rag-ingest]
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: minicloud-agent-dev
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: minicloud-crew-agent-dev
+---
 # Cilium entity-based replacement for ipBlock-based allow-cluster-nodes.
 # In Cilium, traffic from cluster nodes (kubelet, kube-apiserver) carries
 # remote-node or host identity — ipBlock CIDR rules do not match it.
