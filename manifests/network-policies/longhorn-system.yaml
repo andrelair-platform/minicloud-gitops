@@ -1,0 +1,79 @@
+# NetworkPolicy for longhorn-system — Longhorn distributed storage (HIGH-02 remediation).
+#
+#   ⚠️  HIGHEST-RISK namespace. A wrong rule here starves iSCSI replica rebuilds
+#   (the exact failure mode of the 2026-08-18/23 incidents). Applied as a dedicated,
+#   Hubble-verified pass — NOT batched.
+#
+#   INGRESS-LOCKDOWN ONLY — intentionally NO egress policy. longhorn-manager must reach
+#   the kube-apiserver and the MinIO/S3 backupstore (10.0.0.1) for backups; egress-locking
+#   is high blast radius for near-zero payoff.
+#
+#   Traffic facts verified before writing (kubectl + hubble observe on cilium agents):
+#     - NO Longhorn pod uses hostNetwork. Cross-node replica sync is pod-to-pod inside
+#       this namespace (instance-manager <-> instance-manager) => allow-same-namespace.
+#     - iSCSI target mounts come from the node kernel initiator (host / remote-node
+#       identity) and the apiserver reaches Longhorn webhooks from the control-plane
+#       host => allow-node-entities (fromEntities host, remote-node) + allow-apiserver-webhook.
+#     - Prometheus scrapes longhorn-manager / instance-manager metrics => allow-monitoring-scrape.
+#     - Longhorn UI is exposed via ingress-nginx => allow-ingress-nginx.
+#   Security value: blocks ingress from arbitrary workload-namespace pods to the Longhorn
+#   control plane, while leaving every legitimate storage path open.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: longhorn-system}
+spec: {podSelector: {}, policyTypes: [Ingress]}
+---
+# Intra-namespace: manager<->manager, instance-manager<->instance-manager (cross-node
+# replica sync), csi sidecars<->manager, engine, backup pods, ui<->manager. CRITICAL.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-same-namespace, namespace: longhorn-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress: [{from: [{podSelector: {}}]}]
+---
+# Prometheus / observability scrape of Longhorn metrics.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-monitoring-scrape, namespace: longhorn-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}
+---
+# Longhorn UI via the ingress controller.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-ingress-nginx, namespace: longhorn-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress: [{from: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}}]}]
+---
+# kube-apiserver -> Longhorn admission/conversion webhooks (served by longhorn-manager).
+# Belt-and-suspenders alongside allow-node-entities: covers the apiserver source by CIDR.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-apiserver-webhook, namespace: longhorn-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock: {cidr: 10.0.0.0/24}
+        - ipBlock: {cidr: 10.42.0.0/16}
+---
+# Cilium: kubelet CSI/health probes, apiserver webhook calls, and node-kernel iSCSI
+# initiators all arrive with host/remote-node identity — an ipBlock CIDR does not match
+# these Cilium identities, so this CNP is what actually permits them under default-deny.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: allow-node-entities, namespace: longhorn-system}
+spec:
+  endpointSelector: {}
+  ingress: [{fromEntities: [host, remote-node]}]
