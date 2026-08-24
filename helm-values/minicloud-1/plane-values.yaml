@@ -31,6 +31,11 @@ minio:
   local_setup: true
   storageClass: "longhorn"
   volumeSize: "10Gi"
+  # MED-03 (pentest 2026-08-16): pin off :latest. Digests are the exact images the
+  # chart's :latest resolved to on 2026-08-24 (server RELEASE.2025-09-07T16-13-09Z),
+  # so this is a no-op version-wise — it only removes the mutable :latest tag.
+  image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+  image_mc: minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
 
 env:
   cors_allowed_origins: "https://plane.devandre.sbs,https://plane.10.0.0.200.nip.io"
