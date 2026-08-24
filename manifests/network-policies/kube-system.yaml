@@ -1,0 +1,93 @@
+# NetworkPolicy for kube-system — cluster system namespace (HIGH-02, Phase 4b).
+#
+#   ⚠️  HIGHEST cluster-wide blast radius. A wrong rule kills CoreDNS => cluster-wide
+#   DNS outage (the failure that drove the 2026-08-18 incident). Applied as a dedicated,
+#   Hubble-verified pass under manual sync with instant rollback.
+#
+#   INGRESS-LOCKDOWN ONLY — intentionally NO egress policy (CoreDNS needs upstream DNS +
+#   apiserver; controllers need apiserver; metrics-server serves the aggregated API).
+#
+#   Scope facts verified before writing (kubectl + hubble observe):
+#     - cilium / cilium-envoy / cilium-operator are hostNetwork => NOT selected by a k8s
+#       NetworkPolicy nor by a Cilium endpointSelector. Untouched by everything here.
+#     - k3s apiserver + kine (SQLite datastore) are HOST processes, not pods here. Untouched.
+#     - Only 5 pod-network endpoints are actually affected: coredns, metrics-server,
+#       hubble-relay, hubble-ui, local-path-provisioner.
+#     - Verified live ingress paths:
+#         pod -> coredns:53 (temporal/erp/harbor/authentik/productivity/... many ns)  => allow-dns
+#         host -> coredns:8080 + :8181  (kubelet health/ready probes)                  => allow-node-entities
+#         host/remote-node -> metrics-server:10250 (apiserver aggregation + kubelet)   => allow-node-entities
+#         host -> hubble-relay:4222, host -> hubble-ui:8081                            => allow-node-entities
+#         prometheus -> coredns:9153 / metrics                                         => allow-monitoring-scrape
+#         ingress-nginx -> hubble-ui                                                   => allow-ingress-nginx
+#
+#   MAX-SAFETY DNS RULE: port 53 is opened on the whole namespace (podSelector: {}), not a
+#   label selector — nothing but CoreDNS listens on 53, so this is a no-op for other pods
+#   but removes any chance a label-selector mistake causes a cluster-wide DNS outage.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: kube-system}
+spec: {podSelector: {}, policyTypes: [Ingress]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-same-namespace, namespace: kube-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress: [{from: [{podSelector: {}}]}]
+---
+# CRITICAL: pod DNS from every namespace. Port-restricted to 53; opened namespace-wide
+# (not by label) as a safety measure against selector error.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-dns, namespace: kube-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{namespaceSelector: {}}]
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-monitoring-scrape, namespace: kube-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}
+---
+# hubble-ui exposed via the ingress controller.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-ingress-nginx, namespace: kube-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress: [{from: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: ingress-nginx}}}]}]
+---
+# Belt-and-suspenders for apiserver -> metrics-server / any callback, by CIDR.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-apiserver-webhook, namespace: kube-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock: {cidr: 10.0.0.0/24}
+        - ipBlock: {cidr: 10.42.0.0/16}
+---
+# CRITICAL: kubelet CoreDNS health/ready probes (8080/8181), apiserver->metrics-server,
+# host DNS, cilium-agent->hubble-relay all arrive with host/remote-node identity — an
+# ipBlock CIDR does not match these Cilium identities, so this CNP is what permits them.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: allow-node-entities, namespace: kube-system}
+spec:
+  endpointSelector: {}
+  ingress: [{fromEntities: [host, remote-node]}]
