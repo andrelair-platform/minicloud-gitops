@@ -1,0 +1,64 @@
+# NetworkPolicy for vpa-system — Vertical Pod Autoscaler (recommender/updater/admission)
+#   (HIGH-02 remediation).
+#   VPA components talk to the kube-apiserver: the recommender reads pod metrics via
+#   the aggregated metrics.k8s.io API (served THROUGH the apiserver), the updater evicts
+#   pods via the apiserver, and the admission-controller is CALLED by the apiserver.
+#   Ingress: default-deny + kubelet/node probes + apiserver webhook + monitoring scrape.
+#   Egress:  default-deny + DNS + kube-apiserver ONLY (no internet).
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: vpa-system}
+spec: {podSelector: {}, policyTypes: [Ingress]}
+---
+# kube-apiserver calls the VPA admission webhook from node IPs (pod + node CIDRs).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-apiserver-webhook, namespace: vpa-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock: {cidr: 10.0.0.0/24}
+        - ipBlock: {cidr: 10.42.0.0/16}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-monitoring-scrape, namespace: vpa-system}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-egress, namespace: vpa-system}
+spec: {podSelector: {}, policyTypes: [Egress]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-dns-egress, namespace: vpa-system}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: allow-node-entities, namespace: vpa-system}
+spec:
+  endpointSelector: {}
+  ingress: [{fromEntities: [host, remote-node]}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: allow-apiserver-egress, namespace: vpa-system}
+spec:
+  endpointSelector: {}
+  egress: [{toEntities: [kube-apiserver]}]

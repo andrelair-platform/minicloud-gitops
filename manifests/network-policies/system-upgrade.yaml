@@ -1,0 +1,30 @@
+# NetworkPolicy for system-upgrade — k3s system-upgrade-controller (HIGH-02 remediation).
+#   INGRESS-LOCKDOWN ONLY — intentionally NO egress policy.
+#   Rationale: the controller spawns privileged k3s-upgrade Jobs that manipulate the
+#   host (replace the k3s binary via nsenter/hostPath) and may need broad, hard-to-
+#   enumerate connectivity during an upgrade. Egress-locking this namespace risks
+#   breaking cluster upgrades — a high blast radius for near-zero security payoff, since
+#   it processes no untrusted external input. We lock ingress and leave egress default-allow.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: system-upgrade}
+spec: {podSelector: {}, policyTypes: [Ingress]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-monitoring-scrape, namespace: system-upgrade}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: allow-node-entities, namespace: system-upgrade}
+spec:
+  endpointSelector: {}
+  ingress: [{fromEntities: [host, remote-node]}]

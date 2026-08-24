@@ -1,0 +1,53 @@
+# NetworkPolicy for reloader — Stakater Reloader controller (HIGH-02 remediation).
+#   reloader only watches ConfigMaps/Secrets and triggers rolling restarts via the
+#   kube-apiserver. It needs nothing else.
+#   Ingress: default-deny + kubelet/node probes + monitoring scrape.
+#   Egress:  default-deny + DNS + kube-apiserver ONLY (no internet, no other pods).
+# Cilium: the kube-apiserver runs on the host node, so its identity is 'kube-apiserver'
+# (or host) — an ipBlock CIDR would not match it. The CiliumNetworkPolicy is what
+# actually permits egress to the API server under the default-deny.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: reloader}
+spec: {podSelector: {}, policyTypes: [Ingress]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-monitoring-scrape, namespace: reloader}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-egress, namespace: reloader}
+spec: {podSelector: {}, policyTypes: [Egress]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-dns-egress, namespace: reloader}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: allow-node-entities, namespace: reloader}
+spec:
+  endpointSelector: {}
+  ingress: [{fromEntities: [host, remote-node]}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: allow-apiserver-egress, namespace: reloader}
+spec:
+  endpointSelector: {}
+  egress: [{toEntities: [kube-apiserver]}]
