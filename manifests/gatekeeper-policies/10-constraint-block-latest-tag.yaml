@@ -28,12 +28,11 @@ spec:
             - ingress-nginx
             - chaos-mesh
             - velero
-            - productivity
             - mail
             - sign
             - collab
             - argo-rollouts
             - vpa-system
-            - system-upgrade     # Plane CE — minio/minio:latest + minio/mc:latest hardcoded in chart
+            - system-upgrade
             - chat              # matrix-synapse signing key job uses bitnami/kubectl:latest by default
             - erp
