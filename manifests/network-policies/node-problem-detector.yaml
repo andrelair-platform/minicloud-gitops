@@ -1,0 +1,29 @@
+# NetworkPolicy for node-problem-detector — NPD DaemonSet (HIGH-02 remediation).
+#   INGRESS-LOCKDOWN ONLY — intentionally NO egress policy.
+#   Rationale: NPD is a host-mounted DaemonSet (already Gatekeeper-exempt for
+#   hostPath/privilege). It reports node conditions to the kube-apiserver over the host
+#   network and exposes a metrics endpoint scraped by Prometheus. Egress-locking a
+#   host-network DaemonSet is fragile and low-value; we lock ingress only.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: node-problem-detector}
+spec: {podSelector: {}, policyTypes: [Ingress]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-monitoring-scrape, namespace: node-problem-detector}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: allow-node-entities, namespace: node-problem-detector}
+spec:
+  endpointSelector: {}
+  ingress: [{fromEntities: [host, remote-node]}]

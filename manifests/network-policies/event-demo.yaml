@@ -1,0 +1,53 @@
+# NetworkPolicy for event-demo — Phase-17 KEDA + NATS event-driven autoscaling demo
+#   (HIGH-02 remediation).
+#   Currently scaled to 0 (dormant) — policy applied so the last remaining unpoliced
+#   namespace is closed. The echo-worker consumes from NATS in the 'messaging' namespace
+#   (cluster-internal), so full lockdown with cluster-internal egress does not break the
+#   demo if it is ever scaled back up; it only blocks public-internet egress.
+#   Ingress: default-deny + kubelet/node probes + monitoring scrape.
+#   Egress:  default-deny + DNS + cluster-internal (NATS) — no internet.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: event-demo}
+spec: {podSelector: {}, policyTypes: [Ingress]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-monitoring-scrape, namespace: event-demo}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: observability}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-egress, namespace: event-demo}
+spec: {podSelector: {}, policyTypes: [Egress]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-dns-egress, namespace: event-demo}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: allow-node-entities, namespace: event-demo}
+spec:
+  endpointSelector: {}
+  ingress: [{fromEntities: [host, remote-node]}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: allow-cluster-egress, namespace: event-demo}
+spec:
+  endpointSelector: {}
+  egress: [{toEntities: [cluster]}]
