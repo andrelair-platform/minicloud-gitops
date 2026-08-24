@@ -6,11 +6,17 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   name: require-seccomp
 spec:
-  enforcementAction: warn
+  # MED-01: flipped warn -> deny. Safe because the assign-seccomp-runtimedefault mutator
+  # (30-mutation-seccomp-runtimedefault.yaml) injects RuntimeDefault before validation, so
+  # every new pod is made compliant at admission. Existing pods comply as they cycle.
+  enforcementAction: deny
   match:
+    # Pods ONLY. The rego reads object.spec.securityContext.seccompProfile, which exists
+    # on Pods but NOT on workload objects (those carry it at spec.template.spec) — matching
+    # Deployment/StatefulSet/DaemonSet here would falsely flag every workload and, under
+    # deny, block their applies. The Pod is the enforcement point anyway: the Assign mutator
+    # injects RuntimeDefault into every Pod before validation, so all pods comply.
     kinds:
-      - apiGroups: ["apps"]
-        kinds: ["Deployment", "StatefulSet", "DaemonSet"]
       - apiGroups: [""]
         kinds: ["Pod"]
     namespaceSelector:

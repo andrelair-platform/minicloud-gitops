@@ -51,10 +51,17 @@ spec:
             runAsNonRoot: true
             runAsUser: 65532
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true   # MED-02
             capabilities:
               drop: [ALL]
             seccompProfile:
               type: RuntimeDefault
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp            # MED-02: writable /tmp so the root FS can be read-only
+          emptyDir: {}
   strategy:
     # BlueGreen: the controller spins up the new pod behind minicloud-plane-preview,
     # runs prePromotionAnalysis (3× HTTP health checks), then atomically switches

@@ -60,9 +60,13 @@ spec:
               name: http
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true   # MED-02
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               cpu: 10m
@@ -78,6 +82,9 @@ spec:
             httpGet: {path: /healthz, port: http}
             initialDelaySeconds: 5
             periodSeconds: 10
+      volumes:
+        - name: tmp            # MED-02: writable /tmp so the root FS can be read-only
+          emptyDir: {}
   strategy:
     canary:
       steps:

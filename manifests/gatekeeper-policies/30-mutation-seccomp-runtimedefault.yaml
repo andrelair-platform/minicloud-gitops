@@ -1,0 +1,61 @@
+# MED-01 (pentest 2026-08-16): give require-seccomp teeth without editing 100+ charts.
+#
+# Gatekeeper Assign mutator — injects pod-level seccompProfile.type=RuntimeDefault on any
+# Pod that does not already set it, in every namespace the require-seccomp constraint
+# enforces (same NotIn exclusion list). Mutation runs BEFORE validation, so once
+# require-seccomp flips to deny, every new pod is made compliant at admission and nothing
+# is ever blocked. pathTests MustNotExist means pods that deliberately set a profile
+# (e.g. Unconfined in an excluded ns) are never overridden.
+#
+# The exclusion list is kept identical to 21-constraint-require-seccomp.yaml — namespaces
+# that genuinely need an unconfined profile (falco, chaos-mesh, kured) or are system/host.
+apiVersion: mutations.gatekeeper.sh/v1
+kind: Assign
+metadata:
+  name: assign-seccomp-runtimedefault
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  applyTo:
+    - groups: [""]
+      versions: ["v1"]
+      kinds: ["Pod"]
+  match:
+    scope: Namespaced
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["Pod"]
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
+            - kube-public
+            - kube-node-lease
+            - gatekeeper-system
+            - metallb-system
+            - longhorn-system
+            - nfs-provisioner
+            - cert-manager
+            - ingress-nginx
+            - chaos-mesh
+            - velero
+            - falco
+            - kured
+            - productivity
+            - mail
+            - sign
+            - collab
+            - argo-rollouts
+            - vpa-system
+            - system-upgrade
+            - chat
+            - erp
+  location: "spec.securityContext.seccompProfile.type"
+  parameters:
+    assign:
+      value: RuntimeDefault
+    pathTests:
+      - subPath: "spec.securityContext.seccompProfile.type"
+        condition: MustNotExist
