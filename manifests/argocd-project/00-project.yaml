@@ -207,6 +207,8 @@ spec:
       kind: ConstraintTemplate
     - group: "constraints.gatekeeper.sh"
       kind: "*"
+    - group: "mutations.gatekeeper.sh"   # Assign/AssignMetadata/ModifySet mutators (MED-01)
+      kind: "*"
     - group: "cilium.io"
       kind: CiliumLoadBalancerIPPool
     - group: "cilium.io"
