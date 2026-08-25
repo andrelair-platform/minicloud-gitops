@@ -25,7 +25,7 @@ persistence:
     redis:
       storageClass: longhorn
     registry:
-      size: 20Gi
+      size: 40Gi   # expanded from 20Gi (2026-08-24) — registry was 91% full, blobs not persisting → ImagePullBackOff
       storageClass: longhorn
     trivy:
       storageClass: longhorn
