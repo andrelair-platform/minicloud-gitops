@@ -7,4 +7,4 @@ resources:
 - certificate.yaml
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-plane
-  newTag: staging-3e511ce
+  newTag: bc1293a

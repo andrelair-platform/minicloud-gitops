@@ -7,7 +7,7 @@ resources:
 - certificate.yaml
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-plane
-  newTag: 3e511ce
+  newTag: bc1293a
 patches:
 - path: patch-replicas.yaml
   target:
