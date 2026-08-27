@@ -6,6 +6,7 @@ resources:
 - ingress.yaml
 - certificate.yaml
 - configmap.yaml
+- scaledobject.yaml
 # Tag promoted manually: after staging is validated, open a PR bumping newTag here.
 # ArgoCD syncPolicy.automated is disabled for prod — requires manual sync click.
 images:
