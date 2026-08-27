@@ -37,3 +37,15 @@ npm run clear      # clear Docusaurus cache
 `sidebars.ts` lists every page by its **doc ID** (Docusaurus strips numeric prefixes: `02-sso-authentik.md` → ID `sso-authentik`). Pages not listed in `sidebars.ts` are invisible in the nav.
 
 Live site: `https://andrelair-platform.github.io/minicloud-platform-docs/`
+
+### Bilingual blog (i18n — EN + FR, done 2026-08-23)
+
+Locales configured in `docusaurus.config.ts`: `en` (default) + `fr`. **All 23 blog posts are fully translated to French.** A post without a FR copy silently falls back to English under `/fr/`.
+
+**To add a new blog post bilingually:** create the EN post at `blog/<date>-<slug>/index.md`, then the FR translation at `i18n/fr/docusaurus-plugin-content-blog/<date>-<slug>/index.md` (same folder name, same frontmatter incl. `slug:`, translated body). Keep code blocks/tables technical; translate prose + comments. A couple of posts were authored in French originally — their FR copy is identical to source.
+
+**Gotchas:**
+- FR blog authors live in `i18n/fr/docusaurus-plugin-content-blog/authors.yml` — the `authors: [andrelair]` (or `[andre]`) key must exist there or the build fails.
+- **Do NOT run `npm run write-translations --locale fr` and commit everything** — it regenerates theme `code.json` with English defaults that OVERRIDE Docusaurus's built-in French UI bundle (Next/Previous/search render in English). Only the blog `sidebar.title` needed a manual FR string, kept in `i18n/fr/docusaurus-plugin-content-blog/options.json` (`"Articles récents"`); everything else uses the built-in FR bundle. Discard the other generated files.
+- `npm run build` validates BOTH locales and fails on broken links in either — always build-check before merging translations.
+- Verify a live FR page renders in French (not English fallback) after deploy; GitHub Pages/CDN can cache, so cache-bust or check raw HTML.
