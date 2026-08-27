@@ -3,9 +3,14 @@ kind: AnalysisTemplate
 metadata:
   name: preview-health-gate
 spec:
+  # preview-url is passed by the Rollout's prePromotionAnalysis args. It MUST be an
+  # FQDN (name.namespace) because the web provider is executed by the argo-rollouts
+  # controller (in the argo-rollouts namespace) — a bare service name does not resolve
+  # from there. Each overlay passes its own namespace's preview-service FQDN.
+  args:
+    - name: preview-url
   metrics:
     # Calls the preview service /health endpoint 3× (every 10s) before promotion.
-    # The Web provider runs inside the cluster so the short DNS name resolves.
     # If the new version is unhealthy, this fails and the active service keeps
     # pointing to the old pods — zero-downtime rollback.
     - name: health
@@ -15,5 +20,5 @@ spec:
       failureLimit: 1
       provider:
         web:
-          url: http://minicloud-plane-preview:8080/health
+          url: "{{args.preview-url}}"
           jsonPath: "{$.status}"
