@@ -1,6 +1,4 @@
-- op: replace
-  path: /spec/replicas
-  value: 3
+  # replicas removed — KEDA platform-demo-cron-scaler owns it (scale-to-zero when idle).
 - op: replace
   path: /spec/template/spec/containers/0/resources
   value:
