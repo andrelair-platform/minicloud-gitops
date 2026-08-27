@@ -79,3 +79,16 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 30
             failureThreshold: 5
+          # readOnlyRootFilesystem:true blocks CrewAI from creating its knowledge
+          # store under ~/.local (ChromaDB db_storage_path) -> OSError EROFS crashloop.
+          # Give it writable emptyDirs for the HOME dot-dirs and /tmp.
+          volumeMounts:
+            - name: home-local
+              mountPath: /home/agent/.local
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: home-local
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
