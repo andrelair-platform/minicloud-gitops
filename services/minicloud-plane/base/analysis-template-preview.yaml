@@ -16,7 +16,10 @@ spec:
     - name: health
       count: 3
       interval: 10s
-      successCondition: result.status == "ok"
+      # jsonPath below extracts .status INTO `result`, so `result` IS the status
+      # string — compare it directly. (result.status would be a nested access on a
+      # string → "type string[string] is undefined", which aborted every promotion.)
+      successCondition: result == "ok"
       failureLimit: 1
       provider:
         web:
