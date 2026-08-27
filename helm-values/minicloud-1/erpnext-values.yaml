@@ -236,11 +236,15 @@ jobs:
 # Server-Side Apply race (SSA field ownership).
 mariadb-sts:
   enabled: true
-  nodeSelector:
-    kubernetes.io/hostname: set-hog
+  # No hostname nodeSelector — the DB schedules automatically by node availability.
+  # The Longhorn volume is RWO but network-attached with 3 replicas, so the pod can
+  # run on any node. (The old "kubernetes.io/hostname: set-hog" pin was dead config:
+  # the chart never rendered it into the StatefulSet, and set-hog held no replica.)
   image:
     repository: mariadb
-    tag: "10.6"
+    # Pinned to the running patch (was floating "10.6"). 10.6.27 freezes the DB
+    # version while still allowing upstream base-OS security rebuilds of that patch.
+    tag: "10.6.27"
     pullPolicy: IfNotPresent
   rootPassword: "placeholder-overridden-by-eso"
   persistence:
