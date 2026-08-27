@@ -11,7 +11,7 @@ resources:
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-agent
   newName: ghcr.io/andrelair-platform/minicloud-agent
-  newTag: 051c17b
+  newTag: 69c512a
 patches:
 - path: patch-replicas.yaml
   target:
