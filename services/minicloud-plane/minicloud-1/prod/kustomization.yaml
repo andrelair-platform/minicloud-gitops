@@ -5,11 +5,21 @@ resources:
 - ../../base
 - ingress.yaml
 - certificate.yaml
+- externalsecret-ghcr.yaml
+# Prod pulls from ghcr.io (Internal, off the controller disk) via the ghcr-pull
+# imagePullSecret (ESO-rendered from Vault secret/platform/ghcr). dev stays on Harbor.
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-plane
-  newTag: bc1293a
+  newName: ghcr.io/andrelair-platform/minicloud-plane
+  newTag: ff347ee
 patches:
 - path: patch-replicas.yaml
+  target:
+    group: argoproj.io
+    version: v1alpha1
+    kind: Rollout
+    name: minicloud-plane
+- path: patch-ghcr-pull.yaml
   target:
     group: argoproj.io
     version: v1alpha1

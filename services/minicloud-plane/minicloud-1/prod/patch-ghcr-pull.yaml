@@ -1,0 +1,10 @@
+# Attach the ghcr-pull imagePullSecret so prod can pull the Internal ghcr.io image.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: minicloud-plane
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
