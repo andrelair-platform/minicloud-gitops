@@ -66,6 +66,7 @@ spec:
           ports:
             - containerPort: 9898
               name: http
+              protocol: TCP   # explicit so ArgoCD doesn't flag the k8s-defaulted value as drift
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true   # MED-02
