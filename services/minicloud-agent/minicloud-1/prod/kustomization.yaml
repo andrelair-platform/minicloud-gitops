@@ -5,12 +5,20 @@ resources:
 - ../../base
 - certificate.yaml
 - ingress.yaml
-# CI bumps newTag here on every push to main in the minicloud-agent repo.
+# Prod pulls from ghcr.io (Internal, off the controller disk) via the shared
+# ai-ns ghcr-pull imagePullSecret. dev stays on Harbor.
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-agent
-  newTag: 8ece8f6
+  newName: ghcr.io/andrelair-platform/minicloud-agent
+  newTag: 051c17b
 patches:
 - path: patch-replicas.yaml
+  target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: minicloud-agent
+- path: patch-ghcr-pull.yaml
   target:
     group: apps
     version: v1

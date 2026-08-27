@@ -1,0 +1,11 @@
+# Attach the shared ai-ns ghcr-pull imagePullSecret so prod can pull the Internal
+# ghcr.io image (ExternalSecret defined in manifests/ai/50-ghcr-pull-externalsecret.yaml).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minicloud-agent
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
