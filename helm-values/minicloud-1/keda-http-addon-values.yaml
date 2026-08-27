@@ -20,3 +20,13 @@ interceptor:
   resources:
     requests: {cpu: 25m, memory: 32Mi}
     limits: {cpu: 300m, memory: 128Mi}
+
+# Gatekeeper require-non-root: the chart sets readOnlyRootFilesystem + drop-ALL but not
+# runAsNonRoot, so all add-on pods were denied. Run them as non-root (uid 1000).
+# (seccompProfile RuntimeDefault is injected by the MED-01 Assign mutator.)
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  supplementalGroups:
+    - 1000
