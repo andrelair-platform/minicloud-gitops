@@ -21,6 +21,15 @@ spec:
       namespace: ai
       jsonPointers:
         - /spec/replicas
+    # ESO webhook injects these into the shared ghcr-pull ExternalSecret; never in
+    # git → with ServerSideApply they'd flag OutOfSync / selfHeal would loop.
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
   syncPolicy:
     automated:
       prune: true
