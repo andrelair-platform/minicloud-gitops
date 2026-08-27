@@ -1,0 +1,21 @@
+# Request-driven scale-to-zero via the KEDA HTTP add-on. The interceptor (keda ns) holds
+# an incoming request, scales this Rollout 0->1, then forwards to the platform-demo Service.
+# hosts MUST match the Ingress hosts (the interceptor routes by Host header).
+apiVersion: http.keda.sh/v1alpha1
+kind: HTTPScaledObject
+metadata:
+  name: platform-demo
+spec:
+  hosts:
+    - platform-demo-dev.10.0.0.200.nip.io
+    - dev.demo.devandre.sbs
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: platform-demo
+    service: platform-demo
+    port: 80
+  replicas:
+    min: 0
+    max: 2
+  scaledownPeriod: 300

@@ -55,6 +55,26 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: observability
 ---
+# KEDA HTTP add-on: the interceptor (keda ns) forwards woken requests to the platform-demo
+# pods on the container port (9898). Without this, default-deny blocks the forwarded request.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-keda-interceptor
+  namespace: platform-demo-dev
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: keda
+      ports:
+        - port: 9898
+          protocol: TCP
+---
 # Cilium entity-based replacement for ipBlock node rules.
 # In Cilium, kubelet/kube-apiserver traffic carries host/remote-node identity —
 # ipBlock CIDR rules do not match it.

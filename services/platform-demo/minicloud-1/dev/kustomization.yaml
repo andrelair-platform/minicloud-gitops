@@ -3,7 +3,8 @@ kind: Kustomization
 namespace: platform-demo-dev
 resources:
 - ../../base
-- scaledobject.yaml
+- httpscaledobject.yaml
+- interceptor-service.yaml
 - configmap.yaml
 - ingress.yaml
 - certificate.yaml

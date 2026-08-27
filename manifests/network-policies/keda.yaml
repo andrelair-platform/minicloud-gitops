@@ -9,6 +9,28 @@ spec:
   policyTypes:
     - Ingress
 ---
+# KEDA HTTP add-on: ingress-nginx routes live traffic to the interceptor proxy (:8080),
+# which wakes the target workload. Without this, default-deny blocks the request.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-nginx-interceptor
+  namespace: keda
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: interceptor
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 8080
+          protocol: TCP
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

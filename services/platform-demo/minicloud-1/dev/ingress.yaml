@@ -29,6 +29,9 @@ metadata:
       proxy_set_header X-authentik-username $authentik_username;
       proxy_set_header X-authentik-groups   $authentik_groups;
       proxy_set_header X-authentik-email    $authentik_email;
+      # Preserve the original Host so the KEDA interceptor (ExternalName upstream) routes
+      # by Host header — dynamic, so it works for both hosts (upstream-vhost is single-value).
+      proxy_set_header Host $host;
 spec:
   ingressClassName: nginx
   tls:
@@ -46,9 +49,9 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: platform-demo
+                name: keda-http-interceptor
                 port:
-                  name: http
+                  number: 8080
     - host: dev.demo.devandre.sbs
       http:
         paths:
@@ -56,6 +59,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: platform-demo
+                name: keda-http-interceptor
                 port:
-                  name: http
+                  number: 8080

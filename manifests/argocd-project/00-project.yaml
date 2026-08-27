@@ -250,6 +250,8 @@ spec:
     # KEDA
     - group: "keda.sh"
       kind: "*"
+    - group: "http.keda.sh"
+      kind: "*"
     # Chaos Mesh
     - group: "chaos-mesh.org"
       kind: "*"
