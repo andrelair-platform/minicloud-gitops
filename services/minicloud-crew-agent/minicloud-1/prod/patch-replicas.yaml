@@ -1,0 +1,8 @@
+# 2-env pattern: prod runs 2 replicas for HA (dev inherits base = 1). Stateless
+# Deployment, no RWO PVC, RollingUpdate — safe to run multiple replicas.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minicloud-crew-agent
+spec:
+  replicas: 2
