@@ -1,4 +1,5 @@
-  # replicas removed — KEDA platform-demo-cron-scaler owns it (scale-to-zero when idle).
+  # replicas removed — the KEDA HTTP add-on (HTTPScaledObject platform-demo) owns it,
+  # scaling 0->1 on request via the interceptor and back to 0 after scaledownPeriod.
 - op: replace
   path: /spec/template/spec/containers/0/resources
   value:

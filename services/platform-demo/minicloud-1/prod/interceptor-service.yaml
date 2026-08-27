@@ -1,0 +1,12 @@
+# ExternalName pointer to the KEDA HTTP add-on interceptor (in the keda ns) — an Ingress
+# backend must be a same-namespace Service, so we alias the cross-namespace interceptor.
+apiVersion: v1
+kind: Service
+metadata:
+  name: keda-http-interceptor
+spec:
+  type: ExternalName
+  externalName: keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local
+  ports:
+    - port: 8080
+      name: http
