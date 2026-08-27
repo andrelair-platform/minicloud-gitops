@@ -6,7 +6,7 @@ resources:
   - ingress.yaml
   - certificate.yaml
   - quota.yaml
-# Promoted manually: PR bumping newTag after staging is approved.
+# Promoted manually: PR bumping newTag after dev is validated (2-env default).
 # ArgoCD Application for prod should have syncPolicy.automated disabled.
 images:
   - name: harbor.10.0.0.200.nip.io/library/SERVICE_NAME

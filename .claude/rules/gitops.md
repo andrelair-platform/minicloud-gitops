@@ -5,28 +5,33 @@
 Own services use Kustomize base + minicloud-1/{env} overlays in `minicloud-gitops/services/`.
 **All Helm values live in `minicloud-gitops/helm-values/minicloud-1/`** — never edit `minicloud-ansible/helm-values/` for ArgoCD-managed tools.
 
+**The default is 2 environments: `dev` + `prod`.** dev = 1 replica (auto-sync), prod = 2–3 replicas (manual sync). Staging is **opt-in** — only for services that need a third gate (currently `ktayl-policy-service`/CERT-1 and `platform-demo`). Resource-constrained cluster → don't scaffold staging by default.
+
 ```
 minicloud-gitops/services/<service>/
-├── base/                          # no namespace, no image tag
+├── base/                          # no namespace, no image tag; replicas: 1
 │   ├── kustomization.yaml
 │   ├── deployment.yaml
 │   └── service.yaml
 └── minicloud-1/               # cluster dimension
-    ├── dev/                       # auto-sync, CI updates newTag here
-    ├── staging/                   # manual sync, PR to promote
-    └── prod/                      # manual sync, ingress+cert here
+    ├── dev/                       # auto-sync, CI updates newTag; replicas 1 (base)
+    └── prod/                      # manual sync, ingress+cert; patch-replicas → 2–3
+        # staging/ is opt-in — see services/_template/minicloud-1/_staging-optional/README.md
 ```
 
-**ArgoCD apps split:** `apps/platform/` (43 infra apps) + `apps/workloads/` (28 services). Root-app has `recurse: true`.
+**ArgoCD apps split:** `apps/platform/` (43 infra apps) + `apps/workloads/` services. Root-app has `recurse: true`.
 
-**Promotion flow:** CI → `kustomize edit set image` in `minicloud-1/dev/` only. Staging and prod require explicit PRs.
+**Promotion flow (2-env default):** CI → `kustomize edit set image` in `minicloud-1/dev/` only → `dev (auto) → prod (PR)`. With opt-in staging: `dev (auto) → staging (PR) → prod (PR)`. prod always requires an explicit PR + manual sync.
+
+**Prod HA:** give each prod overlay a `patch-replicas.yaml` (`replicas: 2`, up to 3) targeting the Deployment/Rollout — dev inherits base `replicas: 1`. Only skip for singletons (RWO PVC / stateful). Reference: minicloud-plane (Rollout), minicloud-agent + minicloud-crew-agent (Deployment).
 
 **New service checklist:**
-1. Copy `services/_template/` and replace `SERVICE_NAME`
+1. Copy `services/_template/` and replace `SERVICE_NAME` (template ships dev+prod; staging lives under `_staging-optional/`)
 2. Add namespaces to AppProject `manifests/argocd-project/00-project.yaml`
-3. Add ArgoCD Application files in `apps/`
+3. Add ArgoCD Application files in `apps/` (dev auto-sync, prod manual)
 4. Update Vault Kubernetes auth role
 5. Add `minicloud-1/prod/ingress.yaml` + `certificate.yaml` for public URL
+6. To add staging later: follow `services/_template/minicloud-1/_staging-optional/README.md`
 
 ```bash
 cd ~/Developer/cloudplateform/minicloud-gitops
