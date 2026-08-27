@@ -41,14 +41,15 @@ spec:
       jsonPointers:
         - /spec/template/metadata
         - /spec/selector
-    # priorityClassName set via kubectl patch — chart doesn't template this field
-    # topologySpreadConstraints: nginx.topologySpreadConstraints:[] in values is ignored
-    # by chart 8.0.67 — suppress to prevent rolling update deadlock on single-node affinity
+    # priorityClassName set via kubectl patch — chart doesn't template this field.
+    # (topologySpreadConstraints no longer ignored: nginx.topologySpreadConstraints is
+    # now a NON-empty ScheduleAnyway list in values, which the chart honors — so git is
+    # the source of truth and ArgoCD can enforce/selfHeal it. The old `[]` was falsy and
+    # ignored by the chart, which is why it used to need suppression.)
     - group: apps
       kind: Deployment
       jqPathExpressions:
         - .spec.template.spec.priorityClassName
-        - .spec.template.spec.topologySpreadConstraints
     - group: apps
       kind: StatefulSet
       jqPathExpressions:
