@@ -1,7 +1,14 @@
 # PostgreSQL dedicated to matrix-synapse in the chat namespace.
 # Decoupled from postgresql-ai so star-kitten maintenance does not affect Matrix.
-# Pinned to set-hog (co-located with matrix-synapse) for data locality.
+# NOT hostname-pinned: the Longhorn RWO volume is network-attached (3 replicas), so
+# the DB schedules by availability. A hard set-hog pin previously made it fail to
+# schedule (Matrix DB down) when set-hog was cordoned — see the ERPNext MariaDB fix.
 # Credentials from Vault via ESO: manifests/matrix/03-eso-postgresql-synapse-secret.yaml
+#
+# NOTE on the image: 18.4.0-noavx512 is a custom pgvector-no-AVX512 build (SIGILL fix
+# for the ThinkPad CPUs). It is retained as the platform's only available PG18 image —
+# the stock library/postgresql:18.4.0 base was GC'd and no bitnamilegacy PG18 exists.
+# synapse itself does not use pgvector; the recompile is harmless here.
 
 global:
   security:
@@ -22,8 +29,8 @@ auth:
 
 primary:
   priorityClassName: minicloud-critical
-  nodeSelector:
-    kubernetes.io/hostname: set-hog
+  # No hostname nodeSelector — schedules on any available node (Longhorn RWO is
+  # network-attached). Removed the set-hog pin that broke scheduling when cordoned.
   podLabels:
     backstage.io/kubernetes-id: postgresql-synapse
 
