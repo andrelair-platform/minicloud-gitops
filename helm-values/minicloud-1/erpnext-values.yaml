@@ -23,9 +23,21 @@ nginx:
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits:   { cpu: 200m, memory: 256Mi }
-  # topologySpreadConstraints: [] prevents rolling update deadlock when nginx is
-  # pinned to one node via podAffinity (same fix applied to gunicorn).
-  topologySpreadConstraints: []
+  # Soft topologySpread (ScheduleAnyway) prevents a rolling-update deadlock:
+  # the required podAffinity below pins nginx to gunicorn's node, and the chart's
+  # DEFAULT topologySpread is whenUnsatisfiable=DoNotSchedule, which forbids the
+  # surge pod from stacking there -> permanent Pending. Setting `[]` does NOT work:
+  # an empty list is falsy in the chart's `{{- if .Values.nginx.topologySpreadConstraints }}`
+  # so it falls back to the DoNotSchedule default (this was the #739 trap). A
+  # NON-EMPTY list with ScheduleAnyway is honored by the chart.
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: erpnext-nginx
+          app.kubernetes.io/instance: erpnext-nginx
   affinity:
     podAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
