@@ -5,12 +5,21 @@ resources:
 - ../../base
 - certificate.yaml
 - ingress.yaml
-# CI bumps newTag here on every push to main in the minicloud-crew-agent repo.
+# CI bumps newName+newTag here on every push to main (prod overlay = main branch).
+# Prod pulls from ghcr.io (Internal, off local disk) via the shared ai-ns
+# ghcr-pull imagePullSecret. dev stays on Harbor.
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
-  newTag: f363519
+  newName: ghcr.io/andrelair-platform/minicloud-crew-agent
+  newTag: 33907ef
 patches:
 - path: patch-replicas.yaml
+  target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: minicloud-crew-agent
+- path: patch-ghcr-pull.yaml
   target:
     group: apps
     version: v1
