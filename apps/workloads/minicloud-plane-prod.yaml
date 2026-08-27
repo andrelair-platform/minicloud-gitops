@@ -20,9 +20,23 @@ spec:
       jsonPointers:
         - /spec/template/metadata/annotations
   syncPolicy:
-    # Production sync is intentionally manual — no automated promotion.
-    # To deploy: bump newTag in overlays/prod/kustomization.yaml via PR,
-    # then click Sync in ArgoCD UI or run: argocd app sync minicloud-plane-prod
+    # Git-gated automated production. The approval gate lives upstream in Git:
+    #   - CODEOWNERS requires @AndreLair review on services/*/minicloud-1/prod/
+    #   - images are immutable SHA tags (never :latest)
+    #   - the BlueGreen Rollout + preview-health-gate prePromotionAnalysis
+    #     auto-aborts the promotion on bad metrics
+    # selfHeal corrects live drift back to Git; prune removes resources deleted
+    # from Git. Git owns .spec.replicas (prod patch-replicas=2, no autoscaler),
+    # so selfHeal enforcing it is correct.
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true

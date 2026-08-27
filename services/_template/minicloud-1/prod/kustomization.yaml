@@ -6,10 +6,12 @@ resources:
   - ingress.yaml
   - certificate.yaml
   - quota.yaml
-# Promoted manually: PR bumping newTag after dev is validated (2-env default).
-# ArgoCD Application for prod should have syncPolicy.automated disabled.
+# Promoted via PR: bump newTag to an immutable SHA tag (never :latest) after dev
+# is validated. ArgoCD then auto-syncs prod — the gate is the CODEOWNERS-reviewed
+# PR + the Rollout analysis, NOT a manual Sync click (git-gated automated prod).
+# The prod ArgoCD Application uses syncPolicy.automated {prune, selfHeal}.
 images:
   - name: harbor.10.0.0.200.nip.io/library/SERVICE_NAME
-    newTag: "latest"
+    newTag: "SET_TO_A_SHA_ON_PROMOTION"
 patches:
   - path: patch-resources.yaml
