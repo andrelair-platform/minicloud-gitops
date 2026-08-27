@@ -55,6 +55,27 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: observability
 ---
+# argo-rollouts controller (in the argo-rollouts ns) probes the preview Service on 8080
+# during BlueGreen prePromotionAnalysis. Without this, default-deny-ingress blocks the
+# health check → the gate times out → the rollout aborts.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-argo-rollouts-analysis
+  namespace: minicloud-plane-prod
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argo-rollouts
+      ports:
+        - port: 8080
+          protocol: TCP
+---
 # Cilium entity-based replacement for ipBlock node rules.
 # In Cilium, kubelet/kube-apiserver traffic carries host/remote-node identity —
 # ipBlock CIDR rules do not match it.
