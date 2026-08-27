@@ -29,7 +29,7 @@ minicloud-gitops/services/<service>/
 
 Prod apps are **auto-sync** (`syncPolicy.automated: {prune: true, selfHeal: true}` + a `retry` backoff), NOT manual-sync. The approval gate lives entirely **upstream in Git**, which preserves continuous reconciliation (selfHeal corrects live drift, prune removes what leaves Git):
 
-- **Merge gate** — CODEOWNERS requires `@AndreLair` review on `services/*/minicloud-1/prod/` (+ `manifests/quotas/*-prod.yaml`, `manifests/network-policies/*-prod.yaml`).
+- **Merge gate** — CODEOWNERS requires `@AndreLair` review on `services/*/minicloud-1/prod/`, **`services/*/base/`** (prod inherits base — gating it prevents a base-change bypass), `services/*/minicloud-1/staging/`, **`apps/`** (the Application manifests that define the sync gate itself), `helm-values/` (third-party app config), plus `manifests/quotas/*-prod.yaml` and `manifests/network-policies/*-prod.yaml`.
 - **Immutable artifacts** — prod pins **SHA image tags**, never `:latest`.
 - **Progressive delivery** — the canary/BlueGreen Rollout + its `*-health-gate` analysis auto-aborts a bad rollout on metrics; that is the runtime safety brake (not a human clicking Sync).
 

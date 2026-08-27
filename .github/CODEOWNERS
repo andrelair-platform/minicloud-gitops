@@ -6,6 +6,18 @@
 services/*/overlays/prod/     @AndreLair
 services/*/minicloud-1/prod/  @AndreLair
 
+# Base (shared) — prod overlays inherit base/, so a base change reaches prod.
+# Gate it too or base becomes a prod-review bypass.
+services/*/base/              @AndreLair
+
+# Staging overlays — third gate for the services that opt into it (CERT-1, platform-demo)
+services/*/minicloud-1/staging/  @AndreLair
+
+# ArgoCD Application manifests — these DEFINE the deploy gate (syncPolicy,
+# targetRevision, source path). Changing one can bypass every other control,
+# so they require review. (CI bumps image newTags in overlays, never apps/.)
+apps/                         @AndreLair
+
 # Production quota and network-policy manifests
 manifests/quotas/*-prod.yaml  @AndreLair
 manifests/network-policies/*-prod.yaml @AndreLair
