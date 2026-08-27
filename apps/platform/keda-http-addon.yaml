@@ -1,0 +1,40 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keda-http-addon
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    # After KEDA core (sync-wave -1) — the add-on depends on KEDA CRDs.
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: minicloud-platform
+  sources:
+    - repoURL: https://kedacore.github.io/charts
+      chart: keda-add-ons-http
+      targetRevision: "0.15.0"
+      helm:
+        releaseName: keda-add-ons-http
+        valueFiles:
+          - $values/helm-values/minicloud-1/keda-http-addon-values.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keda
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /status

@@ -1,0 +1,22 @@
+# KEDA HTTP add-on — request-driven scale-to-zero (0->1 on incoming HTTP).
+# The interceptor proxy holds the request, wakes the workload via KEDA, then forwards it.
+# Homelab-tuned: chart defaults are large (interceptor min=3/max=50, scaler=3).
+operator:
+  replicas: 1
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+
+scaler:
+  replicas: 1
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+
+interceptor:
+  replicas:
+    min: 1
+    max: 2
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits: {cpu: 300m, memory: 128Mi}
