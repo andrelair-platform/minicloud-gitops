@@ -45,12 +45,25 @@ Reference apps: `platform-demo` (pilot, PR #813), `minicloud-plane-prod`, `minic
 3. Add ArgoCD Application files in `apps/` (dev + prod both `automated: {prune, selfHeal}` — prod is git-gated, not manual)
 4. Update Vault Kubernetes auth role
 5. Add `minicloud-1/prod/ingress.yaml` + `certificate.yaml` for public URL
-6. To add staging later: follow `services/_template/minicloud-1/_staging-optional/README.md`
+6. Wire the registry: CI dual-push + prod overlay → ghcr (see *Hybrid container registry* below; add the `ghcr-pull` imagePullSecret for Internal packages)
+7. To add staging later: follow `services/_template/minicloud-1/_staging-optional/README.md`
 
 ```bash
 cd ~/Developer/cloudplateform/minicloud-gitops
 kustomize build services/platform-demo/minicloud-1/dev
 ```
+
+## Hybrid container registry — dev→Harbor, prod→ghcr (the standard since 2026-08-27)
+
+To keep the controller disk bounded, prod images live in **ghcr.io** (free, durable, off local disk); Harbor is a **dev-only** registry (retention keep-10 + daily GC).
+
+- **CI dual-push:** on `main`, build + push to **both** Harbor (dev/prod tag) and `ghcr.io/andrelair-platform/<repo>:<sha>`; sign (keyless cosign) + attach SBOM to the ghcr image. dev/staging branches push Harbor-only. Reference edits: platform-demo CI (`packages: write`, GHCR login via `GITHUB_TOKEN`, `tags:` from a meta step that appends the ghcr ref only for main).
+- **Prod overlay** repoints the image with kustomize `newName: ghcr.io/andrelair-platform/<repo>` + `newTag: <sha>`; dev stays Harbor. **If CI bumps the prod overlay** (agent/crew use the branch=env model where main→prod), its `kustomize edit set image` MUST set the ghcr **name** for prod (`set image harbor..=ghcr..:SHA`) — else the next push reverts `newName`. Services using main→dev + PR→prod (platform-demo/plane) don't have this issue.
+- **Visibility:** demos → **Public** (k3s pulls anonymously, no secret). Real services → **Internal/Private** + an imagePullSecret. **GitHub has NO API to set package visibility** — the org must allow non-Public packages (org Settings→Packages), then flip each package in its UI.
+- **Internal-pull pattern:** a `read:packages` PAT → Vault `secret/platform/ghcr` (`username`,`token`; **write needs the Vault root token**) → an **ESO ExternalSecret** renders a `kubernetes.io/dockerconfigjson` secret `ghcr-pull` (auth = `printf "%s:%s" .username .token | b64enc`) → the pod spec gets `imagePullSecrets: [ghcr-pull]` via a prod-overlay patch. One shared `ghcr-pull` ES per namespace suffices (e.g. one in `ai` for agent+crew, in `manifests/ai/`). The app that owns the ES needs the ESO `ignoreDifferences` (see below) if it uses ServerSideApply.
+- **CI-secret trap (recurring):** a stale **repo-level** `HARBOR_USER`/`HARBOR_PASSWORD` **shadows the org-level** secret (repo scope wins) → CI fails at `docker login harbor` with 401. Delete the repo-level ones so the Vault-sourced org secrets govern: `gh secret delete HARBOR_PASSWORD --repo <repo>`. When a build fails at registry login, check BOTH `gh secret list --repo` and `--org`.
+
+Reference: platform-demo (Public), minicloud-plane / minicloud-agent / minicloud-crew-agent (Internal + `ghcr-pull`).
 
 ## ESO + ArgoCD SSA ignoreDifferences (mandatory for any ExternalSecret)
 
