@@ -15,9 +15,23 @@ spec:
     server: https://kubernetes.default.svc
     namespace: platform-demo-prod
   syncPolicy:
-    # Production sync is intentionally manual — no automated promotion.
-    # To deploy: bump newTag in minicloud-1/prod/kustomization.yaml via PR,
-    # then click Sync in ArgoCD UI or run: argocd app sync platform-demo
+    # Git-gated automated production (PILOT — first prod app on auto-sync).
+    # The approval gate lives upstream in Git, not in the ArgoCD UI:
+    #   - CODEOWNERS requires @AndreLair review on services/*/minicloud-1/prod/
+    #   - images are immutable SHA tags (never :latest)
+    #   - the canary Rollout + http-regression-gate analysis auto-aborts on bad metrics
+    # selfHeal corrects live drift back to Git; prune removes resources deleted
+    # from Git. .spec.replicas stays in ignoreDifferences (below) so selfHeal does
+    # NOT fight the KEDA HTTP add-on's 0<->2 scaling.
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
