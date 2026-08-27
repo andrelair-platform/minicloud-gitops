@@ -77,6 +77,10 @@ spec:
       prePromotionAnalysis:
         templates:
           - templateName: preview-health-gate
+        args:
+          # base overlay serves the dev namespace; the prod overlay patches this value.
+          - name: preview-url
+            value: http://minicloud-plane-preview.minicloud-plane-dev.svc.cluster.local:8080/health
       postPromotionAnalysis:
         templates:
           - templateName: http-regression-gate

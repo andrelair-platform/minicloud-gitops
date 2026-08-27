@@ -15,3 +15,14 @@ patches:
     version: v1alpha1
     kind: Rollout
     name: minicloud-plane
+# Point the pre-promotion health gate at the prod namespace's preview service FQDN
+# (base defaults to the dev namespace).
+- target:
+    group: argoproj.io
+    version: v1alpha1
+    kind: Rollout
+    name: minicloud-plane
+  patch: |-
+    - op: replace
+      path: /spec/strategy/blueGreen/prePromotionAnalysis/args/0/value
+      value: http://minicloud-plane-preview.minicloud-plane-prod.svc.cluster.local:8080/health
