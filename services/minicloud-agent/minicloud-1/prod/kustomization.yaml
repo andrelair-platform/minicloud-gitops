@@ -8,11 +8,11 @@ resources:
 # CI bumps newTag here on every push to main in the minicloud-agent repo.
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-agent
-  newTag: 8ece8f6
+  newTag: 051c17b
 patches:
 - path: patch-replicas.yaml
   target:
     group: apps
-    version: v1
     kind: Deployment
     name: minicloud-agent
+    version: v1
