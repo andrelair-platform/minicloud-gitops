@@ -8,9 +8,12 @@ metadata:
   namespace: nextcloud
 spec:
   hard:
-    requests.cpu: 500m
+    # Sized for Nextcloud + the OnlyOffice document server. OnlyOffice requests
+    # 250m/1Gi (limits 2/3Gi) and Nextcloud already uses ~350m/832Mi, so the prior
+    # 500m/1Gi requests couldn't admit OnlyOffice (it sat 0/1 for 44d). Raised to fit.
+    requests.cpu: "1"
     limits.cpu: "6"
-    requests.memory: 1Gi
+    requests.memory: 3Gi
     limits.memory: 8Gi
     count/pods: "15"
 ---
