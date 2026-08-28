@@ -19,6 +19,31 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Fast, schema-independent YAML syntax gate. kubeconform runs with
+      # -ignore-missing-schemas, so it SKIPS unknown CRDs (PrometheusRule, Rollout,
+      # …) — a pure indentation/parse error in one of those files slips through.
+      # This step parses every YAML doc and fails on any syntax error, catching that
+      # class before kubeconform. (A bad PrometheusRule indentation merged once this
+      # way — see 22-node-resource-alerts.yaml history.)
+      - name: YAML syntax check (services/ + manifests/)
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import sys, glob, yaml
+          bad = 0
+          for f in sorted(glob.glob("services/**/*.yaml", recursive=True)
+                          + glob.glob("manifests/**/*.yaml", recursive=True)):
+              try:
+                  list(yaml.safe_load_all(open(f)))
+              except yaml.YAMLError as e:
+                  bad += 1
+                  print(f"::error file={f}::YAML syntax error: {e}")
+          if bad:
+              print(f"\n{bad} file(s) failed YAML syntax check")
+              sys.exit(1)
+          print("All YAML files parse cleanly.")
+          PY
+
       - name: Install kustomize
         uses: imranismail/setup-kustomize@v3
         with:
