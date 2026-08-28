@@ -22,8 +22,10 @@ auth:
 
 primary:
   priorityClassName: minicloud-critical
-  nodeSelector:
-    kubernetes.io/hostname: star-kitten
+  # No hostname nodeSelector — schedules on any available node (Longhorn RWO is
+  # network-attached, 3 replicas). A hard star-kitten pin was a single-node risk for
+  # ~8 databases: if star-kitten is cordoned the whole ai DB goes down (same class as
+  # the synapse/set-hog and ERPNext MariaDB incidents). Schedule by availability.
   podLabels:
     backstage.io/kubernetes-id: postgresql-ai
 
