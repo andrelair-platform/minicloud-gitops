@@ -77,3 +77,37 @@ spec:
             description: >-
               Node {{ $labels.instance }} memory at {{ $value | humanize }}%.
               OOMKill events likely. Check for memory leaks or undersized pod limits.
+
+      # Node availability / health — catches the failure mode where a node stays
+      # cordoned (or flags a read-only filesystem) unnoticed. On 2026-08-23 both
+      # set-hog and star-kitten latched a stale ReadonlyFilesystem NPD condition and
+      # were cordoned; set-hog then sat cordoned for 4 days unnoticed, taking Matrix's
+      # DB down when its pod later rescheduled. These alerts close that blind spot.
+      - name: node.health
+        rules:
+          # kured/system-upgrade cordon a node for minutes during reboots, so the
+          # 2h window avoids false positives while still catching a forgotten cordon.
+          - alert: NodeCordonedTooLong
+            expr: kube_node_spec_unschedulable == 1
+            for: 2h
+            labels:
+              severity: warning
+            annotations:
+              summary: "Node {{ $labels.node }} cordoned (SchedulingDisabled) for >2h"
+              description: >-
+                Node {{ $labels.node }} has been cordoned (unschedulable) for over 2
+                hours. If not a deliberate maintenance, uncordon it:
+                `kubectl uncordon {{ $labels.node }}`. A forgotten cordon silently
+                removes capacity and can strand pods pinned to that node.
+          - alert: NodeReadonlyFilesystem
+            expr: kube_node_status_condition{condition="ReadonlyFilesystem",status="true"} == 1
+            for: 15m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Node {{ $labels.node }} reports ReadonlyFilesystem for >15m"
+              description: >-
+                node-problem-detector flags a read-only filesystem on {{ $labels.node }}
+                (often a Longhorn iSCSI EXT4 remount-RO). Verify the FS
+                (`findmnt -no OPTIONS /`); if writable the condition is a stale NPD
+                latch — restart the NPD pod on the node to clear it, then uncordon.
