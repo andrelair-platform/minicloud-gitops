@@ -66,6 +66,13 @@ data:
           model: openai/text-embedding-3-small
           api_key: os.environ/OPENAI_API_KEY
 
+      # mistral-embed — Mistral 1024-dim (= dimension bge-m3), fort multilingue FR.
+      # Utilisé par Retrieva (remplace l'Ollama bge-m3 local, drop du cluster).
+      - model_name: mistral-embed
+        litellm_params:
+          model: mistral/mistral-embed
+          api_key: os.environ/MISTRAL_API_KEY
+
       # ── CLOUD FALLBACK ────────────────────────────────────────────────────
       - model_name: groq-fallback
         litellm_params:
@@ -151,6 +158,26 @@ data:
           model: openai/deepseek-ai/deepseek-r1
           api_base: https://integrate.api.nvidia.com/v1
           api_key: os.environ/NVIDIA_API_KEY
+
+      # ── OLLAMA CLOUD (ollama.com — tier Turbo, génération LLM) ─────────────
+      # Modèle `ollama-cloud` déclaré 3× avec 3 clés → LiteLLM load-balance
+      # (routing least-busy) pour répartir les rate-limits. Utilisé par Retrieva
+      # pour la génération de réponses (remplace le Groq d'origine).
+      - model_name: ollama-cloud
+        litellm_params:
+          model: openai/gpt-oss:120b
+          api_base: https://ollama.com/v1
+          api_key: os.environ/OLLAMA_CLOUD_KEY_1
+      - model_name: ollama-cloud
+        litellm_params:
+          model: openai/gpt-oss:120b
+          api_base: https://ollama.com/v1
+          api_key: os.environ/OLLAMA_CLOUD_KEY_2
+      - model_name: ollama-cloud
+        litellm_params:
+          model: openai/gpt-oss:120b
+          api_base: https://ollama.com/v1
+          api_key: os.environ/OLLAMA_CLOUD_KEY_3
 
     router_settings:
       routing_strategy: least-busy

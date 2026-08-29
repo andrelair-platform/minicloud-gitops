@@ -90,3 +90,15 @@ spec:
       remoteRef:
         key: platform/cloud-providers
         property: nvidia-api-key
+    - secretKey: ollama-cloud-key-1
+      remoteRef:
+        key: platform/cloud-providers
+        property: ollama-cloud-key-1
+    - secretKey: ollama-cloud-key-2
+      remoteRef:
+        key: platform/cloud-providers
+        property: ollama-cloud-key-2
+    - secretKey: ollama-cloud-key-3
+      remoteRef:
+        key: platform/cloud-providers
+        property: ollama-cloud-key-3
