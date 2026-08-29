@@ -130,6 +130,16 @@ spec:
                 secretKeyRef:
                   name: litellm-credentials
                   key: aws-bedrock-secret-access-key
+            - name: AZURE_OPENAI_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: azure-openai-endpoint
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: azure-openai-api-key
           envFrom:
             - configMapRef:
                 name: phi3-financial-prompt

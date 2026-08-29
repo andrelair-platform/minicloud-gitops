@@ -191,6 +191,17 @@ data:
           aws_secret_access_key: os.environ/AWS_BEDROCK_SECRET_ACCESS_KEY
           aws_region_name: eu-west-1
 
+      # ── AZURE OPENAI (EU / Sweden Central — story #304) ────────────────────
+      # gpt-4.1-mini, Standard regional deployment = EU residency + contractual
+      # no-training → governance class P2/Confidential. Account minicloud-openai
+      # (OpenTofu in minicloud-cloud). Cost = tokens (Standard, no PTU).
+      - model_name: azure-gpt-4.1-mini
+        litellm_params:
+          model: azure/gpt-4.1-mini
+          api_base: os.environ/AZURE_OPENAI_ENDPOINT
+          api_key: os.environ/AZURE_OPENAI_API_KEY
+          api_version: "2024-10-21"
+
     router_settings:
       routing_strategy: least-busy
       num_retries: 2
