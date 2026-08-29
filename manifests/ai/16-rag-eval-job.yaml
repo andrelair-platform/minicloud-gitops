@@ -62,9 +62,9 @@ spec:
             - name: EVAL_FAST_MODE
               value: "true"
             - name: JUDGE_MODEL
-              value: mistral-large
+              value: tier-standard   # intent alias → mistral-large (EU) — #314
             - name: GENERATION_MODEL
-              value: mistral-small
+              value: tier-economy    # intent alias → mistral-small (EU) — #314
             - name: EVAL_WORKERS
               value: "1"
             - name: FAITHFULNESS_THRESHOLD
