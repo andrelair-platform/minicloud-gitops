@@ -2,6 +2,10 @@
 # PostgreSQL credentials for the ai namespace (Open WebUI + LiteLLM).
 # Vault KV path: platform/ai-postgresql
 # Keys: postgres-password (superuser), password (aiplatform user)
+#
+# NOTE: litellm-credentials (below) also sources the cloud-provider keys,
+# incl. ollama-cloud-key-1/2/3 (Ollama Cloud generation, round-robin) for
+# Retrieva — see RTV-03.
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
