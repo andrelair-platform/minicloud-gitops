@@ -179,6 +179,18 @@ data:
           api_base: https://ollama.com/v1
           api_key: os.environ/OLLAMA_CLOUD_KEY_3
 
+      # ── AWS BEDROCK (EU-resident, enterprise-governed — story #303) ────────
+      # Mistral Large on Bedrock eu-west-1: EU jurisdiction + contractual
+      # no-training → governance class P2/Confidential (see docs/ai-governance/
+      # model-governance-matrix.md). Runtime IAM user litellm-bedrock
+      # (bedrock:InvokeModel only). Cost = tokens on-demand.
+      - model_name: bedrock-mistral-large
+        litellm_params:
+          model: bedrock/mistral.mistral-large-2402-v1:0
+          aws_access_key_id: os.environ/AWS_BEDROCK_ACCESS_KEY_ID
+          aws_secret_access_key: os.environ/AWS_BEDROCK_SECRET_ACCESS_KEY
+          aws_region_name: eu-west-1
+
     router_settings:
       routing_strategy: least-busy
       num_retries: 2

@@ -120,6 +120,16 @@ spec:
                 secretKeyRef:
                   name: litellm-credentials
                   key: ollama-cloud-key-3
+            - name: AWS_BEDROCK_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: aws-bedrock-access-key-id
+            - name: AWS_BEDROCK_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: aws-bedrock-secret-access-key
           envFrom:
             - configMapRef:
                 name: phi3-financial-prompt
