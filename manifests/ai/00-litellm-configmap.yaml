@@ -6,6 +6,18 @@ metadata:
 data:
   config.yaml: |
     model_list:
+      # ── SENSITIVITY ROUTING (story #305) — model_info.access_group ─────────
+      # Each model is tagged with the sensitivity tiers it MAY serve, per
+      # docs/ai-governance/model-governance-matrix.md. Virtual keys (#306) then
+      # restrict a caller to a tier via `models: ["<group>"]`:
+      #   onprem = P3/Restricted (on-cluster only) · eu = P2/Confidential (EU
+      #   residency) · us = P1/Internal (US enterprise). Models with NO
+      #   access_group are P0/Public-ONLY (untrusted/free/CN: groq, nvidia,
+      #   hf, ollama-cloud, deepseek-CN) — reachable only by unrestricted keys.
+      # Access_group is per-DEPLOYMENT: e.g. phi3-financial has a Groq backend
+      # (untagged→P0) AND a vLLM backend (onprem) — an "onprem" key only hits
+      # the vLLM one. PII is masked globally before any cloud call (Presidio
+      # guardrail default_on, below).
       # ── phi3-financial — domain-restricted AI financial assistant ─────────
       # System prompt injected at request time by LangfusePromptHandler.
       # Two backends registered under the same virtual name; LiteLLM routes
@@ -24,6 +36,8 @@ data:
           api_base: http://vllm.ai.svc.cluster.local:8000/v1
           api_key: none
           weight: 1
+        model_info:
+          access_group: ["onprem", "eu", "us"]
 
       # deepseek-r1:7b — cloud reasoning specialist (DeepSeek API)
       - model_name: deepseek-r1:7b
@@ -40,6 +54,8 @@ data:
           model: openai/microsoft/Phi-3-mini-4k-instruct
           api_base: http://vllm.ai.svc.cluster.local:8000/v1
           api_key: none
+        model_info:
+          access_group: ["onprem", "eu", "us"]
 
       # ── AGENT RUNTIMES ────────────────────────────────────────────────────
       # research-agent: single ReAct agent (LangGraph), fast, simple queries.
@@ -48,6 +64,8 @@ data:
           model: openai/research-agent
           api_base: http://minicloud-agent.ai.svc.cluster.local:8080/v1
           api_key: none
+        model_info:
+          access_group: ["onprem", "eu", "us"]
 
       # deep-research-agent: three-agent CrewAI crew (Researcher → Analyst →
       # Compliance Checker). Use for complex advisory tasks that need synthesis
@@ -57,6 +75,8 @@ data:
           model: openai/deep-research-agent
           api_base: http://minicloud-crew-agent.ai.svc.cluster.local:8081/v1
           api_key: none
+        model_info:
+          access_group: ["onprem", "eu", "us"]
 
       # ── EMBEDDINGS ────────────────────────────────────────────────────────
       # text-embedding-3-small — OpenAI 1536-dim cloud embedding model.
@@ -65,6 +85,8 @@ data:
         litellm_params:
           model: openai/text-embedding-3-small
           api_key: os.environ/OPENAI_API_KEY
+        model_info:
+          access_group: ["us"]
 
       # mistral-embed — Mistral 1024-dim (= dimension bge-m3), fort multilingue FR.
       # Utilisé par Retrieva (remplace l'Ollama bge-m3 local, drop du cluster).
@@ -72,6 +94,8 @@ data:
         litellm_params:
           model: mistral/mistral-embed
           api_key: os.environ/MISTRAL_API_KEY
+        model_info:
+          access_group: ["eu", "us"]
 
       # ── CLOUD FALLBACK ────────────────────────────────────────────────────
       - model_name: groq-fallback
@@ -88,22 +112,30 @@ data:
         litellm_params:
           model: mistral/mistral-large-latest
           api_key: os.environ/MISTRAL_API_KEY
+        model_info:
+          access_group: ["eu", "us"]
 
       - model_name: mistral-small
         litellm_params:
           model: mistral/mistral-small-latest
           api_key: os.environ/MISTRAL_API_KEY
+        model_info:
+          access_group: ["eu", "us"]
 
       # ── CLOUD MODELS (premium + standard tiers via virtual key allowlist) ──
       - model_name: gpt-4o
         litellm_params:
           model: openai/gpt-4o
           api_key: os.environ/OPENAI_API_KEY
+        model_info:
+          access_group: ["us"]
 
       - model_name: gpt-4o-mini
         litellm_params:
           model: openai/gpt-4o-mini
           api_key: os.environ/OPENAI_API_KEY
+        model_info:
+          access_group: ["us"]
 
       # Hugging Face Serverless Inference via featherless-ai (free tier)
       - model_name: hf-qwen
@@ -123,22 +155,30 @@ data:
         litellm_params:
           model: anthropic/claude-3-5-sonnet-20241022
           api_key: os.environ/ANTHROPIC_API_KEY
+        model_info:
+          access_group: ["us"]
 
       - model_name: claude-haiku
         litellm_params:
           model: anthropic/claude-3-haiku-20240307
           api_key: os.environ/ANTHROPIC_API_KEY
+        model_info:
+          access_group: ["us"]
 
       # Google Gemini 2.5 Flash
       - model_name: gemini-2.0-flash
         litellm_params:
           model: gemini/gemini-2.5-flash
           api_key: os.environ/GEMINI_API_KEY
+        model_info:
+          access_group: ["us"]
 
       - model_name: gemini-1.5-pro
         litellm_params:
           model: gemini/gemini-2.5-flash
           api_key: os.environ/GEMINI_API_KEY
+        model_info:
+          access_group: ["us"]
 
       # ── NVIDIA NIM (build.nvidia.com — OpenAI-compatible, free inference tier) ─
       - model_name: nvidia-nemotron-70b
@@ -190,6 +230,8 @@ data:
           aws_access_key_id: os.environ/AWS_BEDROCK_ACCESS_KEY_ID
           aws_secret_access_key: os.environ/AWS_BEDROCK_SECRET_ACCESS_KEY
           aws_region_name: eu-west-1
+        model_info:
+          access_group: ["eu", "us"]
 
       # ── AZURE OPENAI (EU / Sweden Central — story #304) ────────────────────
       # gpt-4.1-mini, Standard regional deployment = EU residency + contractual
@@ -201,6 +243,8 @@ data:
           api_base: os.environ/AZURE_OPENAI_ENDPOINT
           api_key: os.environ/AZURE_OPENAI_API_KEY
           api_version: "2024-10-21"
+        model_info:
+          access_group: ["eu", "us"]
 
     router_settings:
       routing_strategy: least-busy

@@ -47,6 +47,9 @@
 | **P1 — Internal** | + US enterprise (OpenAI, Anthropic, Gemini-paid) |
 | **P0 — Public** | any, incl. cheap/free (Groq, NVIDIA-free, HF, Ollama Cloud, DeepSeek) |
 
+
+**Enforcement (#305, LIVE):** each model carries `model_info.access_group` in the LiteLLM config (`onprem`/`eu`/`us`; untagged = P0-only). A virtual key scoped to `models: ["onprem"]` can only reach P3-safe on-cluster models, `["eu"]` only EU models, etc. (key scoping = #306). Presidio PII masking is `default_on` globally → PII is masked before any cloud call regardless of class.
+
 **Hard blocks:** DeepSeek-CN and any "uncertain-terms" free tier are **never** eligible for P1+. A Presidio PII hit downgrades routing to on-cluster.
 
 ## 4. Compliance mapping
