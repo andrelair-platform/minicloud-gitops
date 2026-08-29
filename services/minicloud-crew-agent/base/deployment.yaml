@@ -49,9 +49,9 @@ spec:
             - name: RAG_INGEST_URL
               value: "http://rag-ingest.ai.svc.cluster.local:8001"
             - name: CREW_SMALL_MODEL
-              value: "mistral-small"
+              value: "tier-economy"   # intent alias → mistral-small (EU) — #314
             - name: CREW_LARGE_MODEL
-              value: "mistral-large"
+              value: "tier-standard"  # intent alias → mistral-large (EU) — #314
             - name: CREW_MAX_ITER
               value: "8"
           resources:

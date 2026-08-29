@@ -46,7 +46,7 @@ spec:
             # issue #310). EU residency keeps restricted-document (P3) embeddings
             # in the EU per the governance matrix. Qdrant was empty → no re-embed.
             - name: EMBED_MODEL
-              value: "mistral-embed"
+              value: "embeddings"   # intent alias → mistral-embed (EU, 1024-dim) — #314
             - name: EMBED_DIM
               value: "1024"
           securityContext:

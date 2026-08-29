@@ -54,7 +54,7 @@ spec:
                 - name: SAMPLING_WINDOW_MINUTES
                   value: "15"
                 - name: JUDGE_MODEL
-                  value: mistral-large
+                  value: tier-standard   # intent alias → mistral-large (EU) — #314
                 - name: LITELLM_BASE_URL
                   value: "http://litellm.ai.svc.cluster.local:4000"
                 - name: OPENWEBUI_BASE_URL

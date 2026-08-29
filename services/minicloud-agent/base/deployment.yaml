@@ -49,7 +49,7 @@ spec:
             - name: RAG_INGEST_URL
               value: "http://rag-ingest.ai.svc.cluster.local:8001"
             - name: AGENT_DEFAULT_MODEL
-              value: "mistral-small"
+              value: "tier-economy"   # intent alias → mistral-small (EU) — #314
             - name: AGENT_MAX_ITERATIONS
               value: "6"
           resources:
