@@ -87,7 +87,12 @@ spec:
             - name: qdrant-storage
               mountPath: /qdrant/storage
   volumeClaimTemplates:
-    - metadata:
+    # apiVersion/kind/volumeMode sont défaultés par k8s à la création → sans eux
+    # dans git, ArgoCD voit un diff permanent sur le StatefulSet (jamais Synced →
+    # backoff selfHeal). Les déclarer explicitement fait matcher live=git.
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: qdrant-storage
         labels:
           recurring-job-group.longhorn.io/daily-snapshot: enabled
@@ -95,6 +100,7 @@ spec:
       spec:
         accessModes: ["ReadWriteOnce"]
         storageClassName: longhorn
+        volumeMode: Filesystem
         resources:
           requests:
             storage: 2Gi
