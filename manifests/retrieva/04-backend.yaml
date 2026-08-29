@@ -18,6 +18,8 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        runAsUser: 1001        # image user `expressjs` (uid 1001) — non-numeric name needs explicit UID
+        fsGroup: 1001
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: backend
