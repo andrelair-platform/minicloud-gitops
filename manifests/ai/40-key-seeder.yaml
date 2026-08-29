@@ -55,12 +55,18 @@ spec:
               done
               echo "LiteLLM ready."
 
+              # MODELS = sensitivity tiers a team may reach (access_group from
+              # the governance matrix, story #305). Scoping teams here is what
+              # ENFORCES the routing policy: a team NOT granted the untrusted
+              # P0 providers (groq/nvidia/hf/ollama-cloud/deepseek-CN) can never
+              # send data to them → confidential data can't leak to CN/free tiers.
               seed_team() {
                 TEAM_ID="$1"
                 ALIAS="$2"
                 TPM="$3"
                 RPM="$4"
                 BUDGET="$5"
+                MODELS="$6"
 
                 STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
                   "${BASE_URL}/team/info?team_id=${TEAM_ID}" \
@@ -71,23 +77,28 @@ spec:
                   curl -sf -X POST "${BASE_URL}/team/update" \
                     -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
                     -H "Content-Type: application/json" \
-                    -d "{\"team_id\":\"${TEAM_ID}\",\"tpm_limit\":${TPM},\"rpm_limit\":${RPM},\"max_budget\":${BUDGET},\"budget_duration\":\"30d\"}" \
+                    -d "{\"team_id\":\"${TEAM_ID}\",\"tpm_limit\":${TPM},\"rpm_limit\":${RPM},\"max_budget\":${BUDGET},\"budget_duration\":\"30d\",\"models\":${MODELS}}" \
                     > /dev/null
                 else
                   echo "Creating team: ${TEAM_ID}"
                   curl -sf -X POST "${BASE_URL}/team/new" \
                     -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
                     -H "Content-Type: application/json" \
-                    -d "{\"team_id\":\"${TEAM_ID}\",\"team_alias\":\"${ALIAS}\",\"tpm_limit\":${TPM},\"rpm_limit\":${RPM},\"max_budget\":${BUDGET},\"budget_duration\":\"30d\"}" \
+                    -d "{\"team_id\":\"${TEAM_ID}\",\"team_alias\":\"${ALIAS}\",\"tpm_limit\":${TPM},\"rpm_limit\":${RPM},\"max_budget\":${BUDGET},\"budget_duration\":\"30d\",\"models\":${MODELS}}" \
                     > /dev/null
                 fi
-                echo "  tpm=${TPM} rpm=${RPM} budget=\$${BUDGET}/30d"
+                echo "  tpm=${TPM} rpm=${RPM} budget=\$${BUDGET}/30d models=${MODELS}"
               }
 
-              seed_team "open-webui"   "Open WebUI Users"       100000  60  10
-              seed_team "phi3-ci"      "phi3-financial CI Eval" 200000 120  20
-              seed_team "agents"       "Agent Runtimes"         150000  90  15
-              seed_team "rag-pipeline" "RAG Ingest Pipeline"     50000  30   5
+              # Governed teams: onprem+eu+us tiers only (never untrusted P0).
+              GOVERNED='["onprem","eu","us"]'
+              # phi3-ci uses synthetic/public test data only → may hit any model.
+              PUBLIC_OK='["all-proxy-models"]'
+
+              seed_team "open-webui"   "Open WebUI Users"       100000  60  10 "${GOVERNED}"
+              seed_team "phi3-ci"      "phi3-financial CI Eval" 200000 120  20 "${PUBLIC_OK}"
+              seed_team "agents"       "Agent Runtimes"         150000  90  15 "${GOVERNED}"
+              seed_team "rag-pipeline" "RAG Ingest Pipeline"     50000  30   5 "${GOVERNED}"
 
               echo "Team seeding complete."
           resources:
