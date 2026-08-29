@@ -252,6 +252,22 @@ data:
       timeout: 300
       cooldown_time: 60
       allowed_fails: 3
+      # ── INTENT ALIASES (story #314, Option 1) ────────────────────────────
+      # Apps target FUNCTIONAL intent (cost/perf), not hard-coded SKUs. The
+      # complexity/cost choice stays app-driven; the SENSITIVITY axis is still
+      # enforced by each target model's access_group + the caller key's tier
+      # allowlist (an EU/onprem key requesting tier-premium only reaches the EU
+      # premium model — it can't escape to a US one). Defaults point at
+      # EU-resident models so P2/P3 tiers can use every alias while staying
+      # governed. US-only premium (claude/gpt-4o) remain available by name for
+      # P1 apps. model_group_alias maps alias → an existing model_name.
+      model_group_alias:
+        tier-economy: mistral-small        # EU, cheap/fast
+        chat-fast: mistral-small
+        tier-standard: mistral-large       # EU
+        tier-premium: bedrock-mistral-large # EU-resident premium (Bedrock eu-west-1)
+        chat-reasoning: bedrock-mistral-large
+        embeddings: mistral-embed          # EU, 1024-dim
 
     litellm_settings:
       require_auth_for_metrics_endpoint: false
