@@ -1,0 +1,87 @@
+---
+# Retrieva backend (Express/Node). Talks "Azure OpenAI" — pointed at the LiteLLM
+# gateway (Azure-passthrough) with an EU-scoped key + intent aliases → inherits
+# governance/observability/PII/EU-residency (golden-path). Data: on-cluster
+# MongoDB + Redis + shared Qdrant (ai ns).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrieva-backend
+  namespace: retrieva
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: retrieva-backend }
+  template:
+    metadata:
+      labels: { app: retrieva-backend }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: backend
+          image: ghcr.io/andreliar/retrieva/backend:8a70110
+          ports:
+            - { containerPort: 3007, name: http }
+          env:
+            - { name: PORT, value: "3007" }
+            - { name: NODE_ENV, value: "production" }
+            - { name: LOG_LEVEL, value: "info" }
+            # data stores
+            - name: MONGODB_URI
+              valueFrom: { secretKeyRef: { name: retrieva-secrets, key: mongodb-uri } }
+            - name: REDIS_URL
+              valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-url } }
+            - name: REDIS_PASSWORD
+              valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-password } }
+            - { name: QDRANT_URL, value: "http://qdrant.ai.svc.cluster.local:6333" }
+            - name: QDRANT_API_KEY
+              valueFrom: { secretKeyRef: { name: retrieva-secrets, key: qdrant-api-key } }
+            - { name: QDRANT_COLLECTION_NAME, value: "retrieva" }
+            # LLM/embeddings → LiteLLM gateway (Azure-passthrough), EU intent aliases
+            - { name: LLM_PROVIDER, value: "azure_openai" }
+            - { name: EMBEDDING_PROVIDER, value: "azure" }
+            - { name: AZURE_OPENAI_ENDPOINT, value: "http://litellm.ai.svc.cluster.local:4000" }
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom: { secretKeyRef: { name: retrieva-secrets, key: litellm-api-key } }
+            - { name: AZURE_OPENAI_LLM_DEPLOYMENT, value: "tier-premium" }
+            - { name: AZURE_OPENAI_EMBEDDING_DEPLOYMENT, value: "embeddings" }
+            - { name: AZURE_OPENAI_API_VERSION, value: "2024-02-15-preview" }
+            - { name: LLM_MODEL, value: "tier-premium" }
+            - { name: EMBEDDING_MODEL, value: "embeddings" }
+            - { name: JUDGE_LLM_MODEL, value: "tier-standard" }
+            # security
+            - name: JWT_ACCESS_SECRET
+              valueFrom: { secretKeyRef: { name: retrieva-secrets, key: jwt-access-secret } }
+            - name: JWT_REFRESH_SECRET
+              valueFrom: { secretKeyRef: { name: retrieva-secrets, key: jwt-refresh-secret } }
+            - name: ENCRYPTION_KEY
+              valueFrom: { secretKeyRef: { name: retrieva-secrets, key: encryption-key } }
+            - { name: FRONTEND_URL, value: "https://retrieva.devandre.sbs" }
+            - { name: ALLOWED_ORIGINS, value: "https://retrieva.devandre.sbs" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          readinessProbe:
+            httpGet: { path: /health, port: 3007 }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: /health, port: 3007 }
+            initialDelaySeconds: 45
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { cpu: "1", memory: 1Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retrieva-backend
+  namespace: retrieva
+spec:
+  selector: { app: retrieva-backend }
+  ports:
+    - { port: 3007, targetPort: 3007, name: http }

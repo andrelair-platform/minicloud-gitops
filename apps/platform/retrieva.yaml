@@ -1,0 +1,35 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: retrieva
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: manifests/retrieva
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: retrieva
+  # ESO injects 4 defaults into ExternalSecrets → ignore them under SSA
+  # (mandatory per .claude/rules/gitops.md).
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
