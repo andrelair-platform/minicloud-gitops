@@ -1,0 +1,56 @@
+---
+# Grafana dashboard: AI Residency & Governance FinOps (story #307).
+# The DORA/AI-Act observability lens missing from the existing ai-governance
+# (SLO) and ai-roi (spend-by-model/caller) dashboards: traffic & tokens by
+# JURISDICTION TIER + the "% out of EU" KPI. Uses ai:litellm_*_by_tier
+# recording rules (21-ai-residency-rules.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-residency-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  ai-residency.json: |
+    {
+      "title": "AI Platform — Residency & Governance FinOps",
+      "uid": "ai-residency",
+      "tags": ["ai", "governance", "dora"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "time": {"from": "now-24h", "to": "now"},
+      "refresh": "1m",
+      "panels": [
+        {
+          "type": "stat", "title": "% Requests OUT of EU (24h avg)",
+          "gridPos": {"h": 5, "w": 8, "x": 0, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null}, {"color": "yellow", "value": 0.25}, {"color": "red", "value": 0.5}]}}},
+          "targets": [{"expr": "avg_over_time(ai:litellm_out_of_eu_ratio:5m[24h])", "legendFormat": "out-of-EU"}]
+        },
+        {
+          "type": "piechart", "title": "Requests by Jurisdiction Tier (5m rate)",
+          "gridPos": {"h": 5, "w": 8, "x": 8, "y": 0},
+          "targets": [{"expr": "sum by (tier) (ai:litellm_requests_by_tier:rate5m)", "legendFormat": "{{tier}}"}]
+        },
+        {
+          "type": "stat", "title": "EU-safe share (onprem+eu)",
+          "gridPos": {"h": 5, "w": 8, "x": 16, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "thresholds": {"mode": "absolute", "steps": [
+            {"color": "red", "value": null}, {"color": "yellow", "value": 0.5}, {"color": "green", "value": 0.75}]}}},
+          "targets": [{"expr": "sum(ai:litellm_requests_by_tier:rate5m{tier=~\"onprem|eu\"}) / clamp_min(sum(ai:litellm_requests_by_tier:rate5m), 0.0000001)", "legendFormat": "EU-safe"}]
+        },
+        {
+          "type": "timeseries", "title": "Request rate by tier",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+          "targets": [{"expr": "sum by (tier) (ai:litellm_requests_by_tier:rate5m)", "legendFormat": "{{tier}}"}]
+        },
+        {
+          "type": "timeseries", "title": "Output tokens/s by tier (spend proxy)",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+          "fieldConfig": {"defaults": {"unit": "short"}},
+          "targets": [{"expr": "sum by (tier) (ai:litellm_output_tokens_by_tier:rate5m)", "legendFormat": "{{tier}}"}]
+        }
+      ]
+    }

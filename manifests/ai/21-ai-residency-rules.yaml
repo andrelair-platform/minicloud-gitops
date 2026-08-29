@@ -1,0 +1,51 @@
+---
+# Recording rules: classify LiteLLM request/token metrics by GOVERNANCE
+# JURISDICTION TIER (story #307). LiteLLM metrics don't carry the access_group
+# label, so we derive `tier` from the model name (same mapping as the model
+# governance matrix / access_group tags):
+#   onprem = on-cluster (P3) · eu = EU-resident (P2) · us = US enterprise (P1)
+#   untrusted = P0-only free/CN providers (groq/nvidia/hf/ollama-cloud/deepseek)
+# These feed the "AI Residency & Governance FinOps" dashboard (out-of-EU %,
+# traffic/tokens by tier) — the AI-Act/DORA observability lens.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ai-residency-rules
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  groups:
+    - name: ai.residency
+      interval: 60s
+      rules:
+        # requests/s per jurisdiction tier (nested label_replace, longest-match
+        # order: onprem → eu → us → untrusted fallback)
+        - record: ai:litellm_requests_by_tier:rate5m
+          expr: |
+            label_replace(label_replace(label_replace(label_replace(
+              sum by (model) (rate(litellm_proxy_total_requests_metric_total[5m])),
+              "tier", "untrusted", "model", ".*"),
+              "tier", "us",   "model", "(gpt-4o.*|gpt-4\\.1.*|claude-.*|gemini-.*|text-embedding-3.*)"),
+              "tier", "eu",   "model", "(mistral-.*|bedrock-.*|azure-.*)"),
+              "tier", "onprem","model", "(phi3-.*|research-agent|deep-research-agent)")
+
+        # output tokens/s per tier (proxy for spend distribution by residency)
+        - record: ai:litellm_output_tokens_by_tier:rate5m
+          expr: |
+            label_replace(label_replace(label_replace(label_replace(
+              sum by (model) (rate(litellm_output_tokens_metric_total[5m])),
+              "tier", "untrusted", "model", ".*"),
+              "tier", "us",   "model", "(gpt-4o.*|gpt-4\\.1.*|claude-.*|gemini-.*|text-embedding-3.*)"),
+              "tier", "eu",   "model", "(mistral-.*|bedrock-.*|azure-.*)"),
+              "tier", "onprem","model", "(phi3-.*|research-agent|deep-research-agent)")
+
+        # % of requests leaving the EU (us + untrusted) — the DORA residency KPI.
+        # EU-safe = onprem + eu.
+        - record: ai:litellm_out_of_eu_ratio:5m
+          expr: |
+            (
+              sum(ai:litellm_requests_by_tier:rate5m{tier=~"us|untrusted"})
+              /
+              clamp_min(sum(ai:litellm_requests_by_tier:rate5m), 0.0000001)
+            )
