@@ -1,0 +1,69 @@
+---
+# Red-team CI gate (story #312). ArgoCD PostSync hook — runs the adversarial
+# suite against the live LiteLLM gateway after every `ai` sync, mirroring the
+# rag-eval pattern (warn-not-block: threshold breach logs a warning + exit 0,
+# only a hard crash fails the hook). Verifies LlamaGuard/Presidio catch known
+# attacks. CPU-free, stdlib-only harness (no image build, no pip).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redteam-gate
+  namespace: ai
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: redteam-gate
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redteam
+          image: docker.io/library/python:3.12-slim
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: LITELLM_BASE_URL
+              value: "http://litellm.ai.svc.cluster.local:4000"
+            - name: LITELLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-credentials
+                  key: master-key
+            - name: REDTEAM_MODEL
+              value: "phi3-financial"
+            - name: REDTEAM_THRESHOLD
+              value: "0.85"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Waiting for LiteLLM..."
+              until python3 -c "import urllib.request,sys; urllib.request.urlopen('${LITELLM_BASE_URL}/health/readiness',timeout=5)" 2>/dev/null; do sleep 5; done
+              echo "Running red-team suite:"
+              python3 /suite/redteam.py
+          volumeMounts:
+            - name: suite
+              mountPath: /suite
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: suite
+          configMap:
+            name: redteam-suite
