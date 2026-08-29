@@ -8,6 +8,35 @@ metadata:
     release: kps
 spec:
   groups:
+    - name: node-availability
+      rules:
+        # A node that stops being Ready (kubelet stops posting → Ready=Unknown, or
+        # Ready=False) is DOWN. CRITICAL: on 2026-08-28 fast-skunk powered off and
+        # stranded the ArgoCD application-controller (StatefulSet) → ArgoCD stopped
+        # reconciling for ~24h, unnoticed. The built-in KubeNodeNotReady is
+        # severity=warning (→ in-cluster logger only); this critical variant routes
+        # to email + Slack so a node-down is never silent again.
+        - alert: NodeDown
+          expr: |
+            kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            runbook_url: "https://andrelair-platform.github.io/minicloud-platform-docs/docs/runbooks/node-not-ready"
+            summary: "Node {{ $labels.node }} is DOWN (NotReady/Unknown) for >10m"
+            description: |
+              Node {{ $labels.node }} has not reported Ready for over 10 minutes
+              (kubelet stopped posting status, or the machine is powered off).
+              A down node can strand StatefulSet pods (e.g. the ArgoCD
+              application-controller) and freeze GitOps reconciliation.
+
+              Check & recover:
+                kubectl get node {{ $labels.node }}
+                ping <node-ip>                                            # powered off / off-network?
+                ssh controller "maas ktayl machine power-on <system_id>"  # if off
+                ssh <node> "sudo systemctl status k3s-agent"              # if up
+
     - name: node-scheduling
       rules:
         - alert: NodeSchedulingDisabled
