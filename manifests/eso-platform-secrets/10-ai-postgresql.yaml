@@ -114,3 +114,11 @@ spec:
       remoteRef:
         key: platform/cloud-providers
         property: aws-bedrock-secret-access-key
+    - secretKey: azure-openai-endpoint
+      remoteRef:
+        key: platform/cloud-providers
+        property: azure-openai-endpoint
+    - secretKey: azure-openai-api-key
+      remoteRef:
+        key: platform/cloud-providers
+        property: azure-openai-api-key
