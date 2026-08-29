@@ -13,6 +13,17 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: cloudflare-tunnel
+  # ESO's webhook injects 4 defaults into ExternalSecrets at creation that are
+  # never in git → with ServerSideApply the app is permanently OutOfSync unless
+  # ignored (see .claude/rules/gitops.md — mandatory for any ExternalSecret).
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
   syncPolicy:
     automated:
       prune: true
@@ -20,3 +31,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
