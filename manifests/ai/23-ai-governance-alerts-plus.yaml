@@ -1,0 +1,76 @@
+---
+# Governance/compliance alerting (story #308). Complements the existing
+# ai-governance-alerts (spend-overrun/adoption). Compliance-critical alerts use
+# severity=critical → Alertmanager routes them to email + Slack (same path as
+# NodeDown); operational ones stay warning. Uses LiteLLM metrics + the #307
+# residency recording rules.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ai-governance-alerts-plus
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  groups:
+    - name: ai.governance.compliance
+      rules:
+        # PII masking is THE compliance control (GDPR/DORA). If the Presidio
+        # guardrail starts erroring, PII could reach a cloud provider unmasked.
+        - alert: AIPresidioGuardrailErrors
+          expr: |
+            sum(increase(litellm_guardrail_errors_total[10m])) > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Presidio PII guardrail is erroring — PII may reach providers unmasked"
+            description: >-
+              litellm_guardrail_errors_total increased over the last 10m. The
+              Presidio PII-masking guardrail is the GDPR/DORA control that
+              anonymises prompts before any cloud call. Investigate
+              presidio-analyzer/anonymizer in the ai namespace immediately.
+
+        # Sustained majority of traffic leaving the EU — residency signal for a
+        # French insurance IS (legitimate for P0 public, but a sustained high
+        # ratio warrants a look at whether confidential flows are mis-routed).
+        - alert: AIOutOfEURatioHigh
+          expr: ai:litellm_out_of_eu_ratio:5m > 0.5
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Over 50% of AI traffic is leaving the EU (30m)"
+            description: >-
+              {{ $value | humanizePercentage }} of LiteLLM requests are routed to
+              us/untrusted (non-EU) providers. Confirm this is public (P0) data;
+              confidential/PII flows must stay on onprem/eu tiers.
+
+    - name: ai.governance.reliability
+      rules:
+        # SLO: p95 end-to-end latency across all models.
+        - alert: AILatencySLOBreach
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(litellm_request_total_latency_metric_bucket[5m])) by (le)
+            ) > 10
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "AI gateway p95 latency > 10s for 10m"
+            description: "p95 end-to-end LiteLLM latency is {{ $value | humanize }}s. Check provider health / fallbacks."
+
+        # Provider error / fallback storm.
+        - alert: AIProviderErrorSpike
+          expr: |
+            sum(rate(litellm_proxy_failed_requests_metric_total[5m]))
+            /
+            clamp_min(sum(rate(litellm_proxy_total_requests_metric_total[5m])), 0.0001)
+            > 0.2
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "AI gateway error rate > 20% for 10m (provider outage / fallback storm)"
+            description: "{{ $value | humanizePercentage }} of LiteLLM requests are failing. Check provider status and router fallbacks."
