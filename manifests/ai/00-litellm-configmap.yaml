@@ -79,8 +79,8 @@ data:
           access_group: ["onprem", "eu", "us"]
 
       # ── EMBEDDINGS ────────────────────────────────────────────────────────
-      # text-embedding-3-small — OpenAI 1536-dim cloud embedding model.
-      # Used by rag-ingest: 359 chunks embed in ~3s.
+      # text-embedding-3-small — OpenAI 1536-dim cloud embedding model (US/P1).
+      # (rag-ingest now uses mistral-embed EU/1024-dim — see #310.)
       - model_name: text-embedding-3-small
         litellm_params:
           model: openai/text-embedding-3-small

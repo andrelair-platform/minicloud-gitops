@@ -41,10 +41,14 @@ spec:
                 secretKeyRef:
                   name: qdrant-api-key
                   key: api-key
+            # mistral-embed (EU, 1024-dim) via LiteLLM — replaces nomic-embed-text
+            # which was an Ollama model, dropped from the cluster (broke embeddings,
+            # issue #310). EU residency keeps restricted-document (P3) embeddings
+            # in the EU per the governance matrix. Qdrant was empty → no re-embed.
             - name: EMBED_MODEL
-              value: "nomic-embed-text"
+              value: "mistral-embed"
             - name: EMBED_DIM
-              value: "768"
+              value: "1024"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
