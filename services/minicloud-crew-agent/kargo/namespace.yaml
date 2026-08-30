@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minicloud-crew-agent
+  labels:
+    # Lets the Kargo Project controller adopt this namespace as its project.
+    kargo.akuity.io/project: "true"

@@ -54,12 +54,12 @@ If any file is missing → STOP. Generate the missing artefact first:
 Draft      → story being written, not ready to implement
 Ready      → story approved, ACs finalized, waiting for sprint slot
 In Progress → implementation started, branch open
-Done       → PR merged to staging, all ACs checked off
+Done       → PR merged to main (deployed to dev), all ACs checked off
 ```
 
 **Rules:**
 1. Before opening a feature branch: set `status: In Progress` in the story `.md` file
-2. On PR merge to staging: set `status: Done`, check off all `- [ ] AC-N:` items in the story file
+2. On PR merge to main: set `status: Done`, check off all `- [ ] AC-N:` items in the story file
 3. Update `SPRINT-OVERVIEW.md` tracker table on both state changes
 4. Commit the story status update in the same PR as the implementation (not a separate PR)
 

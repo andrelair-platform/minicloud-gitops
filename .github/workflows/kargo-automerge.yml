@@ -1,0 +1,49 @@
+name: Kargo dev auto-merge
+
+# Kargo's `dev` Stage opens a PR (labelled `automerge`) that bumps a dev overlay
+# image tag. dev overlays are NOT CODEOWNERS-gated, so these can merge without a
+# human — this workflow does it, but ONLY after proving the PR touches nothing but
+# dev overlays. prod/base/apps/kargo changes can never ride an `automerge` label.
+#
+# This is inert until a service's dev Stage auto-promotion is enabled (safe posture:
+# no `automerge` PRs exist until you opt a service in). Prod promotion PRs are NOT
+# labelled `automerge` and always fall through to the CODEOWNERS gate.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    if: contains(github.event.pull_request.labels.*.name, 'automerge')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard — PR must touch only dev overlays
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          FILES=$(gh pr view "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" --json files -q '.files[].path')
+          echo "Changed files:"; echo "$FILES"
+          # Every changed path must live under services/<svc>/minicloud-1/dev/
+          BAD=$(echo "$FILES" | grep -vE '^services/[^/]+/minicloud-1/dev/' || true)
+          if [ -n "$BAD" ]; then
+            echo "::error::Refusing auto-merge — PR touches non-dev paths:"
+            echo "$BAD"
+            exit 1
+          fi
+          echo "All changes are dev-overlay only — safe to auto-merge."
+
+      - name: Merge
+        env:
+          # Org token (same one CI uses) can bypass branch protection on dev-only PRs.
+          GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --merge --admin --delete-branch

@@ -1,0 +1,55 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: dev
+  namespace: minicloud-plane
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: minicloud-plane
+      sources:
+        direct: true
+  promotionTemplate:
+    spec:
+      vars:
+        - name: gitopsRepo
+          value: https://github.com/andrelair-platform/minicloud-gitops.git
+      steps:
+        - uses: git-clone
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            checkout:
+              - branch: main
+                path: ./repo
+        - uses: kustomize-set-image
+          as: set-image
+          config:
+            path: ./repo/services/minicloud-plane/minicloud-1/dev
+            images:
+              - image: harbor.10.0.0.200.nip.io/library/minicloud-plane
+                tag: '${{ imageFrom("ghcr.io/andrelair-platform/minicloud-plane").Tag }}'
+        - uses: git-commit
+          as: commit
+          config:
+            path: ./repo
+            message: 'kargo(minicloud-plane): promote image ${{ imageFrom("ghcr.io/andrelair-platform/minicloud-plane").Tag }} to dev'
+        - uses: git-push
+          as: push
+          config:
+            path: ./repo
+            generateTargetBranch: true
+        - uses: git-open-pr
+          as: open-pr
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            sourceBranch: ${{ outputs.push.branch }}
+            targetBranch: main
+            provider: github
+            title: 'kargo(minicloud-plane): promote to dev — ${{ imageFrom("ghcr.io/andrelair-platform/minicloud-plane").Tag }}'
+            labels: [kargo, env-dev, automerge]
+        - uses: git-wait-for-pr
+          as: wait-pr
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            prNumber: ${{ outputs['open-pr'].pr.id }}

@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Supporting manifests for the Kargo control plane (installed by apps/platform/kargo.yaml
+# alongside the Helm chart). The `kargo` namespace itself is created by ArgoCD
+# (CreateNamespace=true), so it is intentionally NOT declared here.
+resources:
+  - certificate.yaml
+  - ingress.yaml

@@ -1,5 +1,6 @@
 # Production overlay paths — any PR touching prod requires @AndreLair review.
-# Staging paths — require review but not from a separate reviewer list.
+# This IS the promotion gate: Kargo opens the prod PR, CODEOWNERS approves it.
+# Standard = 2 environments only: dev (auto) + prod (CODEOWNERS-gated PR). No staging.
 # Platform Helm values — all require @AndreLair review.
 
 # Production overlays (all services)
@@ -10,8 +11,10 @@ services/*/minicloud-1/prod/  @AndreLair
 # Gate it too or base becomes a prod-review bypass.
 services/*/base/              @AndreLair
 
-# Staging overlays — third gate for the services that opt into it (CERT-1, platform-demo)
-services/*/minicloud-1/staging/  @AndreLair
+# Kargo Project/Warehouse/Stage manifests define the promotion machinery — gate them
+# (a Stage's promotionTemplate can write to any overlay, so it needs review too).
+services/*/kargo/             @AndreLair
+manifests/kargo/              @AndreLair
 
 # ArgoCD Application manifests — these DEFINE the deploy gate (syncPolicy,
 # targetRevision, source path). Changing one can bypass every other control,

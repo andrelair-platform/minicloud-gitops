@@ -9,7 +9,7 @@ resources:
 - httpscaledobject.yaml
 - interceptor-service.yaml
 # Prod pulls from ghcr.io (public, free, off the controller disk) — hybrid registry:
-# dev/staging use Harbor; prod uses ghcr. Promote by bumping newTag to an immutable
+# dev uses Harbor; prod uses ghcr. Promote by bumping newTag to an immutable
 # SHA via a CODEOWNERS-gated PR; ArgoCD then auto-syncs (git-gated automated prod).
 images:
 - name: harbor.10.0.0.200.nip.io/library/platform-demo   # matches base image name

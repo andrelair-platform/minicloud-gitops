@@ -1,0 +1,60 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: prod
+  namespace: minicloud-agent
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: minicloud-agent
+      sources:
+        # The multi-stage gate: only freight already live in `dev` is promotable here.
+        stages:
+          - dev
+  promotionTemplate:
+    spec:
+      vars:
+        - name: gitopsRepo
+          value: https://github.com/andrelair-platform/minicloud-gitops.git
+      steps:
+        - uses: git-clone
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            checkout:
+              - branch: main
+                path: ./repo
+        - uses: kustomize-set-image
+          as: set-image
+          config:
+            # prod overlay keeps its own newName (ghcr) — we only bump the tag,
+            # so the kustomize image key is the shared base name.
+            path: ./repo/services/minicloud-agent/minicloud-1/prod
+            images:
+              - image: harbor.10.0.0.200.nip.io/library/minicloud-agent
+                tag: '${{ imageFrom("ghcr.io/andrelair-platform/minicloud-agent").Tag }}'
+        - uses: git-commit
+          as: commit
+          config:
+            path: ./repo
+            message: 'kargo(minicloud-agent): promote image ${{ imageFrom("ghcr.io/andrelair-platform/minicloud-agent").Tag }} to prod'
+        - uses: git-push
+          as: push
+          config:
+            path: ./repo
+            generateTargetBranch: true
+        - uses: git-open-pr
+          as: open-pr
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            sourceBranch: ${{ outputs.push.branch }}
+            targetBranch: main
+            provider: github
+            title: 'kargo(minicloud-agent): promote to PROD — ${{ imageFrom("ghcr.io/andrelair-platform/minicloud-agent").Tag }}'
+            description: 'Promotion opened by Kargo. Requires CODEOWNERS approval (this is the prod gate). ArgoCD auto-syncs prod once merged.'
+            labels: [kargo, env-prod]
+        - uses: git-wait-for-pr
+          as: wait-pr
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            prNumber: ${{ outputs['open-pr'].pr.id }}

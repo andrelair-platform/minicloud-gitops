@@ -5,4 +5,5 @@ resources:
   - service.yaml
 # images: block is intentionally absent from base.
 # Each overlay pins its own image tag so that a CI push to dev
-# only promotes the dev overlay — staging and prod require explicit PRs.
+# only promotes the dev overlay — prod is promoted via a CODEOWNERS-gated PR.
+# Standard = 2 environments: dev + prod.
