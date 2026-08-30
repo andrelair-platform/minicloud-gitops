@@ -61,7 +61,7 @@ spec:
             summary: "AI gateway p95 latency > 10s for 10m"
             description: "p95 end-to-end LiteLLM latency is {{ $value | humanize }}s. Check provider health / fallbacks."
 
-        # Provider error / fallback storm.
+        # Provider error / fallback storm (GLOBAL — catches a broad outage).
         - alert: AIProviderErrorSpike
           expr: |
             sum(rate(litellm_proxy_failed_requests_metric_total[5m]))
@@ -74,3 +74,35 @@ spec:
           annotations:
             summary: "AI gateway error rate > 20% for 10m (provider outage / fallback storm)"
             description: "{{ $value | humanizePercentage }} of LiteLLM requests are failing. Check provider status and router fallbacks."
+
+        # PER-MODEL rate-limit saturation — fires even when the GLOBAL rate is
+        # healthy (e.g. a free-tier model like ollama-cloud saturating while prod
+        # EU traffic is fine). Uses the per-deployment metric with the
+        # exception_status="429" label — the "free-tier chronically saturating"
+        # signal the coarse proxy metric can't see.
+        - alert: AIModelRateLimited
+          expr: |
+            sum by (litellm_model_name) (
+              rate(litellm_deployment_failure_responses_total{exception_status="429"}[10m])
+            ) > 0.05
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Model {{ $labels.litellm_model_name }} sustained 429s (rate-limited)"
+            description: "{{ $labels.litellm_model_name }} is rate-limited ({{ $value | humanize }} 429/s over 15m). Fallback/cooldown are absorbing it, but capacity is thin — add another key or a fallback model to the chain."
+
+        # Circuit breaker tripping repeatedly — a deployment (a specific key) is
+        # cooled down often = it keeps hitting its limit. Direct saturation signal,
+        # independent of how much traffic it carries.
+        - alert: AIDeploymentCoolingDownOften
+          expr: |
+            sum by (litellm_model_name) (
+              increase(litellm_deployment_cooled_down_total[15m])
+            ) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Model {{ $labels.litellm_model_name }} cooled down > 3x in 15m"
+            description: "The router keeps taking {{ $labels.litellm_model_name }} out of rotation (rate-limit/errors). The next key/fallback is covering, but you are one outage from a gap — add capacity."
