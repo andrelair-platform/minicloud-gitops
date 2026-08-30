@@ -39,36 +39,29 @@ and the live canary Rollout + AnalysisTemplate remain the runtime safety brake.
 
 ## One-time bootstrap (before first login)
 
-1. **Admin credentials** — generate a bcrypt password hash + a random token signing
-   key and store them in Vault, then set them on the chart values (or patch the
-   `kargo-api` secret):
+`secret/platform/kargo` is **pre-staged**: `token-signing-key` (generated),
+`git-username` (`AndreLiar`) and `git-token` (copied from the existing
+`GITOPS_TOKEN`) are already set. The `kargo-api` secret (admin hash + signing key)
+is rendered from it by `admin-externalsecret.yaml`, and each service's
+`git-credentials.yaml` renders the Git credential — nothing to wire by hand.
 
-   ```bash
-   # bcrypt hash of your chosen admin password:
-   htpasswd -bnBC 10 "" '<ADMIN_PASSWORD>' | tr -d ':\n' | sed 's/$2y/$2a/'
-   # random signing key:
-   openssl rand -base64 48
-   # store both in Vault (root token from the controller):
-   #   secret/platform/kargo  ->  admin-password-hash, token-signing-key,
-   #                              git-username, git-token
-   ```
+**Only one value is left for you: `admin-password-hash`** (your Kargo UI password).
+Until it is set, admin login is disabled (the API waits — nothing leaks). Set it:
 
-   Put `admin-password-hash` and `token-signing-key` into
-   `apps/platform/kargo.yaml` `api.adminAccount.passwordHash/tokenSigningKey`
-   (the hash is safe to commit; keep the signing key out of git by patching the
-   `kargo-api` secret instead if you prefer).
+```bash
+# bcrypt hash of your chosen admin password (never commit the plaintext):
+HASH=$(htpasswd -bnBC 10 "" '<ADMIN_PASSWORD>' | tr -d ':\n' | sed 's/$2y/$2a/')
+# patch it into the pre-staged Vault secret (root token from the controller):
+VAULT_ROOT=$(ssh controller "cat ~/.vault-root-token")
+vault kv patch secret/platform/kargo admin-password-hash="$HASH"   # or the KV v2 API
+```
 
-2. **Git PAT for opening PRs** — a fine-grained PAT on `andrelair-platform/minicloud-gitops`
-   with `contents:write` + `pull_requests:write`. Store as `git-username` (the bot
-   login) + `git-token` in Vault `secret/platform/kargo`. Each service's
-   `services/<svc>/kargo/git-credentials.yaml` ExternalSecret renders it into the
-   project namespace as a Kargo `git` credential.
+ESO refreshes `kargo-api` within its interval (or delete the ExternalSecret to force
+an immediate re-render); the `kargo-api` pod then serves your login.
 
-3. **ghcr read token (Internal images only)** — reuse `secret/platform/ghcr`
-   (`username`, `token`, `read:packages`). Rendered per project namespace by
-   `image-credentials.yaml` where the prod image package is Internal
-   (minicloud-plane / minicloud-agent / minicloud-crew-agent / retrieva).
-   `platform-demo`'s ghcr package is Public → no image credential.
+**ghcr read token (Internal images only)** is reused from `secret/platform/ghcr`
+(`username`, `token`) by `image-credentials.yaml` for minicloud-plane / -agent /
+-crew-agent. `platform-demo`'s ghcr package is Public → no image credential.
 
 ## Verify after install
 

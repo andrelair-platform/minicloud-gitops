@@ -24,12 +24,11 @@ spec:
             tls:
               enabled: false
               terminatedUpstream: true
-            adminAccount:
-              # Values left empty on purpose — the chart reads the hash + signing key
-              # from the existing `kargo-api` secret rendered by ESO. Set these in
-              # Vault: admin-password-hash (bcrypt) + token-signing-key (random ≥32 chars).
-              passwordHash: ""
-              tokenSigningKey: ""
+            # Admin creds come from the ESO-rendered `kargo-api` secret (Vault
+            # secret/platform/kargo). Setting api.secret.name makes the chart consume
+            # that secret and NOT generate its own — so no hash/signing-key in git.
+            secret:
+              name: kargo-api
             # We manage the Ingress ourselves (manifests/kargo/ingress.yaml) to reuse
             # the minicloud-ca cert + Authentik pattern — disable the chart's Ingress.
             ingress:
