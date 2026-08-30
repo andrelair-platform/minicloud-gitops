@@ -102,9 +102,12 @@ spec:
               GOVERNED="[\"onprem\",\"eu\",\"us\",${ALIASES}]"
               # Prod EU-only: cloud Azure/AWS-Bedrock (EU) reachable; no us/dev-free.
               EU_PROD="[\"onprem\",\"eu\",${ALIASES}]"
-              # Dev free-tier: EU (for embeddings) + dev-free (ollama-cloud, nvidia).
-              # Maximises the free tier in dev; cloud providers stay prod-only.
-              DEV_FREE="[\"onprem\",\"eu\",\"dev-free\",${ALIASES}]"
+              # Dev free-tier: EU (embeddings via mistral-embed, negligible cost) +
+              # the free US models by NAME. LiteLLM team scoping expands the built-in
+              # access groups (onprem/eu/us) but NOT a custom group like "dev-free",
+              # so the free models are granted by explicit model_name. Maximises the
+              # free tier in dev; cloud generation (Bedrock/Azure) stays prod-only.
+              DEV_FREE="[\"onprem\",\"eu\",\"ollama-cloud\",\"nvidia-nemotron-70b\",\"nvidia-deepseek-r1\",${ALIASES}]"
               # phi3-ci uses synthetic/public test data only → may hit any model.
               PUBLIC_OK='["all-proxy-models"]'
 
