@@ -1,0 +1,23 @@
+---
+# Internal cert (minicloud-ca ClusterIssuer) for the public host. Cloudflare
+# terminates TLS at its edge (Universal SSL for retrieva.online); cloudflared
+# → ingress-nginx uses this cert on the internal hop. Issued from the internal
+# CA, so it needs no public DNS resolution — safe to create before the zone is
+# live on Cloudflare.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: retrieva-tls
+spec:
+  secretName: retrieva-tls
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+    - retrieva.online
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
