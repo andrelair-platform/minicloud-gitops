@@ -1,8 +1,8 @@
 ---
-# Dev backend: FREE-TIER AI via the gateway (generation → ollama-cloud, the
-# retrieva-dev LiteLLM team is scoped to the free US models; embeddings stay on
-# the EU mistral-embed alias — negligible cost). Cloud providers (Bedrock/Azure)
-# are prod-only. Own Qdrant collection (retrieva-dev) + dev public host.
+# Dev backend: 100% FREE-TIER AI via the gateway — generation → ollama-cloud,
+# embeddings → nvidia-embed (NVIDIA NIM free, 2048-dim). The retrieva-dev LiteLLM
+# team is scoped to these free US models. Cloud providers (Bedrock/Azure, EU) are
+# prod-only. Own Qdrant collection (retrieva-dev, 2048-dim) + dev public host.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,7 +17,7 @@ spec:
             - { name: LLM_MODEL, value: "ollama-cloud" }
             - { name: AZURE_OPENAI_LLM_DEPLOYMENT, value: "ollama-cloud" }
             - { name: JUDGE_LLM_MODEL, value: "ollama-cloud" }
-            - { name: AZURE_OPENAI_EMBEDDING_DEPLOYMENT, value: "embeddings" }
-            - { name: EMBEDDING_MODEL, value: "embeddings" }
+            - { name: AZURE_OPENAI_EMBEDDING_DEPLOYMENT, value: "nvidia-embed" }
+            - { name: EMBEDDING_MODEL, value: "nvidia-embed" }
             - { name: FRONTEND_URL, value: "https://retrieva-dev.10.0.0.200.nip.io" }
             - { name: ALLOWED_ORIGINS, value: "https://retrieva-dev.10.0.0.200.nip.io" }
