@@ -6,16 +6,17 @@
 |---|---|---|---|
 | **L0 — Static** | Lint, format, types, YAML schema | < 1 min | Every push, every branch |
 | **L1 — Unit** | Pure logic, no external deps, mocks everything | < 5 min | Every push |
-| **L2 — Integration** | Real DB, real queue, mocked HTTP | < 15 min | PR to `staging` |
-| **L3 — Contract** | API shape matches what consumers expect | < 5 min | PR to `staging` |
+| **L2 — Integration** | Real DB, real queue, mocked HTTP | < 15 min | PR to `main` |
+| **L3 — Contract** | API shape matches what consumers expect | < 5 min | PR to `main` |
 | **L4 — E2E / Smoke** | Full happy path on real infra | < 10 min | PR to `main` |
 
 ## CI Gate Mapping
 
+Two branches only (`dev` + `main`) — staging was removed with the staging environment.
+
 ```
-dev push        →  L0 + L1              (~5 min)
-PR → staging    →  L0 + L1 + L2 + L3   (~20 min, blocking)
-PR → main       →  L0 + L1 + L2 + L3 + L4
+dev push        →  L0 + L1                       (~5 min)
+PR → main       →  L0 + L1 + L2 + L3 + L4        (blocking; this is the prod gate)
 ```
 
 **Fail-fast rule:** L0 before L1 before L2. Never spin up a DB if linting fails.

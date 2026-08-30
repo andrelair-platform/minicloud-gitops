@@ -1,0 +1,75 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kargo
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  sources:
+    # 1) Kargo itself (Helm chart from the Akuity OCI registry).
+    #    Chart version tracks the app version — verify/bump with:
+    #      helm show chart oci://ghcr.io/akuity/kargo-charts/kargo --version <v>
+    - repoURL: ghcr.io/akuity/kargo-charts
+      chart: kargo
+      targetRevision: 1.11.2
+      helm:
+        releaseName: kargo
+        valuesObject:
+          # API server: TLS is terminated at the nginx Ingress (see manifests/kargo/),
+          # so Kargo serves plaintext upstream. Admin login + token signing come from
+          # the ESO-synced `kargo-api` secret (Vault secret/platform/kargo).
+          api:
+            tls:
+              enabled: false
+              terminatedUpstream: true
+            # Admin creds come from the ESO-rendered `kargo-api` secret (Vault
+            # secret/platform/kargo). Setting api.secret.name makes the chart consume
+            # that secret and NOT generate its own — so no hash/signing-key in git.
+            secret:
+              name: kargo-api
+            # We manage the Ingress ourselves (manifests/kargo/ingress.yaml) to reuse
+            # the minicloud-ca cert + Authentik pattern — disable the chart's Ingress.
+            ingress:
+              enabled: false
+          # Controllers reconcile Warehouses/Stages/Promotions. Defaults are fine for a
+          # single-cluster install; Kargo runs in its own `kargo` namespace.
+          controller:
+            logLevel: INFO
+          # Git the controller pushes to GitHub over HTTPS with the ESO-synced PAT;
+          # no in-cluster CA needed for github.com. (Harbor-watching Warehouses would
+          # need the minicloud CA mounted — not used in the initial ghcr-only spike.)
+    # 2) Our own supporting manifests (namespace TLS cert, ingress, admin ExternalSecret).
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      path: manifests/kargo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kargo
+  syncPolicy:
+    # Manual-friendly but auto: install is git-gated like everything else. selfHeal
+    # keeps the controllers reconciled; CreateNamespace bootstraps the `kargo` ns.
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    # ESO webhook injects defaults into the admin ExternalSecret (see the platform's
+    # standard ESO+SSA rule) — ignore them so the app is not perpetually OutOfSync.
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy

@@ -3,7 +3,7 @@ kind: Rollout
 metadata:
   name: minicloud-plane
 spec:
-  # 1 replica in base; dev/staging overlays override via patch-resources.yaml
+  # 1 replica in base; dev/prod overlays override via patch-resources.yaml
   replicas: 1
   selector:
     matchLabels:

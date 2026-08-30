@@ -5,7 +5,7 @@
 Own services use Kustomize base + minicloud-1/{env} overlays in `minicloud-gitops/services/`.
 **All Helm values live in `minicloud-gitops/helm-values/minicloud-1/`** — never edit `minicloud-ansible/helm-values/` for ArgoCD-managed tools.
 
-**The default is 2 environments: `dev` + `prod`.** dev = 1 replica, prod = 2–3 replicas. **Both auto-sync** (git-gated — see below). Staging is **opt-in** — only for services that need a third gate (currently `ktayl-policy-service`/CERT-1 and `platform-demo`). Resource-constrained cluster → don't scaffold staging by default.
+**The standard is exactly 2 environments: `dev` + `prod`.** dev = 1 replica, prod = 2–3 replicas. **Both auto-sync** (git-gated — see below). **Staging was removed (2026-08-30)** — no `staging` overlays, no `_staging-optional` template, no `staging` in `environments.yaml`. A resource-constrained cluster + Kargo's dev→prod promotion make a third gate unnecessary; do not reintroduce staging.
 
 ```
 minicloud-gitops/services/<service>/
@@ -16,12 +16,14 @@ minicloud-gitops/services/<service>/
 └── minicloud-1/               # cluster dimension
     ├── dev/                       # auto-sync, CI updates newTag; replicas 1 (base)
     └── prod/                      # auto-sync (git-gated), ingress+cert; patch-replicas → 2–3
-        # staging/ is opt-in — see services/_template/minicloud-1/_staging-optional/README.md
 ```
+
+A Kargo-promotable service also has a `services/<service>/kargo/` dir (Project +
+Warehouse + dev/prod Stages). See *Multi-stage promotion — Kargo* below.
 
 **ArgoCD apps split:** `apps/platform/` (43 infra apps) + `apps/workloads/` services. Root-app has `recurse: true`.
 
-**Promotion flow (2-env default):** CI → `kustomize edit set image` in `minicloud-1/dev/` only → `dev (auto) → prod (PR → auto-sync)`. With opt-in staging: `dev (auto) → staging (PR) → prod (PR)`. prod moves only via a PR that bumps the prod newTag; ArgoCD then auto-syncs it (no manual UI click).
+**Promotion flow (2-env):** CI builds + pushes the image; promotion of the tag into the overlays is where **Kargo** takes over (see *Multi-stage promotion — Kargo*). `dev (auto) → prod (CODEOWNERS-gated PR → auto-sync)`. prod moves only via a PR that bumps the prod newTag; ArgoCD then auto-syncs it (no manual UI click). Legacy path (pre-Kargo, still used by parked services): CI does `kustomize edit set image` in `minicloud-1/dev/` + a manual prod PR.
 
 **Prod HA:** give each prod overlay a `patch-replicas.yaml` (`replicas: 2`, up to 3) targeting the Deployment/Rollout — dev inherits base `replicas: 1`. Only skip for singletons (RWO PVC / stateful). Reference: minicloud-plane (Rollout), minicloud-agent + minicloud-crew-agent (Deployment).
 
@@ -29,7 +31,7 @@ minicloud-gitops/services/<service>/
 
 Prod apps are **auto-sync** (`syncPolicy.automated: {prune: true, selfHeal: true}` + a `retry` backoff), NOT manual-sync. The approval gate lives entirely **upstream in Git**, which preserves continuous reconciliation (selfHeal corrects live drift, prune removes what leaves Git):
 
-- **Merge gate** — CODEOWNERS requires `@AndreLair` review on `services/*/minicloud-1/prod/`, **`services/*/base/`** (prod inherits base — gating it prevents a base-change bypass), `services/*/minicloud-1/staging/`, **`apps/`** (the Application manifests that define the sync gate itself), `helm-values/` (third-party app config), plus `manifests/quotas/*-prod.yaml` and `manifests/network-policies/*-prod.yaml`.
+- **Merge gate** — CODEOWNERS requires `@AndreLair` review on `services/*/minicloud-1/prod/`, **`services/*/base/`** (prod inherits base — gating it prevents a base-change bypass), **`services/*/kargo/`** + **`manifests/kargo/`** (a Stage's promotionTemplate can write to any overlay), **`apps/`** (the Application manifests that define the sync gate itself), `helm-values/` (third-party app config), plus `manifests/quotas/*-prod.yaml` and `manifests/network-policies/*-prod.yaml`. This gate is what Kargo's prod-promotion PR lands against.
 - **Immutable artifacts** — prod pins **SHA image tags**, never `:latest`.
 - **Progressive delivery** — the canary/BlueGreen Rollout + its `*-health-gate` analysis auto-aborts a bad rollout on metrics; that is the runtime safety brake (not a human clicking Sync).
 
@@ -39,14 +41,30 @@ Prod apps are **auto-sync** (`syncPolicy.automated: {prune: true, selfHeal: true
 
 Reference apps: `platform-demo` (pilot, PR #813), `minicloud-plane-prod`, `minicloud-agent`, `minicloud-crew-agent`.
 
+### Multi-stage promotion — Kargo (the standard since 2026-08-30)
+
+Argo CD reconciles one environment from Git; it does **not** move a change between
+stages. **Kargo** fills that gap: it watches the built image, and **writes the Git
+change** (opens PRs) that Argo CD then reconciles. It never touches the cluster —
+so the GitOps model and the CODEOWNERS prod gate stay intact. Division of labour:
+**CI builds & proves the artifact; Kargo promotes it; Argo CD deploys it.** Kargo
+replaces only CI's overlay image-bump — all testing/build/scan/sign/SBOM stays in CI.
+
+- Install: `apps/platform/kargo.yaml` (Helm `oci://ghcr.io/akuity/kargo-charts/kargo`, pinned) + `manifests/kargo/` (TLS cert, ingress at `kargo.10.0.0.200.nip.io`, README with the one-time admin/PAT bootstrap). Projects are generated by the `apps/platform/kargo-projects.yaml` ApplicationSet over `services/*/kargo/`.
+- Per service `services/<svc>/kargo/`: `Project` + `Warehouse` (watches the prod ghcr image, `imageSelectionStrategy: NewestBuild`, `allowTags: ^[0-9a-f]{7,40}$`) + `Stage dev` (`sources.direct: true`) + `Stage prod` (`sources.stages: [dev]` — the multi-stage gate: only freight already live in dev is promotable). Both Stages' promotionTemplate = `git-clone → kustomize-set-image → git-commit → git-push (generateTargetBranch) → git-open-pr → git-wait-for-pr`. dev PR is `automerge`-labelled (dev overlays aren't CODEOWNERS-gated); prod PR is **not** — it lands on the CODEOWNERS gate.
+- **Credentials** (per project namespace, via ESO): `kargo-git-credentials` (label `kargo.akuity.io/cred-type: git`, from Vault `secret/platform/kargo` git-username/git-token) opens the PRs; `kargo-image-credentials` (label `…/cred-type: image`, from `secret/platform/ghcr`) for **Internal** ghcr packages (plane/agent/crew). platform-demo's package is Public → no image cred.
+- **Verification stays in CI** (smoke + k6) — Kargo owns promotion mechanics only, no `Stage.verification` blocks (don't duplicate the checks CI already runs).
+- **Safe posture / cutover:** no auto-promotion is configured, so promotions are **manual** (Kargo UI) and cannot fight CI's dev image-bump. Full cutover per service = enable a `dev` auto-promotion `ProjectConfig` policy + delete that service's CI `bump-gitops` step. The `automerge` auto-merge is already wired (`.github/workflows/kargo-automerge.yml` — merges dev-overlay-only PRs, refuses prod/base/apps).
+- **Wired:** platform-demo, minicloud-plane, minicloud-agent, minicloud-crew-agent (single ghcr SHA image, same artifact dev+prod). **Parked** (README + excluded in the ApplicationSet): **retrieva** (frontend bakes `NEXT_PUBLIC_API_URL` → dev≠prod artifact) and **ktayl-policy-service** (prod still Harbor `:latest`, not ghcr/SHA). Kargo can only promote **one immutable artifact** across stages — that's the litmus test for whether a service is Kargo-promotable.
+
 **New service checklist:**
-1. Copy `services/_template/` and replace `SERVICE_NAME` (template ships dev+prod; staging lives under `_staging-optional/`)
+1. Copy `services/_template/` and replace `SERVICE_NAME` (template ships dev+prod only)
 2. Add namespaces to AppProject `manifests/argocd-project/00-project.yaml`
 3. Add ArgoCD Application files in `apps/` (dev + prod both `automated: {prune, selfHeal}` — prod is git-gated, not manual)
 4. Update Vault Kubernetes auth role
 5. Add `minicloud-1/prod/ingress.yaml` + `certificate.yaml` for public URL
 6. Wire the registry: CI dual-push + prod overlay → ghcr (see *Hybrid container registry* below; add the `ghcr-pull` imagePullSecret for Internal packages)
-7. To add staging later: follow `services/_template/minicloud-1/_staging-optional/README.md`
+7. Add a Kargo pipeline: copy `services/platform-demo/kargo/` (single ghcr image, same artifact dev+prod). Only skip it if the service bakes env into its image or isn't on the ghcr/SHA prod pattern — then park it with a `kargo/README.md` and exclude it in `apps/platform/kargo-projects.yaml` (see retrieva / ktayl-policy-service).
 
 ```bash
 cd ~/Developer/cloudplateform/minicloud-gitops
@@ -57,7 +75,7 @@ kustomize build services/platform-demo/minicloud-1/dev
 
 To keep the controller disk bounded, prod images live in **ghcr.io** (free, durable, off local disk); Harbor is a **dev-only** registry (retention keep-10 + daily GC).
 
-- **CI dual-push:** on `main`, build + push to **both** Harbor (dev/prod tag) and `ghcr.io/andrelair-platform/<repo>:<sha>`; sign (keyless cosign) + attach SBOM to the ghcr image. dev/staging branches push Harbor-only. Reference edits: platform-demo CI (`packages: write`, GHCR login via `GITHUB_TOKEN`, `tags:` from a meta step that appends the ghcr ref only for main).
+- **CI dual-push:** on `main`, build + push to **both** Harbor (dev/prod tag) and `ghcr.io/andrelair-platform/<repo>:<sha>`; sign (keyless cosign) + attach SBOM to the ghcr image. The `dev` branch pushes Harbor-only. Reference edits: platform-demo CI (`packages: write`, GHCR login via `GITHUB_TOKEN`, `tags:` from a meta step that appends the ghcr ref only for main).
 - **Prod overlay** repoints the image with kustomize `newName: ghcr.io/andrelair-platform/<repo>` + `newTag: <sha>`; dev stays Harbor. **If CI bumps the prod overlay** (agent/crew use the branch=env model where main→prod), its `kustomize edit set image` MUST set the ghcr **name** for prod (`set image harbor..=ghcr..:SHA`) — else the next push reverts `newName`. Services using main→dev + PR→prod (platform-demo/plane) don't have this issue.
 - **Visibility:** demos → **Public** (k3s pulls anonymously, no secret). Real services → **Internal/Private** + an imagePullSecret. **GitHub has NO API to set package visibility** — the org must allow non-Public packages (org Settings→Packages), then flip each package in its UI.
 - **Internal-pull pattern:** a `read:packages` PAT → Vault `secret/platform/ghcr` (`username`,`token`; **write needs the Vault root token**) → an **ESO ExternalSecret** renders a `kubernetes.io/dockerconfigjson` secret `ghcr-pull` (auth = `printf "%s:%s" .username .token | b64enc`) → the pod spec gets `imagePullSecrets: [ghcr-pull]` via a prod-overlay patch. One shared `ghcr-pull` ES per namespace suffices (e.g. one in `ai` for agent+crew, in `manifests/ai/`). The app that owns the ES needs the ESO `ignoreDifferences` (see below) if it uses ServerSideApply.

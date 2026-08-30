@@ -12,7 +12,6 @@ spec:
           - list:
               elements:
                 - env: dev
-                - env: staging
                 - env: prod
           - list:
               elements:

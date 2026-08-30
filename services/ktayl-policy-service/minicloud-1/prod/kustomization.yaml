@@ -5,7 +5,7 @@ resources:
   - ../../base
   - ingress.yaml
   - certificate.yaml
-# Tag promoted manually from staging after UAT sign-off.
+# Tag promoted from dev via a CODEOWNERS-gated PR (opened by Kargo).
 images:
   - name: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
     newTag: latest

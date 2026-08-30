@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kargo-projects
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+        revision: main
+        directories:
+          - path: services/*/kargo
+          # Two services are PARKED (their kargo/ dir is a README explaining why) —
+          # Kargo promotes ONE immutable artifact across stages, which they break:
+          #  - ktayl-policy-service: prod is still Harbor + :latest (not ghcr/SHA).
+          #  - retrieva: the frontend bakes NEXT_PUBLIC_API_URL at build time, so
+          #    dev and prod are DIFFERENT artifacts — nothing to promote.
+          - path: services/ktayl-policy-service/kargo
+            exclude: true
+          - path: services/retrieva/kargo
+            exclude: true
+  template:
+    metadata:
+      # services/<svc>/kargo  →  segments[1] == <svc>
+      name: "kargo-{{ index .path.segments 1 }}"
+      labels:
+        app.kubernetes.io/part-of: kargo
+    spec:
+      project: minicloud-platform
+      source:
+        repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+        targetRevision: main
+        path: "{{ .path.path }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ index .path.segments 1 }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 5
+          backoff:
+            duration: 15s
+            factor: 2
+            maxDuration: 5m
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - RespectIgnoreDifferences=true
+      ignoreDifferences:
+        - group: external-secrets.io
+          kind: ExternalSecret
+          jqPathExpressions:
+            - .spec.data[].remoteRef.conversionStrategy
+            - .spec.data[].remoteRef.decodingStrategy
+            - .spec.data[].remoteRef.metadataPolicy
+            - .spec.target.deletionPolicy
