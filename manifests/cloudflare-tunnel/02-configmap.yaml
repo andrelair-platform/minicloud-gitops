@@ -237,6 +237,13 @@ data:
           noTLSVerify: true
           originServerName: flowise.10.0.0.200.nip.io
 
+      # ── retrieva.online (own apex domain, RTV-03e) ───────────────────
+      - hostname: retrieva.online
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: retrieva.online
+
       - hostname: controller.devandre.sbs
         service: ssh://10.0.0.1:22
 
