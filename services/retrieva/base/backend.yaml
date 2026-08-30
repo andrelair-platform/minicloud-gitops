@@ -28,6 +28,9 @@ spec:
             - { name: PORT, value: "3007" }
             - { name: NODE_ENV, value: "production" }
             - { name: LOG_LEVEL, value: "info" }
+            # Skip pino-roll file transports (not in the prod image; k8s captures
+            # stdout via the container runtime — 12-factor logging).
+            - { name: DOCKER_ENV, value: "true" }
             - name: MONGODB_URI
               valueFrom: { secretKeyRef: { name: retrieva-secrets, key: mongodb-uri } }
             - name: REDIS_URL
