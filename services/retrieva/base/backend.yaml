@@ -49,6 +49,14 @@ spec:
             - { name: QDRANT_COLLECTION_NAME, value: "retrieva" }
             - { name: LLM_PROVIDER, value: "azure_openai" }
             - { name: EMBEDDING_PROVIDER, value: "azure" }
+            # Defense-in-depth: the legacy LLM factory (getJudgeLLM/getDefaultLLM)
+            # falls back to Ollama Cloud (ollama.com) for providers it doesn't know
+            # (azure_openai falls through its switch). Point that default at the
+            # in-cluster LiteLLM gateway so a stray call stays governed/in-cluster
+            # and fails fast — the backend-egress NetworkPolicy blocks the public
+            # ollama.com regardless. Proper fix = route the legacy factory through
+            # LiteLLM's OpenAI-compatible API (Retrieva code change, follow-up).
+            - { name: OLLAMA_BASE_URL, value: "http://litellm.ai.svc.cluster.local:4000" }
             - { name: AZURE_OPENAI_ENDPOINT, value: "http://litellm.ai.svc.cluster.local:4000" }
             - name: AZURE_OPENAI_API_KEY
               valueFrom: { secretKeyRef: { name: retrieva-secrets, key: litellm-api-key } }
