@@ -7,6 +7,10 @@ metadata:
   name: retrieva-frontend
 spec:
   replicas: 1
+  # Tight namespace quota — roll without surge (remove old pod, then create new).
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }
   selector:
     matchLabels: { app: retrieva-frontend }
   template:
