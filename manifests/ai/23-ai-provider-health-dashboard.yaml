@@ -1,0 +1,52 @@
+---
+# Grafana dashboard: AI Provider Health & Free-Tier Resilience.
+# The signal the ai-governance/residency dashboards lacked: PER-MODEL and
+# PER-PROVIDER error/429/cooldown rates, so free-tier saturation (e.g.
+# ollama-cloud rate-limiting) is visible even when the GLOBAL gateway error rate
+# is healthy. Uses the litellm_deployment_* metrics (per-deployment, carry
+# api_provider + exception_status="429" + litellm_model_name). Pairs with the
+# AIModelRateLimited / AIDeploymentCoolingDownOften alerts (23-*-alerts-plus).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-provider-health-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  ai-provider-health.json: |
+    {
+      "title": "AI Platform — Provider Health & Free-Tier Resilience",
+      "uid": "ai-provider-health",
+      "tags": ["ai", "resilience", "free-tier"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "time": {"from": "now-6h", "to": "now"},
+      "refresh": "1m",
+      "panels": [
+        {
+          "type": "timeseries", "title": "429 rate-limit /s by model (free-tier saturation)",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"drawStyle": "line", "fillOpacity": 10}}},
+          "targets": [{"expr": "sum by (litellm_model_name) (rate(litellm_deployment_failure_responses_total{exception_status=\"429\"}[5m]))", "legendFormat": "{{litellm_model_name}}"}]
+        },
+        {
+          "type": "timeseries", "title": "Circuit-breaker cooldowns by model (15m)",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "fieldConfig": {"defaults": {"unit": "short"}},
+          "targets": [{"expr": "sum by (litellm_model_name) (increase(litellm_deployment_cooled_down_total[15m]))", "legendFormat": "{{litellm_model_name}}"}]
+        },
+        {
+          "type": "timeseries", "title": "Error rate by provider (all statuses)",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "fieldConfig": {"defaults": {"unit": "percentunit"}},
+          "targets": [{"expr": "sum by (api_provider) (rate(litellm_deployment_failure_responses_total[5m])) / clamp_min(sum by (api_provider) (rate(litellm_deployment_total_requests_total[5m])), 0.0001)", "legendFormat": "{{api_provider}}"}]
+        },
+        {
+          "type": "timeseries", "title": "Success rate /s by model (traffic + failover view)",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "fieldConfig": {"defaults": {"unit": "reqps"}},
+          "targets": [{"expr": "sum by (litellm_model_name) (rate(litellm_deployment_success_responses_total[5m]))", "legendFormat": "{{litellm_model_name}}"}]
+        }
+      ]
+    }
