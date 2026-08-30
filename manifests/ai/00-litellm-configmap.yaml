@@ -277,10 +277,25 @@ data:
 
     router_settings:
       routing_strategy: least-busy
-      num_retries: 2
+      num_retries: 3
       timeout: 300
       cooldown_time: 60
       allowed_fails: 3
+      # ── RESILIENCE / FALLBACKS ───────────────────────────────────────────
+      # Layer 1 (automatic, above): least-busy spreads load across the 3
+      # ollama-cloud keys; a key that 429s `allowed_fails` times is cooled for
+      # `cooldown_time`s and `num_retries` re-routes to another key. Layer 2
+      # (here): when ALL keys of a model are cooled, fall through to a same-tier
+      # alternative. Chains NEVER cross governance tiers — free↔free (US/dev),
+      # EU↔EU (prod) — so a fallback can't leak data out of its residency class.
+      fallbacks:
+        - ollama-cloud: ["nvidia-nano-30b"]                          # free → free (dev)
+        - nvidia-nano-30b: ["ollama-cloud"]                          # free → free (dev)
+        - bedrock-mistral-large: ["mistral-large", "mistral-small"]  # EU → EU (prod)
+        - mistral-large: ["mistral-small"]                           # EU → EU
+      # Embeddings have NO cross-model fallback on purpose: nvidia-embed is
+      # 2048-dim and mistral-embed 1024-dim — a fallback across dims would poison
+      # the Qdrant collection. Rely on retries/cooldown for embeddings.
       # ── INTENT ALIASES (story #314, Option 1) ────────────────────────────
       # Apps target FUNCTIONAL intent (cost/perf), not hard-coded SKUs. The
       # complexity/cost choice stays app-driven; the SENSITIVITY axis is still
