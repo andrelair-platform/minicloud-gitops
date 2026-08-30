@@ -185,25 +185,38 @@ data:
       # dev/non-prod teams (retrieva-dev). NOT in the general "us" group so the
       # governed prod teams never route confidential data to a free service with
       # unclear training terms. Prod stays on EU cloud (Bedrock/Azure).
-      - model_name: nvidia-nemotron-70b
+      # NOTE: NVIDIA NIM's free catalog churns fast — every model here was
+      # confirmed live on integrate.api.nvidia.com (older nemotron-70b/llama-8b
+      # 404/410'd and were removed). Re-test before adding new ones.
+      # Free embedding (2048-dim) for dev RAG — nvidia_nim provider handles the
+      # NVIDIA-specific input_type param that the plain openai format lacks.
+      - model_name: nvidia-embed
         litellm_params:
-          model: openai/nvidia/llama-3.1-nemotron-70b-instruct
+          model: nvidia_nim/nvidia/nemotron-3-embed-1b
+          api_key: os.environ/NVIDIA_API_KEY
+        model_info:
+          access_group: ["dev-free"]
+      # Fast free chat (30B A3B MoE) — replaces the dead nvidia-llama-8b for dev.
+      - model_name: nvidia-nano-30b
+        litellm_params:
+          model: openai/nvidia/nemotron-3-nano-30b-a3b
           api_base: https://integrate.api.nvidia.com/v1
           api_key: os.environ/NVIDIA_API_KEY
         model_info:
           access_group: ["dev-free"]
-
-      - model_name: nvidia-llama-8b
+      # Multimodal vision (future projects — image + text). Confirmed live.
+      - model_name: nvidia-vision-90b
         litellm_params:
-          model: openai/meta/llama-3.1-8b-instruct
+          model: openai/meta/llama-3.2-90b-vision-instruct
           api_base: https://integrate.api.nvidia.com/v1
           api_key: os.environ/NVIDIA_API_KEY
         model_info:
           access_group: ["dev-free"]
-
-      - model_name: nvidia-deepseek-r1
+      # Content-safety classifier (future guardrail experiments — we already run
+      # LlamaGuard + Presidio at the gateway; this is a spare, dev-only).
+      - model_name: nvidia-content-safety
         litellm_params:
-          model: openai/deepseek-ai/deepseek-r1
+          model: openai/nvidia/llama-3.1-nemoguard-8b-content-safety
           api_base: https://integrate.api.nvidia.com/v1
           api_key: os.environ/NVIDIA_API_KEY
         model_info:
