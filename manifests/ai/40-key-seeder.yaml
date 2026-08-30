@@ -107,7 +107,7 @@ spec:
               # access groups (onprem/eu/us) but NOT a custom group like "dev-free",
               # so the free models are granted by explicit model_name. Maximises the
               # free tier in dev; cloud generation (Bedrock/Azure) stays prod-only.
-              DEV_FREE="[\"onprem\",\"eu\",\"ollama-cloud\",\"nvidia-nemotron-70b\",\"nvidia-deepseek-r1\",${ALIASES}]"
+              DEV_FREE="[\"onprem\",\"eu\",\"ollama-cloud\",\"nvidia-embed\",\"nvidia-nano-30b\",\"nvidia-vision-90b\",\"nvidia-content-safety\",${ALIASES}]"
               # phi3-ci uses synthetic/public test data only → may hit any model.
               PUBLIC_OK='["all-proxy-models"]'
 
