@@ -147,6 +147,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: retrieva
       server: https://kubernetes.default.svc
+    - namespace: retrieva-dev
+      server: https://kubernetes.default.svc
     - namespace: argo-rollouts
       server: https://kubernetes.default.svc
     - namespace: vpa-system

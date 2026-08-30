@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: retrieva-dev
+resources:
+  - ../../base
+  - quota.yaml
+  - certificate.yaml
+  - ingress.yaml
+# Dev uses the Harbor dev registry (branch=dev CI build, frontend baked with the
+# internal dev host). Cloud AI providers are prod-only; dev generation runs on
+# the free tier (ollama-cloud) via the retrieva-dev LiteLLM team — see backend-patch.
+images:
+  - name: retrieva-backend
+    newName: harbor.10.0.0.200.nip.io/library/retrieva-backend
+    newTag: "dev-7d44828-amd64"
+  - name: retrieva-frontend
+    newName: harbor.10.0.0.200.nip.io/library/retrieva-frontend
+    newTag: "dev-7d44828-amd64"
+patches:
+  - path: externalsecret-patch.yaml
+  - path: backend-patch.yaml

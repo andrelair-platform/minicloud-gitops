@@ -1,0 +1,42 @@
+---
+# Dev ingress — internal only (retrieva-dev.10.0.0.200.nip.io, Tailscale + CA).
+# Same path routing as prod: /api + /socket.io → backend, / → frontend.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: retrieva
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - retrieva-dev.10.0.0.200.nip.io
+      secretName: retrieva-dev-tls
+  rules:
+    - host: retrieva-dev.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: retrieva-backend
+                port:
+                  number: 3007
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: retrieva-backend
+                port:
+                  number: 3007
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: retrieva-frontend
+                port:
+                  number: 3000
