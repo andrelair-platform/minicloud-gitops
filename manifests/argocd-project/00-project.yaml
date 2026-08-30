@@ -46,6 +46,8 @@ spec:
     - https://open-telemetry.github.io/opentelemetry-helm-charts
     - https://go.temporal.io/helm-charts
     - https://charts.deliveryhero.io/
+    # Kargo (OCI Helm registry)
+    - ghcr.io/akuity/kargo-charts
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
@@ -179,6 +181,17 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: ktayl-prod
       server: https://kubernetes.default.svc
+    # Kargo control plane + per-service Kargo project namespaces (Warehouse/Stages)
+    - namespace: kargo
+      server: https://kubernetes.default.svc
+    - namespace: platform-demo
+      server: https://kubernetes.default.svc
+    - namespace: minicloud-plane
+      server: https://kubernetes.default.svc
+    - namespace: minicloud-agent
+      server: https://kubernetes.default.svc
+    - namespace: minicloud-crew-agent
+      server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
     - group: ""
@@ -219,6 +232,9 @@ spec:
       kind: CiliumNode
     - group: "cilium.io"
       kind: CiliumClusterwideNetworkPolicy
+    # Kargo cluster-scoped kinds (Project maps 1:1 to a namespace)
+    - group: "kargo.akuity.io"
+      kind: "*"
 
   # Explicit group allowlist — group: "*" wildcard removed
   namespaceResourceWhitelist:
@@ -281,4 +297,7 @@ spec:
       kind: "*"
     # Longhorn backup CRs (RecurringJob, Setting — namespace-scoped in longhorn-system)
     - group: "longhorn.io"
+      kind: "*"
+    # Kargo namespaced kinds (Warehouse, Stage, Freight, Promotion, ProjectConfig)
+    - group: "kargo.akuity.io"
       kind: "*"
