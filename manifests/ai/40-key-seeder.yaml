@@ -90,8 +90,21 @@ spec:
                 echo "  tpm=${TPM} rpm=${RPM} budget=\$${BUDGET}/30d models=${MODELS}"
               }
 
-              # Governed teams: onprem+eu+us tiers only (never untrusted P0).
-              GOVERNED='["onprem","eu","us"]'
+              # A team's `models` list must also carry the INTENT ALIASES it may
+              # use — LiteLLM checks the requested model name (e.g. "tier-premium")
+              # against this list BEFORE resolving the model_group_alias, so an
+              # access-group-only list 403s on aliases (team_model_access_denied).
+              # All current aliases resolve to EU-resident models, so granting the
+              # full alias set to any governed team stays within EU governance.
+              ALIASES='"tier-economy","chat-fast","tier-standard","tier-premium","chat-reasoning","embeddings"'
+
+              # Governed teams: onprem+eu+us tiers only (never untrusted P0/dev-free).
+              GOVERNED="[\"onprem\",\"eu\",\"us\",${ALIASES}]"
+              # Prod EU-only: cloud Azure/AWS-Bedrock (EU) reachable; no us/dev-free.
+              EU_PROD="[\"onprem\",\"eu\",${ALIASES}]"
+              # Dev free-tier: EU (for embeddings) + dev-free (ollama-cloud, nvidia).
+              # Maximises the free tier in dev; cloud providers stay prod-only.
+              DEV_FREE="[\"onprem\",\"eu\",\"dev-free\",${ALIASES}]"
               # phi3-ci uses synthetic/public test data only → may hit any model.
               PUBLIC_OK='["all-proxy-models"]'
 
@@ -99,6 +112,9 @@ spec:
               seed_team "phi3-ci"      "phi3-financial CI Eval" 200000 120  20 "${PUBLIC_OK}"
               seed_team "agents"       "Agent Runtimes"         150000  90  15 "${GOVERNED}"
               seed_team "rag-pipeline" "RAG Ingest Pipeline"     50000  30   5 "${GOVERNED}"
+              # Retrieva: prod = EU cloud only; dev = free-tier (ollama/nvidia).
+              seed_team "retrieva"     "Retrieva (prod, EU)"     50000  30  15 "${EU_PROD}"
+              seed_team "retrieva-dev" "Retrieva (dev, free)"    50000  30   5 "${DEV_FREE}"
 
               echo "Team seeding complete."
           resources:

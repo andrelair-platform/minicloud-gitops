@@ -181,23 +181,33 @@ data:
           access_group: ["us"]
 
       # ── NVIDIA NIM (build.nvidia.com — OpenAI-compatible, free inference tier) ─
+      # access_group "dev-free": US-hosted FREE-tier providers, reserved for the
+      # dev/non-prod teams (retrieva-dev). NOT in the general "us" group so the
+      # governed prod teams never route confidential data to a free service with
+      # unclear training terms. Prod stays on EU cloud (Bedrock/Azure).
       - model_name: nvidia-nemotron-70b
         litellm_params:
           model: openai/nvidia/llama-3.1-nemotron-70b-instruct
           api_base: https://integrate.api.nvidia.com/v1
           api_key: os.environ/NVIDIA_API_KEY
+        model_info:
+          access_group: ["dev-free"]
 
       - model_name: nvidia-llama-8b
         litellm_params:
           model: openai/meta/llama-3.1-8b-instruct
           api_base: https://integrate.api.nvidia.com/v1
           api_key: os.environ/NVIDIA_API_KEY
+        model_info:
+          access_group: ["dev-free"]
 
       - model_name: nvidia-deepseek-r1
         litellm_params:
           model: openai/deepseek-ai/deepseek-r1
           api_base: https://integrate.api.nvidia.com/v1
           api_key: os.environ/NVIDIA_API_KEY
+        model_info:
+          access_group: ["dev-free"]
 
       # ── OLLAMA CLOUD (ollama.com — tier Turbo, génération LLM) ─────────────
       # Modèle `ollama-cloud` déclaré 3× avec 3 clés → LiteLLM load-balance
@@ -208,16 +218,22 @@ data:
           model: openai/gpt-oss:120b
           api_base: https://ollama.com/v1
           api_key: os.environ/OLLAMA_CLOUD_KEY_1
+        model_info:
+          access_group: ["dev-free"]
       - model_name: ollama-cloud
         litellm_params:
           model: openai/gpt-oss:120b
           api_base: https://ollama.com/v1
           api_key: os.environ/OLLAMA_CLOUD_KEY_2
+        model_info:
+          access_group: ["dev-free"]
       - model_name: ollama-cloud
         litellm_params:
           model: openai/gpt-oss:120b
           api_base: https://ollama.com/v1
           api_key: os.environ/OLLAMA_CLOUD_KEY_3
+        model_info:
+          access_group: ["dev-free"]
 
       # ── AWS BEDROCK (EU-resident, enterprise-governed — story #303) ────────
       # Mistral Large on Bedrock eu-west-1: EU jurisdiction + contractual
