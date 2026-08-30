@@ -1,0 +1,48 @@
+---
+# Retrieva frontend (Next.js, :3000). API URL baked at build (retrieva.online).
+# Image (retrieva-frontend) + namespace set by the overlay.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrieva-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: retrieva-frontend }
+  template:
+    metadata:
+      labels: { app: retrieva-frontend }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001        # image user nextjs (uid 1001)
+        fsGroup: 1001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: frontend
+          image: retrieva-frontend
+          ports:
+            - { containerPort: 3000, name: http }
+          env:
+            - { name: NODE_ENV, value: "production" }
+            - { name: PORT, value: "3000" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          readinessProbe:
+            httpGet: { path: /, port: 3000 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            failureThreshold: 6
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 640Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retrieva-frontend
+spec:
+  selector: { app: retrieva-frontend }
+  ports:
+    - { port: 3000, targetPort: 3000, name: http }

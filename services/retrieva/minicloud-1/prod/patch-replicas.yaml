@@ -1,0 +1,15 @@
+---
+# Prod HA: backend + frontend to 2 replicas (Mongo/Redis stay singletons — RWO).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrieva-backend
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrieva-frontend
+spec:
+  replicas: 2

@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: retrieva
+resources:
+  - ../../base
+  - quota.yaml
+# Public ingress + certificate for retrieva.online are deferred: the domain must
+# first be added to the minicloud Cloudflare account (only devandre.sbs is there
+# now) so DNS + tunnel route + cert issuance work. Until then the app runs
+# in-cluster (verified via port-forward); no public ingress is declared to keep
+# the estate at 0 OutOfSync (a pending Let's Encrypt cert for an unresolvable
+# domain would degrade the app).
+images:
+  - name: retrieva-backend
+    newName: ghcr.io/andrelair-platform/retrieva-backend
+    newTag: "8f58d66"
+  - name: retrieva-frontend
+    newName: ghcr.io/andrelair-platform/retrieva-frontend
+    newTag: "8f58d66"
+patches:
+  - path: patch-replicas.yaml

@@ -1,0 +1,37 @@
+---
+# Allow the retrieva namespace to reach shared AI services: LiteLLM (4000) +
+# Qdrant (6333/6334). The ai namespace is default-deny-ingress. (RTV-03)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-retrieva-to-litellm
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels: { app: litellm }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: retrieva
+      ports:
+        - { protocol: TCP, port: 4000 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-retrieva-to-qdrant
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels: { app: qdrant }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: retrieva
+      ports:
+        - { protocol: TCP, port: 6333 }
+        - { protocol: TCP, port: 6334 }
