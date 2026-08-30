@@ -4,12 +4,15 @@ namespace: retrieva
 resources:
   - ../../base
   - quota.yaml
-# Public ingress + certificate for retrieva.online are deferred: the domain must
-# first be added to the minicloud Cloudflare account (only devandre.sbs is there
-# now) so DNS + tunnel route + cert issuance work. Until then the app runs
-# in-cluster (verified via port-forward); no public ingress is declared to keep
-# the estate at 0 OutOfSync (a pending Let's Encrypt cert for an unresolvable
-# domain would degrade the app).
+  - certificate.yaml   # minicloud-ca internal cert (no public DNS needed)
+  - ingress.yaml       # retrieva.online via the Cloudflare tunnel → ingress-nginx
+# Public reachability of retrieva.online still needs two account-level manual
+# steps (only the owner can do them): add the zone to the Cloudflare account,
+# then switch the nameservers at NameCheap from DigitalOcean → Cloudflare. Once
+# the zone is active: `cloudflared tunnel route dns minicloud retrieva.online`
+# + a `- hostname: retrieva.online / service: https://10.0.0.200` block in the
+# controller's ~/.cloudflared/config.yml. The k8s ingress + internal cert below
+# are already live, so the app answers the moment DNS resolves to the tunnel.
 images:
   - name: retrieva-backend
     newName: ghcr.io/andrelair-platform/retrieva-backend

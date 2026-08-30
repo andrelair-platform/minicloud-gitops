@@ -1,0 +1,44 @@
+---
+# Public ingress for retrieva.online (via the Cloudflare "minicloud" tunnel →
+# ingress-nginx 10.0.0.200). No Authentik forward-auth: Retrieva ships its own
+# JWT auth (login/register), so the SPA owns authentication end-to-end.
+# Longest-prefix routing: /api + /socket.io → backend, everything else → frontend.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: retrieva
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"        # document uploads (RAG ingest)
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"     # long RAG/LLM streaming
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - retrieva.online
+      secretName: retrieva-tls
+  rules:
+    - host: retrieva.online
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: retrieva-backend
+                port:
+                  number: 3007
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: retrieva-backend
+                port:
+                  number: 3007
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: retrieva-frontend
+                port:
+                  number: 3000
