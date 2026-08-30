@@ -8,6 +8,12 @@ metadata:
   name: retrieva-backend
 spec:
   replicas: 1
+  # Tight namespace quota (limits.memory 6Gi): a surge pod (+1Gi) doesn't fit
+  # alongside the running set. Roll by removing an old pod first, then creating
+  # the new one — no surge headroom needed.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }
   selector:
     matchLabels: { app: retrieva-backend }
   template:
