@@ -33,6 +33,7 @@ spec:
             path: ./repo/services/minicloud-plane/minicloud-1/prod
             images:
               - image: harbor.10.0.0.200.nip.io/library/minicloud-plane
+                newName: ghcr.io/andrelair-platform/minicloud-plane
                 tag: '${{ imageFrom("ghcr.io/andrelair-platform/minicloud-plane").Tag }}'
         - uses: git-commit
           as: commit
