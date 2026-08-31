@@ -12,9 +12,8 @@ resources:
 # dev uses Harbor; prod uses ghcr. Promote by bumping newTag to an immutable
 # SHA via a CODEOWNERS-gated PR; ArgoCD then auto-syncs (git-gated automated prod).
 images:
-- name: harbor.10.0.0.200.nip.io/library/platform-demo   # matches base image name
-  newName: ghcr.io/andrelair-platform/platform-demo
-  newTag: "3d81dfb"
+- name: harbor.10.0.0.200.nip.io/library/platform-demo # matches base image name
+  newTag: ffb81b0
 patches:
 - path: patch-resources.yaml
   target:
