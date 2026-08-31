@@ -184,6 +184,10 @@ spec:
     # Kargo control plane + per-service Kargo project namespaces (Warehouse/Stages)
     - namespace: kargo
       server: https://kubernetes.default.svc
+    # The Kargo chart also creates kargo-system-resources / kargo-shared-resources
+    # / kargo-cluster-secrets — allow the whole kargo-* family.
+    - namespace: "kargo-*"
+      server: https://kubernetes.default.svc
     - namespace: platform-demo
       server: https://kubernetes.default.svc
     - namespace: minicloud-plane
