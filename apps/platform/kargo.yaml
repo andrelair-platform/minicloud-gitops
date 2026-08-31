@@ -17,6 +17,18 @@ spec:
       helm:
         releaseName: kargo
         valuesObject:
+          # Container securityContext applied to ALL Kargo components (each component's
+          # securityContext defaults to global.securityContext, rendered at container
+          # level) — satisfies Gatekeeper require-non-root + no-privilege-escalation.
+          global:
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 65532
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+              seccompProfile:
+                type: RuntimeDefault
           # API server: TLS is terminated at the nginx Ingress (see manifests/kargo/),
           # so Kargo serves plaintext upstream. Admin login + token signing come from
           # the ESO-synced `kargo-api` secret (Vault secret/platform/kargo).
@@ -33,10 +45,33 @@ spec:
             # the minicloud-ca cert + Authentik pattern — disable the chart's Ingress.
             ingress:
               enabled: false
+            # resources.limits are required by Gatekeeper require-resource-limits.
+            resources:
+              requests: {cpu: 50m, memory: 128Mi}
+              limits: {cpu: 500m, memory: 256Mi}
           # Controllers reconcile Warehouses/Stages/Promotions. Defaults are fine for a
           # single-cluster install; Kargo runs in its own `kargo` namespace.
           controller:
             logLevel: INFO
+            resources:
+              requests: {cpu: 50m, memory: 128Mi}
+              limits: {cpu: 500m, memory: 256Mi}
+          managementController:
+            resources:
+              requests: {cpu: 25m, memory: 64Mi}
+              limits: {cpu: 250m, memory: 128Mi}
+          webhooksServer:
+            resources:
+              requests: {cpu: 25m, memory: 64Mi}
+              limits: {cpu: 250m, memory: 128Mi}
+          externalWebhooksServer:
+            resources:
+              requests: {cpu: 25m, memory: 64Mi}
+              limits: {cpu: 250m, memory: 128Mi}
+          garbageCollector:
+            resources:
+              requests: {cpu: 25m, memory: 64Mi}
+              limits: {cpu: 250m, memory: 128Mi}
           # Git the controller pushes to GitHub over HTTPS with the ESO-synced PAT;
           # no in-cluster CA needed for github.com. (Harbor-watching Warehouses would
           # need the minicloud CA mounted — not used in the initial ghcr-only spike.)
