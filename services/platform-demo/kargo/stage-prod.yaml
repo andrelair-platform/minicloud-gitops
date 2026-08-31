@@ -33,6 +33,7 @@ spec:
             path: ./repo/services/platform-demo/minicloud-1/prod
             images:
               - image: harbor.10.0.0.200.nip.io/library/platform-demo
+                newName: ghcr.io/andrelair-platform/platform-demo
                 tag: '${{ imageFrom("ghcr.io/andrelair-platform/platform-demo").Tag }}'
         - uses: git-commit
           as: commit
