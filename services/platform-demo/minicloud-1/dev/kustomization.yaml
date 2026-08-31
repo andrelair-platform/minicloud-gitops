@@ -12,7 +12,7 @@ resources:
 # Staging and prod tags are promoted manually via PRs.
 images:
 - name: harbor.10.0.0.200.nip.io/library/platform-demo
-  newTag: 3d81dfb
+  newTag: ffb81b0
 patches:
 - path: patch-resources.yaml
   target:
