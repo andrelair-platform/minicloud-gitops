@@ -10,5 +10,6 @@ spec:
     - image:
         repoURL: ghcr.io/andrelair-platform/minicloud-agent
         imageSelectionStrategy: NewestBuild
-        allowTags: ^[0-9a-f]{7,40}$
+        allowTagsRegexes:
+          - ^[0-9a-f]{7,40}$
         discoveryLimit: 5
