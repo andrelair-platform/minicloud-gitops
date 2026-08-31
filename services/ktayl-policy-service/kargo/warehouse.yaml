@@ -1,0 +1,15 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: ktayl-policy-service
+  namespace: ktayl-policy-service
+spec:
+  interval: 5m
+  freightCreationPolicy: Automatic
+  subscriptions:
+    - image:
+        repoURL: ghcr.io/andrelair-platform/ktayl-policy-service
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - ^[0-9a-f]{7,40}$
+        discoveryLimit: 5
