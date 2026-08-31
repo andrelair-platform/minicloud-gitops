@@ -21,6 +21,7 @@ spec:
             backend:
               service:
                 name: kargo-api
-                # Verify with: kubectl -n kargo get svc kargo-api -o jsonpath='{.spec.ports}'
+                # Service exposes port 80 → targetPort 8080 (api serves HTTP,
+                # TLS terminated at this ingress via api.tls.terminatedUpstream).
                 port:
-                  number: 443
+                  number: 80
