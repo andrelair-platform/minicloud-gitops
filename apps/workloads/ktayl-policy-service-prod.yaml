@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ktayl-policy-service-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/ktayl-policy-service/minicloud-1/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ktayl-prod
+  ignoreDifferences:
+    # ESO's webhook injects these defaults into the ghcr-pull ExternalSecret at
+    # creation; never in git, so ignore them (with RespectIgnoreDifferences) or the
+    # app is permanently OutOfSync / selfHeal fights ESO.
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+  syncPolicy:
+    # Git-gated automated production. The approval gate lives upstream in Git:
+    #   - CODEOWNERS requires @AndreLair review on services/*/minicloud-1/prod/
+    #   - prod pins an immutable ghcr SHA (never :latest) — Kargo opens the promo PR
+    # Git owns .spec.replicas (prod patch = 2, no autoscaler), so selfHeal enforcing
+    # it is correct.
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
