@@ -19,6 +19,7 @@ spec:
           value: https://github.com/andrelair-platform/minicloud-gitops.git
       steps:
         - uses: git-clone
+          as: clone
           config:
             repoURL: ${{ vars.gitopsRepo }}
             checkout:
@@ -40,11 +41,13 @@ spec:
             message: 'kargo(minicloud-crew-agent): promote image ${{ imageFrom("ghcr.io/andrelair-platform/minicloud-crew-agent").Tag }} to prod'
         - uses: git-push
           as: push
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
           config:
             path: ./repo
             generateTargetBranch: true
         - uses: git-open-pr
           as: open-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
           config:
             repoURL: ${{ vars.gitopsRepo }}
             sourceBranch: ${{ outputs.push.branch }}
@@ -55,6 +58,7 @@ spec:
             labels: [kargo, env-prod]
         - uses: git-wait-for-pr
           as: wait-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
           config:
             repoURL: ${{ vars.gitopsRepo }}
             prNumber: ${{ outputs['open-pr'].pr.id }}
