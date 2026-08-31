@@ -5,6 +5,7 @@ resources:
   - namespace.yaml
   - project.yaml
   - git-credentials.yaml
+  - image-credentials.yaml
   - warehouse.yaml
   - stage-dev.yaml
   - stage-prod.yaml
