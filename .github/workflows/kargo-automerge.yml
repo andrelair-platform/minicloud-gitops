@@ -39,11 +39,15 @@ jobs:
           fi
           echo "All changes are dev-overlay only — safe to auto-merge."
 
-      - name: Merge
+      - name: Merge (squash)
         env:
           # Org token (same one CI uses) can bypass branch protection on dev-only PRs.
           GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
         run: |
+          # --squash, NOT --merge: Kargo's promotion commits are unsigned, and main's
+          # ruleset requires verified signatures. A squash produces a single
+          # GitHub-signed (verified) commit, satisfying the rule. A plain --merge would
+          # fail with "Commits must have verified signatures".
           gh pr merge "${{ github.event.pull_request.number }}" \
             --repo "${{ github.repository }}" \
-            --merge --admin --delete-branch
+            --squash --admin --delete-branch
