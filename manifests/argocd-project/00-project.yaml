@@ -196,6 +196,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: minicloud-crew-agent
       server: https://kubernetes.default.svc
+    - namespace: ktayl-policy-service
+      server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
     - group: ""

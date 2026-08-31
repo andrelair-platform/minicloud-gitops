@@ -5,11 +5,15 @@ resources:
   - ../../base
   - ingress.yaml
   - certificate.yaml
-# Tag promoted from dev via a CODEOWNERS-gated PR (opened by Kargo).
+  - externalsecret-ghcr.yaml
+# Prod pulls from ghcr.io (durable, immutable SHA) — hybrid registry: dev uses Harbor,
+# prod uses ghcr. Tag promoted from dev via a CODEOWNERS-gated PR (opened by Kargo).
 images:
-  - name: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
-    newTag: latest
+  - name: harbor.10.0.0.200.nip.io/library/ktayl-policy-service   # base image name (kustomize key)
+    newName: ghcr.io/andrelair-platform/ktayl-policy-service
+    newTag: 23c2c4e
 patches:
+  - path: patch-ghcr-pull.yaml
   - target:
       kind: Deployment
       name: ktayl-policy-service

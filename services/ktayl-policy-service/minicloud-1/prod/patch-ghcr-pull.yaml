@@ -1,0 +1,10 @@
+# Attach the ghcr-pull imagePullSecret so prod can pull the Internal ghcr.io image.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ktayl-policy-service
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull

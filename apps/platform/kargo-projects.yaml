@@ -12,13 +12,9 @@ spec:
         revision: main
         directories:
           - path: services/*/kargo
-          # Two services are PARKED (their kargo/ dir is a README explaining why) —
-          # Kargo promotes ONE immutable artifact across stages, which they break:
-          #  - ktayl-policy-service: prod is still Harbor + :latest (not ghcr/SHA).
-          #  - retrieva: the frontend bakes NEXT_PUBLIC_API_URL at build time, so
-          #    dev and prod are DIFFERENT artifacts — nothing to promote.
-          - path: services/ktayl-policy-service/kargo
-            exclude: true
+          # retrieva is PARKED (its kargo/ dir is a README) — its frontend bakes
+          # NEXT_PUBLIC_API_URL at build time, so dev and prod are DIFFERENT
+          # artifacts. Excluded until the runtime-config migration lands.
           - path: services/retrieva/kargo
             exclude: true
   template:

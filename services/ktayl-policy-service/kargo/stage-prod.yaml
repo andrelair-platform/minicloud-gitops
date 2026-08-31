@@ -1,0 +1,65 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: prod
+  namespace: ktayl-policy-service
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: ktayl-policy-service
+      sources:
+        # The multi-stage gate: only freight already live in `dev` is promotable here.
+        stages:
+          - dev
+  promotionTemplate:
+    spec:
+      vars:
+        - name: gitopsRepo
+          value: https://github.com/andrelair-platform/minicloud-gitops.git
+      steps:
+        - uses: git-clone
+          as: clone
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            checkout:
+              - branch: main
+                path: ./repo
+        - uses: kustomize-set-image
+          as: set-image
+          config:
+            # prod overlay keeps its own newName (ghcr) — we only bump the tag,
+            # so the kustomize image key is the shared base name.
+            path: ./repo/services/ktayl-policy-service/minicloud-1/prod
+            images:
+              - image: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
+                newName: ghcr.io/andrelair-platform/ktayl-policy-service
+                tag: '${{ imageFrom("ghcr.io/andrelair-platform/ktayl-policy-service").Tag }}'
+        - uses: git-commit
+          as: commit
+          config:
+            path: ./repo
+            message: 'kargo(ktayl-policy-service): promote image ${{ imageFrom("ghcr.io/andrelair-platform/ktayl-policy-service").Tag }} to prod'
+        - uses: git-push
+          as: push
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            path: ./repo
+            generateTargetBranch: true
+        - uses: git-open-pr
+          as: open-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            sourceBranch: ${{ outputs.push.branch }}
+            targetBranch: main
+            provider: github
+            title: 'kargo(ktayl-policy-service): promote to PROD — ${{ imageFrom("ghcr.io/andrelair-platform/ktayl-policy-service").Tag }}'
+            description: 'Promotion opened by Kargo. Requires CODEOWNERS approval (this is the prod gate). ArgoCD auto-syncs prod once merged.'
+            labels: [kargo, env-prod]
+        - uses: git-wait-for-pr
+          as: wait-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            prNumber: ${{ outputs['open-pr'].pr.id }}
