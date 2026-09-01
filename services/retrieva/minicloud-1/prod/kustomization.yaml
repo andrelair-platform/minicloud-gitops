@@ -2,10 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: retrieva
 resources:
-  - ../../base
-  - quota.yaml
-  - certificate.yaml   # minicloud-ca internal cert (no public DNS needed)
-  - ingress.yaml       # retrieva.online via the Cloudflare tunnel → ingress-nginx
+- ../../base
+- quota.yaml
+- certificate.yaml # minicloud-ca internal cert (no public DNS needed)
+- ingress.yaml # retrieva.online via the Cloudflare tunnel → ingress-nginx
 # Public reachability of retrieva.online still needs two account-level manual
 # steps (only the owner can do them): add the zone to the Cloudflare account,
 # then switch the nameservers at NameCheap from DigitalOcean → Cloudflare. Once
@@ -14,12 +14,12 @@ resources:
 # controller's ~/.cloudflared/config.yml. The k8s ingress + internal cert below
 # are already live, so the app answers the moment DNS resolves to the tunnel.
 images:
-  - name: retrieva-backend
-    newName: ghcr.io/andrelair-platform/retrieva-backend
-    newTag: "3ccb395"
-  - name: retrieva-frontend
-    newName: ghcr.io/andrelair-platform/retrieva-frontend
-    newTag: "3ccb395"
+- name: retrieva-backend
+  newName: ghcr.io/andrelair-platform/retrieva-backend
+  newTag: 3ccb395
+- name: retrieva-frontend
+  newName: ghcr.io/andrelair-platform/retrieva-frontend
+  newTag: 3ccb395
 patches:
-  - path: patch-replicas.yaml
-  - path: frontend-env-patch.yaml
+- path: patch-replicas.yaml
+- path: frontend-env-patch.yaml
