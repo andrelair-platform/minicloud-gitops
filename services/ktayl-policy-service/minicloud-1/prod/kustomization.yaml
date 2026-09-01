@@ -6,6 +6,8 @@ resources:
   - ingress.yaml
   - certificate.yaml
   - externalsecret-ghcr.yaml
+  - externalsecret-app.yaml   # ktayl-policy-service-secret (DSN + shared infra URLs)
+  - postgres.yaml             # dedicated prod Postgres + its ESO password
 # Prod pulls from ghcr.io (durable, immutable SHA) — hybrid registry: dev uses Harbor,
 # prod uses ghcr. Tag promoted from dev via a CODEOWNERS-gated PR (opened by Kargo).
 images:
