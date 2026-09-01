@@ -1,0 +1,65 @@
+# Kargo dev-Stage verification (Option 2): the smoke test that qualifies a Freight for
+# prod. Kargo creates an AnalysisRun from this after promoting to the dev Stage; only if
+# it succeeds is the Freight marked "Verified in dev" → the prod Stage (sources.stages:[dev])
+# will accept it. This replaces the CI smoke-test/canary-load jobs (which drove the dev
+# deploy synchronously — a sync-over-async anti-pattern once Kargo owns dev promotion).
+#
+# The probe goes THROUGH the KEDA HTTP interceptor with the dev Host header: dev is
+# scale-to-zero, so hitting the raw Service would fail — the interceptor holds the request,
+# scales dev 0→1, then forwards. So the smoke also proves the real ingress+autoscale path.
+# argo-rollouts (cluster-scoped) reconciles the AnalysisRun; the job runs in this ns.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: platform-demo-dev-verify
+  namespace: platform-demo
+spec:
+  metrics:
+    - name: dev-smoke
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 3
+            activeDeadlineSeconds: 180
+            ttlSecondsAfterFinished: 300
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/part-of: platform-demo
+                  kargo.akuity.io/verify: dev-smoke
+              spec:
+                restartPolicy: Never
+                # Gatekeeper (require-non-root + no-privilege-escalation + require-resource-limits)
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: smoke
+                    image: curlimages/curl:8.11.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests: {cpu: 25m, memory: 32Mi}
+                      limits: {cpu: 100m, memory: 64Mi}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        HOST=platform-demo-dev.10.0.0.200.nip.io
+                        BASE=http://keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local:8080
+                        echo "smoke: waking dev via KEDA interceptor, probing https Host=$HOST"
+                        # --retry-all-errors covers the KEDA cold-start window (503/refused
+                        # while dev scales 0→1) — retries until the pod is warm and serves 200.
+                        curl -fsS --max-time 20 --retry 10 --retry-delay 6 --retry-all-errors \
+                          -H "Host: $HOST" "$BASE/healthz"
+                        echo " healthz OK"
+                        curl -fsS --max-time 20 --retry 5 --retry-delay 3 --retry-all-errors \
+                          -H "Host: $HOST" "$BASE/readyz"
+                        echo " readyz OK"
+                        echo "dev smoke passed"
