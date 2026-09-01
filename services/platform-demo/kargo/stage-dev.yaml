@@ -10,6 +10,12 @@ spec:
         name: platform-demo
       sources:
         direct: true
+  # After promoting to dev, run the smoke AnalysisRun. Only if it passes is the Freight
+  # marked "Verified in dev" — the precondition the prod Stage requires (sources.stages:
+  # [dev]). This is the dev→prod gate, now owned by Kargo (Option 2), not the CI.
+  verification:
+    analysisTemplates:
+      - name: platform-demo-dev-verify
   promotionTemplate:
     spec:
       vars:
