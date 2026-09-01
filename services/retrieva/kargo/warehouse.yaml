@@ -15,3 +15,12 @@ spec:
         repoURL: https://github.com/andrelair-platform/retrieva.git
         branch: main
         commitSelectionStrategy: NewestFromBranch
+        # Phantom-commit guard: a git Warehouse creates Freight for EVERY main commit,
+        # but the CI build skips docs-only commits (paths-ignore docs/** + *.md). Promoting
+        # a docs-only commit → images at that SHA never built → ImagePullBackOff. Mirror the
+        # CI's paths-ignore here so Freight is only produced for commits that actually build
+        # images. (excludePaths is a SUPERSET of the CI filter — regex excludes all *.md at
+        # any depth — the safe direction: never promote a commit that wasn't built.)
+        excludePaths:
+          - docs
+          - "regex:.*\\.md$"
