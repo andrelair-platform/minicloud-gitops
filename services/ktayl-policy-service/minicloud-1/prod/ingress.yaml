@@ -9,10 +9,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - ktayl-policy.10.0.0.200.nip.io
+        - ktayl-policy-prod.10.0.0.200.nip.io
       secretName: ktayl-policy-service-tls
   rules:
-    - host: ktayl-policy.10.0.0.200.nip.io
+    - host: ktayl-policy-prod.10.0.0.200.nip.io
       http:
         paths:
           - path: /
