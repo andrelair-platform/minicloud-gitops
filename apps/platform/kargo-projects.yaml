@@ -55,3 +55,15 @@ spec:
             - .spec.data[].remoteRef.decodingStrategy
             - .spec.data[].remoteRef.metadataPolicy
             - .spec.target.deletionPolicy
+        # Kargo's admission webhook defaults these on every Warehouse subscription
+        # (strictSemvers, discoveryLimit) + normalises spec.interval (5m→5m0s). They're
+        # never in git → SSA sees permanent drift → app stuck OutOfSync (Healthy). Same
+        # class as the ESO injection above; ignore them (RespectIgnoreDifferences already set).
+        - group: kargo.akuity.io
+          kind: Warehouse
+          jqPathExpressions:
+            - .spec.interval
+            - .spec.subscriptions[].image.strictSemvers
+            - .spec.subscriptions[].image.discoveryLimit
+            - .spec.subscriptions[].git.strictSemvers
+            - .spec.subscriptions[].git.discoveryLimit
