@@ -1,0 +1,115 @@
+# Dedicated prod Postgres for ktayl-policy-service — mirrors the dev ktayl-postgres
+# StatefulSet (which was created outside gitops). Password from Vault via ESO.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ktayl-postgres
+  namespace: ktayl-prod
+spec:
+  clusterIP: None
+  selector:
+    app: ktayl-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ktayl-postgres-secret
+  namespace: ktayl-prod
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: ktayl-postgres-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: postgres-password
+      remoteRef:
+        key: platform/ktayl-prod
+        property: postgres-password
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ktayl-postgres
+  namespace: ktayl-prod
+spec:
+  serviceName: ktayl-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ktayl-postgres
+  template:
+    metadata:
+      labels:
+        app: ktayl-postgres
+    spec:
+      securityContext:
+        fsGroup: 999
+        runAsNonRoot: true
+        runAsUser: 999
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: ktayl
+            - name: POSTGRES_DB
+              value: ktayl_policy
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ktayl-postgres-secret
+                  key: postgres-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: LANG
+              value: "C"
+            - name: LC_ALL
+              value: "C"
+          ports:
+            - name: postgres
+              containerPort: 5432
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["NET_RAW"]
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "ktayl", "-d", "ktayl_policy"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  # updateStrategy declared explicitly — k8s defaults it, so omitting it makes ArgoCD
+  # see permanent drift on the StatefulSet (feedback_statefulset_argocd_vct).
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
+  volumeClaimTemplates:
+    # apiVersion/kind/volumeMode declared explicitly for the same ArgoCD-drift reason.
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: longhorn
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 5Gi
