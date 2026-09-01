@@ -1,0 +1,14 @@
+# Auto-promotion policy (pilot ①: Kargo becomes the SOLE promoter of dev). New Freight
+# discovered by the Warehouse is auto-promoted into the dev Stage (which subscribes to the
+# Warehouse via sources.direct) — no manual Kargo UI click, no CI bump-gitops. The prod
+# Stage is intentionally absent here: prod stays manual (it lands on the CODEOWNERS PR gate).
+# ProjectConfig is a singleton per project namespace, named after the Project.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: platform-demo
+  namespace: platform-demo
+spec:
+  promotionPolicies:
+    - stage: dev
+      autoPromotionEnabled: true
