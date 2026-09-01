@@ -1,0 +1,16 @@
+# Inject the backend API URL at RUNTIME (image no longer bakes it). Read by the layout
+# → window.__ENV__ → getApiUrl(). Public prod host retrieva.online (/api → backend).
+# Harmless for the current baked image (it ignores this env); REQUIRED once the
+# runtime-config frontend is promoted here, else the browser falls back to localhost.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrieva-frontend
+spec:
+  template:
+    spec:
+      containers:
+        - name: frontend
+          env:
+            - name: API_URL
+              value: https://retrieva.online/api/v1
