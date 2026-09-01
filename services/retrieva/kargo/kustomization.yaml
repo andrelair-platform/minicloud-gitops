@@ -7,4 +7,5 @@ resources:
   - project.yaml
   - git-credentials.yaml
   - warehouse.yaml
+  - stage-dev.yaml
   - stage-prod.yaml
