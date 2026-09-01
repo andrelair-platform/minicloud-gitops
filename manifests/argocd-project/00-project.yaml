@@ -198,6 +198,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: ktayl-policy-service
       server: https://kubernetes.default.svc
+    - namespace: retrieva-kargo
+      server: https://kubernetes.default.svc
 
   clusterResourceWhitelist:
     - group: ""

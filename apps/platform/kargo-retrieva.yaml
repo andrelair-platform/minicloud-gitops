@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # retrieva gets a DEDICATED Kargo app (not the kargo-projects ApplicationSet) because
+  # its prod workload owns the bare `retrieva` namespace, so the Kargo project must live
+  # in a separate ns (retrieva-kargo) — which the ApplicationSet's ns=<dir> convention
+  # can't express. Prod-only pipeline (2 images); see services/retrieva/kargo/.
+  name: kargo-retrieva
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: kargo
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/retrieva/kargo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: retrieva-kargo
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
