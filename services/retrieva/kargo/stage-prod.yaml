@@ -4,9 +4,9 @@ metadata:
   name: prod
   namespace: retrieva-kargo
 spec:
-  # Prod-only pipeline: promote the immutable ghcr main artifact directly. retrieva's
-  # dev runs a separate dev-branch track (Harbor dev-<sha>-amd64), so there is no dev
-  # Stage here — a full dev->prod gate needs the CI unified to one artifact (follow-up).
+  # Prod-only: promote a main commit directly. Both images pinned to that commit's SHA
+  # (they're built + tagged with the same `git rev-parse --short`), so prod is always a
+  # consistent, auditable set. retrieva dev stays on its own dev-branch track.
   requestedFreight:
     - origin: { kind: Warehouse, name: retrieva }
       sources: { direct: true }
@@ -15,6 +15,8 @@ spec:
       vars:
         - name: gitopsRepo
           value: https://github.com/andrelair-platform/minicloud-gitops.git
+        - name: sha
+          value: ${{ commitFrom("https://github.com/andrelair-platform/retrieva.git").ID[0:7] }}
       steps:
         - uses: git-clone
           as: clone
@@ -30,21 +32,19 @@ spec:
             images:
               - image: retrieva-backend
                 newName: ghcr.io/andrelair-platform/retrieva-backend
-                tag: '${{ imageFrom("ghcr.io/andrelair-platform/retrieva-backend").Tag }}'
+                tag: ${{ vars.sha }}
               - image: retrieva-frontend
                 newName: ghcr.io/andrelair-platform/retrieva-frontend
-                tag: '${{ imageFrom("ghcr.io/andrelair-platform/retrieva-frontend").Tag }}'
+                tag: ${{ vars.sha }}
         - uses: git-commit
           as: commit
           config:
             path: ./repo
-            message: 'kargo(retrieva): promote backend+frontend to prod'
+            message: 'kargo(retrieva): promote ${{ vars.sha }} to prod (backend+frontend)'
         - uses: git-push
           as: push
           if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
-          config:
-            path: ./repo
-            generateTargetBranch: true
+          config: { path: ./repo, generateTargetBranch: true }
         - uses: git-open-pr
           as: open-pr
           if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
@@ -53,8 +53,8 @@ spec:
             sourceBranch: ${{ outputs.push.branch }}
             targetBranch: main
             provider: github
-            title: 'kargo(retrieva): promote to PROD'
-            description: 'Promotion opened by Kargo — retrieva backend+frontend to prod (retrieva.online). Requires CODEOWNERS approval; ArgoCD auto-syncs prod once merged.'
+            title: 'kargo(retrieva): promote ${{ vars.sha }} to PROD'
+            description: 'Promotion opened by Kargo — retrieva backend+frontend @ ${{ vars.sha }} to prod (retrieva.online). CODEOWNERS-gated; ArgoCD auto-syncs prod once merged.'
             labels: [kargo, env-prod]
         - uses: git-wait-for-pr
           as: wait-pr
