@@ -10,7 +10,7 @@ spec:
     kind: ClusterIssuer
     group: cert-manager.io
   dnsNames:
-    - ktayl-policy.10.0.0.200.nip.io
+    - ktayl-policy-prod.10.0.0.200.nip.io
   duration: 2160h
   renewBefore: 720h
   privateKey:
