@@ -1,13 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-# Kargo PROD-promotion pipeline for retrieva (2 images, prod-only — see stage-prod.yaml
-# + manifests/kargo/README.md). Deployed by apps/platform/kargo-retrieva.yaml into the
-# dedicated retrieva-kargo namespace.
+# Kargo PROD-promotion pipeline for retrieva. Git-based Warehouse (Freight = a main
+# commit → both images promoted at the same SHA). Deployed by apps/platform/kargo-retrieva.yaml.
 resources:
   - namespace.yaml
   - project.yaml
   - git-credentials.yaml
-  - image-credentials-retrieva-backend.yaml
-  - image-credentials-retrieva-frontend.yaml
   - warehouse.yaml
   - stage-prod.yaml
