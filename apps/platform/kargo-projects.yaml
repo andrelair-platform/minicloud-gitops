@@ -12,9 +12,10 @@ spec:
         revision: main
         directories:
           - path: services/*/kargo
-          # retrieva is PARKED (its kargo/ dir is a README) — its frontend bakes
-          # NEXT_PUBLIC_API_URL at build time, so dev and prod are DIFFERENT
-          # artifacts. Excluded until the runtime-config migration lands.
+          # retrieva is wired via a DEDICATED app (apps/platform/kargo-retrieva.yaml),
+          # NOT this ApplicationSet: its prod workload owns the bare `retrieva` ns, so
+          # its Kargo project needs a separate ns (retrieva-kargo) that the ns=<dir>
+          # convention here can't express. Excluded so it isn't generated twice.
           - path: services/retrieva/kargo
             exclude: true
   template:

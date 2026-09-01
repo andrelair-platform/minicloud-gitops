@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  # Dedicated Kargo project namespace — retrieva PROD workload owns the bare `retrieva`
+  # ns, so the Kargo project can't reuse it. dev workload is in retrieva-dev.
+  name: retrieva-kargo
+  labels:
+    kargo.akuity.io/project: "true"
