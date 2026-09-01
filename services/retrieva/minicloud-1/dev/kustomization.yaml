@@ -6,16 +6,18 @@ resources:
   - quota.yaml
   - certificate.yaml
   - ingress.yaml
-# Dev uses the Harbor dev registry (branch=dev CI build, frontend baked with the
-# internal dev host). Cloud AI providers are prod-only; dev generation runs on
-# the free tier (ollama-cloud) via the retrieva-dev LiteLLM team — see backend-patch.
+# Dev uses the Harbor dev registry (branch=dev CI build). The frontend image is now
+# env-agnostic — API_URL is injected at RUNTIME (frontend-env-patch.yaml), not baked.
+# Cloud AI providers are prod-only; dev generation runs on the free tier (ollama-cloud)
+# via the retrieva-dev LiteLLM team — see backend-patch.
 images:
   - name: retrieva-backend
     newName: harbor.10.0.0.200.nip.io/library/retrieva-backend
-    newTag: "dev-7d44828-amd64"
+    newTag: "dev-06b0022-amd64"
   - name: retrieva-frontend
     newName: harbor.10.0.0.200.nip.io/library/retrieva-frontend
-    newTag: "dev-7d44828-amd64"
+    newTag: "dev-06b0022-amd64"
 patches:
   - path: externalsecret-patch.yaml
   - path: backend-patch.yaml
+  - path: frontend-env-patch.yaml

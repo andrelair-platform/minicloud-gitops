@@ -1,0 +1,16 @@
+# Inject the backend API URL at RUNTIME (the image no longer bakes it). Read by the
+# /__env.js route handler → window.__ENV__ → getApiUrl(). The browser reaches the
+# backend via the internal dev ingress (/api → retrieva-backend), so this is the
+# public dev host — one image, env supplied here.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrieva-frontend
+spec:
+  template:
+    spec:
+      containers:
+        - name: frontend
+          env:
+            - name: API_URL
+              value: https://retrieva-dev.10.0.0.200.nip.io/api/v1
