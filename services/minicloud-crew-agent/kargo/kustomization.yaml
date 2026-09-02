@@ -7,5 +7,7 @@ resources:
   - git-credentials.yaml
   - image-credentials.yaml
   - warehouse.yaml
+  - projectconfig.yaml       # auto-promote dev (Kargo = sole promoter)
+  - analysis-dev-smoke.yaml  # dev-Stage verification (Variant C: dev Service cross-ns)
   - stage-dev.yaml
   - stage-prod.yaml
