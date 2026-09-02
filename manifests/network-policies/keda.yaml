@@ -31,6 +31,32 @@ spec:
         - port: 8080
           protocol: TCP
 ---
+# Kargo dev-Stage verification (Option 2): the smoke AnalysisRun Jobs run in the Kargo
+# PROJECT namespace (kargo.akuity.io/project=true) and probe the target app by hitting the
+# interceptor DIRECTLY — this wakes a scale-to-zero dev AND bypasses the ingress Authentik
+# SSO (correct: the smoke verifies the APP's health, not the identity chain). One
+# label-scoped rule covers every current + future Kargo service. Human/browser access stays
+# SSO-protected via the Ingress path (unchanged). See services/*/kargo/analysis-*-smoke.yaml.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kargo-verification-interceptor
+  namespace: keda
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: interceptor
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kargo.akuity.io/project: "true"
+      ports:
+        - port: 8080
+          protocol: TCP
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
