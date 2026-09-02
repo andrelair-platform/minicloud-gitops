@@ -35,10 +35,10 @@ spec:
             images:
               - image: retrieva-backend
                 newName: harbor.10.0.0.200.nip.io/library/retrieva-backend
-                tag: ${{ vars.sha }}
+                tag: ${{ quote(vars.sha) }}
               - image: retrieva-frontend
                 newName: harbor.10.0.0.200.nip.io/library/retrieva-frontend
-                tag: ${{ vars.sha }}
+                tag: ${{ quote(vars.sha) }}
         - uses: git-commit
           as: commit
           config:

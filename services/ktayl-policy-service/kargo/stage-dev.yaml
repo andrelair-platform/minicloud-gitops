@@ -35,7 +35,7 @@ spec:
             path: ./repo/services/ktayl-policy-service/minicloud-1/dev
             images:
               - image: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
-                tag: '${{ imageFrom("ghcr.io/andrelair-platform/ktayl-policy-service").Tag }}'
+                tag: '${{ quote(imageFrom("ghcr.io/andrelair-platform/ktayl-policy-service").Tag) }}'
         - uses: git-commit
           as: commit
           config:

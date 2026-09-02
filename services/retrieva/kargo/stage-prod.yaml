@@ -32,10 +32,10 @@ spec:
             images:
               - image: retrieva-backend
                 newName: ghcr.io/andrelair-platform/retrieva-backend
-                tag: ${{ vars.sha }}
+                tag: ${{ quote(vars.sha) }}
               - image: retrieva-frontend
                 newName: ghcr.io/andrelair-platform/retrieva-frontend
-                tag: ${{ vars.sha }}
+                tag: ${{ quote(vars.sha) }}
         - uses: git-commit
           as: commit
           config:

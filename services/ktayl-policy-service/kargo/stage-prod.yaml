@@ -34,7 +34,7 @@ spec:
             images:
               - image: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
                 newName: ghcr.io/andrelair-platform/ktayl-policy-service
-                tag: '${{ imageFrom("ghcr.io/andrelair-platform/ktayl-policy-service").Tag }}'
+                tag: '${{ quote(imageFrom("ghcr.io/andrelair-platform/ktayl-policy-service").Tag) }}'
         - uses: git-commit
           as: commit
           config:
