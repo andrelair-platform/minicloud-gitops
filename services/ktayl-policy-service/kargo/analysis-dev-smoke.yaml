@@ -1,0 +1,60 @@
+# Kargo dev-Stage verification (Option 2, smoke VARIANT B — always-on + no SSO). ktayl dev is
+# an always-on service behind a plain (no-Authentik) ingress, so the smoke reaches it the real
+# way: through ingress-nginx. --connect-to keeps SNI+Host = the real dev host (so ingress-nginx
+# serves the right server block, not a default 302) while dialing the in-cluster nginx service;
+# -k trusts the minicloud CA implicitly. No extra NetworkPolicy needed: ingress-nginx accepts
+# from all namespaces and the ktayl dev ns already allows ingress-nginx. argo-rollouts (cluster-
+# scoped) reconciles the AnalysisRun; the job runs in this (Kargo project) namespace.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: ktayl-policy-service-dev-verify
+  namespace: ktayl-policy-service
+spec:
+  metrics:
+    - name: dev-smoke
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 3
+            activeDeadlineSeconds: 120
+            ttlSecondsAfterFinished: 300
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/part-of: ktayl-policy-service
+                  kargo.akuity.io/verify: dev-smoke
+              spec:
+                restartPolicy: Never
+                # Gatekeeper: require-non-root + no-privilege-escalation + require-resource-limits
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: smoke
+                    # Fully-qualified: the allowed-registries policy denies a bare image name.
+                    image: docker.io/curlimages/curl:8.11.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests: {cpu: 25m, memory: 32Mi}
+                      limits: {cpu: 100m, memory: 64Mi}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        H=ktayl-policy.10.0.0.200.nip.io
+                        NGINX=nginx-ingress-ingress-nginx-controller.ingress-nginx.svc.cluster.local
+                        echo "smoke: GET https://$H/healthz via ingress-nginx"
+                        code=$(curl -sSk -o /dev/null -w '%{http_code}' --max-time 20 \
+                          --retry 8 --retry-delay 5 --retry-all-errors \
+                          --connect-to "$H:443:$NGINX:443" "https://$H/healthz")
+                        echo "healthz http_code=$code"
+                        test "$code" = 200
+                        echo "dev smoke passed"
