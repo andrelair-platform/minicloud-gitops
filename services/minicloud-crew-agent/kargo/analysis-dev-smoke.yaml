@@ -1,0 +1,53 @@
+# Kargo dev-Stage verification (Option 2, smoke VARIANT C — always-on INTERNAL service, no
+# ingress). The AnalysisRun Job runs in the Kargo project ns and curls the dev Service directly
+# across namespaces (minicloud-crew-agent-dev). That cross-ns hop needs the allow-kargo-verification
+# NetworkPolicy in the dev ns (manifests/network-policies/minicloud-crew-agent-dev.yaml).
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: minicloud-crew-agent-dev-verify
+  namespace: minicloud-crew-agent
+spec:
+  metrics:
+    - name: dev-smoke
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 3
+            activeDeadlineSeconds: 120
+            ttlSecondsAfterFinished: 300
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/part-of: minicloud-crew-agent
+                  kargo.akuity.io/verify: dev-smoke
+              spec:
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: smoke
+                    image: docker.io/curlimages/curl:8.11.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests: {cpu: 25m, memory: 32Mi}
+                      limits: {cpu: 100m, memory: 64Mi}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        U=http://minicloud-crew-agent.minicloud-crew-agent-dev.svc.cluster.local:8081/health
+                        echo "smoke: GET $U (cross-ns to dev Service)"
+                        code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
+                          --retry 6 --retry-delay 4 --retry-all-errors "$U")
+                        echo "health http_code=$code"
+                        test "$code" = 200
+                        echo "dev smoke passed"

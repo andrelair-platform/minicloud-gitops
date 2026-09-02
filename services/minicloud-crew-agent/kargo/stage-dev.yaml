@@ -10,6 +10,12 @@ spec:
         name: minicloud-crew-agent
       sources:
         direct: true
+  # After promoting to dev, run the smoke AnalysisRun. A Freight is "Verified in dev"
+  # only if it passes → the prod Stage (sources.stages: [dev]) accepts only verified
+  # Freight = the dev→prod gate (Option 2). Variant C smoke (dev Service cross-ns).
+  verification:
+    analysisTemplates:
+      - name: minicloud-crew-agent-dev-verify
   promotionTemplate:
     spec:
       vars:

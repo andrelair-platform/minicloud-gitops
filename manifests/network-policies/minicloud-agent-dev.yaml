@@ -73,3 +73,16 @@ metadata: {name: allow-cluster-egress, namespace: minicloud-agent-dev}
 spec:
   endpointSelector: {}
   egress: [{toEntities: [cluster]}]
+---
+# Kargo dev-Stage verification (Variant C): the smoke AnalysisRun Job runs in the Kargo
+# project ns (minicloud-agent) and probes the dev Service cross-ns. Allow that ingress on the app
+# port from any Kargo project ns (label-scoped). See services/minicloud-agent/kargo/analysis-dev-smoke.yaml.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-kargo-verification, namespace: minicloud-agent-dev}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{namespaceSelector: {matchLabels: {kargo.akuity.io/project: "true"}}}]
+      ports: [{port: 8080, protocol: TCP}]
