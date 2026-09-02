@@ -35,7 +35,7 @@ spec:
             path: ./repo/services/minicloud-agent/minicloud-1/dev
             images:
               - image: harbor.10.0.0.200.nip.io/library/minicloud-agent
-                tag: '${{ imageFrom("ghcr.io/andrelair-platform/minicloud-agent").Tag }}'
+                tag: '${{ quote(imageFrom("ghcr.io/andrelair-platform/minicloud-agent").Tag) }}'
         - uses: git-commit
           as: commit
           config:

@@ -34,7 +34,7 @@ spec:
             images:
               - image: harbor.10.0.0.200.nip.io/library/platform-demo
                 newName: ghcr.io/andrelair-platform/platform-demo
-                tag: '${{ imageFrom("ghcr.io/andrelair-platform/platform-demo").Tag }}'
+                tag: '${{ quote(imageFrom("ghcr.io/andrelair-platform/platform-demo").Tag) }}'
         - uses: git-commit
           as: commit
           config:
