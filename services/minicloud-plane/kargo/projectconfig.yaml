@@ -1,0 +1,12 @@
+# Auto-promotion: Kargo is the sole promoter of dev. New Freight is auto-promoted into the dev
+# Stage; the scale-aware Variant-D verification then wakes dev, smokes it, and hands it back to
+# the KEDA cron scaler. Prod stays manual (CODEOWNERS PR).
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: minicloud-plane
+  namespace: minicloud-plane
+spec:
+  promotionPolicies:
+    - stage: dev
+      autoPromotionEnabled: true

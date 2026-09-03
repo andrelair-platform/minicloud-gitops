@@ -1,0 +1,79 @@
+# Kargo dev-Stage verification (Option 2, smoke VARIANT D — CRON scale-to-zero, internal).
+# minicloud-plane dev is scaled to zero on a schedule by a KEDA CRON ScaledObject, so — unlike an
+# HTTP scale-to-zero app — it does NOT wake on the probe. The smoke is SCALE-AWARE: it pauses the
+# ScaledObject at 1 replica (KEDA annotation), waits + smokes the dev Service cross-ns, then
+# removes the annotation so cron control resumes. A `trap resume EXIT` guarantees the app is handed
+# back to KEDA even if the smoke fails (otherwise dev would stay pinned at 1, defeating scale-to-zero).
+# Pause/resume go through the k8s API with the pod's ServiceAccount token — no kubectl image needed.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: plane-dev-verify
+  namespace: minicloud-plane
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: minicloud-plane-dev-verify
+  namespace: minicloud-plane
+spec:
+  metrics:
+    - name: dev-smoke
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 2
+            activeDeadlineSeconds: 180
+            ttlSecondsAfterFinished: 300
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/part-of: minicloud-plane
+                  kargo.akuity.io/verify: dev-smoke
+              spec:
+                restartPolicy: Never
+                serviceAccountName: plane-dev-verify
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: smoke
+                    image: docker.io/curlimages/curl:8.11.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests: {cpu: 25m, memory: 32Mi}
+                      limits: {cpu: 100m, memory: 64Mi}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        API=https://kubernetes.default.svc
+                        NS=minicloud-plane-dev
+                        SO=minicloud-plane-cron-scaler
+                        TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+                        CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                        patch() {
+                          curl -sS --cacert "$CA" -H "Authorization: Bearer $TOKEN" \
+                            -H "Content-Type: application/merge-patch+json" -X PATCH \
+                            "$API/apis/keda.sh/v1alpha1/namespaces/$NS/scaledobjects/$SO" -d "$1" >/dev/null
+                        }
+                        # Always hand the app back to KEDA cron control, even on smoke failure.
+                        resume() { patch '{"metadata":{"annotations":{"autoscaling.keda.sh/paused-replicas":null}}}'; }
+                        trap resume EXIT
+                        echo "pausing KEDA at 1 replica to wake dev"
+                        patch '{"metadata":{"annotations":{"autoscaling.keda.sh/paused-replicas":"1"}}}'
+                        U=http://minicloud-plane.minicloud-plane-dev.svc.cluster.local:8080/health
+                        echo "smoke: GET $U (retries cover cold start)"
+                        code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+                          --retry 15 --retry-delay 5 --retry-all-errors "$U")
+                        echo "health http_code=$code"
+                        test "$code" = 200
+                        echo "dev smoke passed (KEDA cron control resumes on exit)"
