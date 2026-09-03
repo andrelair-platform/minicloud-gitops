@@ -6,4 +6,4 @@ resources:
 - scaledobject.yaml
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-plane
-  newTag: ff347ee
+  newTag: 85c96d5
