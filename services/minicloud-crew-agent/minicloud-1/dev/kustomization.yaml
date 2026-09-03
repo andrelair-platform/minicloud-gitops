@@ -16,4 +16,4 @@ patches:
 # CI bumps newTag here on every push to the dev branch in minicloud-crew-agent repo.
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
-  newTag: 0d4a1e7
+  newTag: e258df6
