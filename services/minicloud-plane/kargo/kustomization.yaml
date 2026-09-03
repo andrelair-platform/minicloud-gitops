@@ -7,5 +7,8 @@ resources:
   - git-credentials.yaml
   - image-credentials.yaml
   - warehouse.yaml
+  - projectconfig.yaml       # auto-promote dev (Kargo = sole promoter)
+  - analysis-dev-smoke.yaml  # dev-Stage verification (Variant D: cron scale-aware)
+  - rbac-dev.yaml            # SA RBAC (pause/resume KEDA) + netpol in the dev ns
   - stage-dev.yaml
   - stage-prod.yaml

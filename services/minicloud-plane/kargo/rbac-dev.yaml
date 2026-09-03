@@ -1,0 +1,45 @@
+# Cross-namespace access the Variant-D scale-aware smoke needs in the dev namespace:
+#  - Role/RoleBinding: let the AnalysisRun Job's ServiceAccount (in the Kargo project ns) patch
+#    the KEDA ScaledObject to pause/resume it (get for read-back).
+#  - NetworkPolicy: let the Job (in a kargo.akuity.io/project=true ns) reach the dev Service :8080.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kargo-scale-verify
+  namespace: minicloud-plane-dev
+rules:
+  - apiGroups: ["keda.sh"]
+    resources: ["scaledobjects"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kargo-scale-verify
+  namespace: minicloud-plane-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kargo-scale-verify
+subjects:
+  - kind: ServiceAccount
+    name: plane-dev-verify
+    namespace: minicloud-plane
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kargo-verification
+  namespace: minicloud-plane-dev
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kargo.akuity.io/project: "true"
+      ports:
+        - port: 8080
+          protocol: TCP
