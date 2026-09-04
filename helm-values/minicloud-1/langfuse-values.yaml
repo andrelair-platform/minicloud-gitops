@@ -76,13 +76,6 @@ langfuse:
 
   # Pre-provision org, project, and API keys on first startup
   additionalEnv:
-    # Admin API key → unlocks /api/admin/* for API-native provisioning of per-product
-    # Langfuse projects (LLMOps onboarding Job). Sourced from Vault via the langfuse-secrets ESO.
-    - name: ADMIN_API_KEY
-      valueFrom:
-        secretKeyRef:
-          name: langfuse-secrets
-          key: admin-api-key
     - name: AUTH_DISABLE_USERNAME_PASSWORD
       value: "true"
     - name: AUTH_CUSTOM_NAME
