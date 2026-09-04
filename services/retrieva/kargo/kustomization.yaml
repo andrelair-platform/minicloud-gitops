@@ -7,5 +7,8 @@ resources:
   - project.yaml
   - git-credentials.yaml
   - warehouse.yaml
+  - projectconfig.yaml       # auto-promote dev
+  - analysis-dev-smoke.yaml  # dev verification (Variant C, 2 images)
+  - netpol-dev.yaml          # cross-ns netpol in retrieva-dev
   - stage-dev.yaml
   - stage-prod.yaml

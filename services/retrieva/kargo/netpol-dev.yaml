@@ -1,0 +1,20 @@
+# Variant C: let the AnalysisRun Job (in the retrieva-kargo project ns) reach the dev Services
+# (backend :3007, frontend :3000) cross-namespace. retrieva-dev is default-deny-ingress.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kargo-verification
+  namespace: retrieva-dev
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kargo.akuity.io/project: "true"
+      ports:
+        - port: 3007
+          protocol: TCP
+        - port: 3000
+          protocol: TCP

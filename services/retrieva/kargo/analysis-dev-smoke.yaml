@@ -1,0 +1,58 @@
+# Kargo dev-Stage verification (Option 2, smoke VARIANT C — always-on, internal, MULTI-IMAGE).
+# retrieva is a git-Warehouse service (backend + frontend promoted at the same commit), so the
+# smoke verifies BOTH images by curling each dev Service directly cross-namespace: the backend
+# health endpoint (:3007/health) AND the frontend root (:3000/). The backend's /health is not
+# reachable via the ingress (that only exposes /api + /socket.io), so cross-ns Service probes are
+# the right call — and they prove each image independently. Needs the allow-kargo-verification
+# NetworkPolicy in retrieva-dev (netpol-dev.yaml). argo-rollouts (cluster-scoped) reconciles the run.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: retrieva-dev-verify
+  namespace: retrieva-kargo
+spec:
+  metrics:
+    - name: dev-smoke
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 3
+            activeDeadlineSeconds: 150
+            ttlSecondsAfterFinished: 300
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/part-of: retrieva
+                  kargo.akuity.io/verify: dev-smoke
+              spec:
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: smoke
+                    image: docker.io/curlimages/curl:8.11.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests: {cpu: 25m, memory: 32Mi}
+                      limits: {cpu: 100m, memory: 64Mi}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        B=http://retrieva-backend.retrieva-dev.svc.cluster.local:3007/health
+                        F=http://retrieva-frontend.retrieva-dev.svc.cluster.local:3000/
+                        bc=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
+                          --retry 8 --retry-delay 5 --retry-all-errors "$B")
+                        echo "backend /health = $bc"; test "$bc" = 200
+                        fc=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
+                          --retry 8 --retry-delay 5 --retry-all-errors "$F")
+                        echo "frontend / = $fc"; test "$fc" = 200
+                        echo "both images healthy — dev smoke passed"
