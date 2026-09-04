@@ -69,6 +69,10 @@ spec:
             # App-level LLMOps tracing → the dedicated 'retrieva' Langfuse project. In-cluster svc
             # URL (matches the backend-egress-governed netpol allowing langfuse ns:3000; no TLS/hairpin).
             - { name: LANGFUSE_BASE_URL, value: "http://langfuse-web.langfuse.svc.cluster.local:3000" }
+            # One shared 'retrieva' Langfuse project for dev+prod; the native `environment`
+            # attribute keeps them distinguishable in the UI. base defaults to production;
+            # the dev overlay patches this to "development" (image is identical dev/prod).
+            - { name: LANGFUSE_TRACING_ENVIRONMENT, value: "production" }
             - name: LANGFUSE_PUBLIC_KEY
               valueFrom: { secretKeyRef: { name: retrieva-secrets, key: langfuse-public-key } }
             - name: LANGFUSE_SECRET_KEY
