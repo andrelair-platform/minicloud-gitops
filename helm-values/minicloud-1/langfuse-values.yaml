@@ -150,17 +150,27 @@ clickhouse:
     existingSecretKey: clickhouse-password
   image:
     repository: bitnamilegacy/clickhouse
-  # Disable heavy ClickHouse internal system log tables that filled the 8Gi PVC
-  # (system.trace_log = 6.2 GiB, system.text_log = 1 GiB of internal profiling data).
-  # These tables have zero value for Langfuse — only the default.* tables matter.
+  # Disable heavy ClickHouse internal system log tables. These have ZERO value for
+  # Langfuse (only default.* tables matter) but grow unbounded and fill the PVC,
+  # which starves real ingestion (worker gets code 243 NOT_ENOUGH_SPACE → drops
+  # every trace platform-wide). Recurred 2026-09-05: system.trace_log reached
+  # 25 GiB (1.06 B rows) on the 30 Gi PVC → all traces dropped.
+  # CRITICAL SYNTAX: disable a system log with the `remove="1"` ATTRIBUTE, not a
+  # `<enabled>false</enabled>` child — ClickHouse silently ignores the unknown
+  # <enabled> element and keeps the default log enabled (that was the latent bug).
   extraOverrides: |
     <clickhouse>
-        <trace_log><enabled>false</enabled></trace_log>
-        <text_log><enabled>false</enabled></text_log>
-        <metric_log><enabled>false</enabled></metric_log>
-        <asynchronous_metric_log><enabled>false</enabled></asynchronous_metric_log>
-        <latency_log><enabled>false</enabled></latency_log>
-        <processors_profile_log><enabled>false</enabled></processors_profile_log>
+        <trace_log remove="1"/>
+        <text_log remove="1"/>
+        <metric_log remove="1"/>
+        <asynchronous_metric_log remove="1"/>
+        <latency_log remove="1"/>
+        <processors_profile_log remove="1"/>
+        <query_log remove="1"/>
+        <query_thread_log remove="1"/>
+        <opentelemetry_span_log remove="1"/>
+        <part_log remove="1"/>
+        <error_log remove="1"/>
     </clickhouse>
   zookeeper:
     image:
