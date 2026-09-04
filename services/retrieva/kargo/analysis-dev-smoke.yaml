@@ -47,12 +47,20 @@ spec:
                     args:
                       - |
                         set -eu
-                        B=http://retrieva-backend.retrieva-dev.svc.cluster.local:3007/health
+                        # Backend: /health/detailed runs a REAL generation — getDefaultLLM().invoke()
+                        # through the AI gateway — and reports services.llm.responsive. Assert THAT
+                        # (the promoted artifact's LLM path), not the overall 200/503: the aggregate
+                        # also flips to 503 on env-state deps (e.g. a Qdrant timeout) that are not the
+                        # image being promoted. This verifies real generation on every promotion — no
+                        # manual exec — while staying scoped to the artifact. (curl without -f so the
+                        # 503 body is still captured for the responsive check.)
+                        B=http://retrieva-backend.retrieva-dev.svc.cluster.local:3007/health/detailed
                         F=http://retrieva-frontend.retrieva-dev.svc.cluster.local:3000/
-                        bc=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
-                          --retry 8 --retry-delay 5 --retry-all-errors "$B")
-                        echo "backend /health = $bc"; test "$bc" = 200
+                        body=$(curl -sS --max-time 60 --retry 6 --retry-delay 5 --retry-all-errors "$B")
+                        echo "$body" | grep -qE '"responsive":[[:space:]]*true' || {
+                          echo "backend LLM not responsive via gateway: $body"; exit 1; }
+                        echo "backend: real generation verified (llm.responsive via gateway)"
                         fc=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
                           --retry 8 --retry-delay 5 --retry-all-errors "$F")
                         echo "frontend / = $fc"; test "$fc" = 200
-                        echo "both images healthy — dev smoke passed"
+                        echo "both images healthy + real generation verified — dev smoke passed"
