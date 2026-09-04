@@ -53,6 +53,13 @@ spec:
       remoteRef:
         key: platform/langfuse
         property: redis-url
+    # Admin API key — unlocks Langfuse's /api/admin/* (org + project + API-key
+    # provisioning) so per-product Langfuse projects can be created 100% via API
+    # (the LLMOps onboarding Job), no UI clicks. See manifests/ai LLMOps seeder.
+    - secretKey: admin-api-key
+      remoteRef:
+        key: platform/langfuse
+        property: admin-api-key
 ---
 # langfuse-oidc-env — mapped as env vars via additionalEnvFrom.
 # Key names match NextAuth env var names directly.
