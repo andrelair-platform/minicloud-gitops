@@ -1,10 +1,12 @@
 # Auto-promotion: Kargo is the sole promoter of dev. New Freight (a retrieva git commit → both
 # images at that SHA) is auto-promoted into the dev Stage, then the Variant-C verification smokes
 # both images. Prod stays manual (CODEOWNERS PR).
+# NOTE: ProjectConfig is a singleton whose name MUST equal the Kargo Project name = the project
+# namespace. retrieva's project ns is `retrieva-kargo` (not the bare `retrieva`), so both must be it.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: ProjectConfig
 metadata:
-  name: retrieva
+  name: retrieva-kargo
   namespace: retrieva-kargo
 spec:
   promotionPolicies:
