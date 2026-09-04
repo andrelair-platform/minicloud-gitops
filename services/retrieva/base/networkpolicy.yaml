@@ -85,3 +85,11 @@ spec:
         - { protocol: TCP, port: 4000 }
         - { protocol: TCP, port: 6333 }
         - { protocol: TCP, port: 6334 }
+    # Langfuse (langfuse ns): app-level LLMOps traces (Trace → retrieval span → generation)
+    # sent from the backend via the Langfuse core SDK. Governed egress — traces stay on-cluster.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: langfuse
+      ports:
+        - { protocol: TCP, port: 3000 }
