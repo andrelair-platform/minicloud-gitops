@@ -9,7 +9,10 @@ spec:
   hard:
     requests.cpu: "2"
     limits.cpu: "8"
-    requests.memory: 4Gi
+    # 6Gi (was 4Gi): steady-state use is ~3.7Gi, so 4Gi left ZERO surge headroom —
+    # any rollout's new pod hit "exceeded quota: requests.memory" (FailedCreate) and
+    # langfuse could never redeploy. 6Gi gives room for a single surge pod on rollout.
+    requests.memory: 6Gi
     limits.memory: 20Gi
     count/pods: "15"
 ---
