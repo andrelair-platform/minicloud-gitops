@@ -16,4 +16,4 @@ patches:
 # CI bumps newTag here on every push to the dev branch in minicloud-agent repo.
 images:
 - name: harbor.10.0.0.200.nip.io/library/minicloud-agent
-  newTag: 21ff7a7
+  newTag: e7d010e
