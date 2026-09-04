@@ -21,3 +21,8 @@ spec:
             - { name: EMBEDDING_MODEL, value: "nvidia-embed" }
             - { name: FRONTEND_URL, value: "https://retrieva-dev.10.0.0.200.nip.io" }
             - { name: ALLOWED_ORIGINS, value: "https://retrieva-dev.10.0.0.200.nip.io" }
+            # Distinguishes this env in the SHARED 'retrieva' Langfuse project (native
+            # `environment` attribute → UI Environment filter). base = production; dev
+            # overrides to development. The image is identical dev/prod, so this MUST be
+            # a per-overlay env var (NODE_ENV is 'production' in both).
+            - { name: LANGFUSE_TRACING_ENVIRONMENT, value: "development" }
