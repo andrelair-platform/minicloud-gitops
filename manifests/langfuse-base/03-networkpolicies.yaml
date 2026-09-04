@@ -81,6 +81,31 @@ spec:
       ports:
         - port: 3000
 ---
+# Allow app-level LLMOps tracing from product namespaces (Langfuse core SDK → langfuse web API).
+# LiteLLM (ai ns) is covered above; this is for apps that send their own Trace→span→generation
+# hierarchy directly (retrieva backend). Add a product's namespaces here when it starts app-tracing.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-tracing
+  namespace: langfuse
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: langfuse
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: retrieva
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: retrieva-dev
+      ports:
+        - port: 3000
+---
 # Allow kube-apiserver webhook calls (flannel VTEP 10.42.0.0/24 for worker nodes)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
