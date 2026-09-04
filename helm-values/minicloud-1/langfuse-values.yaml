@@ -150,27 +150,32 @@ clickhouse:
     existingSecretKey: clickhouse-password
   image:
     repository: bitnamilegacy/clickhouse
-  # Disable heavy ClickHouse internal system log tables. These have ZERO value for
-  # Langfuse (only default.* tables matter) but grow unbounded and fill the PVC,
-  # which starves real ingestion (worker gets code 243 NOT_ENOUGH_SPACE → drops
-  # every trace platform-wide). Recurred 2026-09-05: system.trace_log reached
-  # 25 GiB (1.06 B rows) on the 30 Gi PVC → all traces dropped.
-  # CRITICAL SYNTAX: disable a system log with the `remove="1"` ATTRIBUTE, not a
-  # `<enabled>false</enabled>` child — ClickHouse silently ignores the unknown
-  # <enabled> element and keeps the default log enabled (that was the latent bug).
+  # Bound ClickHouse's internal system log tables with a short TTL. These have ZERO
+  # value for Langfuse (only default.* tables matter) but grow unbounded and fill the
+  # PVC, which starves real ingestion (worker gets code 243 NOT_ENOUGH_SPACE → drops
+  # every trace platform-wide). 2026-09-05: system.trace_log reached 25 GiB (1.06 B
+  # rows, the query profiler) on the 30 Gi PVC → all traces dropped.
+  #
+  # MECHANISM (verified live): a <ttl> sub-element per log — NOT remove="1", and NOT
+  # <enabled>false</enabled>. Both of those are no-ops here: these logs are ON by
+  # ClickHouse *compiled-in default*, so removing/omitting the config node just falls
+  # back to the enabled default (remove="1" was confirmed loaded yet the tables kept
+  # logging). A <ttl> is applied to the table on startup (ClickHouse reconciles system
+  # log table structure from config), capping each at 3 days (~1 GiB for trace_log).
+  # NOTE column: most logs use event_date; opentelemetry_span_log uses finish_date.
+  # Emergency on a 100%-full CH: TRUNCATE deadlocks (needs 1 MiB) → DROP TABLE … SYNC.
   extraOverrides: |
     <clickhouse>
-        <trace_log remove="1"/>
-        <text_log remove="1"/>
-        <metric_log remove="1"/>
-        <asynchronous_metric_log remove="1"/>
-        <latency_log remove="1"/>
-        <processors_profile_log remove="1"/>
-        <query_log remove="1"/>
-        <query_thread_log remove="1"/>
-        <opentelemetry_span_log remove="1"/>
-        <part_log remove="1"/>
-        <error_log remove="1"/>
+        <trace_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></trace_log>
+        <text_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></text_log>
+        <metric_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></metric_log>
+        <asynchronous_metric_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></asynchronous_metric_log>
+        <latency_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></latency_log>
+        <processors_profile_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></processors_profile_log>
+        <query_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></query_log>
+        <part_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></part_log>
+        <error_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></error_log>
+        <opentelemetry_span_log><ttl>finish_date + INTERVAL 3 DAY DELETE</ttl></opentelemetry_span_log>
     </clickhouse>
   zookeeper:
     image:
