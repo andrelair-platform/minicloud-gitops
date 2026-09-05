@@ -76,6 +76,15 @@ langfuse:
 
   # Pre-provision org, project, and API keys on first startup
   additionalEnv:
+    # Prompt Playground → LiteLLM gateway (in-cluster, governed). Langfuse's SSRF
+    # guard blocks LLM connections to private IPs ("Blocked IP address detected"),
+    # and the LiteLLM ClusterIP is private. Whitelist the gateway HOST so the
+    # playground can execute prompts through it (EU routing + spend attribution)
+    # without leaving the cluster — the public URL is behind Cloudflare Access (403).
+    # Var added in Langfuse PR #13073 (present in our 3.201.1 image). Tightest scope:
+    # the exact host, not the whole service CIDR. RTV-14 prompt-mgmt.
+    - name: LANGFUSE_LLM_CONNECTION_WHITELISTED_HOST
+      value: "litellm.ai.svc.cluster.local"
     - name: AUTH_DISABLE_USERNAME_PASSWORD
       value: "true"
     - name: AUTH_CUSTOM_NAME
