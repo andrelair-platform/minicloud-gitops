@@ -97,3 +97,12 @@ spec:
               kubernetes.io/metadata.name: langfuse
       ports:
         - { protocol: TCP, port: 3000 }
+    # Langfuse media store (RTV-14 gap 3): the SDK uploads figure images directly to
+    # the blob store via a presigned URL. Langfuse's media endpoint is the controller
+    # MinIO at 10.0.0.1:9000 (LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT), so multimodal figure
+    # inputs need this host egress; without it the image bytes fail ("fetch failed")
+    # and only a broken media reference is logged. Scoped to the MinIO host + port.
+    - to:
+        - ipBlock: { cidr: 10.0.0.1/32 }
+      ports:
+        - { protocol: TCP, port: 9000 }
