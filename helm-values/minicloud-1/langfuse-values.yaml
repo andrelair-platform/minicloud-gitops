@@ -150,32 +150,30 @@ clickhouse:
     existingSecretKey: clickhouse-password
   image:
     repository: bitnamilegacy/clickhouse
-  # Bound ClickHouse's internal system log tables with a short TTL. These have ZERO
-  # value for Langfuse (only default.* tables matter) but grow unbounded and fill the
-  # PVC, which starves real ingestion (worker gets code 243 NOT_ENOUGH_SPACE → drops
-  # every trace platform-wide). 2026-09-05: system.trace_log reached 25 GiB (1.06 B
-  # rows, the query profiler) on the 30 Gi PVC → all traces dropped.
+  # Bound ClickHouse's internal telemetry so it can't fill the PVC. These logs have
+  # ZERO value for Langfuse (only default.* tables matter) but grow unbounded and, when
+  # the PVC hits 100%, ClickHouse returns code 243 NOT_ENOUGH_SPACE on every insert and
+  # the worker DROPS every trace platform-wide. 2026-09-05: system.trace_log reached
+  # 25 GiB (1.06 B rows, the sampling query profiler) on the 30 Gi PVC → all traces
+  # dropped. trace_log is >80% of the problem.
   #
-  # MECHANISM (verified live): a <ttl> sub-element per log — NOT remove="1", and NOT
-  # <enabled>false</enabled>. Both of those are no-ops here: these logs are ON by
-  # ClickHouse *compiled-in default*, so removing/omitting the config node just falls
-  # back to the enabled default (remove="1" was confirmed loaded yet the tables kept
-  # logging). A <ttl> is applied to the table on startup (ClickHouse reconciles system
-  # log table structure from config), capping each at 3 days (~1 GiB for trace_log).
-  # NOTE column: most logs use event_date; opentelemetry_span_log uses finish_date.
-  # Emergency on a 100%-full CH: TRUNCATE deadlocks (needs 1 MiB) → DROP TABLE … SYNC.
+  # MECHANISM: disable the sampling query profiler that FEEDS trace_log (a settings
+  # profile — no engine conflict, safe in config). Do NOT add a <ttl> sub-element to a
+  # system-log element: the bitnami base config already defines <engine> for these
+  # tables, and ClickHouse rejects a sibling <ttl> at startup — "TTL should be inside
+  # engine", BAD_ARGUMENTS code 36 → CrashLoopBackOff (this exact mistake took CH down
+  # 2026-09-05). remove="1" / <enabled>false</enabled> are also no-ops (logs are on by
+  # compiled-in default). The smaller logs (text_log/metric_log/…) are bounded live via
+  # `ALTER TABLE system.<log> MODIFY TTL event_date + INTERVAL 3 DAY` (persists on the
+  # PVC across restarts); see the LLMOps memory / ops-runbooks.
   extraOverrides: |
     <clickhouse>
-        <trace_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></trace_log>
-        <text_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></text_log>
-        <metric_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></metric_log>
-        <asynchronous_metric_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></asynchronous_metric_log>
-        <latency_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></latency_log>
-        <processors_profile_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></processors_profile_log>
-        <query_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></query_log>
-        <part_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></part_log>
-        <error_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></error_log>
-        <opentelemetry_span_log><ttl>finish_date + INTERVAL 3 DAY DELETE</ttl></opentelemetry_span_log>
+        <profiles>
+            <default>
+                <query_profiler_real_time_period_ns>0</query_profiler_real_time_period_ns>
+                <query_profiler_cpu_time_period_ns>0</query_profiler_cpu_time_period_ns>
+            </default>
+        </profiles>
     </clickhouse>
   zookeeper:
     image:
