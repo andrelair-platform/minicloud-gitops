@@ -1,0 +1,23 @@
+---
+# Allow the Langfuse namespace to reach the LiteLLM gateway (ai ns :4000) so the
+# Langfuse Prompt **Playground** can execute prompts through the governed gateway
+# (EU routing, cost tracking, spend attributed to the caller's team) instead of a
+# raw provider key. langfuse-web makes the call server-side; langfuse egress is
+# already open, but the ai namespace is default-deny-ingress so LiteLLM needs this
+# explicit allow (same pattern as allow-retrieva-to-litellm). RTV-14 prompt-mgmt.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-langfuse-to-litellm
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels: { app: litellm }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: langfuse
+      ports:
+        - { protocol: TCP, port: 4000 }
