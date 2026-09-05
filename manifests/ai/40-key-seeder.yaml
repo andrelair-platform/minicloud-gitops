@@ -107,7 +107,13 @@ spec:
               # access groups (onprem/eu/us) but NOT a custom group like "dev-free",
               # so the free models are granted by explicit model_name. Maximises the
               # free tier in dev; cloud generation (Bedrock/Azure) stays prod-only.
-              DEV_FREE="[\"onprem\",\"eu\",\"ollama-cloud\",\"nvidia-embed\",\"nvidia-nano-30b\",\"nvidia-vision-90b\",\"nvidia-content-safety\",${ALIASES}]"
+              # gpt-4o-mini is the ONE deliberate paid exception: RTV-14 Phase 2
+              # (figure captioning) needs a vision model and the free NIM
+              # nvidia-vision-90b endpoint is dead (integrate.api.nvidia.com times
+              # out). Cost is bounded — the VLM is called only at ingest, only for
+              # figures that pass the pre-filter (never per chat/request). Prod uses
+              # an EU vision model instead (retrieva/EU_PROD team, set separately).
+              DEV_FREE="[\"onprem\",\"eu\",\"ollama-cloud\",\"nvidia-embed\",\"nvidia-nano-30b\",\"nvidia-vision-90b\",\"nvidia-content-safety\",\"gpt-4o-mini\",${ALIASES}]"
               # phi3-ci uses synthetic/public test data only → may hit any model.
               PUBLIC_OK='["all-proxy-models"]'
 
