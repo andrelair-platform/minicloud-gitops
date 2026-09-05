@@ -103,3 +103,51 @@ spec:
               {{ $labels.namespace }} is running without a memory limit.
               It can consume unbounded memory and OOMKill other pods on the same node.
               Add a LimitRange to the namespace or set resources.limits.memory explicitly.
+
+    - name: cost.ai-vision
+      rules:
+        # RTV-14 Phase 2 — watch the Azure vision (figure-captioning) bill in prod.
+        # The VLM (azure-gpt-4.1-mini) is called only at ingest, only on pre-filtered
+        # figures, so spend should track document/figure volume, not requests. This
+        # fires if the retrieva PROD team's daily vision spend crosses ~$1/day
+        # (≈5k figures/day at ~$0.0002/figure — far above expected volume), so the
+        # first real prod bill gets a human look. Info-level: a nudge, not a page.
+        # Eyeball in Grafana: sum(increase(litellm_spend_metric_total{requested_model="azure-gpt-4.1-mini"}[24h])) by (team_alias)
+        - alert: RetrievaProdVisionSpendElevated
+          expr: |
+            sum(
+              increase(litellm_spend_metric_total{requested_model="azure-gpt-4.1-mini", team="retrieva"}[24h])
+            ) > 1
+          for: 15m
+          labels:
+            severity: info
+            cost: "true"
+          annotations:
+            summary: "Retrieva prod vision (figure-caption) spend is ${{ $value | humanize }}/day"
+            description: |
+              The retrieva PROD team spent ${{ $value | humanize }} on azure-gpt-4.1-mini
+              (RTV-14 figure captioning) in the last 24h — above the ~$1/day watch line.
+              This is ingest-time captioning; spend should scale with documents/figures
+              ingested, not chat traffic. Sanity-check cost-per-document against upload
+              volume. If it's an unexpected spike, the kill-switch is
+              INGEST_VLM_CAPTION=false in services/retrieva/minicloud-1/prod (VLM off,
+              Docling text/OCR stays). Break down by caller:
+              sum(increase(litellm_spend_metric_total{requested_model="azure-gpt-4.1-mini"}[24h])) by (team_alias, api_key_alias)
+
+        # Any azure vision spend on a NON-retrieva team is unexpected (only retrieva
+        # ingestion should call it) — catches misconfiguration / a new consumer.
+        - alert: UnexpectedVisionModelConsumer
+          expr: |
+            sum by (team_alias) (
+              increase(litellm_spend_metric_total{requested_model="azure-gpt-4.1-mini", team!~"retrieva|retrieva-dev|None"}[24h])
+            ) > 0.10
+          for: 30m
+          labels:
+            severity: info
+            cost: "true"
+          annotations:
+            summary: "Unexpected team '{{ $labels.team_alias }}' is spending on the vision model"
+            description: |
+              Team {{ $labels.team_alias }} spent >$0.10/24h on azure-gpt-4.1-mini, but only
+              retrieva (prod/dev) ingestion should use it. Check for a misrouted caller or an
+              unintended grant in the LiteLLM key-seeder.
