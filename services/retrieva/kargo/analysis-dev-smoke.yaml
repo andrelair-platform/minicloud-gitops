@@ -18,7 +18,7 @@ spec:
         job:
           spec:
             backoffLimit: 3
-            activeDeadlineSeconds: 150
+            activeDeadlineSeconds: 300
             ttlSecondsAfterFinished: 300
             template:
               metadata:
@@ -47,16 +47,38 @@ spec:
                     args:
                       - |
                         set -eu
+                        B=http://retrieva-backend.retrieva-dev.svc.cluster.local:3007/health
+                        BD=http://retrieva-backend.retrieva-dev.svc.cluster.local:3007/health/detailed
+                        F=http://retrieva-frontend.retrieva-dev.svc.cluster.local:3000/
+
+                        # READINESS GATE (hardening) — separate "is the app up yet?" from "is it
+                        # healthy?". retrieva-dev rolls with maxSurge:0/maxUnavailable:1 (tight
+                        # quota), so the old pod is torn down BEFORE the new one is Ready → the
+                        # Service has ZERO endpoints for a window that outlasted the old curl retry
+                        # budget → false-fail (curl (7) connection refused) on every promotion.
+                        # Poll each Service until it's reachable (up to ~150s: 50×3s) FIRST; only
+                        # then assert health. A genuinely-broken image still fails (never becomes
+                        # reachable); a mid-rollout gap just extends the wait.
+                        wait_up() {  # $1=url $2=label
+                          i=0
+                          while [ "$i" -lt 50 ]; do
+                            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" || echo 000)
+                            if [ "$code" != "000" ]; then
+                              echo "$2 reachable (HTTP $code) after $((i*3))s"; return 0
+                            fi
+                            i=$((i+1)); sleep 3
+                          done
+                          echo "$2 never became reachable after 150s"; return 1
+                        }
+                        wait_up "$B" backend
+                        wait_up "$F" frontend
+
                         # Backend: /health/detailed runs a REAL generation — getDefaultLLM().invoke()
                         # through the AI gateway — and reports services.llm.responsive. Assert THAT
                         # (the promoted artifact's LLM path), not the overall 200/503: the aggregate
                         # also flips to 503 on env-state deps (e.g. a Qdrant timeout) that are not the
-                        # image being promoted. This verifies real generation on every promotion — no
-                        # manual exec — while staying scoped to the artifact. (curl without -f so the
-                        # 503 body is still captured for the responsive check.)
-                        B=http://retrieva-backend.retrieva-dev.svc.cluster.local:3007/health/detailed
-                        F=http://retrieva-frontend.retrieva-dev.svc.cluster.local:3000/
-                        body=$(curl -sS --max-time 60 --retry 6 --retry-delay 5 --retry-all-errors "$B")
+                        # image being promoted. (curl without -f so the 503 body is still captured.)
+                        body=$(curl -sS --max-time 60 --retry 6 --retry-delay 5 --retry-all-errors "$BD")
                         echo "$body" | grep -qE '"responsive":[[:space:]]*true' || {
                           echo "backend LLM not responsive via gateway: $body"; exit 1; }
                         echo "backend: real generation verified (llm.responsive via gateway)"
