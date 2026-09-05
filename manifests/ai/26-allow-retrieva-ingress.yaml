@@ -1,6 +1,9 @@
 ---
 # Allow the retrieva namespaces (prod + dev) to reach shared AI services:
-# LiteLLM (4000) + Qdrant (6333/6334). The ai namespace is default-deny-ingress.
+# LiteLLM (4000) + Qdrant (6333/6334) + document conversion for ingestion
+# (RTV-14): markitdown-proxy (8000) + docling-serve (5001). The ai namespace is
+# default-deny-ingress, so each target needs its own ingress allow rule (the
+# egress side lives in services/retrieva/base/networkpolicy.yaml — two-sided).
 # (RTV-03) Prod routes to EU cloud, dev to the free tier — both via LiteLLM.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -40,3 +43,41 @@ spec:
       ports:
         - { protocol: TCP, port: 6333 }
         - { protocol: TCP, port: 6334 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-retrieva-to-markitdown-proxy
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels: { app: markitdown-proxy }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values: [retrieva, retrieva-dev]
+      ports:
+        - { protocol: TCP, port: 8000 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-retrieva-to-docling
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels: { app: docling }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values: [retrieva, retrieva-dev]
+      ports:
+        - { protocol: TCP, port: 5001 }
