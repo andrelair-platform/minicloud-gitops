@@ -51,6 +51,12 @@ spec:
             - { name: INGEST_USE_DOCLING, value: "true" }
             - { name: MARKITDOWN_URL, value: "http://markitdown-proxy.ai.svc.cluster.local:8000" }
             - { name: DOCLING_URL, value: "http://docling.ai.svc.cluster.local:5001" }
+            # RTV-14 Phase 2: gated VLM figure captioning. Ingest-only, pre-filtered,
+            # per-doc capped — never per chat/request. Model = azure-gpt-4.1-mini
+            # (funded + EU, via the LiteLLM gateway; granted to both retrieva teams).
+            # OFF in base/prod (opt-in after validation); the dev overlay turns it on.
+            - { name: INGEST_VLM_CAPTION, value: "false" }
+            - { name: VLM_CAPTION_MODEL, value: "azure-gpt-4.1-mini" }
             - name: QDRANT_API_KEY
               valueFrom: { secretKeyRef: { name: retrieva-secrets, key: qdrant-api-key } }
             - { name: QDRANT_COLLECTION_NAME, value: "retrieva" }
