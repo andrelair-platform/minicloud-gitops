@@ -29,3 +29,6 @@ spec:
             # RTV-14 Phase 2: enable gated VLM figure captioning in dev (validate here
             # before opting prod in). Still fully gated — ingest-only, pre-filtered.
             - { name: INGEST_VLM_CAPTION, value: "true" }
+            # Prompt Management: dev pulls the `latest` prompt version to iterate;
+            # prod stays on the curated `production` label (base default).
+            - { name: LANGFUSE_PROMPT_LABEL, value: "latest" }
