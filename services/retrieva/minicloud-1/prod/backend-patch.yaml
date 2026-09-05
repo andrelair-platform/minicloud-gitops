@@ -1,0 +1,16 @@
+---
+# Prod backend overrides. RTV-14 Phase 2: enable gated VLM figure captioning in
+# prod (base defaults it off). Same model as dev (azure-gpt-4.1-mini, funded + EU,
+# via LiteLLM — granted to the retrieva/EU_PROD team). Still fully gated:
+# ingest-only, pre-filtered figures, per-doc cap — never per chat/request.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrieva-backend
+spec:
+  template:
+    spec:
+      containers:
+        - name: backend
+          env:
+            - { name: INGEST_VLM_CAPTION, value: "true" }

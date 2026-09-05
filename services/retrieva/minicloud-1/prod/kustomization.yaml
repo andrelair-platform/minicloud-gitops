@@ -16,10 +16,11 @@ resources:
 images:
   - name: retrieva-backend
     newName: ghcr.io/andrelair-platform/retrieva-backend
-    newTag: "3ccb395"
+    newTag: "30d2dea"
   - name: retrieva-frontend
     newName: ghcr.io/andrelair-platform/retrieva-frontend
-    newTag: "3ccb395"
+    newTag: "30d2dea"
 patches:
   - path: patch-replicas.yaml
   - path: frontend-env-patch.yaml
+  - path: backend-patch.yaml
