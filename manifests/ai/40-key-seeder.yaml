@@ -101,19 +101,23 @@ spec:
               # Governed teams: onprem+eu+us tiers only (never untrusted P0/dev-free).
               GOVERNED="[\"onprem\",\"eu\",\"us\",${ALIASES}]"
               # Prod EU-only: cloud Azure/AWS-Bedrock (EU) reachable; no us/dev-free.
-              EU_PROD="[\"onprem\",\"eu\",${ALIASES}]"
+              # azure-gpt-4.1-mini granted by name (the "eu" group does not expand to
+              # it in this LiteLLM version) — the EU vision model for RTV-14 figure
+              # captioning (Azure EU, funded). Same model in dev + prod.
+              EU_PROD="[\"onprem\",\"eu\",\"azure-gpt-4.1-mini\",${ALIASES}]"
               # Dev free-tier: EU (embeddings via mistral-embed, negligible cost) +
               # the free US models by NAME. LiteLLM team scoping expands the built-in
               # access groups (onprem/eu/us) but NOT a custom group like "dev-free",
               # so the free models are granted by explicit model_name. Maximises the
               # free tier in dev; cloud generation (Bedrock/Azure) stays prod-only.
-              # gpt-4o-mini is the ONE deliberate paid exception: RTV-14 Phase 2
-              # (figure captioning) needs a vision model and the free NIM
+              # azure-gpt-4.1-mini is the ONE deliberate paid exception: RTV-14
+              # Phase 2 (figure captioning) needs a vision model. The free NIM
               # nvidia-vision-90b endpoint is dead (integrate.api.nvidia.com times
-              # out). Cost is bounded — the VLM is called only at ingest, only for
-              # figures that pass the pre-filter (never per chat/request). Prod uses
-              # an EU vision model instead (retrieva/EU_PROD team, set separately).
-              DEV_FREE="[\"onprem\",\"eu\",\"ollama-cloud\",\"nvidia-embed\",\"nvidia-nano-30b\",\"nvidia-vision-90b\",\"nvidia-content-safety\",\"gpt-4o-mini\",${ALIASES}]"
+              # out) and OpenAI gpt-4o-mini is unfunded (429 no credits). Azure is
+              # funded + EU, so the SAME model serves dev and prod (DORA-clean).
+              # Cost is bounded — the VLM is called only at ingest, only for figures
+              # that pass the pre-filter (never per chat/request).
+              DEV_FREE="[\"onprem\",\"eu\",\"ollama-cloud\",\"nvidia-embed\",\"nvidia-nano-30b\",\"nvidia-vision-90b\",\"nvidia-content-safety\",\"azure-gpt-4.1-mini\",${ALIASES}]"
               # phi3-ci uses synthetic/public test data only → may hit any model.
               PUBLIC_OK='["all-proxy-models"]'
 
