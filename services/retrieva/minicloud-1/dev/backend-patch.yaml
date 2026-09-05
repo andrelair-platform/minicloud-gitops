@@ -26,3 +26,6 @@ spec:
             # overrides to development. The image is identical dev/prod, so this MUST be
             # a per-overlay env var (NODE_ENV is 'production' in both).
             - { name: LANGFUSE_TRACING_ENVIRONMENT, value: "development" }
+            # RTV-14 Phase 2: enable gated VLM figure captioning in dev (validate here
+            # before opting prod in). Still fully gated — ingest-only, pre-filtered.
+            - { name: INGEST_VLM_CAPTION, value: "true" }
