@@ -44,6 +44,13 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-password } }
             - { name: QDRANT_URL, value: "http://qdrant.ai.svc.cluster.local:6333" }
+            # Document conversion for ingestion (RTV-14 Phase 1): layout-aware
+            # parsing + OCR. markitdown-proxy routes images→Docling OCR and
+            # PDF/Office→MarkItDown; docling-serve is the direct OCR fallback for
+            # scanned PDFs. INGEST_USE_DOCLING=false reverts to the local parsers.
+            - { name: INGEST_USE_DOCLING, value: "true" }
+            - { name: MARKITDOWN_URL, value: "http://markitdown-proxy.ai.svc.cluster.local:8000" }
+            - { name: DOCLING_URL, value: "http://docling.ai.svc.cluster.local:5001" }
             - name: QDRANT_API_KEY
               valueFrom: { secretKeyRef: { name: retrieva-secrets, key: qdrant-api-key } }
             - { name: QDRANT_COLLECTION_NAME, value: "retrieva" }
