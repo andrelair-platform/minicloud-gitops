@@ -71,8 +71,6 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: collab-prod
       server: https://kubernetes.default.svc
-    - namespace: collab-staging
-      server: https://kubernetes.default.svc
     - namespace: default
       server: https://kubernetes.default.svc
     - namespace: event-demo
@@ -87,8 +85,6 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: platform-demo-dev
       server: https://kubernetes.default.svc
-    - namespace: platform-demo-staging
-      server: https://kubernetes.default.svc
     - namespace: platform-demo-prod
       server: https://kubernetes.default.svc
     - namespace: "preview-pd-*"
@@ -102,8 +98,6 @@ spec:
     - namespace: insurance-dev
       server: https://kubernetes.default.svc
     - namespace: insurance-prod
-      server: https://kubernetes.default.svc
-    - namespace: insurance-staging
       server: https://kubernetes.default.svc
     - namespace: keda
       server: https://kubernetes.default.svc
@@ -176,8 +170,6 @@ spec:
     - namespace: cloudflare-tunnel
       server: https://kubernetes.default.svc
     - namespace: ktayl
-      server: https://kubernetes.default.svc
-    - namespace: ktayl-staging
       server: https://kubernetes.default.svc
     - namespace: ktayl-prod
       server: https://kubernetes.default.svc
