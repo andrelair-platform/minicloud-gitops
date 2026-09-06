@@ -53,6 +53,13 @@ spec:
       remoteRef:
         key: platform/langfuse
         property: redis-url
+    # Langfuse admin API key (per-product LLMOps provisioning). Present in Vault + live
+    # but was never declared here → the app sat OutOfSync (git behind live). Declared to
+    # reconcile git=live (2026-09-06).
+    - secretKey: admin-api-key
+      remoteRef:
+        key: platform/langfuse
+        property: admin-api-key
 ---
 # langfuse-oidc-env — mapped as env vars via additionalEnvFrom.
 # Key names match NextAuth env var names directly.
