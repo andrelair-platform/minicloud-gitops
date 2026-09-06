@@ -5,10 +5,16 @@
 #   ./scripts/bmad-to-github.sh <story-dir> [options]
 #
 # Options:
-#   --repo <org/repo>       target repo (default: andrelair-platform/platform-backlog)
-#   --project <number>      GitHub Project number (default: 1 = minicloud platform roadmap)
+#   --repo <org/repo>       DEFAULT target repo (default: andrelair-platform/platform-backlog)
+#   --project <number>      DEFAULT GitHub Project number (default: 1 = Platform Portfolio)
 #   --milestone <title>     GitHub Milestone title to attach issues to
 #   --dry-run               print what would happen, create nothing
+#
+# 2-tier routing (since 2026-09-06): a story's frontmatter may set `repo:` and/or `project:`
+# to override the defaults PER STORY, so service work lands in its own repo (issues next to
+# code) and on the right board — e.g. a retrieva story with `repo: andrelair-platform/retrieva`
+# + `project: 2` (Retrieva certification). Programme-level stories omit both → platform-backlog
+# + project 1. See .claude/rules/github-projects.md (structure) + bmad.md (frontmatter).
 #
 # Example:
 #   ./scripts/bmad-to-github.sh bmad/stories/cert-1/m1-m2 \
@@ -111,6 +117,11 @@ print(f"TITLE={prefixed_title}")
 print(f"ESTIMATE={meta.get('estimate', '')}")
 print(f"LABELS={labels_str}")
 print(f"STORY_ID={story_id}")
+# Per-story routing (2-tier model): a story may declare its own repo + project so
+# service work lands in the service repo (e.g. retrieva) instead of platform-backlog,
+# and on the right board (e.g. project 2 = Retrieva certification). Empty = use CLI default.
+print(f"REPO_OVERRIDE={meta.get('repo', '')}")
+print(f"PROJECT_OVERRIDE={meta.get('project', '')}")
 print("---BODY---")
 print(body.strip())
 PYEOF
@@ -125,11 +136,12 @@ ensure_labels() {
   for label in "${arr[@]}"; do
     label=$(echo "$label" | xargs)
     [[ -z "$label" ]] && continue
-    # gh label create is idempotent-ish: exits 0 if label already exists
+    # gh label create is idempotent-ish: exits 0 if label already exists.
+    # Target the routed repo (ISSUE_REPO, set per-story) so labels land where the issue does.
     gh label create "$label" \
       --color "6b7280" \
       --description "BMAD label" \
-      --repo "$REPO" 2>/dev/null || true
+      --repo "${ISSUE_REPO:-$REPO}" 2>/dev/null || true
   done
 }
 
@@ -169,7 +181,13 @@ for story_file in "$STORY_DIR"/S*.md; do
   LABELS=$(echo   "$parsed" | grep '^LABELS='   | cut -d= -f2-)
   STORY_ID=$(echo "$parsed" | grep '^STORY_ID=' | cut -d= -f2-)
   ESTIMATE=$(echo "$parsed" | grep '^ESTIMATE=' | cut -d= -f2-)
+  REPO_OVERRIDE=$(echo    "$parsed" | grep '^REPO_OVERRIDE='    | cut -d= -f2-)
+  PROJECT_OVERRIDE=$(echo "$parsed" | grep '^PROJECT_OVERRIDE=' | cut -d= -f2-)
   BODY=$(echo     "$parsed" | awk '/^---BODY---/{found=1; next} found{print}')
+
+  # 2-tier routing: per-story repo/project override the CLI defaults (service work → its repo).
+  ISSUE_REPO="${REPO_OVERRIDE:-$REPO}"
+  ISSUE_PROJECT="${PROJECT_OVERRIDE:-$PROJECT_NUMBER}"
 
   BODY="${BODY}
 
@@ -188,7 +206,7 @@ for story_file in "$STORY_DIR"/S*.md; do
 
   # Idempotency check — search for [STORY_ID] prefix in title
   existing=$(gh issue list \
-    --repo "$REPO" \
+    --repo "$ISSUE_REPO" \
     --search "[${STORY_ID}] in:title" \
     --json number \
     --jq '.[0].number' 2>/dev/null || true)
@@ -203,7 +221,7 @@ for story_file in "$STORY_DIR"/S*.md; do
   ensure_labels "$LABELS"
 
   # Build gh issue create args
-  gh_args=(issue create --repo "$REPO" --title "$TITLE" --body "$BODY")
+  gh_args=(issue create --repo "$ISSUE_REPO" --title "$TITLE" --body "$BODY")
 
   IFS=',' read -ra label_arr <<< "$LABELS"
   for label in "${label_arr[@]}"; do
@@ -221,11 +239,11 @@ for story_file in "$STORY_DIR"/S*.md; do
   echo "          Created: $issue_url"
 
   # Add to project board (non-fatal if it fails)
-  if [[ -n "$PROJECT_NUMBER" ]]; then
-    gh project item-add "$PROJECT_NUMBER" \
-      --owner "$(cut -d/ -f1 <<< "$REPO")" \
+  if [[ -n "$ISSUE_PROJECT" ]]; then
+    gh project item-add "$ISSUE_PROJECT" \
+      --owner "$(cut -d/ -f1 <<< "$ISSUE_REPO")" \
       --url "$issue_url" 2>/dev/null \
-      && echo "          Added to project #$PROJECT_NUMBER" \
+      && echo "          Added to project #$ISSUE_PROJECT" \
       || echo "          Warning: project add failed (non-fatal)"
   fi
 

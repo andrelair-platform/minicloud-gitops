@@ -91,8 +91,17 @@ estimate: 3                  # story points (Fibonacci: 1, 2, 3, 5, 8, 13)
 labels: [go, backend, cert-1] # must exist on platform-backlog or script creates them
 priority: Must               # Must | Should | Could | Won't
 assignee: AndreLiar
+repo: andrelair-platform/retrieva   # OPTIONAL — 2-tier routing: create the issue in THIS repo
+project: 2                          # OPTIONAL — add to THIS project (2 = Retrieva certification)
 ---
 ```
+
+**2-tier routing (`repo:` / `project:`) — since 2026-09-06.** By default the bridge creates issues
+in `platform-backlog` on project 1 (Platform Portfolio). A **service story** should set `repo:` to
+its own repo (issues live next to the code) and `project:` to the right board — e.g. a retrieva
+certification story → `repo: andrelair-platform/retrieva`, `project: 2`. Programme-level stories
+(cross-cutting, no single repo) omit both → platform-backlog + project 1. See
+`.claude/rules/github-projects.md` for the where-does-an-issue-go decision rule.
 
 ## Label conventions
 
