@@ -35,6 +35,11 @@ spec:
             exec: { command: ["mongosh","--quiet","--eval","db.adminCommand('ping')"] }
             initialDelaySeconds: 15
             periodSeconds: 15
+            # mongosh (a Node.js shell) can take >1s to start on a loaded node, so the
+            # k8s default timeoutSeconds:1 makes the probe flap (pod stuck 0/1 while mongo
+            # is actually healthy). 5s covers mongosh startup; failureThreshold gives slack.
+            timeoutSeconds: 5
+            failureThreshold: 6
           resources:
             requests: { cpu: 100m, memory: 512Mi }
             limits: { cpu: "1", memory: 1500Mi }
