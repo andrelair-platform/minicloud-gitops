@@ -62,7 +62,12 @@ spec:
                         wait_up() {  # $1=url $2=label
                           i=0
                           while [ "$i" -lt 50 ]; do
-                            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" || echo 000)
+                            # `|| true` (NOT `|| echo 000`): on a connection failure curl
+                            # already prints "000" via -w; appending another "000" made
+                            # "000000" which wrongly passed the != "000" check (false-positive
+                            # "reachable" → the gate never actually waited). Guard empty → 000.
+                            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" 2>/dev/null || true)
+                            [ -z "$code" ] && code=000
                             if [ "$code" != "000" ]; then
                               echo "$2 reachable (HTTP $code) after $((i*3))s"; return 0
                             fi
