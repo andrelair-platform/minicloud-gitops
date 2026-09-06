@@ -17,7 +17,7 @@
 #   kubectl apply -f 03-cpu-stress-platform-demo.yaml
 #   # Observe for 3 minutes:
 #   kubectl get stresschaos -n chaos-mesh -w
-#   kubectl top pods -n platform-demo-staging
+#   kubectl top pods -n platform-demo-prod
 #   # Cleanup:
 #   kubectl delete -f 03-cpu-stress-platform-demo.yaml
 #
@@ -38,7 +38,7 @@ spec:
   mode: all
   selector:
     namespaces:
-      - platform-demo-staging
+      - platform-demo-prod
     labelSelectors:
       app: platform-demo
   stressors:

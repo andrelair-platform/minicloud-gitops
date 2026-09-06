@@ -121,37 +121,6 @@ data:
           noTLSVerify: true
           originServerName: dev.mail.10.0.0.200.nip.io
 
-      # ── staging environment ──────────────────────────────────────────
-      - hostname: staging.erp.devandre.sbs
-        service: https://10.0.0.200
-        originRequest:
-          noTLSVerify: true
-          originServerName: staging.erp.10.0.0.200.nip.io
-
-      - hostname: staging.intranet.devandre.sbs
-        service: https://10.0.0.200
-        originRequest:
-          noTLSVerify: true
-          originServerName: staging.intranet.10.0.0.200.nip.io
-
-      - hostname: staging.wiki.devandre.sbs
-        service: https://10.0.0.200
-        originRequest:
-          noTLSVerify: true
-          originServerName: staging.wiki.10.0.0.200.nip.io
-
-      - hostname: staging.chat.devandre.sbs
-        service: https://10.0.0.200
-        originRequest:
-          noTLSVerify: true
-          originServerName: staging.chat.10.0.0.200.nip.io
-
-      - hostname: staging.mail.devandre.sbs
-        service: https://10.0.0.200
-        originRequest:
-          noTLSVerify: true
-          originServerName: staging.mail.10.0.0.200.nip.io
-
       # ── prod environment ─────────────────────────────────────────────
       - hostname: erp.devandre.sbs
         service: https://10.0.0.200

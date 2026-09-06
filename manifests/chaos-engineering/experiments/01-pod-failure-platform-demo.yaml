@@ -1,5 +1,5 @@
 ---
-# EXPERIMENT 1 — Pod Failure: platform-demo-staging resilience
+# EXPERIMENT 1 — Pod Failure: platform-demo-prod resilience
 #
 # Steady-state hypothesis:
 #   With 3 replicas, killing 1 pod should cause zero user-visible errors.
@@ -11,7 +11,7 @@
 #   kubectl apply -f 01-pod-failure-platform-demo.yaml
 #   # Observe for 5 minutes:
 #   kubectl get podchaos -n chaos-mesh -w
-#   kubectl get pods -n platform-demo-staging -w
+#   kubectl get pods -n platform-demo-prod -w
 #   # Cleanup:
 #   kubectl delete -f 01-pod-failure-platform-demo.yaml
 #
@@ -32,7 +32,7 @@ spec:
   mode: one
   selector:
     namespaces:
-      - gitops-demo
+      - platform-demo-prod
     labelSelectors:
       app: platform-demo
   duration: "5m"
