@@ -35,18 +35,22 @@ Product Backlog ─(Sprint Planning)→ Sprint Backlog ─(Daily / Build)→ Inc
 4. **Sprint Review (demo)** — demonstrate the working increment.
 5. **Retrospective** — reflect on what to improve. Use `/bmad-review`.
 
-## 3. Mapping onto GitHub Project #1
+## 3. Mapping onto the GitHub Projects (portfolio of products)
 
-`andrelair-platform` project #1 already carries the whole hierarchy in its fields — use them, don't invent parallel tracking.
+The hierarchy maps onto the **product boards** — one Project per product — with **#1 as the
+cross-product roll-up** (see `github-projects.md`). Use these fields; don't invent parallel tracking.
+The **Initiative** (Insurance LOB · Certification · IS Foundations) is a **grouping field on the
+roll-up**, not a board.
 
-| Scrum layer | Project artifact | Field / view |
+| Scrum layer | Where it lives | Field / view |
 |---|---|---|
-| Initiative / Theme | Insurance LOB · Certification · IS Foundations | (Milestone naming; `Track` field) |
-| **Epic** | GitHub issue with **`Kind=Epic`** + its **Milestone** | Milestone ≈ the epic's home / time-span |
-| **User Story** | `S###` / `RTV-##` issue, **`Kind=Story`**, body in user-voice | see gap below |
+| Initiative / Theme | Insurance LOB · Certification · IS Foundations | a **grouping field** on the #1 roll-up (Initiative → Product); never a board |
+| **Product** | one **GitHub Project (v2) per product** (1..N repos, own backlog) | the product board itself |
+| **Epic** | GitHub issue with **`Kind=Epic`** + its **Milestone**, on the product board | Milestone ≈ the epic's home / time-span |
+| **User Story** | `S###` / `RTV-##` issue, **`Kind=Story`**, body in user-voice, on the product board | authored via per-product BMAD (`bmad.md`) |
 | **Task** | checklist item / sub-issue inside a story | sized by **`Effort`** (XS→XL) |
-| **Sprint** | 2-week iteration | **`Sprint`** field |
-| **Product Backlog** | the master open list | **`Backlog`** view |
+| **Sprint** | 2-week iteration | **`Sprint`** field (per product board) |
+| **Product Backlog** | each product board's open list | the board's `Backlog` view (#1 = union / PMO view only) |
 
 **Status flow** mirrors Scrum exactly: `Backlog → This Sprint → In Progress → Blocked → In Review → Done`.
 
@@ -59,11 +63,11 @@ Product Backlog ─(Sprint Planning)→ Sprint Backlog ─(Daily / Build)→ Inc
 
 ## 4. BMAD = the tooling for each ceremony
 
-BMAD is not a separate process — it is how each Scrum event is executed. Pipeline: author a story `.md` → merge to gitops main → `.github/workflows/bmad-sync.yml` auto-creates the GitHub Issue on its milestone → box it into the current Sprint → build → review.
+BMAD is not a separate process — it is how each Scrum event is executed. Pipeline: author a story `.md` in the **product home repo** → merge to that repo's main → its thin caller `.github/workflows/bmad-sync.yml` (which `uses:` the org-shared reusable workflow) creates the GitHub Issue in the concerned repo + on the product board → box it into the current Sprint → build → review. (See `bmad.md` *Per-product BMAD*.)
 
 | Ceremony / layer | BMAD tool | Output |
 |---|---|---|
-| Backlog refinement / write **stories** | `/bmad-agent-mary` (BA) + `/bmad-agent-john` (PM) | `bmad/stories/<proj>/<milestone>/S###.md` |
+| Backlog refinement / write **stories** | `/bmad-agent-mary` (BA) + `/bmad-agent-john` (PM) | `<home-repo>/bmad/stories/<sprint>/S###.md` |
 | Epic **architecture** | `/bmad-agent-winston` + `/bmad-party-mode` | ADRs / architecture doc |
 | **Sprint Planning** (readiness gate) | `/bmad-sprint-planning` | PASS/CONCERNS/FAIL + `sprint-status.yaml` |
 | **Execution** (build) | `/bmad-build` (one story) · `/bmad-build-auto` (multi, autonomous) | code + tests, DoD-checked |

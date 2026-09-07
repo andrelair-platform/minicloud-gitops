@@ -1,79 +1,134 @@
 # GitHub Projects — Issue Tracking Rules
 
-## The board
+## The two-layer model (ALWAYS keep this distinction — do not conflate)
 
-**Project:** `andrelair-platform` — minicloud platform roadmap
-**URL:** https://github.com/orgs/andrelair-platform/projects/1
+The insurance IS and the certification project are **two different things**. Never treat
+ktayl-solution as "the certification" or Retrieva as "just another platform app":
 
-## Tier views (always use these for context)
-
-| Tier | View | Filter |
+| Layer | What it is | Role |
 |---|---|---|
-| **Tier 1 — P1-blocking** (22 issues, actively owned) | https://github.com/orgs/andrelair-platform/projects/1/views/11?filterQuery=label%3AP1-blocking | Your weekly review list |
-| **Tier 2 — Steady state** (127 issues, exception-only) | https://github.com/orgs/andrelair-platform/projects/1/views/12?filterQuery=label%3AP2-high-value | Monitor on Amber/Red only |
-| **Tier 3 — Icebox** (28 issues, parked) | https://github.com/orgs/andrelair-platform/projects/1/views/13?filterQuery=label%3AP5-supplemental | Ignore until unfrozen |
+| **ktayl-solution IS** | The insurance organisation's information system (minicloud platform + business apps) | The **organisational/business context** — the "company" and its infrastructure. Ongoing, real, needed. |
+| **Retrieva** | The owner's **RNCP39583 certification project** | The **deliverable defended for the diploma** — a real DORA-compliance product that *runs on and benefits from* the insurance IS. |
+
+**Consequences:**
+- Certification **project = Retrieva** (per the #282 pivot); the ktayl-solution IS is its
+  **organisational context**, not the cert itself.
+- **Project-level** cert evidence (BC02 concevoir/développer, BC04 optimiser — accessibility/RGAA,
+  cahier de recettes, manuels, MCO) is drawn from **Retrieva**. **Org-level** evidence (BC01
+  cadrage/pilotage — CdCF IS, budget, governance) is drawn from the **ktayl-solution IS** as context.
+- Bloc names are the **#282 authoritative** set: **BC01 Piloter · BC02 Concevoir & développer ·
+  BC03 Déployer & sécuriser · BC04 Optimiser & faire évoluer** (the `Bloc` field on the Retrieva
+  board uses these).
+- **Separate documentation.** Retrieva has its **own** Docusaurus docs (`retrieva/docs/`), distinct
+  from ktayl / `minicloud-platform-docs`. **Certification evidence lives in Retrieva's own docs** at
+  `retrieva/docs/docs/certification/` (overview + one page per bloc artefact; raw evidence like the
+  RGAA report in `retrieva/docs/static/certification/`). Never put cert artefacts in the
+  ktayl/minicloud docs. Artefact index: `certification/overview.md`.
+- Memories: [[project_cert1_m1m2_sprint]] (cert = Retrieva), [[project_ktayl_solution_is]] (the IS).
+
+## Portfolio structure — one Project per PRODUCT (since 2026-09-07)
+
+**This supersedes the earlier "two Projects / 2-tier" model.** A single catch-all backlog
+(old Project #1) is too vague — it lumps many distinct products together and the fog just moves
+down a level. The structure is a **portfolio of products**:
+
+- **One GitHub Project (v2) per _product_.** A **product** = a thing with its own backlog and
+  lifecycle; it can span **1..N repos** (e.g. Retrieva = `retrieva` + `retrieva-backend`). Each
+  product gets its own board **and** its own BMAD home (see `bmad.md`).
+- **Initiative is a _field_, not a board.** The three initiatives — **Insurance LOB**,
+  **Certification**, **IS Foundations** — are a grouping dimension on the roll-up (and a label),
+  used to slice the PMO view. They are never themselves a board.
+- **Project #1 = the roll-up / PMO view only.** It auto-adds every issue from every repo and exists
+  to answer "what's in flight across the whole DSI," grouped **Initiative → Product**. It is **not**
+  a working backlog — never groom or sprint-plan on #1; do that on the product board.
+- **An issue lives in its repo, shows on its product board, and also rolls up to #1.** GitHub lets
+  one issue sit on multiple Projects — auto-add workflows place it; you never file it twice.
+
+### The discipline that keeps this a portfolio, not 26-board sprawl
+1. **A Project = a product, never a bare repo.** Non-product infra repos attach to a product board
+   (e.g. `minicloud-gitops` → the *minicloud Platform* product), they do **not** each get a board.
+   Per-*repo* boards are the anti-pattern; per-*product* boards (a product = 1..N repos) are correct.
+2. **Create a board when the product has real work** — don't pre-create empty boards for
+   `claims`/`portal` before they exist. Promote a sub-product to its own board when it earns it
+   (multi-repo, own sprint cadence, own stakeholders) — exactly how Retrieva graduated out of
+   "Certification".
+3. **The roll-up (#1) + the Initiative field are what make many boards coherent** — that is precisely
+   what the old disconnected-boards anti-pattern lacked.
+
+### Product boards (the live set — extend as products start)
+
+| Initiative | Product board | BMAD home repo | Member repos (auto-add → board + #1) |
+|---|---|---|---|
+| Certification | **Retrieva — RNCP39583** (#2) | `retrieva` | `retrieva`, `retrieva-backend` |
+| Insurance LOB | **ktayl Policy Service** | `ktayl-policy-service` | `ktayl-policy-service` |
+| Insurance LOB | **ktayl Public Web** | `ktayl-solution-web` | `ktayl-solution-web` |
+| Insurance LOB | **ERPNext (HR/Finance)** | `minicloud-erpnext` | `minicloud-erpnext` |
+| IS Foundations | **minicloud Platform (IDP)** | `minicloud-gitops` | `-gitops`, `-ansible`, `-opentofu`, `-backstage`, `-ops`, `platform-demo` |
+| IS Foundations | **AI Platform** | `minicloud-agent` | `-agent`, `-crew-agent`, `-open-webui`, `-onlyoffice`, `-plane` |
+| — (roll-up) | **andrelair Platform Portfolio** (#1) | — | **all** repos, grouped Initiative → Product |
+
+Future products (`claims`, `portal`, a broker portal, …) get a board **the day their work starts**,
+with an `Initiative` value and a BMAD home repo.
+
+### Where does a new issue go? (decision rule)
+- Identify the **product** it belongs to → it goes on **that product's board**, in the **repo it
+  concerns** (frontend story → the frontend repo; backend story → the backend repo).
+- If it's genuinely cross-product / programme-level (governance, portfolio ops) → it belongs to the
+  **initiative's home product** (e.g. platform-wide governance → *minicloud Platform*), not a new board.
+- Every issue also auto-adds to **#1** (the roll-up). You never add to #1 by hand.
+
+**Not backlog — do not surface on any board:** `minicloud-gitops` `[CHANGE]` issues labelled
+`change-record` (~290) are the automated ITIL/DORA **change-management audit log** (one per prod PR),
+not roadmap work. Exclude `label:change-record` from board views. Only real `enhancement`/`bug`
+issues from gitops belong on the *minicloud Platform* board.
+
+**BMAD ties in per product** — each product's stories live in its **home repo** under `bmad/stories/`
+and sync to issues via the org-shared reusable workflow, routed to the member repo + product board by
+frontmatter `repo:` / `project:`. See `bmad.md` (*Per-product BMAD*).
 
 ## Mandatory rules when working on any issue
 
 ### 1. Link every PR to its issue
 
-When opening a PR that implements or partially implements a `platform-backlog` issue, always include the link in the PR body:
+When opening a PR that implements (or partially implements) an issue, include the link in the PR body:
 
 ```
-Closes andrelair-platform/platform-backlog#<NUMBER>
+Closes andrelair-platform/<repo>#<NUMBER>
 ```
 
 or for partial work:
 
 ```
-Relates to andrelair-platform/platform-backlog#<NUMBER>
+Relates to andrelair-platform/<repo>#<NUMBER>
 ```
 
 GitHub Projects picks up the linked PR automatically and shows it in the "Linked pull requests" column.
 
 ### 2. Create sub-issues for large issues
 
-If an issue in the board is too large to close in a single PR (epics, multi-week work), break it into sub-issues:
+If an issue is too large to close in a single PR (epics, multi-week work), break it into sub-issues in
+the **same repo**, then link them via GitHub's native sub-issues feature (Projects v2) — the
+"Sub-issues progress" field on the board auto-populates.
 
 ```bash
-# Create a sub-issue linked to the parent
 gh issue create \
-  --repo andrelair-platform/platform-backlog \
-  --title "[S001-slug] Sub-task title" \
+  --repo andrelair-platform/<repo> \
+  --title "[<id>] Sub-task title" \
   --label "<same labels as parent>" \
-  --body "Parent: andrelair-platform/platform-backlog#<PARENT_NUMBER>\n\n..."
+  --body "Parent: andrelair-platform/<repo>#<PARENT_NUMBER>\n\n..."
 ```
 
-Then on the parent issue, use GitHub's native sub-issues feature (available in Projects v2) — the "Sub-issues progress" field on the board will auto-populate.
+### 3. Update issue status on the product board as you work
 
-### 3. Update issue status on the board as you work
-
-Use the project `Status` field — update it as work progresses:
+Use the board `Status` field — update it as work progresses. Status flow mirrors Scrum:
+`Backlog → This Sprint → In Progress → Blocked → In Review → Done`. The GraphQL field/option IDs
+below are for **Project #1**; each product board has its own IDs (query them per board with
+`gh project field-list <n> --owner andrelair-platform`).
 
 ```bash
-# Get the project item ID for an issue
-gh api graphql -f query='
-{
-  node(id: "PVT_kwDOEN4i9s4BbQIF") {
-    ... on ProjectV2 {
-      items(first: 100) {
-        nodes {
-          id
-          content { ... on Issue { number } }
-        }
-      }
-    }
-  }
-}'
-
-# Update status (Status field ID: PVTSSF_lADOEN4i9s4BbQIFzhWB8R4)
-# Status option IDs:
-#   Backlog      → 3ac5aad0
-#   This Sprint  → 26e76715
-#   In Progress  → d4b08afe
-#   Blocked      → 9ab1df6d
-#   In Review    → b6090f99
-#   Done         → 99316423
+# Project #1 Status field ID: PVTSSF_lADOEN4i9s4BbQIFzhWB8R4
+# Option IDs: Backlog 3ac5aad0 · This Sprint 26e76715 · In Progress d4b08afe
+#             Blocked 9ab1df6d · In Review b6090f99 · Done 99316423
 gh api graphql -f query='
 mutation {
   updateProjectV2ItemFieldValue(input: {
@@ -85,9 +140,11 @@ mutation {
 }'
 ```
 
-### 4. Set Priority field when promoting an issue to active work
+### 4. Set Priority + Sprint when promoting an issue to active work
 
-The board has a native `Priority` field (separate from labels) — set it when moving an issue to "This Sprint" or "In Progress":
+Set the board's native `Priority` field (separate from labels) and the `Sprint` iteration when moving
+an issue into "This Sprint"/"In Progress" — a story without the `Sprint` value won't show on the
+`sprint:@current` views (see `agile-execution.md`).
 
 | Board Priority | Label equivalent |
 |---|---|
@@ -97,14 +154,12 @@ The board has a native `Priority` field (separate from labels) — set it when m
 | P4 — Low | — |
 | P5 — Deferred | `P5-supplemental` |
 
-### 5. Always work Tier 1 before opening new issues
+### 5. Groom the product board, monitor the roll-up
 
-Before creating new issues or starting Tier 2 work, check the Tier 1 view:
-https://github.com/orgs/andrelair-platform/projects/1/views/11?filterQuery=label%3AP1-blocking
+Work each **product board** for its own backlog. Use **#1** only as the cross-product PMO glance
+(what's in flight, by Initiative → Product). Don't run day-to-day grooming on #1.
 
-If any Tier 1 issue is `In Progress` or `Blocked`, resolve it first.
-
-## Project field IDs (for GraphQL mutations)
+## Project #1 field IDs (roll-up, for GraphQL mutations)
 
 | Field | ID |
 |---|---|

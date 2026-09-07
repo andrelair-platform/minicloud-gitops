@@ -2,15 +2,41 @@
 
 BMAD (Breakthrough Method of Agile AI-driven Development) is the story-authoring workflow for all ktayl-solution and platform development projects. This file defines the standard so any project on the platform can benefit from it.
 
-## How it works end-to-end
+## Per-product BMAD (the model, since 2026-09-07) — supersedes the gitops-central flow
+
+BMAD is organised **per product**, matching the portfolio structure (one GitHub Project per
+product — see `github-projects.md`). Each product is **self-contained**: it owns its stories and
+its sync, and its BMAD lives in the product's **home repo**, not in a central backlog repo.
 
 ```
-1. Engineer/Claude writes story .md files → bmad/stories/<project>/<milestone>/
-2. Files committed + PR merged to minicloud-gitops main
-3. GitHub Action .github/workflows/bmad-sync.yml fires automatically
-4. bmad-to-github.sh parses YAML frontmatter → creates GitHub Issues on platform-backlog
-5. Issues attached to the correct Milestone + added to the project board
+1. Author story .md files in the PRODUCT HOME REPO → <home-repo>/bmad/stories/<sprint>/
+2. PR merged to that repo's main
+3. The repo's thin caller workflow (.github/workflows/bmad-sync.yml) fires and calls the
+   org-shared reusable workflow in andrelair-platform/.github
+4. The shared bridge parses each story's frontmatter and CREATES the issue in the repo the story
+   concerns (frontmatter `repo:`) and adds it to the product's board (frontmatter `project:`)
+5. The issue also rolls up to Project #1 (PMO view) via #1's auto-add
 ```
+
+**Home repo, not per-repo.** A product = 1..N repos with ONE backlog. Its stories all live in the
+product's home repo (the flagship — e.g. Retrieva → `retrieva`), and `repo:` fans each created
+issue out to the correct member repo (a backend story → `retrieva-backend`). One BMAD setup per
+product, however many repos it grows into. Never scatter a product's stories across its repos.
+
+**Shared logic, thin callers (no drift).** The bridge (`bmad-to-github.sh`), the driver
+(`bmad-sync-runner.sh`) and the **reusable** `workflow_call` workflow live **once** in
+`andrelair-platform/.github`. Each product home repo carries only a ~15-line caller that
+`uses: andrelair-platform/.github/.github/workflows/bmad-sync.yml@main` on push to `main` under
+`bmad/stories/**`. Fix the logic in one place; every product inherits it.
+
+**Idempotent + repo-agnostic bridge.** It globs `*.md` (so `RTV-##-*.md` / any id scheme works;
+files without frontmatter/`id:` are skipped), and reads `repo:` / `project:` / `milestone:` from
+each story's frontmatter (milestone is non-fatal if it doesn't exist on the target repo). Re-runs
+skip stories whose `[<id>]` title already exists — safe to run every push.
+
+> Legacy note: the old flow authored **all** stories in `minicloud-gitops/bmad/stories/` and ran a
+> gitops-local Action against `platform-backlog`. That centralised authoring away from the code and
+> is retired. `cert-1/` there is the historical ktayl-policy-service sprint; new work is per-product.
 
 For new sprints: use the Backstage "New BMAD Sprint" template instead of step 1 — it scaffolds the story directory and opens the PR automatically.
 
