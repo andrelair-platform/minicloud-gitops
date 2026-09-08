@@ -115,12 +115,21 @@ epic: project-slug           # free-form epic grouping
 milestone: "Milestone title" # MUST match the GitHub Milestone title exactly
 estimate: 3                  # story points (Fibonacci: 1, 2, 3, 5, 8, 13)
 labels: [go, backend, cert-1] # must exist on platform-backlog or script creates them
-priority: Must               # Must | Should | Could | Won't
+priority: P1                 # sets the board Priority field — see note below
 assignee: AndreLiar
 repo: andrelair-platform/retrieva   # OPTIONAL — 2-tier routing: create the issue in THIS repo
 project: 2                          # OPTIONAL — add to THIS project (2 = Retrieva certification)
 ---
 ```
+
+**`priority:` drives the board Priority field — since 2026-09-08.** The bridge sets the target
+board's **Priority** single-select on the issue it creates (previously issues landed with no
+priority and it was set by hand after each sync). Accepted values:
+- **P-tokens** — `P1`..`P5` (or the full option label, e.g. `P1 — Critical`); matched by prefix.
+- **MoSCoW** — `Must`/`Should`/`Could`/`Won't` → `P1`/`P2`/`P3`/`P5` (no P4 from MoSCoW).
+It's **non-fatal**: if the board has no Priority field, or the value can't be mapped, the bridge
+skips it with a warning. Field metadata is cached per project (resolved once per run). Prefer an
+explicit P-token when you want a precise board lane (MoSCoW is coarser — every `Must` → P1).
 
 **2-tier routing (`repo:` / `project:`) — since 2026-09-06.** By default the bridge creates issues
 in `platform-backlog` on project 1 (Platform Portfolio). A **service story** should set `repo:` to
