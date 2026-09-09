@@ -60,15 +60,23 @@ down a level. The structure is a **portfolio of products**:
 | Initiative | Product board | BMAD home repo | Member repos (auto-add → board + #1) |
 |---|---|---|---|
 | Certification | **Retrieva — RNCP39583** (#2) | `retrieva` | `retrieva`, `retrieva-backend` |
-| Insurance LOB | **ktayl Policy Service** | `ktayl-policy-service` | `ktayl-policy-service` |
-| Insurance LOB | **ktayl Public Web** | `ktayl-solution-web` | `ktayl-solution-web` |
-| Insurance LOB | **ERPNext (HR/Finance)** | `minicloud-erpnext` | `minicloud-erpnext` |
-| IS Foundations | **minicloud Platform (IDP)** | `minicloud-gitops` | `-gitops`, `-ansible`, `-opentofu`, `-backstage`, `-ops`, `platform-demo` |
-| IS Foundations | **AI Platform** | `minicloud-agent` | `-agent`, `-crew-agent`, `-open-webui`, `-onlyoffice`, `-plane` |
+| Insurance LOB | **ktayl Policy Service** (#6) | `ktayl-policy-service` | `ktayl-policy-service` |
+| Insurance LOB | **ktayl Public Web** (#7) | `ktayl-solution-web` | `ktayl-solution-web` |
+| Insurance LOB | **ERPNext (HR/Finance)** (#8) | `minicloud-erpnext` | `minicloud-erpnext` |
+| Insurance LOB | **ktayl Insurance LOB** (#9) | `ktayl-solution-web` | (planning-stage LOB modules until they graduate) |
+| IS Foundations | **minicloud Platform (IDP)** (#3) | `minicloud-gitops` | `-gitops`, `-ansible`, `-opentofu`, `-backstage`, `-ops`, `platform-demo` |
+| IS Foundations | **AI Platform** (#4) | `minicloud-agent` | `-agent`, `-crew-agent`, `-open-webui`, `-plane` |
+| IS Foundations | **Data Platform** (#5) | `minicloud-gitops` | (data pipeline / BI work) |
+| IS Foundations | **Digital Workplace (M365 Alternative)** (#10) | `ktayl-workplace` | `ktayl-workplace`, `minicloud-onlyoffice` (+ Stalwart/Nextcloud/Matrix/Jitsi/Docuseal/n8n/Authentik/Vaultwarden/Homer via `minicloud-gitops`) |
 | — (roll-up) | **andrelair Platform Portfolio** (#1) | — | **all** repos, grouped Initiative → Product |
 
 Future products (`claims`, `portal`, a broker portal, …) get a board **the day their work starts**,
-with an `Initiative` value and a BMAD home repo.
+with an `Initiative` value and a BMAD home repo. **Digital Workplace** was the first ktayl-IS product
+split out of *minicloud Platform* (2026-09-09): the self-hosted M365 alternative (mail/files/docs/
+chat/video/e-sign/automation/identity), zero per-user licensing — components deploy via gitops but the
+product owns its board (#10) + home repo. **Auto-add for a new product's home repo → #1 is UI-only**
+(Project #1 → Workflows → Auto-add) — wire it when the repo is created; until then add its issues to
+#1 by hand + set `Initiative`.
 
 ### Where does a new issue go? (decision rule)
 - Identify the **product** it belongs to → it goes on **that product's board**, in the **repo it
