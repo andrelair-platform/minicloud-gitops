@@ -13,10 +13,10 @@ resources:
 images:
 - name: retrieva-backend
   newName: harbor.10.0.0.200.nip.io/library/retrieva-backend
-  newTag: f819786
+  newTag: 5e79ce3
 - name: retrieva-frontend
   newName: harbor.10.0.0.200.nip.io/library/retrieva-frontend
-  newTag: f819786
+  newTag: 5e79ce3
 patches:
 - path: externalsecret-patch.yaml
 - path: backend-patch.yaml
