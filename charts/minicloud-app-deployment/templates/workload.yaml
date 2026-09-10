@@ -1,0 +1,40 @@
+{{- if eq .Values.workload.kind "Rollout" }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+{{- else }}
+apiVersion: apps/v1
+kind: Deployment
+{{- end }}
+metadata:
+  name: {{ include "app.fullname" . }}
+  labels:
+{{ include "app.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.workload.replicas }}
+  selector:
+    matchLabels:
+{{ include "app.selectorLabels" . | indent 6 }}
+{{- if eq .Values.workload.kind "Rollout" }}
+  strategy:
+{{- if eq .Values.workload.rollout.strategy "blueGreen" }}
+    blueGreen:
+      activeService: {{ include "app.fullname" . }}
+{{- else }}
+    canary:
+      steps:
+{{ toYaml .Values.workload.rollout.canary.steps | indent 8 }}
+{{- end }}
+{{- end }}
+  template:
+    metadata:
+      labels:
+{{ include "app.selectorLabels" . | indent 8 }}
+{{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+    spec:
+{{ include "app.podSpec" . | indent 6 }}
