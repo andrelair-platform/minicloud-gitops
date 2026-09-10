@@ -1,0 +1,14 @@
+apiVersion: v2
+name: minicloud-app-deployment
+description: >-
+  minicloud golden-path chart for custom applications. One reusable, versioned chart that renders a
+  hardened Deployment (or Argo Rollout) + Service + optional Ingress/Certificate, KEDA ScaledObject
+  or HPA, egress NetworkPolicy, PodDisruptionBudget, ServiceMonitor and ESO ExternalSecret — all
+  from a thin per-app values file. Published as an OCI chart to Harbor (dev) and ghcr (prod),
+  consumed by ArgoCD multi-source Applications (chart from OCI + values from the gitops repo).
+  One artifact for dev + prod on the same cluster.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: AndreLiar

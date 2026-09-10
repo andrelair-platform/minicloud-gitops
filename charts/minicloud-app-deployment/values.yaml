@@ -1,0 +1,125 @@
+# minicloud-app-deployment — default values (the golden-path config surface).
+# A per-app values file overrides only what it needs. Hardened, secure-by-default.
+
+nameOverride: ""        # defaults to the release name
+fullnameOverride: ""
+
+# --- workload -------------------------------------------------------------
+workload:
+  kind: Deployment      # Deployment | Rollout   (Rollout = Argo Rollouts canary/bluegreen)
+  replicas: 1           # dev=1; prod overlay sets 2–3 (ignored when an autoscaler owns replicas)
+  # Argo Rollout strategy (only used when kind: Rollout)
+  rollout:
+    strategy: canary    # canary | blueGreen
+    canary:
+      steps:
+        - setWeight: 25
+        - pause: { duration: 60 }
+        - setWeight: 50
+        - pause: { duration: 60 }
+
+image:
+  repository: ""        # REQUIRED, e.g. ghcr.io/andrelair-platform/platform-demo
+  tag: ""               # REQUIRED (dev=Harbor tag; prod=ghcr SHA) — Kargo bumps this
+  pullPolicy: IfNotPresent
+imagePullSecrets: []    # e.g. [ghcr-pull] for Internal ghcr packages
+
+ports:                  # container ports (also used to build the Service)
+  - name: http
+    containerPort: 8080
+    protocol: TCP
+
+service:
+  enabled: true
+  type: ClusterIP
+  # port defaults to the first container port; override per-port mapping if needed
+  ports: []             # optional explicit [{name,port,targetPort}]
+
+env: []                 # [{name,value}] or [{name,valueFrom:{...}}]
+envFrom: []             # [{configMapRef|secretRef:{name}}]
+
+resources:              # REQUIRED (Gatekeeper enforces limits)
+  requests: { cpu: 10m, memory: 64Mi }
+  limits:   { memory: 256Mi }
+
+# probes — set the paths per app; empty {} disables a probe
+startupProbe: {}
+livenessProbe: {}
+readinessProbe: {}
+
+podAnnotations:
+  reloader.stakater.com/auto: "true"
+podLabels: {}
+
+# --- hardened security defaults (Gatekeeper-compliant) --------------------
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  seccompProfile: { type: RuntimeDefault }
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: { drop: ["ALL"] }
+# emptyDir mounts for read-only-rootfs apps that must write (e.g. ~/.cache, /tmp)
+writableDirs: []        # [{name,mountPath}]
+
+# --- ingress + TLS (prod) -------------------------------------------------
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  host: ""              # e.g. platform-demo.10.0.0.200.nip.io
+  path: /
+  pathType: Prefix
+  servicePort: 8080
+  tls:
+    enabled: false
+    secretName: ""      # <app>-tls
+certificate:
+  enabled: false        # cert-manager Certificate
+  issuerRef:
+    name: minicloud-ca-issuer
+    kind: ClusterIssuer
+  dnsNames: []
+
+# --- autoscaling (choose ONE) --------------------------------------------
+scaledObject:           # KEDA
+  enabled: false
+  minReplicaCount: 1
+  maxReplicaCount: 3
+  triggers: []
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+# --- networkpolicy (egress allowlist — governance) -----------------------
+networkPolicy:
+  enabled: false
+  # default-deny egress + explicit allows (DNS is always added)
+  egress: []            # raw egress rules (to/ports)
+  ingressFrom: []       # raw ingress 'from' peers (e.g. ingress-nginx ns)
+
+# --- pdb (prod) -----------------------------------------------------------
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# --- observability --------------------------------------------------------
+serviceMonitor:
+  enabled: false
+  path: /metrics
+  port: http
+  interval: 30s
+
+# --- ESO ExternalSecret ---------------------------------------------------
+externalSecret:
+  enabled: false
+  secretStoreRef: { name: vault-backend, kind: ClusterSecretStore }
+  target: ""            # k8s secret name
+  data: []              # [{secretKey, remoteRef:{key,property}}]
+
+serviceAccount:
+  create: false
+  name: ""

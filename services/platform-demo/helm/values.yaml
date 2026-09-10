@@ -1,0 +1,25 @@
+# platform-demo — common values (shared by dev + prod). Pilot for the Helm golden path.
+image:
+  repository: ghcr.io/andrelair-platform/platform-demo
+ports:
+  - name: http
+    containerPort: 8080
+    protocol: TCP
+livenessProbe:
+  httpGet: { path: /healthz, port: http }
+  initialDelaySeconds: 5
+readinessProbe:
+  httpGet: { path: /readyz, port: http }
+  initialDelaySeconds: 5
+resources:
+  requests: { cpu: 10m, memory: 32Mi }
+  limits:   { memory: 128Mi }
+serviceMonitor:
+  enabled: true
+  path: /metrics
+  port: http
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
