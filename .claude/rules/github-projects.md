@@ -63,20 +63,31 @@ down a level. The structure is a **portfolio of products**:
 | Insurance LOB | **ktayl Policy Service** (#6) | `ktayl-policy-service` | `ktayl-policy-service` |
 | Insurance LOB | **ktayl Public Web** (#7) | `ktayl-solution-web` | `ktayl-solution-web` |
 | Insurance LOB | **ERPNext (HR/Finance)** (#8) | `minicloud-erpnext` | `minicloud-erpnext` |
-| Insurance LOB | **ktayl Insurance LOB** (#9) | `ktayl-solution-web` | (planning-stage LOB modules until they graduate) |
+| Insurance LOB | **ktayl Claims** (#11) | `ktayl-claims` | `ktayl-claims` (FNOL/lifecycle, adjusters, subrogation, fraud/SIU, litigation) |
+| Insurance LOB | **ktayl Underwriting & Pricing** (#12) | `ktayl-underwriting` | `ktayl-underwriting` (workbench, guidelines, committee, rating, cat) |
+| Insurance LOB | **ktayl Distribution & CRM** (#13) | `ktayl-distribution` | `ktayl-distribution` (broker portal, CRM, DUA/binders, co-insurance, commissions) |
+| Insurance LOB | **ktayl Insurance Finance & Billing** (#14) | `ktayl-finance` | `ktayl-finance` (billing, IFRS 17, reserving, reinsurance) |
+| Insurance LOB | **ktayl Insurance LOB — Product Lines** (#9) | `ktayl-solution-web` | the actual LOB lines (Marine, Engineering, Financial Lines, Collaborateurs, International, ART) until each graduates |
+| Insurance LOB | **Regulatory & Compliance** (#15) | `minicloud-gitops` | GDPR/AML-KYC/PIA/BCP/ACPR (the insurer's regulatory obligations) |
 | IS Foundations | **minicloud Platform (IDP)** (#3) | `minicloud-gitops` | `-gitops`, `-ansible`, `-opentofu`, `-backstage`, `-ops`, `platform-demo` |
 | IS Foundations | **AI Platform** (#4) | `minicloud-agent` | `-agent`, `-crew-agent`, `-open-webui`, `-plane` |
 | IS Foundations | **Data Platform** (#5) | `minicloud-gitops` | (data pipeline / BI work) |
-| IS Foundations | **Digital Workplace (M365 Alternative)** (#10) | `ktayl-workplace` | `ktayl-workplace`, `minicloud-onlyoffice` (+ Stalwart/Nextcloud/Matrix/Jitsi/Docuseal/n8n/Authentik/Vaultwarden/Homer via `minicloud-gitops`) |
+| IS Foundations | **Digital Workplace (M365 Alternative)** (#10) | `ktayl-workplace` | `ktayl-workplace`, `minicloud-onlyoffice` (+ Stalwart/Nextcloud/Matrix/Jitsi/Docuseal/n8n/Authentik/Vaultwarden/Homer/Paperless/Asterisk via `minicloud-gitops`) |
 | — (roll-up) | **andrelair Platform Portfolio** (#1) | — | **all** repos, grouped Initiative → Product |
 
-Future products (`claims`, `portal`, a broker portal, …) get a board **the day their work starts**,
-with an `Initiative` value and a BMAD home repo. **Digital Workplace** was the first ktayl-IS product
-split out of *minicloud Platform* (2026-09-09): the self-hosted M365 alternative (mail/files/docs/
-chat/video/e-sign/automation/identity), zero per-user licensing — components deploy via gitops but the
-product owns its board (#10) + home repo. **Auto-add for a new product's home repo → #1 is UI-only**
+**ktayl-IS split (2026-09-09→10):** the vague "ktayl Insurance LOB" catch-all (#9) was broken into
+real products — **Digital Workplace** (#10, first), then **Claims** (#11), **Underwriting & Pricing**
+(#12), **Distribution & CRM** (#13), **Insurance Finance & Billing** (#14), and **Regulatory &
+Compliance** (#15). ~57 issues were redistributed off #9/#3 to their belonging boards (policy-service
+stories → #6, INS-*/OPS-* → their products, workplace/comms tools → #10, compliance → #15); #9 now
+holds only the six real **LOB product lines** (Marine/Engineering/Financial-Lines/Collaborateurs/
+International/ART) until each earns its own board.
+
+Future products (`portal`, a broker portal, …) get a board **the day their work starts**, with an
+`Initiative` value and a BMAD home repo. **Auto-add for a new product's home repo → #1 is UI-only**
 (Project #1 → Workflows → Auto-add) — wire it when the repo is created; until then add its issues to
-#1 by hand + set `Initiative`.
+#1 by hand + set `Initiative`. **Known polish debt:** boards #3–#9 predate the Priority field
+(created via `gh project create`) — add a Priority single-select to each when next grooming.
 
 ### Where does a new issue go? (decision rule)
 - Identify the **product** it belongs to → it goes on **that product's board**, in the **repo it
