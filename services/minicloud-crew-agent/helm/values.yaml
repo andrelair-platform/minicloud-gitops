@@ -24,10 +24,18 @@ env:
   - { name: CREW_SMALL_MODEL, value: "tier-economy" }
   - { name: CREW_LARGE_MODEL, value: "tier-standard" }
   - { name: CREW_MAX_ITER, value: "8" }
+startupProbe:
+  httpGet: { path: /health, port: http }
+  failureThreshold: 30
+  periodSeconds: 5   # up to 150s to start (slow nodes e.g. swift-mac)
 readinessProbe:
   httpGet: { path: /ready, port: http }
+  initialDelaySeconds: 5
+  periodSeconds: 10
 livenessProbe:
   httpGet: { path: /health, port: http }
+  initialDelaySeconds: 15
+  periodSeconds: 10
 resources:
   requests: { cpu: 200m, memory: 512Mi }
   limits:   { cpu: 1000m, memory: 1Gi }
