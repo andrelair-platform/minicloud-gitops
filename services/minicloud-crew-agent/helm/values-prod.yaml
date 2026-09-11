@@ -1,0 +1,20 @@
+# prod (ns ai) — ghcr SHA image + ghcr-pull, 2 replicas, PDB, public ingress. Cert = satellite.
+image:
+  repository: ghcr.io/andrelair-platform/minicloud-crew-agent
+  tag: "0d4a1e7"
+imagePullSecrets: [ghcr-pull]
+workload:
+  replicas: 2
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+ingress:
+  enabled: true
+  className: nginx
+  host: crew-agent.10.0.0.200.nip.io
+  servicePort: 8081
+  tls:
+    enabled: true
+    secretName: minicloud-crew-agent-tls
+externalSecret:
+  enabled: false          # litellm-credentials already exists in shared ai ns
