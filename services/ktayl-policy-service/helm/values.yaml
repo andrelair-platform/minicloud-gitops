@@ -54,3 +54,6 @@ ingress:
     secretName: ktayl-policy-service-tls
 certificate:
   enabled: true
+  issuerRef:
+    name: minicloud-ca   # actual ClusterIssuer on this cluster (chart default was wrong)
+    kind: ClusterIssuer

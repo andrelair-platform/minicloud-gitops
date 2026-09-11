@@ -78,7 +78,7 @@ ingress:
 certificate:
   enabled: false        # cert-manager Certificate
   issuerRef:
-    name: minicloud-ca-issuer
+    name: minicloud-ca
     kind: ClusterIssuer
   dnsNames: []
 
