@@ -1,0 +1,12 @@
+# prod — ghcr SHA image (Kargo bumps tag), 2 replicas, public host, PDB, ns SERVICE_NAME
+image:
+  repository: ghcr.io/andrelair-platform/SERVICE_NAME
+  tag: "0000000"     # Kargo yaml-update sets this to the promoted SHA
+imagePullSecrets: [ghcr-pull]   # for Internal ghcr packages (drop if the package is Public)
+workload:
+  replicas: 2
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+ingress:
+  host: SERVICE_NAME.devandre.sbs

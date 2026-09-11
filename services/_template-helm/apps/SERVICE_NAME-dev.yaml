@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: SERVICE_NAME-dev
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: minicloud-platform
+  # Golden path: chart from Harbor OCI (dev registry) + per-app git values via $values.
+  sources:
+    - repoURL: harbor.10.0.0.200.nip.io/library
+      chart: minicloud-app-deployment
+      targetRevision: 0.1.2            # bump to the current chart version
+      helm:
+        releaseName: SERVICE_NAME       # MUST equal the workload name (resource-name stability)
+        valueFiles:
+          - $values/services/SERVICE_NAME/helm/values.yaml
+          - $values/services/SERVICE_NAME/helm/values-dev.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+  destination: { server: https://kubernetes.default.svc, namespace: SERVICE_NAME-dev }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true, RespectIgnoreDifferences=true]
