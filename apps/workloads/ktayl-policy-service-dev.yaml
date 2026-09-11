@@ -7,24 +7,24 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: minicloud-platform
-  # ROLLED BACK to kustomize (2026-09-11): the HGP chart render crash-looped (exit 2,
-  # no logs) despite byte-identical env/probes/securityContext to this overlay — under
-  # diagnosis. Overlay restores working dev immediately (the kept rollback path).
-  source:
-    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
-    targetRevision: main
-    path: services/ktayl-policy-service/minicloud-1/dev
+  # HGP golden path (retry): workload from the shared minicloud-app-deployment chart (Harbor OCI)
+  # + per-app git values ($values). Values now carry podLabels {app: ktayl-policy-service} so the
+  # ktayl-ns egress NetworkPolicies match (root-caused first attempt). releaseName kept.
+  sources:
+    - repoURL: harbor.10.0.0.200.nip.io/library
+      chart: minicloud-app-deployment
+      targetRevision: 0.1.1
+      helm:
+        releaseName: ktayl-policy-service
+        valueFiles:
+          - $values/services/ktayl-policy-service/helm/values.yaml
+          - $values/services/ktayl-policy-service/helm/values-dev.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: ktayl
-  ignoreDifferences:
-    - group: external-secrets.io
-      kind: ExternalSecret
-      jqPathExpressions:
-        - .spec.data[].remoteRef.conversionStrategy
-        - .spec.data[].remoteRef.decodingStrategy
-        - .spec.data[].remoteRef.metadataPolicy
-        - .spec.target.deletionPolicy
   syncPolicy:
     automated:
       prune: true
