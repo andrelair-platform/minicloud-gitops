@@ -53,7 +53,7 @@ ingress:
     enabled: true
     secretName: ktayl-policy-service-tls
 certificate:
-  enabled: true
-  issuerRef:
-    name: minicloud-ca   # actual ClusterIssuer on this cluster (chart default was wrong)
-    kind: ClusterIssuer
+  # Chart does NOT own the Certificate: cert lifecycle is a per-service satellite
+  # concern (existing ktayl-policy-service-tls secret + its own Certificate manifest).
+  # The chart rendering a second Certificate for the same secret causes re-issue churn.
+  enabled: false
