@@ -1,0 +1,44 @@
+# minicloud-agent — common values (Helm golden path). Workload + its litellm-credentials ESO.
+serviceAccount:
+  create: true
+  name: minicloud-agent
+  automountServiceAccountToken: false
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000            # agent image runs as uid 1000 (not the chart default 65532)
+  seccompProfile: { type: RuntimeDefault }
+# GOTCHA #2: ai-ns netpol allow-agent-internet-egress selects app=minicloud-agent
+podLabels:
+  app: minicloud-agent
+image:
+  repository: harbor.10.0.0.200.nip.io/library/minicloud-agent
+ports:
+  - { name: http, containerPort: 8080, protocol: TCP }
+service:
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+env:
+  - { name: LITELLM_BASE_URL, value: "http://litellm.ai.svc.cluster.local:4000" }
+  - name: LITELLM_API_KEY
+    valueFrom: { secretKeyRef: { name: litellm-credentials, key: master-key } }
+  - { name: RAG_INGEST_URL, value: "http://rag-ingest.ai.svc.cluster.local:8001" }
+  - { name: AGENT_DEFAULT_MODEL, value: "tier-economy" }
+  - { name: AGENT_MAX_ITERATIONS, value: "6" }
+readinessProbe:
+  httpGet: { path: /ready, port: http }
+livenessProbe:
+  httpGet: { path: /health, port: http }
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits:   { cpu: 500m, memory: 512Mi }
+# chart owns the litellm-credentials ExternalSecret (was a satellite manifest)
+externalSecret:
+  enabled: true
+  target: litellm-credentials
+  data:
+    - secretKey: master-key
+      remoteRef: { key: platform/litellm, property: master-key }
+ingress:
+  enabled: false            # agent is internal; prod overlay adds the public ingress
+certificate:
+  enabled: false            # satellite (prod)

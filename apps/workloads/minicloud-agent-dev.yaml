@@ -3,17 +3,24 @@ kind: Application
 metadata:
   name: minicloud-agent-dev
   namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  finalizers: [resources-finalizer.argocd.argoproj.io]
 spec:
   project: minicloud-platform
-  source:
-    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
-    targetRevision: main
-    path: services/minicloud-agent/minicloud-1/dev
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: minicloud-agent-dev
+  # HGP golden path: chart from Harbor OCI + git values. podLabels compat for the ai-ns netpol;
+  # chart owns the litellm-credentials ESO. releaseName kept = minicloud-agent.
+  sources:
+    - repoURL: harbor.10.0.0.200.nip.io/library
+      chart: minicloud-app-deployment
+      targetRevision: 0.1.2
+      helm:
+        releaseName: minicloud-agent
+        valueFiles:
+          - $values/services/minicloud-agent/helm/values.yaml
+          - $values/services/minicloud-agent/helm/values-dev.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+  destination: { server: https://kubernetes.default.svc, namespace: minicloud-agent-dev }
   ignoreDifferences:
     - group: external-secrets.io
       kind: ExternalSecret
@@ -22,11 +29,7 @@ spec:
         - .spec.data[].remoteRef.decodingStrategy
         - .spec.data[].remoteRef.metadataPolicy
         - .spec.target.deletionPolicy
+        - .spec.target.template
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-      - RespectIgnoreDifferences=true
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true, RespectIgnoreDifferences=true]
