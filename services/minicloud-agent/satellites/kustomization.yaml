@@ -1,0 +1,8 @@
+# Prod satellite resources for minicloud-agent (single-owner, adjacent to the chart workload).
+# The chart renders the workload + Service + Ingress; the Certificate stays here (its own owner,
+# renews the minicloud-agent-tls secret). ghcr-pull is a shared ai-ns ES (manifests/ai/).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ai
+resources:
+  - certificate.yaml
