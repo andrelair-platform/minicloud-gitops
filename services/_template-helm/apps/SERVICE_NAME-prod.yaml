@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: SERVICE_NAME-prod
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: minicloud-platform
+  # Golden path: chart from ghcr OCI (prod registry) + per-app git values via $values.
+  sources:
+    - repoURL: ghcr.io/andrelair-platform
+      chart: minicloud-app-deployment
+      targetRevision: 0.1.2
+      helm:
+        releaseName: SERVICE_NAME
+        valueFiles:
+          - $values/services/SERVICE_NAME/helm/values.yaml
+          - $values/services/SERVICE_NAME/helm/values-prod.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+  destination: { server: https://kubernetes.default.svc, namespace: SERVICE_NAME }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }   # git-gated: CODEOWNERS on values-prod.yaml
+    syncOptions: [CreateNamespace=true, ServerSideApply=true, RespectIgnoreDifferences=true]

@@ -1,0 +1,38 @@
+# <SERVICE_NAME> — common values (shared dev+prod) for the minicloud-app-deployment golden path.
+# A service = these three values files + two ArgoCD Applications. See docs/helm-golden-path.md.
+serviceAccount:
+  create: true
+  name: SERVICE_NAME
+  automountServiceAccountToken: false
+# GOTCHA #2: if the service's namespace has label-matched NetworkPolicies selecting `app: SERVICE_NAME`,
+# add the compat label so the chart pod (app.kubernetes.io/*) still matches them:
+podLabels:
+  app: SERVICE_NAME
+image:
+  repository: harbor.10.0.0.200.nip.io/library/SERVICE_NAME   # overridden per-env below
+ports:
+  - name: http
+    containerPort: 8080
+    protocol: TCP
+service:
+  ports:
+    - { name: http, port: 80, targetPort: http }   # set port to what the Ingress/consumers expect
+readinessProbe:
+  httpGet: { path: /healthz, port: http }
+  initialDelaySeconds: 5
+livenessProbe:
+  httpGet: { path: /healthz, port: http }
+  initialDelaySeconds: 10
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits:   { cpu: 500m, memory: 512Mi }
+ingress:
+  enabled: true
+  className: nginx
+  servicePort: 80
+  tls: { enabled: true, secretName: SERVICE_NAME-tls }
+# GOTCHA #5: do NOT let the chart own a Certificate the service already manages — keep the
+# Certificate (+ its renewal) as an adjacent/satellite manifest with a single owner.
+certificate:
+  enabled: false
+# workload.kind: Rollout  # uncomment for canary/bluegreen (plane/retrieva pattern)
