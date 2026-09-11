@@ -3,7 +3,7 @@
 image:
   repository: ghcr.io/andrelair-platform/minicloud-agent
   tag: "69c512a"          # Kargo bumps to promoted SHA
-imagePullSecrets: [ghcr-pull]
+imagePullSecrets: [{name: ghcr-pull}]
 workload:
   replicas: 2
 podDisruptionBudget:

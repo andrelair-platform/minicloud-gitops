@@ -2,7 +2,7 @@
 image:
   repository: ghcr.io/andrelair-platform/minicloud-crew-agent
   tag: "0d4a1e7"
-imagePullSecrets: [ghcr-pull]
+imagePullSecrets: [{name: ghcr-pull}]
 workload:
   replicas: 2
 podDisruptionBudget:
