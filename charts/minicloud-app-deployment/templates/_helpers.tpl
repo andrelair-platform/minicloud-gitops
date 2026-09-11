@@ -27,7 +27,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "app.podSpec" -}}
 {{- with .Values.imagePullSecrets }}
 imagePullSecrets:
-{{ toYaml . | indent 2 }}
+{{- range . }}
+  {{- if kindIs "string" . }}
+  - name: {{ . }}
+  {{- else }}
+  - {{ toYaml . | nindent 4 | trim }}
+  {{- end }}
+{{- end }}
 {{- end }}
 {{- if .Values.serviceAccount.create }}
 serviceAccountName: {{ .Values.serviceAccount.name | default (include "app.fullname" .) }}
