@@ -23,6 +23,19 @@ spec:
     server: https://kubernetes.default.svc
     namespace: argocd
   syncPolicy:
+    # Automated + git-gated, like every other app (helm-values/argocd-values.yaml is
+    # CODEOWNERS-gated, so a bad self-change can't merge unreviewed; selfHeal recovers
+    # from Git). Enabled 2026-09-11 after a clean manual sync (Synced/Healthy) — the
+    # documented "sync clean, then flip to automated" procedure for a manual app.
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
