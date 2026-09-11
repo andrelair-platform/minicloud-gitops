@@ -8,7 +8,7 @@ description: >-
   consumed by ArgoCD multi-source Applications (chart from OCI + values from the gitops repo).
   One artifact for dev + prod on the same cluster.
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "0.1.0"
 maintainers:
   - name: AndreLiar

@@ -1,0 +1,10 @@
+# dev — Harbor image, 1 replica, dev host (ns ktayl)
+image:
+  repository: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
+  tag: e8d7092        # Kargo bumps
+workload:
+  replicas: 1
+ingress:
+  host: ktayl-policy.10.0.0.200.nip.io
+certificate:
+  dnsNames: [ktayl-policy.10.0.0.200.nip.io]

@@ -123,3 +123,10 @@ externalSecret:
 serviceAccount:
   create: false
   name: ""
+  automountServiceAccountToken: false
+
+# scheduling passthroughs
+affinity: {}
+nodeSelector: {}
+tolerations: []
+topologySpreadConstraints: []
