@@ -1,0 +1,14 @@
+# prod — ghcr SHA image, 2 static replicas (no autoscaler; Git owns replicas), ns
+# minicloud-plane-prod. Satellites: SSO Ingress + cert + ghcr-pull ES + the 2 AnalysisTemplates.
+image:
+  repository: ghcr.io/andrelair-platform/minicloud-plane
+  tag: "ff347ee"      # Kargo bumps to promoted SHA
+imagePullSecrets: [ghcr-pull]
+workload:
+  replicas: 2
+  rollout:
+    blueGreen:
+      prePromotionAnalysis:
+        args:
+          - name: preview-url
+            value: http://minicloud-plane-preview.minicloud-plane-prod.svc.cluster.local:8080/health

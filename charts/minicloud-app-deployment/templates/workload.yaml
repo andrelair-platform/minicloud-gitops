@@ -17,8 +17,24 @@ spec:
 {{- if eq .Values.workload.kind "Rollout" }}
   strategy:
 {{- if eq .Values.workload.rollout.strategy "blueGreen" }}
+{{- with .Values.workload.rollout.blueGreen }}
     blueGreen:
-      activeService: {{ include "app.fullname" . }}
+      activeService: {{ include "app.fullname" $ }}
+{{- if .previewService }}
+      previewService: {{ include "app.fullname" $ }}-preview
+{{- end }}
+      autoPromotionEnabled: {{ .autoPromotionEnabled }}
+      autoPromotionSeconds: {{ .autoPromotionSeconds }}
+      scaleDownDelaySeconds: {{ .scaleDownDelaySeconds }}
+{{- with .prePromotionAnalysis }}
+      prePromotionAnalysis:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .postPromotionAnalysis }}
+      postPromotionAnalysis:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- end }}
 {{- else }}
     canary:
       steps:

@@ -1,0 +1,25 @@
+# dev — Harbor image, ns minicloud-plane-dev. Cron KEDA ScaledObject scales the Rollout
+# 0->1 during working hours (min 0 / max 1). KEDA owns replicas → the dev Application
+# ignoreDifferences the Rollout .spec.replicas (see apps/workloads/minicloud-plane-dev.yaml).
+image:
+  repository: harbor.10.0.0.200.nip.io/library/minicloud-plane
+  tag: cbe1798        # Kargo bumps
+workload:
+  replicas: 1
+  rollout:
+    blueGreen:
+      prePromotionAnalysis:
+        args:
+          - name: preview-url
+            value: http://minicloud-plane-preview.minicloud-plane-dev.svc.cluster.local:8080/health
+scaledObject:
+  enabled: true
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  triggers:
+    - type: cron
+      metadata:
+        timezone: Europe/Paris
+        start: "0 8 * * 1-5"
+        end: "0 19 * * 1-5"
+        desiredReplicas: "1"

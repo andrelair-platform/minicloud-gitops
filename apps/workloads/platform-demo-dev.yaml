@@ -7,10 +7,19 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: minicloud-platform
+  # HGP golden path (GAP wrapper chart): ONE Helm source. The wrapper chart (services/platform-demo/helm)
+  # depends on the minicloud-app-deployment library chart (OCI) — ArgoCD runs `helm dependency build`
+  # against the ghcr OCI repo cred to fetch it — and carries the service-specific extras in its own
+  # templates/. values.yaml is the chart default; values-dev.yaml overlays it. Kargo bumps
+  # minicloud-app-deployment.image.tag in the values file.
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: services/platform-demo/minicloud-1/dev
+    path: services/platform-demo/helm
+    helm:
+      releaseName: platform-demo
+      valueFiles:
+        - values-dev.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: platform-demo-dev
@@ -25,6 +34,7 @@ spec:
       - RespectIgnoreDifferences=true
       - SkipDryRunOnMissingResource=true
   ignoreDifferences:
+    # KEDA HTTP add-on owns .spec.replicas (0<->2) → selfHeal must not fight it.
     - group: argoproj.io
       kind: Rollout
       name: platform-demo

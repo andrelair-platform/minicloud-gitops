@@ -38,3 +38,45 @@ spec:
           type: Utilization
           averageUtilization: {{ .Values.hpa.targetCPUUtilizationPercentage }}
 {{- end }}
+{{- if .Values.scaledObject.http.enabled }}
+{{- with .Values.scaledObject.http }}
+---
+# KEDA HTTP add-on: request-driven scale-to-zero. The interceptor (keda ns) holds an
+# incoming request, scales the workload 0->1, forwards to the app Service, and scales it
+# back to 0 after scaledownPeriod. hosts MUST match the app Ingress hosts.
+apiVersion: http.keda.sh/v1alpha1
+kind: HTTPScaledObject
+metadata:
+  name: {{ include "app.fullname" $ }}
+  labels:
+{{ include "app.labels" $ | indent 4 }}
+spec:
+  hosts:
+{{ toYaml .hosts | indent 4 }}
+  scaleTargetRef:
+    apiVersion: {{ if eq $.Values.workload.kind "Rollout" }}argoproj.io/v1alpha1{{ else }}apps/v1{{ end }}
+    kind: {{ $.Values.workload.kind }}
+    name: {{ include "app.fullname" $ }}
+    service: {{ include "app.fullname" $ }}
+    port: {{ .servicePort }}
+  replicas:
+    min: {{ .minReplicas }}
+    max: {{ .maxReplicas }}
+  scaledownPeriod: {{ .scaledownPeriod }}
+---
+# ExternalName alias for the shared keda-ns interceptor — an Ingress backend must be a
+# same-namespace Service, so the app's Ingress (a satellite) points here on :{{ .interceptor.port }}.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .interceptor.name }}
+  labels:
+{{ include "app.labels" $ | indent 4 }}
+spec:
+  type: ExternalName
+  externalName: {{ .interceptor.externalName }}
+  ports:
+    - port: {{ .interceptor.port }}
+      name: http
+{{- end }}
+{{- end }}

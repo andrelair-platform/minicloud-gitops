@@ -7,21 +7,43 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: minicloud-platform
-  source:
-    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
-    targetRevision: main
-    path: services/minicloud-plane/minicloud-1/dev
+  # HGP golden path (dev): chart (Harbor OCI) + git values + git satellites (AnalysisTemplates +
+  # app-secrets ES). blueGreen Rollout; a cron KEDA ScaledObject scales it 0->1 in working hours.
+  # values selectorLabels {app: minicloud-plane} match the live Rollout selector → in-place flip.
+  sources:
+    - repoURL: harbor.10.0.0.200.nip.io/library
+      chart: minicloud-app-deployment
+      targetRevision: 0.2.0
+      helm:
+        releaseName: minicloud-plane
+        valueFiles:
+          - $values/services/minicloud-plane/helm/values.yaml
+          - $values/services/minicloud-plane/helm/values-dev.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      path: services/minicloud-plane/satellites/dev
   destination:
     server: https://kubernetes.default.svc
     namespace: minicloud-plane-dev
   ignoreDifferences:
-    # Rollout CRD doesn't support SSA — ArgoCD records op:Update not op:Apply.
-    # Without this, VPA or manual scaling diffs cause permanent OutOfSync.
+    # KEDA cron ScaledObject owns .spec.replicas → selfHeal must not fight it. Rollout CRD
+    # doesn't take SSA cleanly, so this app uses client-side apply (no ServerSideApply).
     - group: argoproj.io
       kind: Rollout
       jsonPointers:
         - /spec/replicas
         - /spec/template/metadata/annotations
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+        - .spec.target.template
   syncPolicy:
     automated:
       prune: true

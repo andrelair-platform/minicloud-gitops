@@ -20,4 +20,30 @@ spec:
       protocol: {{ .protocol | default "TCP" }}
 {{- end }}
 {{- end }}
+{{- if and (eq .Values.workload.kind "Rollout") (eq .Values.workload.rollout.strategy "blueGreen") .Values.workload.rollout.blueGreen.previewService }}
+---
+# Preview Service — Argo Rollouts points spec.strategy.blueGreen.previewService here so
+# prePromotionAnalysis can probe the new ReplicaSet before the active Service is switched.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "app.fullname" . }}-preview
+  labels:
+{{ include "app.labels" . | indent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+{{ include "app.selectorLabels" . | indent 4 }}
+  ports:
+{{- if .Values.service.ports }}
+{{ toYaml .Values.service.ports | indent 4 }}
+{{- else }}
+{{- range .Values.ports }}
+    - name: {{ .name }}
+      port: {{ .containerPort }}
+      targetPort: {{ .name }}
+      protocol: {{ .protocol | default "TCP" }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}

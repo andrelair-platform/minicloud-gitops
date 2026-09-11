@@ -1,0 +1,96 @@
+# minicloud-plane — common values (Helm golden path). Workload = an Argo Rollout with a
+# blueGreen strategy (preview Service + pre/post-promotion analysis). Satellites (the two
+# AnalysisTemplates, the app-secrets ExternalSecret, the SSO Ingress, the prod cert + ghcr ES)
+# stay as adjacent manifests — the chart owns the workload, not the whole footprint.
+nameOverride: minicloud-plane
+serviceAccount:
+  create: true
+  name: minicloud-plane
+  automountServiceAccountToken: false
+
+# Legacy selector: the live Rollout selects {app: minicloud-plane} (immutable). Matching it makes
+# the flip off kustomize an in-place rolling update (no delete). The label also lands on the pod →
+# the ServiceMonitor/PDB/netpols keyed on app: minicloud-plane keep matching.
+selectorLabels:
+  app: minicloud-plane
+
+image:
+  repository: harbor.10.0.0.200.nip.io/library/minicloud-plane
+
+workload:
+  kind: Rollout
+  rollout:
+    strategy: blueGreen
+    blueGreen:
+      previewService: true
+      autoPromotionEnabled: true
+      autoPromotionSeconds: 30
+      scaleDownDelaySeconds: 30
+      # templates are the same in both envs; the preview-url arg differs per namespace and is
+      # set in values-{dev,prod}.yaml (deep-merged into prePromotionAnalysis.args).
+      prePromotionAnalysis:
+        templates:
+          - templateName: preview-health-gate
+      postPromotionAnalysis:
+        templates:
+          - templateName: http-regression-gate
+
+ports:
+  - name: http
+    containerPort: 8080
+    protocol: TCP
+service:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+
+env:
+  - name: NATS_URL
+    value: nats://nats.messaging.svc.cluster.local:4222
+  - name: PORT
+    value: "8080"
+envFrom:
+  - secretRef: { name: minicloud-plane-secrets }
+
+resources:
+  requests: { cpu: 25m, memory: 32Mi }
+  limits:   { cpu: 200m, memory: 128Mi }
+
+# readOnlyRootFilesystem (chart default) needs a writable /tmp.
+writableDirs:
+  - name: tmp
+    mountPath: /tmp
+
+readinessProbe:
+  httpGet: { path: /health, port: http }
+  initialDelaySeconds: 5
+  periodSeconds: 10
+livenessProbe:
+  httpGet: { path: /health, port: http }
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels: { app: minicloud-plane }
+          topologyKey: kubernetes.io/hostname
+
+serviceMonitor:
+  enabled: true
+  path: /metrics
+  port: http
+  interval: 30s
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Ingress + Certificate are satellites (SSO server-snippets + dual hosts / single-owner cert).
+ingress:
+  enabled: false
+certificate:
+  enabled: false

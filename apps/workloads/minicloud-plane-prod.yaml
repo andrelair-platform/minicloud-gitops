@@ -7,10 +7,24 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: minicloud-platform
-  source:
-    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
-    targetRevision: main
-    path: services/minicloud-plane/minicloud-1/prod
+  # HGP golden path (prod): chart (ghcr OCI) + git values + git satellites (SSO Ingress, cert,
+  # ghcr-pull ES, the 2 AnalysisTemplates, app-secrets ES). blueGreen Rollout, 2 static replicas.
+  # values selectorLabels {app: minicloud-plane} match the live Rollout selector → in-place flip.
+  sources:
+    - repoURL: ghcr.io/andrelair-platform
+      chart: minicloud-app-deployment
+      targetRevision: 0.2.0
+      helm:
+        releaseName: minicloud-plane
+        valueFiles:
+          - $values/services/minicloud-plane/helm/values.yaml
+          - $values/services/minicloud-plane/helm/values-prod.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      path: services/minicloud-plane/satellites/prod
   destination:
     server: https://kubernetes.default.svc
     namespace: minicloud-plane-prod
@@ -19,9 +33,6 @@ spec:
       kind: Rollout
       jsonPointers:
         - /spec/template/metadata/annotations
-    # ESO's webhook injects these defaults into the ghcr-pull ExternalSecret at
-    # creation; they're never in git, so ignore them (with RespectIgnoreDifferences)
-    # or the app is permanently OutOfSync / selfHeal fights ESO.
     - group: external-secrets.io
       kind: ExternalSecret
       jqPathExpressions:
@@ -29,15 +40,12 @@ spec:
         - .spec.data[].remoteRef.decodingStrategy
         - .spec.data[].remoteRef.metadataPolicy
         - .spec.target.deletionPolicy
+        - .spec.target.template
   syncPolicy:
-    # Git-gated automated production. The approval gate lives upstream in Git:
-    #   - CODEOWNERS requires @AndreLair review on services/*/minicloud-1/prod/
-    #   - images are immutable SHA tags (never :latest)
-    #   - the BlueGreen Rollout + preview-health-gate prePromotionAnalysis
-    #     auto-aborts the promotion on bad metrics
-    # selfHeal corrects live drift back to Git; prune removes resources deleted
-    # from Git. Git owns .spec.replicas (prod patch-replicas=2, no autoscaler),
-    # so selfHeal enforcing it is correct.
+    # Git-gated automated production. Gate lives upstream in Git (CODEOWNERS on apps/ +
+    # services/*/helm|satellites/, immutable ghcr SHA promoted by Kargo via a values image.tag
+    # bump). blueGreen + preview-health-gate prePromotionAnalysis auto-aborts a bad promotion.
+    # Git owns .spec.replicas (values=2, no autoscaler) → selfHeal enforcing it is correct.
     automated:
       prune: true
       selfHeal: true
