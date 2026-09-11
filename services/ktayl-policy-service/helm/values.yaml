@@ -4,6 +4,12 @@ serviceAccount:
   create: true
   name: ktayl-policy-service
   automountServiceAccountToken: false
+
+# Compatibility label: the ktayl ns NetworkPolicies (allow-egress-postgres/nats/minio/jwks)
+# select `app: ktayl-policy-service`. The chart uses app.kubernetes.io/* labels, so without
+# this the pod would not match those egress allows and its DB connect would be denied (exit 2).
+podLabels:
+  app: ktayl-policy-service
 image:
   repository: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
 ports:
