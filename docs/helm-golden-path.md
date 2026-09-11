@@ -54,3 +54,18 @@ at the overlay.
   per-app canary brake).
 - Third-party charts unchanged; single-env custom images (backstage/webui/onlyoffice/erpnext/ktayl-web)
   deferred.
+
+
+## Migration gotcha: label-matched NetworkPolicies (root-caused in the ktayl-policy pilot)
+The chart labels pods with `app.kubernetes.io/*`, but a service's **satellite NetworkPolicies** are
+hand-written selecting the legacy **`app: <name>`** label (e.g. ktayl ns: `default-deny-egress` +
+`allow-egress-postgres/nats/minio/jwks` all select `app: ktayl-policy-service`). A chart pod without
+that label does NOT match the egress-allow rules → its DB/infra egress is denied → the app exits at
+startup (observed: **exit 2, no logs** — it dies on the DB connect; DNS still works via a select-all
+`allow-dns-egress`, which is why it gets that far). Pod spec is otherwise byte-identical to the overlay.
+
+**Fix (per migrating service):** add a compatibility label via values `podLabels: {app: <name>}` so the
+existing netpols keep matching — OR update that service's netpols to select `app.kubernetes.io/name`.
+The `podLabels` route is least-churn for migration. **Every custom service migrating to the chart has
+per-service netpols keyed on `app:` — apply this to each (plane/agent/crew/retrieva) before the flip.**
+Also delete the old Deployment once on flip (immutable selector: `app:` → `app.kubernetes.io/*`).
