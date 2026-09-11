@@ -48,6 +48,9 @@ spec:
     - https://charts.deliveryhero.io/
     # Kargo (OCI Helm registry)
     - ghcr.io/akuity/kargo-charts
+    # HGP golden-path chart (minicloud-app-deployment), OCI: Harbor (dev) + ghcr (prod)
+    - harbor.10.0.0.200.nip.io/library
+    - ghcr.io/andrelair-platform
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
