@@ -34,6 +34,23 @@ serviceAccountName: {{ .Values.serviceAccount.name | default (include "app.fulln
 {{- else if .Values.serviceAccount.name }}
 serviceAccountName: {{ .Values.serviceAccount.name }}
 {{- end }}
+automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+{{- with .Values.affinity }}
+affinity:
+{{ toYaml . | indent 2 }}
+{{- end }}
+{{- with .Values.nodeSelector }}
+nodeSelector:
+{{ toYaml . | indent 2 }}
+{{- end }}
+{{- with .Values.tolerations }}
+tolerations:
+{{ toYaml . | indent 2 }}
+{{- end }}
+{{- with .Values.topologySpreadConstraints }}
+topologySpreadConstraints:
+{{ toYaml . | indent 2 }}
+{{- end }}
 securityContext:
 {{ toYaml .Values.podSecurityContext | indent 2 }}
 containers:
