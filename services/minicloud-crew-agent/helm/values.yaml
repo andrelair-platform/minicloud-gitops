@@ -1,0 +1,45 @@
+# minicloud-crew-agent — common values (Helm golden path). CrewAI needs writable HOME dot-dirs.
+serviceAccount:
+  create: true
+  name: minicloud-crew-agent
+  automountServiceAccountToken: false
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  seccompProfile: { type: RuntimeDefault }
+podLabels:
+  app: minicloud-crew-agent          # GOTCHA #2: ai-ns allow-crew-agent-internet-egress selects this
+image:
+  repository: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
+ports:
+  - { name: http, containerPort: 8081, protocol: TCP }
+service:
+  ports:
+    - { name: http, port: 8081, targetPort: http }
+env:
+  - { name: LITELLM_BASE_URL, value: "http://litellm.ai.svc.cluster.local:4000" }
+  - name: LITELLM_API_KEY
+    valueFrom: { secretKeyRef: { name: litellm-credentials, key: master-key } }
+  - { name: RAG_INGEST_URL, value: "http://rag-ingest.ai.svc.cluster.local:8001" }
+  - { name: CREW_SMALL_MODEL, value: "tier-economy" }
+  - { name: CREW_LARGE_MODEL, value: "tier-standard" }
+  - { name: CREW_MAX_ITER, value: "8" }
+readinessProbe:
+  httpGet: { path: /ready, port: http }
+livenessProbe:
+  httpGet: { path: /health, port: http }
+resources:
+  requests: { cpu: 200m, memory: 512Mi }
+  limits:   { cpu: 1000m, memory: 1Gi }
+# readOnlyRootFilesystem:true → CrewAI/ChromaDB must write to HOME dot-dirs + /tmp ([[readonlyrootfs]])
+writableDirs:
+  - { name: home-local, mountPath: /home/agent/.local }
+  - { name: tmp, mountPath: /tmp }
+externalSecret:
+  enabled: true
+  target: litellm-credentials
+  data:
+    - secretKey: master-key
+      remoteRef: { key: platform/litellm, property: master-key }
+ingress: { enabled: false }
+certificate: { enabled: false }

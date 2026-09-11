@@ -1,0 +1,5 @@
+image:
+  repository: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
+  tag: 28ace93
+workload: { replicas: 1 }
+podDisruptionBudget: { enabled: false }
