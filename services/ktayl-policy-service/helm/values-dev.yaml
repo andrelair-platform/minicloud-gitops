@@ -1,7 +1,11 @@
-# dev — Harbor image, 1 replica, dev host (ns ktayl)
+# dev — Harbor image, 1 replica, dev host (ns ktayl). dev keeps the chart's standard
+# app.kubernetes.io/* selector (migrated once via the delete-first flip), so it needs this
+# compatibility label on the pod for the ktayl-ns egress netpols to match.
 image:
   repository: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
   tag: e8d7092        # Kargo bumps
+podLabels:
+  app: ktayl-policy-service
 workload:
   replicas: 1
 ingress:

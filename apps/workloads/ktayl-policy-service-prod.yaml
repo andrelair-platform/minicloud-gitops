@@ -7,17 +7,32 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: minicloud-platform
-  source:
-    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
-    targetRevision: main
-    path: services/ktayl-policy-service/minicloud-1/prod
+  # HGP golden path (prod): chart from ghcr OCI + git values + git satellites (dedicated Postgres,
+  # app/ghcr ESO secrets, Certificate). values-prod overrides the workload selector to the legacy
+  # {app: ktayl-policy-service}, so the flip off the kustomize overlay is an in-place rolling update
+  # — no delete, no downtime, and the Postgres StatefulSet is untouched (identical immutable spec).
+  sources:
+    - repoURL: ghcr.io/andrelair-platform
+      chart: minicloud-app-deployment
+      targetRevision: 0.1.4
+      helm:
+        releaseName: ktayl-policy-service
+        valueFiles:
+          - $values/services/ktayl-policy-service/helm/values.yaml
+          - $values/services/ktayl-policy-service/helm/values-prod.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      path: services/ktayl-policy-service/satellites/prod
   destination:
     server: https://kubernetes.default.svc
     namespace: ktayl-prod
   ignoreDifferences:
-    # ESO webhook injects these defaults into every ExternalSecret (ghcr-pull, the app
-    # secret, the postgres secret) — never in git, so ignore them with
-    # RespectIgnoreDifferences or the app is permanently OutOfSync / selfHeal fights ESO.
+    # ESO webhook injects these defaults into every ExternalSecret (ghcr-pull, the app secret,
+    # the postgres secret) — never in git, so ignore them (with RespectIgnoreDifferences) or the
+    # app is permanently OutOfSync / selfHeal fights ESO. .spec.target.template covers ghcr-pull.
     - group: external-secrets.io
       kind: ExternalSecret
       jqPathExpressions:
@@ -25,9 +40,10 @@ spec:
         - .spec.data[].remoteRef.decodingStrategy
         - .spec.data[].remoteRef.metadataPolicy
         - .spec.target.deletionPolicy
+        - .spec.target.template
   syncPolicy:
-    # Git-gated automated production (CODEOWNERS on services/*/minicloud-1/prod/, immutable
-    # ghcr SHA promoted by Kargo). Git owns replicas (prod patch=2, no autoscaler).
+    # Git-gated automated production (CODEOWNERS on apps/, services/*/helm|satellites/, immutable
+    # ghcr SHA promoted by Kargo via a values image.tag bump). Git owns replicas (values=2, no autoscaler).
     automated:
       prune: true
       selfHeal: true
@@ -39,4 +55,5 @@ spec:
         maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
       - RespectIgnoreDifferences=true

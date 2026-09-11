@@ -68,4 +68,30 @@ startup (observed: **exit 2, no logs** — it dies on the DB connect; DNS still 
 existing netpols keep matching — OR update that service's netpols to select `app.kubernetes.io/name`.
 The `podLabels` route is least-churn for migration. **Every custom service migrating to the chart has
 per-service netpols keyed on `app:` — apply this to each (plane/agent/crew/retrieva) before the flip.**
-Also delete the old Deployment once on flip (immutable selector: `app:` → `app.kubernetes.io/*`).
+
+
+## Zero-downtime migration: `selectorLabels` override (chart 0.1.4, the no-delete flip)
+A Deployment's `.spec.selector` is **immutable**. The chart's default selector is `app.kubernetes.io/*`,
+but a service migrating off a kustomize overlay has an existing Deployment selecting the legacy
+`app: <name>`. Two ways to reconcile that:
+
+1. **Delete-first (dev, low-stakes):** `kubectl delete deploy <name>` once, then let ArgoCD recreate it
+   with the chart's standard selector. Simple, but it **deletes the workload = brief downtime** — fine
+   for a dev env, wrong for prod. (This is what the dev pilots + agent/crew prod used before 0.1.4.)
+2. **`selectorLabels` override (prod, zero-downtime — chart 0.1.4):** set values
+   `selectorLabels: {app: <name>}` so the chart renders a selector **identical** to the live
+   Deployment's. ArgoCD then does an **in-place rolling update** (not a delete/recreate): the selector
+   is unchanged, only the pod template changes → new ReplicaSet rolls in behind the Service + PDB with
+   **no delete and no downtime**. The override label also lands on the pod, so it doubles as the netpol
+   compatibility label — **use `selectorLabels`, NOT `podLabels`, on the migrating env** (setting both
+   to `{app: <name>}` renders a duplicate map key). Note `app.kubernetes.io/*` is then absent from the
+   pod, so any `podAntiAffinity`/ServiceMonitor selector must also target `app: <name>` in that env.
+
+**This is strictly better than ArgoCD `Replace=true`** for the migration: `Replace=true` uses
+`kubectl replace` = delete+recreate the Deployment = the same downtime as delete-first, just automated.
+`selectorLabels` matching avoids the recreate entirely. Reference: **ktayl-policy prod** (HGP-10) — flip
+verified in-place with the dedicated Postgres StatefulSet kept as an un-pruned satellite (identical
+immutable spec → also in-place, data preserved).
+
+Also delete the old Deployment once on a **delete-first** dev flip (immutable selector:
+`app:` → `app.kubernetes.io/*`); a **prod** flip uses `selectorLabels` and needs no delete.

@@ -51,6 +51,14 @@ podAnnotations:
   reloader.stakater.com/auto: "true"
 podLabels: {}
 
+# Override the workload/Service selector (immutable on a Deployment/Rollout).
+# Leave empty for new services (standard app.kubernetes.io/name+instance labels).
+# For a service MIGRATING off an older manifest, set this to MATCH the existing
+# workload's selector (e.g. {app: <name>}) so the flip is an in-place rolling
+# update — no delete/recreate, zero downtime. The pod inherits these labels, so
+# a netpol that selects `app: <name>` also matches (no separate podLabels needed).
+selectorLabels: {}
+
 # --- hardened security defaults (Gatekeeper-compliant) --------------------
 podSecurityContext:
   runAsNonRoot: true

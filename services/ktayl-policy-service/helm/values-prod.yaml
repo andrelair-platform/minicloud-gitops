@@ -1,11 +1,29 @@
 # prod — ghcr SHA image, 2 replicas, prod host (ns ktayl-prod). Satellite infra
-# (Postgres + ESO secrets + ghcr-pull) stays in the prod manifests source, NOT this chart.
+# (Postgres + ESO secrets + ghcr-pull) stays in the prod satellites source, NOT this chart.
+#
+# ZERO-DOWNTIME MIGRATION off the kustomize overlay: the existing prod Deployment's selector is
+# {app: ktayl-policy-service} (immutable). Overriding the chart selector to match makes the flip an
+# in-place rolling update — no delete, no downtime, and the dedicated Postgres StatefulSet is
+# untouched. (This is why we do NOT need Replace=true, which would delete+recreate = downtime.)
+# The label also lands on the pod → the ktayl-prod egress netpols match with no separate podLabels.
+selectorLabels:
+  app: ktayl-policy-service
 image:
   repository: ghcr.io/andrelair-platform/ktayl-policy-service
   tag: "23c2c4e"      # Kargo bumps to promoted SHA
 imagePullSecrets: [ghcr-pull]
 workload:
   replicas: 2
+# podAntiAffinity must select the pod's ACTUAL label (app:, from the selector override above),
+# not the chart-default app.kubernetes.io/name — else the anti-affinity term matches nothing.
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels: { app: ktayl-policy-service }
+          topologyKey: kubernetes.io/hostname
 podDisruptionBudget:
   enabled: true
   minAvailable: 1

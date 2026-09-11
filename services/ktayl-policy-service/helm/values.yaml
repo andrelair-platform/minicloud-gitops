@@ -5,11 +5,11 @@ serviceAccount:
   name: ktayl-policy-service
   automountServiceAccountToken: false
 
-# Compatibility label: the ktayl ns NetworkPolicies (allow-egress-postgres/nats/minio/jwks)
-# select `app: ktayl-policy-service`. The chart uses app.kubernetes.io/* labels, so without
-# this the pod would not match those egress allows and its DB connect would be denied (exit 2).
-podLabels:
-  app: ktayl-policy-service
+# NetworkPolicy compatibility: the ktayl ns netpols (allow-egress-postgres/nats/minio/jwks)
+# select `app: ktayl-policy-service`. dev keeps the chart's standard app.kubernetes.io/* selector
+# and adds this label via `podLabels` (values-dev.yaml). prod instead OVERRIDES the selector to
+# `app: ktayl-policy-service` (values-prod.yaml) for an in-place, no-delete migration — that same
+# label then lands on the pod automatically, so prod needs no podLabels (which would duplicate it).
 image:
   repository: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
 ports:
