@@ -24,10 +24,18 @@ env:
   - { name: RAG_INGEST_URL, value: "http://rag-ingest.ai.svc.cluster.local:8001" }
   - { name: AGENT_DEFAULT_MODEL, value: "tier-economy" }
   - { name: AGENT_MAX_ITERATIONS, value: "6" }
+startupProbe:
+  httpGet: { path: /health, port: http }
+  failureThreshold: 30
+  periodSeconds: 5   # up to 150s to start (slow nodes e.g. swift-mac)
 readinessProbe:
   httpGet: { path: /ready, port: http }
+  initialDelaySeconds: 5
+  periodSeconds: 10
 livenessProbe:
   httpGet: { path: /health, port: http }
+  initialDelaySeconds: 15
+  periodSeconds: 10
 resources:
   requests: { cpu: 100m, memory: 256Mi }
   limits:   { cpu: 500m, memory: 512Mi }
