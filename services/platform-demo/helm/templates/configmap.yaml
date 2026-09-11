@@ -1,0 +1,9 @@
+# Env ConfigMap (envFrom in the workload). Data is set per env in values-{dev,prod}.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-demo
+  labels:
+    app: platform-demo
+data:
+{{ toYaml .Values.appConfig | indent 2 }}
