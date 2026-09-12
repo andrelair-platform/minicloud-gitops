@@ -1,5 +1,7 @@
 # dev (ns retrieva-dev) — Harbor images, 1 replica, free-tier AI (ollama-cloud + nvidia-embed).
 secretsVaultPath: platform/retrieva-dev
+postgres:
+  enabled: true          # RTV-46 — provision dev Postgres (additive; Mongo still serves)
 ingress:
   host: retrieva-dev.10.0.0.200.nip.io
   tlsSecretName: retrieva-dev-tls
@@ -7,7 +9,7 @@ quota:
   name: retrieva-dev-quota
   limitRangeName: retrieva-dev-limits
   requestsCpu: "1"
-  requestsMemory: 1500Mi
+  requestsMemory: 1800Mi   # +300Mi headroom for Postgres (req 256Mi) — RTV-46
   limitsCpu: "4"
   limitsMemory: 4Gi
   pods: "12"

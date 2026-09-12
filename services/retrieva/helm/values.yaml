@@ -68,6 +68,13 @@ frontend:
     limits:   { cpu: 500m, memory: 640Mi }
 
 # ---- wrapper-local (drive templates/) — defaults overridden per env ----
+# RTV-46: PostgreSQL (additive, runs alongside Mongo). Disabled by default; dev enables it.
+# Prod enables it via the gated quota-bump PR. Nothing connects until RTV-47/48 (Drizzle + schema).
+postgres:
+  enabled: false
+  requestMemory: 256Mi
+  limitMemory: 512Mi
+  storage: 5Gi
 secretsVaultPath: platform/retrieva
 ingress:
   host: retrieva.online

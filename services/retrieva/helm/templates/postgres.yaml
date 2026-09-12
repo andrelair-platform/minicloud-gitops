@@ -1,0 +1,73 @@
+# RTV-46: retrieva PostgreSQL (additive — runs ALONGSIDE Mongo; nothing connects until RTV-47/48).
+# Gated by .Values.postgres.enabled (dev first; prod enabled via the gated quota-bump PR). Password
+# from retrieva-secrets (ESO → Vault secretsVaultPath/postgres-password). Mirrors the ktayl pattern.
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: retrieva-postgres
+  labels: { app: retrieva-postgres }
+spec:
+  clusterIP: None
+  selector: { app: retrieva-postgres }
+  ports:
+    - { name: postgres, port: 5432, targetPort: 5432 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: retrieva-postgres
+spec:
+  serviceName: retrieva-postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: retrieva-postgres }
+  template:
+    metadata:
+      labels: { app: retrieva-postgres }
+    spec:
+      securityContext:
+        fsGroup: 999
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:16-alpine
+          env:
+            - { name: POSTGRES_USER, value: retrieva }
+            - { name: POSTGRES_DB, value: retrieva }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: retrieva-secrets, key: postgres-password } }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+            - { name: LANG, value: "C" }
+            - { name: LC_ALL, value: "C" }
+          ports:
+            - { name: postgres, containerPort: 5432 }
+          resources:
+            requests: { cpu: 100m, memory: {{ .Values.postgres.requestMemory }} }
+            limits:   { cpu: 500m, memory: {{ .Values.postgres.limitMemory }} }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["NET_RAW"] }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "retrieva", "-d", "retrieva"] }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+  # explicit updateStrategy + VCT apiVersion/kind/volumeMode → no ArgoCD drift (feedback_statefulset_argocd_vct)
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate: { partition: 0 }
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: longhorn
+        volumeMode: Filesystem
+        resources:
+          requests: { storage: {{ .Values.postgres.storage }} }
+{{- end }}
