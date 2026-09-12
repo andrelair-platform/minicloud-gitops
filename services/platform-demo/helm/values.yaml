@@ -106,17 +106,23 @@ minicloud-app-deployment:
       maxReplicas: 2
       scaledownPeriod: 300
 
-  # Certificate is owned by the library chart (single owner). secretName defaults to platform-demo-tls.
+  # Certificate is a WRAPPER template (templates/certificate.yaml) keeping the ORIGINAL per-env object
+  # name so it adopts the existing secret in place. The library cert (object named <fullname>) would
+  # conflict with the secret's cert-manager owner annotation (IncorrectCertificate).
   certificate:
-    enabled: true       # dnsNames set per env
+    enabled: false
   ingress:
     enabled: false      # the SSO Ingress (interceptor backend, dual host) is a wrapper template below
 
 # ---- wrapper-local values (drive templates/ in THIS chart) ----
+# TLS Certificate object — name/secret/dnsName per env (values-{dev,prod}); adopts the existing secret.
+tlsCert:
+  name: ""
+  secretName: ""
+  dnsName: ""
 # SSO Ingress: authentik forward-auth snippets (same both envs); hosts + tlsSecret per env.
 ssoIngress:
   className: nginx
-  tlsSecret: platform-demo-tls
   annotations:
     nginx.ingress.kubernetes.io/server-snippet: |
       location /outpost.goauthentik.io {
