@@ -1,4 +1,57 @@
+# minicloud-gitops is a DEPLOY repo: it holds ONLY what ArgoCD reconciles
+# (Applications, wrapper/library charts, third-party values, platform manifests,
+# env overlays) + in-repo ADRs. Everything else belongs with its product:
+#   app source / training notebooks / dev scripts -> the product repo
+#   reference & governance docs                    -> the org site (minicloud-platform-docs)
+# This .gitignore keeps non-deploy artifacts from drifting back in (see the
+# website/ stub, ai-governance docs, and the phi3 notebook that had to be removed).
 
-# Helm wrapper charts: vendor the library dep at render time (ArgoCD runs helm dependency build);
-# commit Chart.lock (pins the version) but not the downloaded tgz.
+# --- Helm: vendored chart deps (pin via committed Chart.lock, not the tgz) ---
 services/*/helm/charts/
+charts/*/charts/
+
+# --- Notebooks (dev/training artifacts — belong in the product repo, not here) ---
+*.ipynb
+.ipynb_checkpoints/
+
+# --- Rendered doc sites (this infra repo has no per-repo Docusaurus site) ---
+website/
+.docusaurus/
+build/
+node_modules/
+
+# --- Python caches / envs (scripts/*.py are source and ARE tracked; these are not) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- ML model weights / large binaries (never a deploy artifact) ---
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.gguf
+*.onnx
+*.bin
+
+# --- Secrets never belong in GitOps (all secrets flow via ESO -> Vault) ---
+*.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+kubeconfig
+*.kubeconfig
+
+# --- Editor / OS cruft ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
