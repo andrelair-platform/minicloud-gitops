@@ -8,6 +8,10 @@ fullnameOverride: ""
 workload:
   kind: Deployment      # Deployment | Rollout   (Rollout = Argo Rollouts canary/bluegreen)
   replicas: 1           # dev=1; prod overlay sets 2–3 (ignored when an autoscaler owns replicas)
+  # Deployment rollingUpdate strategy (kind: Deployment only). Empty = k8s default (25% surge).
+  # Set for tight-quota namespaces where a surge pod won't fit: {type: RollingUpdate,
+  # rollingUpdate: {maxSurge: 0, maxUnavailable: 1}}.
+  strategy: {}
   # Argo Rollout strategy (only used when kind: Rollout)
   rollout:
     strategy: canary    # canary | blueGreen
