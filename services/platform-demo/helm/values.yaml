@@ -7,7 +7,11 @@ minicloud-app-deployment:
   serviceAccount:
     create: true
     name: platform-demo
-    automountServiceAccountToken: false
+    # MUST be true: platform-demo uses Vault AGENT INJECTION (podAnnotations below). The Vault
+    # injector webhook requires the SA token volume mount to auth to Vault — with automount false it
+    # denies pod creation ("failed to find service account volume mount"). The old base left it
+    # defaulted (true); the wrapper hardening default (false) broke it (latent behind scale-to-zero).
+    automountServiceAccountToken: true
   # Legacy selector: live Rollout selects {app: platform-demo} (immutable) → match it for an
   # in-place flip; the label also lands on the pod (SM/PDB match).
   selectorLabels:
