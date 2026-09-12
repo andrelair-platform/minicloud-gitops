@@ -25,17 +25,16 @@ spec:
             checkout:
               - branch: main
                 path: ./repo
-        - uses: kustomize-set-image
+        - uses: yaml-update
           as: set-image
           config:
-            path: ./repo/services/retrieva/minicloud-1/prod
-            images:
-              - image: retrieva-backend
-                newName: ghcr.io/andrelair-platform/retrieva-backend
-                tag: ${{ quote(vars.sha) }}
-              - image: retrieva-frontend
-                newName: ghcr.io/andrelair-platform/retrieva-frontend
-                tag: ${{ quote(vars.sha) }}
+            # prod wrapper values already pin the ghcr repo; bump BOTH image tags to the promoted SHA.
+            path: ./repo/services/retrieva/helm/values-prod.yaml
+            updates:
+              - key: backend.image.tag
+                value: ${{ quote(vars.sha) }}
+              - key: frontend.image.tag
+                value: ${{ quote(vars.sha) }}
         - uses: git-commit
           as: commit
           config:
