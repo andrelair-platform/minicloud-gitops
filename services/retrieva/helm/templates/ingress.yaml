@@ -1,0 +1,28 @@
+# One path-routing Ingress for both workloads: /api + /socket.io → backend:3007, / → frontend:3000.
+# host + tls secret per env (.Values.ingress.*). No Authentik forward-auth — Retrieva ships its own JWT.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: retrieva
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [{{ .Values.ingress.host | quote }}]
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: retrieva-backend, port: { number: 3007 } } }
+          - path: /socket.io
+            pathType: Prefix
+            backend: { service: { name: retrieva-backend, port: { number: 3007 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: retrieva-frontend, port: { number: 3000 } } }

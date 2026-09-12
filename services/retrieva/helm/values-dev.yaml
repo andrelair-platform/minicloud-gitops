@@ -1,0 +1,68 @@
+# dev (ns retrieva-dev) — Harbor images, 1 replica, free-tier AI (ollama-cloud + nvidia-embed).
+secretsVaultPath: platform/retrieva-dev
+ingress:
+  host: retrieva-dev.10.0.0.200.nip.io
+  tlsSecretName: retrieva-dev-tls
+quota:
+  name: retrieva-dev-quota
+  limitRangeName: retrieva-dev-limits
+  requestsCpu: "1"
+  requestsMemory: 1500Mi
+  limitsCpu: "4"
+  limitsMemory: 4Gi
+  pods: "12"
+
+backend:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/retrieva-backend
+    tag: a413e25
+  workload:
+    replicas: 1
+  env:
+    - { name: PORT, value: "3007" }
+    - { name: NODE_ENV, value: "production" }
+    - { name: LOG_LEVEL, value: "info" }
+    - { name: DOCKER_ENV, value: "true" }
+    - { name: MONGODB_URI,     valueFrom: { secretKeyRef: { name: retrieva-secrets, key: mongodb-uri } } }
+    - { name: REDIS_URL,       valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-url } } }
+    - { name: REDIS_PASSWORD,  valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-password } } }
+    - { name: QDRANT_URL, value: "http://qdrant.ai.svc.cluster.local:6333" }
+    - { name: INGEST_USE_DOCLING, value: "true" }
+    - { name: MARKITDOWN_URL, value: "http://markitdown-proxy.ai.svc.cluster.local:8000" }
+    - { name: DOCLING_URL, value: "http://docling.ai.svc.cluster.local:5001" }
+    - { name: INGEST_VLM_CAPTION, value: "true" }          # dev validates VLM captioning
+    - { name: VLM_CAPTION_MODEL, value: "azure-gpt-4.1-mini" }
+    - { name: QDRANT_API_KEY,  valueFrom: { secretKeyRef: { name: retrieva-secrets, key: qdrant-api-key } } }
+    - { name: QDRANT_COLLECTION_NAME, value: "retrieva-dev" }   # dev's own collection
+    - { name: LLM_PROVIDER, value: "azure_openai" }
+    - { name: EMBEDDING_PROVIDER, value: "azure" }
+    - { name: OLLAMA_BASE_URL, value: "http://litellm.ai.svc.cluster.local:4000" }
+    - { name: AZURE_OPENAI_ENDPOINT, value: "http://litellm.ai.svc.cluster.local:4000" }
+    - { name: AZURE_OPENAI_API_KEY, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: litellm-api-key } } }
+    - { name: AZURE_OPENAI_LLM_DEPLOYMENT, value: "ollama-cloud" }      # dev free tier
+    - { name: AZURE_OPENAI_EMBEDDING_DEPLOYMENT, value: "nvidia-embed" }
+    - { name: AZURE_OPENAI_API_VERSION, value: "2024-02-15-preview" }
+    - { name: LLM_MODEL, value: "ollama-cloud" }
+    - { name: EMBEDDING_MODEL, value: "nvidia-embed" }
+    - { name: JUDGE_LLM_MODEL, value: "ollama-cloud" }
+    - { name: LANGFUSE_BASE_URL, value: "http://langfuse-web.langfuse.svc.cluster.local:3000" }
+    - { name: LANGFUSE_TRACING_ENVIRONMENT, value: "development" }      # dev env in the shared project
+    - { name: LANGFUSE_PROMPT_LABEL, value: "latest" }                 # dev iterates on latest
+    - { name: LANGFUSE_PUBLIC_KEY, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: langfuse-public-key } } }
+    - { name: LANGFUSE_SECRET_KEY, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: langfuse-secret-key } } }
+    - { name: JWT_ACCESS_SECRET,  valueFrom: { secretKeyRef: { name: retrieva-secrets, key: jwt-access-secret } } }
+    - { name: JWT_REFRESH_SECRET, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: jwt-refresh-secret } } }
+    - { name: ENCRYPTION_KEY,     valueFrom: { secretKeyRef: { name: retrieva-secrets, key: encryption-key } } }
+    - { name: FRONTEND_URL, value: "https://retrieva-dev.10.0.0.200.nip.io" }
+    - { name: ALLOWED_ORIGINS, value: "https://retrieva-dev.10.0.0.200.nip.io" }
+
+frontend:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/retrieva-frontend
+    tag: a413e25
+  workload:
+    replicas: 1
+  env:
+    - { name: NODE_ENV, value: "production" }
+    - { name: PORT, value: "3000" }
+    - { name: API_URL, value: "https://retrieva-dev.10.0.0.200.nip.io/api/v1" }

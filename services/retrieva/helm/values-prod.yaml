@@ -1,0 +1,68 @@
+# prod (ns retrieva) — ghcr SHA images, 2 replicas. Kargo bumps both image.tag (git Warehouse → same SHA).
+secretsVaultPath: platform/retrieva
+ingress:
+  host: retrieva.online
+  tlsSecretName: retrieva-tls
+quota:
+  name: retrieva-quota
+  limitRangeName: retrieva-limits
+  requestsCpu: "1"
+  requestsMemory: 2Gi
+  limitsCpu: "6"
+  limitsMemory: 6Gi
+  pods: "16"
+
+backend:
+  image:
+    repository: ghcr.io/andrelair-platform/retrieva-backend
+    tag: "6f7bad1"
+  workload:
+    replicas: 2
+  env:
+    - { name: PORT, value: "3007" }
+    - { name: NODE_ENV, value: "production" }
+    - { name: LOG_LEVEL, value: "info" }
+    - { name: DOCKER_ENV, value: "true" }
+    - { name: MONGODB_URI,     valueFrom: { secretKeyRef: { name: retrieva-secrets, key: mongodb-uri } } }
+    - { name: REDIS_URL,       valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-url } } }
+    - { name: REDIS_PASSWORD,  valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-password } } }
+    - { name: QDRANT_URL, value: "http://qdrant.ai.svc.cluster.local:6333" }
+    - { name: INGEST_USE_DOCLING, value: "true" }
+    - { name: MARKITDOWN_URL, value: "http://markitdown-proxy.ai.svc.cluster.local:8000" }
+    - { name: DOCLING_URL, value: "http://docling.ai.svc.cluster.local:5001" }
+    - { name: INGEST_VLM_CAPTION, value: "true" }          # prod opted in (RTV-14 Phase 2)
+    - { name: VLM_CAPTION_MODEL, value: "azure-gpt-4.1-mini" }
+    - { name: QDRANT_API_KEY,  valueFrom: { secretKeyRef: { name: retrieva-secrets, key: qdrant-api-key } } }
+    - { name: QDRANT_COLLECTION_NAME, value: "retrieva" }
+    - { name: LLM_PROVIDER, value: "azure_openai" }
+    - { name: EMBEDDING_PROVIDER, value: "azure" }
+    - { name: OLLAMA_BASE_URL, value: "http://litellm.ai.svc.cluster.local:4000" }
+    - { name: AZURE_OPENAI_ENDPOINT, value: "http://litellm.ai.svc.cluster.local:4000" }
+    - { name: AZURE_OPENAI_API_KEY, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: litellm-api-key } } }
+    - { name: AZURE_OPENAI_LLM_DEPLOYMENT, value: "tier-premium" }
+    - { name: AZURE_OPENAI_EMBEDDING_DEPLOYMENT, value: "embeddings" }
+    - { name: AZURE_OPENAI_API_VERSION, value: "2024-02-15-preview" }
+    - { name: LLM_MODEL, value: "tier-premium" }
+    - { name: EMBEDDING_MODEL, value: "embeddings" }
+    - { name: JUDGE_LLM_MODEL, value: "tier-standard" }
+    - { name: LANGFUSE_BASE_URL, value: "http://langfuse-web.langfuse.svc.cluster.local:3000" }
+    - { name: LANGFUSE_TRACING_ENVIRONMENT, value: "production" }
+    - { name: LANGFUSE_PROMPT_LABEL, value: "production" }
+    - { name: LANGFUSE_PUBLIC_KEY, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: langfuse-public-key } } }
+    - { name: LANGFUSE_SECRET_KEY, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: langfuse-secret-key } } }
+    - { name: JWT_ACCESS_SECRET,  valueFrom: { secretKeyRef: { name: retrieva-secrets, key: jwt-access-secret } } }
+    - { name: JWT_REFRESH_SECRET, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: jwt-refresh-secret } } }
+    - { name: ENCRYPTION_KEY,     valueFrom: { secretKeyRef: { name: retrieva-secrets, key: encryption-key } } }
+    - { name: FRONTEND_URL, value: "https://retrieva.online" }
+    - { name: ALLOWED_ORIGINS, value: "https://retrieva.online" }
+
+frontend:
+  image:
+    repository: ghcr.io/andrelair-platform/retrieva-frontend
+    tag: "6f7bad1"
+  workload:
+    replicas: 2
+  env:
+    - { name: NODE_ENV, value: "production" }
+    - { name: PORT, value: "3000" }
+    - { name: API_URL, value: "https://retrieva.online/api/v1" }

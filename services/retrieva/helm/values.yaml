@@ -1,0 +1,82 @@
+# retrieva wrapper — common values. Two aliased library subcharts: `backend:` and `frontend:`.
+# Per-env image tags / backend env / replicas / ingress host / vault path / quota live in
+# values-{dev,prod}.yaml (Helm lists don't merge → the backend env is restated in full per env).
+
+# ---- shared library-subchart config applied to BOTH (repeated; subcharts don't inherit top-level) ----
+_shared: &shared
+  # Match the live immutable Deployment/Service selector → in-place flip, no delete.
+  # fullnameOverride keeps object names retrieva-backend / retrieva-frontend (set per alias below).
+  serviceAccount: { create: false, name: default }   # retrieva pods use the default SA
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001          # image users (expressjs / nextjs) = uid 1001
+    fsGroup: 1001
+    seccompProfile: { type: RuntimeDefault }
+  securityContext:           # retrieva writes to fs → MUST disable the library's readOnlyRootFilesystem:true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities: { drop: ["ALL"] }
+  podAnnotations: {}         # retrieva base sets none (don't add the library's reloader default)
+  workload:
+    kind: Deployment
+    strategy:                # tight quota → no surge (0.4.0 passthrough)
+      type: RollingUpdate
+      rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }
+  ingress: { enabled: false }       # shared path-routing Ingress is a wrapper template
+  certificate: { enabled: false }   # cert is a wrapper template
+
+backend:
+  <<: *shared
+  nameOverride: backend             # container name "backend"
+  fullnameOverride: retrieva-backend
+  selectorLabels: { app: retrieva-backend }
+  image: { repository: retrieva-backend }   # repo+tag set per env
+  ports:
+    - { name: http, containerPort: 3007, protocol: TCP }
+  service:
+    ports: [{ name: http, port: 3007, targetPort: 3007 }]
+  readinessProbe:
+    httpGet: { path: /health, port: http }
+    initialDelaySeconds: 20
+    periodSeconds: 15
+    failureThreshold: 6
+  livenessProbe:
+    httpGet: { path: /health, port: http }
+    initialDelaySeconds: 45
+    periodSeconds: 30
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits:   { cpu: "1", memory: 1Gi }
+
+frontend:
+  <<: *shared
+  nameOverride: frontend            # container name "frontend"
+  fullnameOverride: retrieva-frontend
+  selectorLabels: { app: retrieva-frontend }
+  image: { repository: retrieva-frontend }
+  ports:
+    - { name: http, containerPort: 3000, protocol: TCP }
+  service:
+    ports: [{ name: http, port: 3000, targetPort: 3000 }]
+  readinessProbe:
+    httpGet: { path: /, port: http }
+    initialDelaySeconds: 15
+    periodSeconds: 15
+    failureThreshold: 6
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 640Mi }
+
+# ---- wrapper-local (drive templates/) — defaults overridden per env ----
+secretsVaultPath: platform/retrieva
+ingress:
+  host: retrieva.online
+  tlsSecretName: retrieva-tls
+quota:
+  name: retrieva-quota
+  limitRangeName: retrieva-limits
+  requestsCpu: "1"
+  requestsMemory: 2Gi
+  limitsCpu: "6"
+  limitsMemory: 6Gi
+  pods: "16"

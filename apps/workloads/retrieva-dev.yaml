@@ -8,10 +8,18 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: minicloud-platform
+  # HGP golden path (GAP wrapper chart, dual-workload): ONE Helm source. The wrapper chart depends on
+  # the minicloud-app-deployment library chart TWICE (aliased backend + frontend); Mongo/Redis/netpol/
+  # ingress/cert/quota/ESO are its own templates. selectorLabels match the live immutable selectors →
+  # in-place flip (Mongo StatefulSet kept verbatim → data preserved). releaseName = retrieva.
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: services/retrieva/minicloud-1/dev
+    path: services/retrieva/helm
+    helm:
+      releaseName: retrieva
+      valueFiles:
+        - values-dev.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: retrieva-dev
