@@ -192,7 +192,8 @@ npx bmad-method install --directory . --modules bmm --tools claude-code --yes
 | Multi-story autonomous | `/bmad-build-auto` | Unattended loop; terminal statuses: blocked / done |
 | Independent review | `/bmad-code-review` | Fresh-context validation pass (layer 2) — run before the human PR review |
 | Change walkthrough | `/bmad-walkthrough` | Explains a diff by design concern; flags high-risk areas (auth/schema/public API/security) |
-| Post-sprint | `/bmad-review` (via agent) | Evidence-based retrospective |
+| Mid-flight change | `/bmad-correct-course` | Change too big for one story → sprint change proposal (what changes/stays/order) |
+| Post-sprint | `/bmad-review` (via agent) | Evidence-based retrospective (the epic-boundary verdict) |
 
 Named agents for co-authoring stories: `/bmad-agent-mary` (BA), `/bmad-agent-john` (PM), `/bmad-agent-winston` (Architect), `/bmad-agent-amelia` (Dev).
 
