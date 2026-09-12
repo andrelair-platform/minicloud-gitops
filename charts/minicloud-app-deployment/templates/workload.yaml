@@ -41,6 +41,10 @@ spec:
 {{ toYaml .Values.workload.rollout.canary.steps | indent 8 }}
 {{- end }}
 {{- end }}
+{{- if and (ne .Values.workload.kind "Rollout") .Values.workload.strategy }}
+  strategy:
+{{ toYaml .Values.workload.strategy | indent 4 }}
+{{- end }}
   template:
     metadata:
       labels:
