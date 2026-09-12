@@ -7,10 +7,17 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: minicloud-platform
+  # HGP golden path (GAP wrapper chart, prod): ONE Helm source. Wrapper depends on the library chart
+  # (OCI) — blueGreen Rollout, 2 static replicas — and carries the AnalysisTemplates, app-secrets ES,
+  # SSO Ingress, cert, and ghcr-pull ES in templates/. releaseName kept = minicloud-plane.
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: services/minicloud-plane/minicloud-1/prod
+    path: services/minicloud-plane/helm
+    helm:
+      releaseName: minicloud-plane
+      valueFiles:
+        - values-prod.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: minicloud-plane-prod
@@ -19,9 +26,6 @@ spec:
       kind: Rollout
       jsonPointers:
         - /spec/template/metadata/annotations
-    # ESO's webhook injects these defaults into the ghcr-pull ExternalSecret at
-    # creation; they're never in git, so ignore them (with RespectIgnoreDifferences)
-    # or the app is permanently OutOfSync / selfHeal fights ESO.
     - group: external-secrets.io
       kind: ExternalSecret
       jqPathExpressions:
@@ -29,15 +33,10 @@ spec:
         - .spec.data[].remoteRef.decodingStrategy
         - .spec.data[].remoteRef.metadataPolicy
         - .spec.target.deletionPolicy
+        - .spec.target.template
   syncPolicy:
-    # Git-gated automated production. The approval gate lives upstream in Git:
-    #   - CODEOWNERS requires @AndreLair review on services/*/minicloud-1/prod/
-    #   - images are immutable SHA tags (never :latest)
-    #   - the BlueGreen Rollout + preview-health-gate prePromotionAnalysis
-    #     auto-aborts the promotion on bad metrics
-    # selfHeal corrects live drift back to Git; prune removes resources deleted
-    # from Git. Git owns .spec.replicas (prod patch-replicas=2, no autoscaler),
-    # so selfHeal enforcing it is correct.
+    # Git-gated automated production. CODEOWNERS on apps/ + services/*/helm. blueGreen +
+    # preview-health-gate prePromotionAnalysis auto-aborts a bad promotion. Git owns .spec.replicas.
     automated:
       prune: true
       selfHeal: true

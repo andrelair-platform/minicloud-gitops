@@ -7,21 +7,35 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: minicloud-platform
+  # HGP golden path (GAP wrapper chart, dev): ONE Helm source. Wrapper depends on the library chart
+  # (OCI) — blueGreen Rollout — and carries the AnalysisTemplates + app-secrets ES in templates/.
+  # A cron KEDA ScaledObject scales it 0->1 in working hours. releaseName kept = minicloud-plane.
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: services/minicloud-plane/minicloud-1/dev
+    path: services/minicloud-plane/helm
+    helm:
+      releaseName: minicloud-plane
+      valueFiles:
+        - values-dev.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: minicloud-plane-dev
   ignoreDifferences:
-    # Rollout CRD doesn't support SSA — ArgoCD records op:Update not op:Apply.
-    # Without this, VPA or manual scaling diffs cause permanent OutOfSync.
+    # KEDA cron ScaledObject owns .spec.replicas. Rollout CRD doesn't take SSA cleanly → CSA.
     - group: argoproj.io
       kind: Rollout
       jsonPointers:
         - /spec/replicas
         - /spec/template/metadata/annotations
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+        - .spec.target.template
   syncPolicy:
     automated:
       prune: true

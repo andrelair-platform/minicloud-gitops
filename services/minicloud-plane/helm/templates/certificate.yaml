@@ -1,0 +1,22 @@
+# Prod TLS Certificate (single-owner). Prod-only; name kept for an in-place flip.
+{{- if .Values.tls.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: minicloud-plane-tls
+  labels:
+    app: minicloud-plane
+spec:
+  secretName: minicloud-plane-tls
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+    - minicloud-plane.10.0.0.200.nip.io
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+{{- end }}

@@ -7,22 +7,24 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: minicloud-platform
+  # HGP golden path (GAP wrapper chart, prod): ONE Helm source. Wrapper chart depends on the
+  # minicloud-app-deployment library chart (OCI) + carries the SSO Ingress / ConfigMap /
+  # AnalysisTemplate in templates/. ghcr image is Public (no imagePullSecret). Kargo bumps
+  # minicloud-app-deployment.image.tag in values-prod.yaml.
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: services/platform-demo/minicloud-1/prod
+    path: services/platform-demo/helm
+    helm:
+      releaseName: platform-demo
+      valueFiles:
+        - values-prod.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: platform-demo-prod
   syncPolicy:
-    # Git-gated automated production (PILOT — first prod app on auto-sync).
-    # The approval gate lives upstream in Git, not in the ArgoCD UI:
-    #   - CODEOWNERS requires @AndreLair review on services/*/minicloud-1/prod/
-    #   - images are immutable SHA tags (never :latest)
-    #   - the canary Rollout + http-regression-gate analysis auto-aborts on bad metrics
-    # selfHeal corrects live drift back to Git; prune removes resources deleted
-    # from Git. .spec.replicas stays in ignoreDifferences (below) so selfHeal does
-    # NOT fight the KEDA HTTP add-on's 0<->2 scaling.
+    # Git-gated automated production. CODEOWNERS on apps/ + services/*/helm. canary Rollout +
+    # http-regression-gate analysis auto-aborts a bad rollout. KEDA HTTP owns .spec.replicas.
     automated:
       prune: true
       selfHeal: true

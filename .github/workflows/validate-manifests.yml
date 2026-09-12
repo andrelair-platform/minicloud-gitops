@@ -31,8 +31,16 @@ jobs:
           python3 - <<'PY'
           import sys, glob, yaml
           bad = 0
+          # Helm wrapper-chart templates (services/*/helm/templates/**) are Go templates, NOT raw
+          # YAML — they legitimately contain {{ ... }}, so exclude them from this raw-parse gate.
+          # They're validated with `helm template` before merge (a CI helm-render job is a tracked
+          # follow-up). The chart's values*.yaml / Chart.yaml / Chart.lock ARE plain YAML → stay checked.
+          def skip(f):
+              return "/helm/templates/" in f
           for f in sorted(glob.glob("services/**/*.yaml", recursive=True)
                           + glob.glob("manifests/**/*.yaml", recursive=True)):
+              if skip(f):
+                  continue
               try:
                   list(yaml.safe_load_all(open(f)))
               except yaml.YAMLError as e:

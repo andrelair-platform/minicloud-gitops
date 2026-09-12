@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: preview-health-gate
+spec:
+  # preview-url is passed by the Rollout's prePromotionAnalysis args. It MUST be an
+  # FQDN (name.namespace) because the web provider is executed by the argo-rollouts
+  # controller (in the argo-rollouts namespace) — a bare service name does not resolve
+  # from there. Each overlay passes its own namespace's preview-service FQDN.
+  args:
+    - name: preview-url
+  metrics:
+    # Calls the preview service /health endpoint 3× (every 10s) before promotion.
+    # If the new version is unhealthy, this fails and the active service keeps
+    # pointing to the old pods — zero-downtime rollback.
+    - name: health
+      count: 3
+      interval: 10s
+      # jsonPath below extracts .status INTO `result`, so `result` IS the status
+      # string — compare it directly. (result.status would be a nested access on a
+      # string → "type string[string] is undefined", which aborted every promotion.)
+      successCondition: result == "ok"
+      failureLimit: 1
+      provider:
+        web:
+          url: "{{ `{{args.preview-url}}` }}"
+          jsonPath: "{$.status}"

@@ -1,0 +1,3 @@
+# Put service-specific extras here (DB, AnalysisTemplate, SSO Ingress, ExternalSecret, …).
+# Env-varying ones read wrapper-local values; prod-only ones gate on {{- if .Values.<flag>.enabled }}.
+# Escape non-Helm {{ }} (ESO / Argo-Rollouts) as backtick strings; no {{ }} in YAML comments.

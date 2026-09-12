@@ -1,52 +1,60 @@
-# minicloud-agent — common values (Helm golden path). Workload + its litellm-credentials ESO.
-serviceAccount:
-  create: true
-  name: minicloud-agent
-  automountServiceAccountToken: false
-podSecurityContext:
-  runAsNonRoot: true
-  runAsUser: 1000            # agent image runs as uid 1000 (not the chart default 65532)
-  seccompProfile: { type: RuntimeDefault }
-# GOTCHA #2: ai-ns netpol allow-agent-internet-egress selects app=minicloud-agent
-podLabels:
-  app: minicloud-agent
-image:
-  repository: harbor.10.0.0.200.nip.io/library/minicloud-agent
-ports:
-  - { name: http, containerPort: 8080, protocol: TCP }
-service:
+# minicloud-agent wrapper chart — common values.
+# (1) `minicloud-app-deployment:` configures the library subchart (workload + litellm-credentials ESO);
+# (2) top-level keys drive THIS chart's templates/ (the prod TLS Certificate).
+minicloud-app-deployment:
+  nameOverride: minicloud-agent
+  serviceAccount:
+    create: true
+    name: minicloud-agent
+    automountServiceAccountToken: false
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000            # agent image runs as uid 1000 (not the chart default 65532)
+    seccompProfile: { type: RuntimeDefault }
+  # ai-ns netpol allow-agent-internet-egress selects app=minicloud-agent
+  podLabels:
+    app: minicloud-agent
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/minicloud-agent
   ports:
-    - { name: http, port: 8080, targetPort: http }
-env:
-  - { name: LITELLM_BASE_URL, value: "http://litellm.ai.svc.cluster.local:4000" }
-  - name: LITELLM_API_KEY
-    valueFrom: { secretKeyRef: { name: litellm-credentials, key: master-key } }
-  - { name: RAG_INGEST_URL, value: "http://rag-ingest.ai.svc.cluster.local:8001" }
-  - { name: AGENT_DEFAULT_MODEL, value: "tier-economy" }
-  - { name: AGENT_MAX_ITERATIONS, value: "6" }
-startupProbe:
-  httpGet: { path: /health, port: http }
-  failureThreshold: 30
-  periodSeconds: 5   # up to 150s to start (slow nodes e.g. swift-mac)
-readinessProbe:
-  httpGet: { path: /ready, port: http }
-  initialDelaySeconds: 5
-  periodSeconds: 10
-livenessProbe:
-  httpGet: { path: /health, port: http }
-  initialDelaySeconds: 15
-  periodSeconds: 10
-resources:
-  requests: { cpu: 100m, memory: 256Mi }
-  limits:   { cpu: 500m, memory: 512Mi }
-# chart owns the litellm-credentials ExternalSecret (was a satellite manifest)
-externalSecret:
-  enabled: true
-  target: litellm-credentials
-  data:
-    - secretKey: master-key
-      remoteRef: { key: platform/litellm, property: master-key }
-ingress:
-  enabled: false            # agent is internal; prod overlay adds the public ingress
-certificate:
-  enabled: false            # satellite (prod)
+    - { name: http, containerPort: 8080, protocol: TCP }
+  service:
+    ports:
+      - { name: http, port: 8080, targetPort: http }
+  env:
+    - { name: LITELLM_BASE_URL, value: "http://litellm.ai.svc.cluster.local:4000" }
+    - name: LITELLM_API_KEY
+      valueFrom: { secretKeyRef: { name: litellm-credentials, key: master-key } }
+    - { name: RAG_INGEST_URL, value: "http://rag-ingest.ai.svc.cluster.local:8001" }
+    - { name: AGENT_DEFAULT_MODEL, value: "tier-economy" }
+    - { name: AGENT_MAX_ITERATIONS, value: "6" }
+  startupProbe:
+    httpGet: { path: /health, port: http }
+    failureThreshold: 30
+    periodSeconds: 5   # up to 150s to start (slow nodes e.g. swift-mac)
+  readinessProbe:
+    httpGet: { path: /ready, port: http }
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  livenessProbe:
+    httpGet: { path: /health, port: http }
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  # library owns the litellm-credentials ExternalSecret (dev); prod disables it (shared ai-ns ES)
+  externalSecret:
+    enabled: true
+    target: litellm-credentials
+    data:
+      - secretKey: master-key
+        remoteRef: { key: platform/litellm, property: master-key }
+  ingress:
+    enabled: false            # internal; prod overlay enables the public ingress
+  certificate:
+    enabled: false            # prod TLS cert is a wrapper template (name kept for in-place)
+
+# ---- wrapper-local (drives templates/) ----
+tls:
+  enabled: false              # prod: true → renders the minicloud-agent-tls Certificate

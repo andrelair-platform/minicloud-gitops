@@ -1,0 +1,12 @@
+apiVersion: v2
+name: SERVICE_NAME
+description: >-
+  SERVICE_NAME wrapper chart (GAP golden path). Depends on the minicloud-app-deployment library
+  chart (OCI) for the hardened workload; service-specific extras live in this chart's templates/.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: minicloud-app-deployment
+    version: 0.2.0                       # bump to the current library chart version
+    repository: oci://ghcr.io/andrelair-platform

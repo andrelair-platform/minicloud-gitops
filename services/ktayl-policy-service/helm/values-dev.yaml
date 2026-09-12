@@ -1,10 +1,17 @@
-# dev — Harbor image, 1 replica, dev host (ns ktayl)
-image:
-  repository: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
-  tag: e8d7092        # Kargo bumps
-workload:
-  replicas: 1
-ingress:
-  host: ktayl-policy.10.0.0.200.nip.io
-certificate:
-  dnsNames: [ktayl-policy.10.0.0.200.nip.io]
+# dev — Harbor image, ns ktayl. dev keeps the chart's standard app.kubernetes.io/* selector
+# (migrated once via delete-first), so it needs the compat pod label for the ktayl-ns egress netpols.
+# Postgres + app secret live outside gitops (manual) → prodExtras stays off.
+minicloud-app-deployment:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
+    tag: e8d7092        # Kargo bumps
+  podLabels:
+    app: ktayl-policy-service
+  workload:
+    replicas: 1
+  ingress:
+    host: ktayl-policy.10.0.0.200.nip.io
+tlsCert:
+  dnsName: ktayl-policy.10.0.0.200.nip.io
+prodExtras:
+  enabled: false

@@ -1,0 +1,4 @@
+
+# Helm wrapper charts: vendor the library dep at render time (ArgoCD runs helm dependency build);
+# commit Chart.lock (pins the version) but not the downloaded tgz.
+services/*/helm/charts/

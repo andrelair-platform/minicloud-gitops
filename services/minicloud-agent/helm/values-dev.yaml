@@ -1,8 +1,9 @@
-# dev — Harbor image, 1 replica, ns minicloud-agent-dev, no PDB (single replica)
-image:
-  repository: harbor.10.0.0.200.nip.io/library/minicloud-agent
-  tag: e7d010e             # Kargo bumps
-workload:
-  replicas: 1
-podDisruptionBudget:
-  enabled: false
+# dev — Harbor image, 1 replica, ns minicloud-agent-dev, no PDB (single replica), no ingress/cert.
+minicloud-app-deployment:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/minicloud-agent
+    tag: e7d010e             # Kargo bumps
+  workload:
+    replicas: 1
+  podDisruptionBudget:
+    enabled: false

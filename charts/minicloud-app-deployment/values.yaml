@@ -12,11 +12,23 @@ workload:
   rollout:
     strategy: canary    # canary | blueGreen
     canary:
+      # canary steps — put an { analysis: {templates:[...]} } step in here to gate a weight.
       steps:
         - setWeight: 25
         - pause: { duration: 60 }
         - setWeight: 50
         - pause: { duration: 60 }
+    blueGreen:
+      # previewService: true renders a second Service "<fullname>-preview" wired to
+      # spec.strategy.blueGreen.previewService, so prePromotionAnalysis can probe the new
+      # ReplicaSet before the active Service is switched (zero-downtime rollback).
+      previewService: false
+      autoPromotionEnabled: true
+      autoPromotionSeconds: 30
+      scaleDownDelaySeconds: 30
+      # Raw Argo Rollouts analysis blocks (templateName refs live as satellite AnalysisTemplates).
+      prePromotionAnalysis: {}   # e.g. {templates: [{templateName: preview-health-gate}], args: [...]}
+      postPromotionAnalysis: {}  # e.g. {templates: [{templateName: http-regression-gate}]}
 
 image:
   repository: ""        # REQUIRED, e.g. ghcr.io/andrelair-platform/platform-demo
@@ -51,6 +63,14 @@ podAnnotations:
   reloader.stakater.com/auto: "true"
 podLabels: {}
 
+# Override the workload/Service selector (immutable on a Deployment/Rollout).
+# Leave empty for new services (standard app.kubernetes.io/name+instance labels).
+# For a service MIGRATING off an older manifest, set this to MATCH the existing
+# workload's selector (e.g. {app: <name>}) so the flip is an in-place rolling
+# update — no delete/recreate, zero downtime. The pod inherits these labels, so
+# a netpol that selects `app: <name>` also matches (no separate podLabels needed).
+selectorLabels: {}
+
 # --- hardened security defaults (Gatekeeper-compliant) --------------------
 podSecurityContext:
   runAsNonRoot: true
@@ -83,11 +103,28 @@ certificate:
   dnsNames: []
 
 # --- autoscaling (choose ONE) --------------------------------------------
-scaledObject:           # KEDA
+scaledObject:           # KEDA metric/cron ScaledObject
   enabled: false
   minReplicaCount: 1
   maxReplicaCount: 3
   triggers: []
+  # KEDA HTTP add-on: request-driven scale-to-zero. Renders an HTTPScaledObject + an
+  # ExternalName Service aliasing the shared keda-ns interceptor (an Ingress backend must be
+  # a same-ns Service). The app's Ingress backend must point at `http.interceptor.name`:8080
+  # and preserve the Host header (the interceptor routes by Host) — keep that Ingress a
+  # satellite. When http.enabled, KEDA owns replicas → the Application must ignoreDifferences
+  # the workload's .spec.replicas (+ RespectIgnoreDifferences) so selfHeal doesn't fight it.
+  http:
+    enabled: false
+    hosts: []             # MUST match the Ingress hosts (interceptor routes by Host header)
+    servicePort: 80       # the app Service port the interceptor forwards to
+    minReplicas: 0
+    maxReplicas: 2
+    scaledownPeriod: 300
+    interceptor:
+      name: keda-http-interceptor
+      externalName: keda-add-ons-http-interceptor-proxy.keda.svc.cluster.local
+      port: 8080
 hpa:
   enabled: false
   minReplicas: 1

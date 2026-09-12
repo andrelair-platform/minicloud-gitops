@@ -1,59 +1,59 @@
-# ktayl-policy-service — common values (Helm golden-path pilot). Workload only;
-# satellite infra (prod Postgres, app/ghcr ESO secrets) stays as adjacent manifests.
-serviceAccount:
-  create: true
-  name: ktayl-policy-service
-  automountServiceAccountToken: false
-
-# Compatibility label: the ktayl ns NetworkPolicies (allow-egress-postgres/nats/minio/jwks)
-# select `app: ktayl-policy-service`. The chart uses app.kubernetes.io/* labels, so without
-# this the pod would not match those egress allows and its DB connect would be denied (exit 2).
-podLabels:
-  app: ktayl-policy-service
-image:
-  repository: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
-ports:
-  - name: http
-    containerPort: 8080
-    protocol: TCP
-service:
+# ktayl-policy-service wrapper chart — common values.
+# (1) `minicloud-app-deployment:` = the library subchart (workload + Ingress);
+# (2) top-level keys drive THIS chart's templates/ (TLS cert both envs; prod-only Postgres/ES).
+minicloud-app-deployment:
+  nameOverride: ktayl-policy-service
+  serviceAccount:
+    create: true
+    name: ktayl-policy-service
+    automountServiceAccountToken: false
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
   ports:
-    - name: http
-      port: 80
-      targetPort: http
-env:
-  - name: PORT
-    value: "8080"
-envFrom:
-  - secretRef: { name: ktayl-policy-service-secret }
-resources:
-  requests: { cpu: 100m, memory: 128Mi }
-  limits:   { cpu: 500m, memory: 512Mi }
-readinessProbe:
-  httpGet: { path: /healthz, port: http }
-  initialDelaySeconds: 5
-  periodSeconds: 5
-livenessProbe:
-  httpGet: { path: /healthz, port: http }
-  initialDelaySeconds: 10
-  periodSeconds: 10
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchLabels: { app.kubernetes.io/name: ktayl-policy-service }
-          topologyKey: kubernetes.io/hostname
-ingress:
-  enabled: true
-  className: nginx
-  servicePort: 80
-  tls:
+    - { name: http, containerPort: 8080, protocol: TCP }
+  service:
+    ports:
+      - { name: http, port: 80, targetPort: http }
+  env:
+    - { name: PORT, value: "8080" }
+  envFrom:
+    - secretRef: { name: ktayl-policy-service-secret }
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  readinessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 5
+    periodSeconds: 5
+  livenessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  # Both envs carry the pod label `app: ktayl-policy-service` (dev via podLabels, prod via
+  # selectorLabels), so this anti-affinity matches in both.
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels: { app: ktayl-policy-service }
+            topologyKey: kubernetes.io/hostname
+  ingress:
     enabled: true
-    secretName: ktayl-policy-service-tls
-certificate:
-  # Chart does NOT own the Certificate: cert lifecycle is a per-service satellite
-  # concern (existing ktayl-policy-service-tls secret + its own Certificate manifest).
-  # The chart rendering a second Certificate for the same secret causes re-issue churn.
-  enabled: false
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    servicePort: 80
+    tls:
+      enabled: true
+      secretName: ktayl-policy-service-tls
+    # host set per env
+  certificate:
+    enabled: false   # cert is a wrapper template (name kept = ktayl-policy-service-tls)
+
+# ---- wrapper-local (drives templates/) ----
+tlsCert:
+  dnsName: ""        # per env
+prodExtras:
+  enabled: false     # prod: true → dedicated Postgres + app-secret ES + ghcr-pull ES

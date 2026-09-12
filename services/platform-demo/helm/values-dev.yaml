@@ -1,10 +1,20 @@
-# dev overlay — Harbor image, 1 replica, dev host, KEDA scale-to-zero (HTTP add-on driven)
-image:
-  repository: harbor.10.0.0.200.nip.io/library/platform-demo
-  tag: dev-latest          # Kargo bumps this
-workload:
-  replicas: 1
-ingress:
-  enabled: true
-  host: platform-demo-dev.10.0.0.200.nip.io
-  servicePort: 8080
+# dev — Harbor image, ns platform-demo-dev.
+minicloud-app-deployment:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/platform-demo
+    tag: bf4b617        # Kargo bumps
+  scaledObject:
+    http:
+      hosts:
+        - platform-demo-dev.10.0.0.200.nip.io
+        - dev.demo.devandre.sbs
+  certificate:
+    dnsNames:
+      - platform-demo-dev.10.0.0.200.nip.io
+ssoIngress:
+  hosts:
+    - platform-demo-dev.10.0.0.200.nip.io
+    - dev.demo.devandre.sbs
+appConfig:
+  APP_ENV: development
+  LOG_LEVEL: debug

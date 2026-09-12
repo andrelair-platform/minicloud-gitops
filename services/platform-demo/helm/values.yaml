@@ -1,25 +1,152 @@
-# platform-demo — common values (shared by dev + prod). Pilot for the Helm golden path.
-image:
-  repository: ghcr.io/andrelair-platform/platform-demo
-ports:
-  - name: http
-    containerPort: 8080
-    protocol: TCP
-livenessProbe:
-  httpGet: { path: /healthz, port: http }
-  initialDelaySeconds: 5
-readinessProbe:
-  httpGet: { path: /readyz, port: http }
-  initialDelaySeconds: 5
-resources:
-  requests: { cpu: 10m, memory: 32Mi }
-  limits:   { memory: 128Mi }
-serviceMonitor:
-  enabled: true
-  path: /metrics
-  port: http
-networkPolicy:
-  enabled: true
-  ingressFrom:
-    - namespaceSelector:
-        matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
+# platform-demo wrapper chart — common values.
+# Two sections: (1) `minicloud-app-deployment:` configures the library subchart (the workload);
+# (2) top-level keys drive THIS chart's own templates/ (SSO Ingress + env ConfigMap).
+
+minicloud-app-deployment:
+  nameOverride: platform-demo
+  serviceAccount:
+    create: true
+    name: platform-demo
+    automountServiceAccountToken: false
+  # Legacy selector: live Rollout selects {app: platform-demo} (immutable) → match it for an
+  # in-place flip; the label also lands on the pod (SM/PDB match).
+  selectorLabels:
+    app: platform-demo
+
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/platform-demo   # dev; values-prod overrides to ghcr
+
+  workload:
+    kind: Rollout
+    replicas: 1           # KEDA HTTP owns replicas (0<->max); ignored via the app ignoreDifferences
+    rollout:
+      strategy: canary
+      canary:
+        steps:
+          - setWeight: 50
+          - pause: { duration: 30s }
+          - analysis:
+              templates:
+                - templateName: http-regression-gate
+          - setWeight: 100
+
+  ports:
+    - name: http
+      containerPort: 9898
+      protocol: TCP
+  service:
+    ports:
+      - name: http
+        port: 80
+        targetPort: http
+
+  envFrom:
+    - configMapRef: { name: platform-demo }
+
+  # Vault agent sidecar injects secret/data/platform-demo/config. Right-sized agent CPU/mem.
+  podAnnotations:
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/role: "platform-demo"
+    vault.hashicorp.com/agent-inject-secret-config: "secret/data/platform-demo/config"
+    vault.hashicorp.com/agent-inject-template-config: |
+      {{- with secret "secret/data/platform-demo/config" -}}
+      API_KEY={{ .Data.data.api_key }}
+      ENVIRONMENT={{ .Data.data.environment }}
+      LOG_LEVEL={{ .Data.data.log_level }}
+      {{- end }}
+    vault.hashicorp.com/agent-run-as-non-root: "true"
+    vault.hashicorp.com/agent-run-as-user: "1000"
+    vault.hashicorp.com/agent-requests-cpu: "25m"
+    vault.hashicorp.com/agent-limits-cpu: "100m"
+    vault.hashicorp.com/agent-requests-mem: "32Mi"
+    vault.hashicorp.com/agent-limits-mem: "64Mi"
+
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits:   { cpu: 100m, memory: 64Mi }
+
+  writableDirs:
+    - name: tmp
+      mountPath: /tmp
+
+  readinessProbe:
+    httpGet: { path: /readyz, port: http }
+    initialDelaySeconds: 1
+    periodSeconds: 5
+  livenessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels: { app: platform-demo }
+            topologyKey: kubernetes.io/hostname
+
+  serviceMonitor:
+    enabled: true
+    path: /metrics
+    port: http
+    interval: 30s
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  # KEDA HTTP add-on (scale-to-zero) — hosts set per env. Renders HTTPScaledObject + the
+  # keda-http-interceptor ExternalName Service (this chart's Ingress backends onto it).
+  scaledObject:
+    http:
+      enabled: true
+      servicePort: 80
+      minReplicas: 0
+      maxReplicas: 2
+      scaledownPeriod: 300
+
+  # Certificate is owned by the library chart (single owner). secretName defaults to platform-demo-tls.
+  certificate:
+    enabled: true       # dnsNames set per env
+  ingress:
+    enabled: false      # the SSO Ingress (interceptor backend, dual host) is a wrapper template below
+
+# ---- wrapper-local values (drive templates/ in THIS chart) ----
+# SSO Ingress: authentik forward-auth snippets (same both envs); hosts + tlsSecret per env.
+ssoIngress:
+  className: nginx
+  tlsSecret: platform-demo-tls
+  annotations:
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location /outpost.goauthentik.io {
+          proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
+          proxy_set_header        Host $host;
+          proxy_set_header        X-Original-URL $scheme://$http_host$request_uri;
+          add_header              Set-Cookie $auth_cookie;
+          auth_request_set        $auth_cookie $upstream_http_set_cookie;
+          proxy_pass_request_body off;
+          proxy_set_header        Content-Length "";
+      }
+      location @goauthentik_proxy_signin {
+          internal;
+          add_header Set-Cookie $auth_cookie;
+          return 302 /outpost.goauthentik.io/start?rd=$request_uri;
+      }
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      auth_request     /outpost.goauthentik.io/auth/nginx;
+      error_page       401 = @goauthentik_proxy_signin;
+      auth_request_set $auth_cookie $upstream_http_set_cookie;
+      add_header       Set-Cookie $auth_cookie;
+      auth_request_set $authentik_username $upstream_http_x_authentik_username;
+      auth_request_set $authentik_groups   $upstream_http_x_authentik_groups;
+      auth_request_set $authentik_email    $upstream_http_x_authentik_email;
+      proxy_set_header X-authentik-username $authentik_username;
+      proxy_set_header X-authentik-groups   $authentik_groups;
+      proxy_set_header X-authentik-email    $authentik_email;
+      # Preserve the original Host so the KEDA interceptor (ExternalName upstream) routes by Host.
+      proxy_set_header Host $host;
+  hosts: []             # set per env (must match the KEDA HTTP add-on hosts)
+
+# env ConfigMap data (envFrom in the workload)
+appConfig: {}           # set per env

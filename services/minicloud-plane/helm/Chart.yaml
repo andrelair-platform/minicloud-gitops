@@ -1,0 +1,13 @@
+apiVersion: v2
+name: minicloud-plane
+description: >-
+  minicloud-plane wrapper chart (GAP golden path). Depends on the minicloud-app-deployment library
+  chart (OCI) for the blueGreen Rollout workload; the two AnalysisTemplates, the app-secrets ES, and
+  the prod SSO Ingress / cert / ghcr-pull ES live in this chart's own templates/. One Helm render.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: minicloud-app-deployment
+    version: 0.2.0
+    repository: oci://ghcr.io/andrelair-platform

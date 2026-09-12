@@ -1,0 +1,13 @@
+apiVersion: v2
+name: ktayl-policy-service
+description: >-
+  ktayl-policy-service wrapper chart (GAP golden path). Depends on the minicloud-app-deployment
+  library chart (OCI) for the workload + Ingress; the TLS Certificate (both envs) and the prod-only
+  dedicated Postgres / app-secret ES / ghcr-pull ES live in this chart's own templates/.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: minicloud-app-deployment
+    version: 0.2.0
+    repository: oci://ghcr.io/andrelair-platform

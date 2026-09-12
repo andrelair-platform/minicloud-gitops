@@ -18,9 +18,19 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version }}
 {{- end -}}
 
+{{/*
+Selector labels. Immutable on a Deployment/Rollout, so a service migrating off an
+older manifest can override these to MATCH its existing workload's selector
+(e.g. {app: <name>}) → the flip becomes an in-place rolling update with no
+delete/recreate and zero downtime. New services leave it unset (standard labels).
+*/}}
 {{- define "app.selectorLabels" -}}
+{{- if .Values.selectorLabels -}}
+{{ toYaml .Values.selectorLabels }}
+{{- else -}}
 app.kubernetes.io/name: {{ include "app.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}
 {{- end -}}
 
 {{/* pod spec shared by Deployment and Rollout */}}

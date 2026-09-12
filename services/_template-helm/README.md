@@ -1,22 +1,38 @@
-# _template-helm — golden-path scaffold for a custom app
+# _template-helm — GAP wrapper-chart scaffold for a custom app
 
-Copy this for a NEW custom service, replace `SERVICE_NAME`, and you have a full app on the
-minicloud-app-deployment library chart. A service = **3 values files + 2 ArgoCD Applications**.
-See `docs/helm-golden-path.md` (ADR) for the model and the migration checklist below.
+Copy this for a NEW custom service. A service = **its own thin Helm chart** (`Chart.yaml` depends on
+the `minicloud-app-deployment` library chart) + `values{,-dev,-prod}.yaml` + a `templates/` for
+service-specific extras + **2 ArgoCD Applications, one Helm source each**. No kustomize, no
+multi-source `$values`, no separate satellites source. See `docs/helm-golden-path.md` (ADR).
 
-## Onboard / migrate checklist (the 5 gotchas the ktayl-policy pilot surfaced)
-1. **AppProject sourceRepos** already allows `harbor.10.0.0.200.nip.io/library` + `ghcr.io/andrelair-platform` (done once).
-2. **NetworkPolicies** — if the ns has policies selecting `app: <name>`, keep `podLabels: {app: <name>}` (values.yaml) so the chart pod matches them.
-3. **Certificate** — do NOT enable the chart Certificate if the service already owns one; keep the cert as a satellite manifest (single owner + renewal). `certificate.enabled: false`.
-4. **cert-manager issuer** (if you DO use the chart cert) = `minicloud-ca` (ClusterIssuer), not `minicloud-ca-issuer`.
-5. **Migrating an existing service** — the Deployment selector changes (`app:` → `app.kubernetes.io/*`, immutable), so **delete the old Deployment once** on the flip; keep the old kustomize overlay until verified (rollback = repoint the Application source).
+## Onboard checklist
+1. Copy `helm/` → `services/<svc>/helm/`; replace `SERVICE_NAME` everywhere; set the library
+   `dependencies.version` in `Chart.yaml` to the current chart version.
+2. `cd services/<svc>/helm && helm dependency update .` → **commit `Chart.lock`** (ArgoCD runs
+   `helm dependency build` to fetch the dep; `charts/` is gitignored via `services/*/helm/charts/`).
+3. Fill `values.yaml` (subchart config under `minicloud-app-deployment:` + wrapper-local keys) and
+   the per-env `values-{dev,prod}.yaml`.
+4. Put service-specific extras in `templates/` (DB, AnalysisTemplate, SSO Ingress, ExternalSecret…).
+   A simple single-host service can instead use the **library** Ingress + Certificate (see values).
+5. Copy `apps/*` → `apps/workloads/<svc>-{dev,prod}.yaml`; keep `helm.releaseName: <svc>`.
+6. Add the namespaces to the AppProject. Kargo promotion edits `minicloud-app-deployment.image.tag`.
 
-## Satellite resources
-The chart renders the **workload** (Deployment/Rollout + Service/Ingress/KEDA/PDB/ServiceMonitor/ESO).
-A service's **infra dependencies** (dedicated DB, extra ESO secrets, KEDA-HTTP interceptor, its
-Certificate) stay as **adjacent manifests** referenced by the app — the chart is the workload golden
-path, not the whole footprint.
+## Gotchas (proven converting 5 services — see gitops.md for the full list)
+- **`helm.releaseName` is mandatory** — the library uses it for `fullname`; without it the workload
+  takes the ArgoCD app name.
+- **`.helmignore` must NOT list `charts/`** (breaks local render) — gitignore it instead; commit `Chart.lock`.
+- **Escape non-Helm `{{ }}`** in `templates/` — ESO output-templates and Argo-Rollouts args must be
+  backtick-wrapped `{{ ` + `<expr>` + ` }}`; and **no `{{ }}` in YAML comments** (Helm parses them).
+- **Zero-downtime migration** off an existing manifest — set subchart `selectorLabels: {app: <name>}`
+  to match the live selector → in-place rolling update, no delete/downtime. Keep stateful extras
+  (a DB StatefulSet) verbatim so their immutable spec is identical → data preserved.
 
-## Chart publish (maintainers)
-`helm package charts/minicloud-app-deployment` → `helm push` to `oci://harbor.../library` (dev) and
-`oci://ghcr.io/andrelair-platform` (prod). Bump `Chart.yaml` version; update `targetRevision` in the apps.
+## Validate locally
+```bash
+cd services/<svc>/helm && helm dependency update . && helm template <svc> . -f values-dev.yaml
+```
+
+## Library chart publish (maintainers)
+`helm package charts/minicloud-app-deployment` → `helm push` to `oci://ghcr.io/andrelair-platform`
+(+ `oci://harbor.../library`). Bump `Chart.yaml` version; bump `dependencies.version` in each wrapper
+`Chart.yaml` + re-run `helm dependency update` to refresh `Chart.lock`.

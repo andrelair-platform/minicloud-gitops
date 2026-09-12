@@ -1,19 +1,25 @@
-# prod overlay — ghcr SHA image, 2 replicas, public ingress+TLS, PDB
-image:
-  repository: ghcr.io/andrelair-platform/platform-demo
-  tag: "0000000"           # Kargo bumps this to the promoted SHA
-workload:
-  replicas: 2
-ingress:
-  enabled: true
-  className: nginx
-  host: demo.devandre.sbs
-  servicePort: 8080
-  tls:
-    enabled: true
-certificate:
-  enabled: true
-  dnsNames: [demo.devandre.sbs]
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
+# prod — ghcr SHA image (Public package, no imagePullSecret), ns platform-demo-prod.
+minicloud-app-deployment:
+  image:
+    repository: ghcr.io/andrelair-platform/platform-demo
+    tag: "ffb81b0"      # Kargo bumps to promoted SHA
+  workload:
+    replicas: 2         # starting count; KEDA HTTP owns it (ignored via the app ignoreDifferences)
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+  scaledObject:
+    http:
+      hosts:
+        - platform-demo.10.0.0.200.nip.io
+        - demo.devandre.sbs
+  certificate:
+    dnsNames:
+      - platform-demo.10.0.0.200.nip.io
+ssoIngress:
+  hosts:
+    - platform-demo.10.0.0.200.nip.io
+    - demo.devandre.sbs
+appConfig:
+  APP_ENV: production
+  LOG_LEVEL: warn

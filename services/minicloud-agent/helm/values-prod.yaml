@@ -1,21 +1,23 @@
-# prod (ns ai) — ghcr SHA image + ghcr-pull (shared ai-ns ES), 2 replicas, PDB, public ingress.
-# Certificate is a satellite (services/minicloud-agent/satellites/), not chart-owned.
-image:
-  repository: ghcr.io/andrelair-platform/minicloud-agent
-  tag: "69c512a"          # Kargo bumps to promoted SHA
-imagePullSecrets: [{name: ghcr-pull}]
-workload:
-  replicas: 2
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
-ingress:
-  enabled: true
-  className: nginx
-  host: agent.10.0.0.200.nip.io
-  servicePort: 8080
-  tls:
+# prod (ns ai) — ghcr SHA image + ghcr-pull (shared ai-ns ES), 2 replicas, PDB, public ingress + cert.
+minicloud-app-deployment:
+  image:
+    repository: ghcr.io/andrelair-platform/minicloud-agent
+    tag: "69c512a"          # Kargo bumps to promoted SHA
+  imagePullSecrets: [{name: ghcr-pull}]
+  workload:
+    replicas: 2
+  podDisruptionBudget:
     enabled: true
-    secretName: minicloud-agent-tls
-externalSecret:
-  enabled: false          # litellm-credentials already exists in the shared `ai` ns (not per-service)
+    minAvailable: 1
+  ingress:
+    enabled: true
+    className: nginx
+    host: agent.10.0.0.200.nip.io
+    servicePort: 8080
+    tls:
+      enabled: true
+      secretName: minicloud-agent-tls
+  externalSecret:
+    enabled: false          # litellm-credentials already exists in the shared `ai` ns
+tls:
+  enabled: true             # renders the minicloud-agent-tls Certificate (wrapper template)

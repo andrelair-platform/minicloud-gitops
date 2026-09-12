@@ -65,39 +65,53 @@ replaces only CI's overlay image-bump — all testing/build/scan/sign/SBOM stays
 - **When does a service warrant Kargo? (why only 6 of ~91 Argo apps)** ALL FOUR must hold: (1) **you build the image** (your source→CI, not a vendor chart); (2) **two envs run the same artifact** (a `dev` AND a `prod`); (3) the image is **env-agnostic** (runtime config); (4) the prod tag is **immutable** (ghcr/SHA). Everything else self-updates by a Git version bump → Argo CD sync, with nothing to promote: **third-party charts** (Grafana/Vault/Harbor/ERPNext… — conditions 1+2 fail), **platform infra** (cert-manager/ESO/Cilium… — single instance, cond 2 fails), and **your single-environment custom images** (backstage/open-webui/onlyoffice/erpnext/ktayl-solution-web — you build them but there's one prod instance, no dev→prod, cond 2 fails). Note **one Kargo service ≈ 3 Argo apps** (`<svc>-dev`+`<svc>-prod`+`kargo-<svc>`), so 91 apps ≠ 91 candidates. Full taxonomy: docs `developer-platform/kargo-promotion` *Which deployments need Kargo?*.
 - **Auto-promotion + Kargo-owned dev verification (Option 2, the target model — pilot = platform-demo).** Kargo becomes the SOLE promoter of dev AND owns dev verification; the CI's `bump-gitops`/`smoke`/`canary` jobs are **removed** (driving+smoking a deploy synchronously from CI is a *sync-over-async* anti-pattern once Kargo owns promotion — CI then only builds+proves the artifact). Three pieces in `services/<svc>/kargo/`: (1) `ProjectConfig` (singleton, `metadata.name` = project ns) `spec.promotionPolicies: [{stage: dev, autoPromotionEnabled: true}]` → new Freight auto-promoted to dev (prod stays manual/CODEOWNERS). (2) Stage dev `spec.verification.analysisTemplates: [{name: <svc>-dev-verify}]` → after promoting, Kargo creates an AnalysisRun (needs argo-rollouts, which is cluster-scoped here); a Freight is `verifiedIn:[dev]` ONLY if it passes → the prod Stage (`sources.stages:[dev]`) accepts only verified Freight = the dev→prod gate. (3) an `AnalysisTemplate` (argoproj.io) = a `job`-provider curl smoke. **A failed verification does NOT roll back dev** (promotion already happened) — it just blocks prod-promotability; prod keeps its canary Rollout brake. **Smoke pod MUST be Gatekeeper-compliant** (runAsNonRoot+runAsUser, allowPrivilegeEscalation:false, drop ALL caps, resource limits, seccomp RuntimeDefault) and use a **fully-qualified image** (`docker.io/curlimages/curl:…` — bare `curlimages/curl` is denied by the allowed-registries policy). **Two smoke variants by dev topology:** (A) **scale-to-zero (KEDA) + SSO'd dev** (platform-demo) → curl the **KEDA interceptor directly** (`keda-add-ons-http-interceptor-proxy.keda.svc:8080` + `Host: <dev-host>`) to wake dev 0→1 AND bypass the ingress SSO (you test the app, not the identity chain); needs the label-scoped `allow-kargo-verification-interceptor` netpol in `manifests/network-policies/keda.yaml` (allows ingress from `kargo.akuity.io/project=true` ns — one rule for all Kargo services). (B) **always-on + no-SSO dev** (plane/agent/crew/ktayl) → curl the dev app **via ingress-nginx** (`--connect-to <dev-host>:443:nginx-ingress-…-controller.ingress-nginx.svc:443` for correct SNI, `-k`) — ingress-nginx accepts from all ns and the dev ns already allows ingress-nginx, so **no new netpol**. Verify live before stripping CI: create an AnalysisRun from the deployed template → `Successful`. (Reverify-by-annotation `kargo.akuity.io/reverify` is unreliable — prove via a direct AnalysisRun; the real auto path — new Freight→auto-promote→verify — needs no reverify.)
 
-### Helm golden path — the DEFAULT for a custom app (since 2026-09-11)
+### Helm golden path — GAP wrapper-chart standard (since 2026-09-12, supersedes multi-source)
 
-A new/custom app is **a values file, not a Kustomize tree**: it consumes the shared
-**`minicloud-app-deployment`** library chart (OCI: dev=Harbor, prod=ghcr) via **ArgoCD multi-source**
-(chart from OCI + per-app git values via `$values`). Kargo promotes by editing the values `image.tag`.
-Full model + rationale: ADR `docs/helm-golden-path.md`; scaffold: `services/_template-helm/`.
+A custom app is **its own thin Helm chart** that `dependencies:` on the shared
+**`minicloud-app-deployment`** library chart (this is HDI's GAP model — ref sample
+`~/Developer/cloudplateform/deployment-acc082-french-ai-poc`). The library renders the reusable
+workload; the app's **own `templates/`** hold the service-specific extras. **One Helm render, ONE
+ArgoCD Helm source — no kustomize, no multi-source `$values`, no separate satellites source.**
+Kargo promotes by editing `minicloud-app-deployment.image.tag` in the values file. Full model +
+rationale: ADR `docs/helm-golden-path.md`.
 
-**New service checklist (golden path):**
-1. Copy `services/_template-helm/` → `services/<svc>/helm/{values,values-dev,values-prod}.yaml`; replace `SERVICE_NAME`.
-2. Copy `services/_template-helm/apps/*` → `apps/workloads/<svc>-{dev,prod}.yaml`; set `targetRevision` to the current chart version.
-3. Add namespaces to AppProject `manifests/argocd-project/00-project.yaml` (OCI registries already in `sourceRepos`).
-4. Update Vault k8s auth role; add satellite manifests (dedicated DB, extra ESO secrets, the service's Certificate) as adjacent files if needed — **the chart is the workload, not the whole footprint**.
-5. Wire the registry: CI dual-push (Harbor dev + ghcr prod SHA); `imagePullSecrets: [ghcr-pull]` in values-prod for Internal ghcr packages.
-6. Add a Kargo pipeline (`services/<svc>/kargo/`) whose promotion step does a **yaml-update on `image.tag`** in the values files (not `kustomize edit set image`).
-
-**Migrating an existing kustomize service — the 5 gotchas (from the ktayl-policy pilot, HGP-07):**
-- **Immutable Deployment selector**: chart uses `app.kubernetes.io/*`; the old Deployment's `app:` selector is immutable → **delete the old Deployment once** on the flip (dev seconds; keep the kustomize overlay as rollback = repoint the Application source).
-- **Label-matched NetworkPolicies**: ns netpols select `app: <name>` → set `podLabels: {app: <name>}` so the chart pod matches (else egress denied → app exits at startup).
-- **AppProject sourceRepos** must allow `harbor.10.0.0.200.nip.io/library` + `ghcr.io/andrelair-platform` (done once).
-- **cert-manager issuer** = ClusterIssuer `minicloud-ca` (not `minicloud-ca-issuer`).
-- **Certificate ownership**: don't let the chart own a service's cert (dual-owner → re-issue churn) → `certificate.enabled: false`, keep the cert as a satellite manifest (single owner + renewal).
-
-**Legacy Kustomize path** (`services/_template/`) remains for reference and un-migrated services; migrate to the golden path per HGP-08/09.
-
-```bash
-# render/validate a golden-path service locally:
-helm template <svc> charts/minicloud-app-deployment \
-  -f services/<svc>/helm/values.yaml -f services/<svc>/helm/values-dev.yaml
 ```
+services/<svc>/helm/
+  Chart.yaml        # dependencies: [{name: minicloud-app-deployment, version: 0.2.0,
+                    #                 repository: oci://ghcr.io/andrelair-platform}]  (library from ONE registry)
+  Chart.lock        # COMMIT it — ArgoCD repo-server runs `helm dependency build` to fetch the dep
+  .helmignore       # must NOT list charts/ (breaks local render); charts/ is gitignored instead
+  values.yaml       # common: `minicloud-app-deployment: {…}` (subchart) + top-level wrapper-local keys
+  values-dev.yaml / values-prod.yaml   # env overlays (image.tag, hosts, replicas, prod-only gates)
+  templates/        # service-specific extras (DB StatefulSet, AnalysisTemplates, SSO Ingress, ES, …)
+```
+ArgoCD app = single source: `repoURL: <gitops git>, path: services/<svc>/helm, helm: {releaseName: <svc>, valueFiles: [values-dev.yaml]}` (chart's own `values.yaml` is auto-loaded as the base).
+
+**New service checklist:**
+1. `Chart.yaml` (library dep, version-pinned) + `helm dependency update` → commit `Chart.lock`; `.gitignore` has `services/*/helm/charts/`.
+2. `values.yaml` (subchart config under `minicloud-app-deployment:` + wrapper-local keys) + `values-{dev,prod}.yaml`.
+3. Extras in `templates/` (env-varying ones read wrapper-local values; prod-only ones gated by a `.Values.<flag>.enabled`).
+4. Two ArgoCD apps (dev+prod), **single Helm source each**, `helm.releaseName: <svc>` (MANDATORY — else library objects take the app name).
+5. Add namespaces to AppProject; ghcr OCI is already a registered ArgoCD repo (`ghcr-oci-repo`, type=helm/enableOCI) so `helm dependency build` resolves the dep.
+6. Kargo promotion = **yaml-update on `minicloud-app-deployment.image.tag`** in the values file.
+
+**Gotchas (proven converting platform-demo/agent/crew/plane/ktayl, HGP-07/10/11):**
+- **`.helmignore` must NOT contain `charts/`** — it makes helm treat the vendored dep as missing at render. Gitignore `charts/` instead; commit `Chart.lock`.
+- **`helm.releaseName` is mandatory** — the library uses the release name for `fullname`; without it the workload/Service/Rollout take the ArgoCD app name (proven in the render test).
+- **Escape non-Helm `{{ }}`** in wrapper templates — ESO output-templates (`{{ .username }}`) and Argo-Rollouts analysis args (`{{args.preview-url}}`) must be backtick-wrapped `{{ `…` }}` so Helm emits them verbatim. **Also no `{{ }}` in YAML comments** (Helm parses comments too).
+- **Immutable selector — zero-downtime flip:** set subchart `selectorLabels: {app: <name>}` to MATCH the live Deployment/Rollout selector → in-place rolling update, no delete/downtime (beats `Replace=true`). The label also lands on the pod (netpol/SM/PDB match) → use `selectorLabels` **instead of** `podLabels` on that env. dev that was already delete-first-migrated keeps the standard selector + `podLabels`.
+- **Stateful extras kept verbatim** (Postgres StatefulSet) → identical immutable selector + `volumeClaimTemplates` → in-place, data preserved. Prod-only ones are gated (dev DB/secret may be manual/out-of-gitops).
+- **Certificate = a wrapper template** (name kept, e.g. `<svc>-tls`) for an in-place flip, `certificate.enabled: false` in the subchart — avoids the library-cert rename churn; a simple single-host service can instead use the library ingress + cert.
+- **cert-manager issuer** = ClusterIssuer `minicloud-ca`.
+
+**Legacy paths** (`services/_template/` kustomize, and the retired multi-source+satellites shape)
+remain only as rollback for un-migrated services. **retrieva** is the last un-migrated custom app —
+dual-workload (backend+frontend) → convert with **two aliased library subchart deps**, ideally paired
+with its RTV-45 Mongo→PostgreSQL datastore change (convert once).
 
 ```bash
-cd ~/Developer/cloudplateform/minicloud-gitops
-kustomize build services/platform-demo/minicloud-1/dev
+# render/validate a wrapper-chart service locally:
+cd services/<svc>/helm && helm dependency update . && helm template <svc> . -f values-dev.yaml
 ```
 
 ## Hybrid container registry — dev→Harbor, prod→ghcr (the standard since 2026-08-27)

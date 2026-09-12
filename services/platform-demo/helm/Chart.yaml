@@ -1,0 +1,17 @@
+apiVersion: v2
+name: platform-demo
+description: >-
+  platform-demo wrapper chart (GAP-style golden path). Depends on the shared
+  minicloud-app-deployment library chart for the hardened workload (Rollout + Service + PDB +
+  ServiceMonitor + KEDA HTTP scale-to-zero + Certificate); the service-specific extras
+  (env ConfigMap, the http-regression-gate AnalysisTemplate, the SSO Ingress whose backend is the
+  KEDA interceptor) live in this chart's own templates/. One Helm render, one ArgoCD source.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: minicloud-app-deployment
+    version: 0.2.0
+    # The library chart lives in ghcr for all envs (tiny, durable). The dev=Harbor/prod=ghcr
+    # hybrid split applies only to the APP IMAGE, set per-env in values.
+    repository: oci://ghcr.io/andrelair-platform

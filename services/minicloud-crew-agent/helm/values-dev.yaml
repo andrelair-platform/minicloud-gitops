@@ -1,5 +1,9 @@
-image:
-  repository: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
-  tag: 28ace93
-workload: { replicas: 1 }
-podDisruptionBudget: { enabled: false }
+# dev — Harbor image, 1 replica, ns minicloud-crew-agent-dev, no PDB, no ingress/cert.
+minicloud-app-deployment:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
+    tag: 28ace93
+  workload:
+    replicas: 1
+  podDisruptionBudget:
+    enabled: false
