@@ -104,10 +104,13 @@ ArgoCD app = single source: `repoURL: <gitops git>, path: services/<svc>/helm, h
 - **Certificate = a wrapper template** (name kept, e.g. `<svc>-tls`) for an in-place flip, `certificate.enabled: false` in the subchart — avoids the library-cert rename churn; a simple single-host service can instead use the library ingress + cert.
 - **cert-manager issuer** = ClusterIssuer `minicloud-ca`.
 
-**Legacy paths** (`services/_template/` kustomize, and the retired multi-source+satellites shape)
-remain only as rollback for un-migrated services. **retrieva** is the last un-migrated custom app —
-dual-workload (backend+frontend) → convert with **two aliased library subchart deps**, ideally paired
-with its RTV-45 Mongo→PostgreSQL datastore change (convert once).
+**Legacy kustomize overlays retired (2026-09-12):** the 5 migrated services are now `helm/` + `kargo/`
+only — their `base/` + `minicloud-1/` overlays and the `services/_template` kustomize scaffold were
+removed once the wrapper flips were verified (nothing referenced them; pure repo cleanup). The only
+remaining kustomize tree is **retrieva** (`services/retrieva/{base,minicloud-1}`), the last un-migrated
+custom app — dual-workload (backend+frontend) → convert with **two aliased library subchart deps**,
+ideally paired with its RTV-45 Mongo→PostgreSQL datastore change (convert once). During a *future*
+migration, keep a service's overlay as rollback only until its wrapper flip is verified, then remove it.
 
 ```bash
 # render/validate a wrapper-chart service locally:
