@@ -2,7 +2,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/platform-demo
-    tag: bf4b617        # Kargo bumps
+    tag: 08dbede
   scaledObject:
     http:
       hosts:
