@@ -2,7 +2,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
-    tag: 28ace93
+    tag: 668ea0e
   workload:
     replicas: 1
   podDisruptionBudget:
