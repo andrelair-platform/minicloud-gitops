@@ -2,7 +2,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/minicloud-agent
-    tag: e7d010e             # Kargo bumps
+    tag: dea3fd0
   workload:
     replicas: 1
   podDisruptionBudget:
