@@ -13,15 +13,16 @@ minicloud-app-deployment:
       hosts:
         - platform-demo.10.0.0.200.nip.io
         - demo.devandre.sbs
+  ingress:
+    hosts:
+      - platform-demo.10.0.0.200.nip.io
+      - demo.devandre.sbs
+    tls:
+      secretName: platform-demo-tls
 tlsCert:
   name: platform-demo-tls
   secretName: platform-demo-tls
   dnsName: platform-demo.10.0.0.200.nip.io
-ssoIngress:
-  tlsSecret: platform-demo-tls
-  hosts:
-    - platform-demo.10.0.0.200.nip.io
-    - demo.devandre.sbs
 appConfig:
   APP_ENV: production
   LOG_LEVEL: warn

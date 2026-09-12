@@ -11,7 +11,7 @@ version: 0.1.0
 appVersion: "1.0.0"
 dependencies:
   - name: minicloud-app-deployment
-    version: 0.2.0
+    version: 0.3.0
     # The library chart lives in ghcr for all envs (tiny, durable). The dev=Harbor/prod=ghcr
     # hybrid split applies only to the APP IMAGE, set per-env in values.
     repository: oci://ghcr.io/andrelair-platform

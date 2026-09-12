@@ -87,11 +87,17 @@ writableDirs: []        # [{name,mountPath}]
 ingress:
   enabled: false
   className: nginx
-  annotations: {}
-  host: ""              # e.g. platform-demo.10.0.0.200.nip.io
+  annotations: {}       # e.g. authentik forward-auth snippets (SSO) — plain strings, no escaping
+  # Multi-host: set `hosts` to a list of DNS names (all on this cluster's ingress-nginx). If empty,
+  # the single `host` is used (back-compat). tls covers all of them under one secret.
+  host: ""              # single-host shorthand, e.g. platform-demo.10.0.0.200.nip.io
+  hosts: []             # [host1, host2] — takes precedence over `host` when non-empty
   path: /
   pathType: Prefix
   servicePort: 8080
+  # backendService: the Service the Ingress routes to. Defaults to the app's own Service (fullname).
+  # Override for apps fronted by a shared proxy — e.g. the KEDA HTTP interceptor: keda-http-interceptor.
+  backendService: ""
   tls:
     enabled: false
     secretName: ""      # <app>-tls
