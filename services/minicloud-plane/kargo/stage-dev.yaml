@@ -29,13 +29,13 @@ spec:
             checkout:
               - branch: main
                 path: ./repo
-        - uses: kustomize-set-image
+        - uses: yaml-update
           as: set-image
           config:
-            path: ./repo/services/minicloud-plane/minicloud-1/dev
-            images:
-              - image: harbor.10.0.0.200.nip.io/library/minicloud-plane
-                tag: '${{ quote(imageFrom("ghcr.io/andrelair-platform/minicloud-plane").Tag) }}'
+            path: ./repo/services/minicloud-plane/helm/values-dev.yaml
+            updates:
+              - key: minicloud-app-deployment.image.tag
+                value: '${{ quote(imageFrom("ghcr.io/andrelair-platform/minicloud-plane").Tag) }}'
         - uses: git-commit
           as: commit
           config:

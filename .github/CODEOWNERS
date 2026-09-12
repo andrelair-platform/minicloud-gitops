@@ -11,6 +11,11 @@ services/*/minicloud-1/prod/  @AndreLair
 # Gate it too or base becomes a prod-review bypass.
 services/*/base/              @AndreLair
 
+# Helm wrapper charts (GAP golden path) — values-prod.yaml carries the prod image tag + prod
+# config, and Chart.yaml pins the library version. This is the prod config location since the
+# wrapper migration, so it IS the prod gate (Kargo opens the prod PR here → CODEOWNERS approves).
+services/*/helm/              @AndreLair
+
 # Kargo Project/Warehouse/Stage manifests define the promotion machinery — gate them
 # (a Stage's promotionTemplate can write to any overlay, so it needs review too).
 services/*/kargo/             @AndreLair
