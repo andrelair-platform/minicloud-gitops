@@ -25,16 +25,14 @@ spec:
             checkout:
               - branch: main
                 path: ./repo
-        - uses: kustomize-set-image
+        - uses: yaml-update
           as: set-image
           config:
-            # prod overlay keeps its own newName (ghcr) — we only bump the tag,
-            # so the kustomize image key is the shared base name.
-            path: ./repo/services/minicloud-crew-agent/minicloud-1/prod
-            images:
-              - image: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
-                newName: ghcr.io/andrelair-platform/minicloud-crew-agent
-                tag: '${{ quote(imageFrom("ghcr.io/andrelair-platform/minicloud-crew-agent").Tag) }}'
+            # values-prod.yaml already pins image.repository=ghcr; only bump the tag.
+            path: ./repo/services/minicloud-crew-agent/helm/values-prod.yaml
+            updates:
+              - key: minicloud-app-deployment.image.tag
+                value: '${{ quote(imageFrom("ghcr.io/andrelair-platform/minicloud-crew-agent").Tag) }}'
         - uses: git-commit
           as: commit
           config:
