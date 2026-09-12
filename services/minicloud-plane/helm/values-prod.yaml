@@ -13,9 +13,15 @@ minicloud-app-deployment:
           args:
             - name: preview-url
               value: http://minicloud-plane-preview.minicloud-plane-prod.svc.cluster.local:8080/health
-ssoIngress:
-  enabled: true
+  ingress:
+    enabled: true
+    hosts:
+      - minicloud-plane.10.0.0.200.nip.io
+      - plane-integration.devandre.sbs
+    tls:
+      enabled: true
+      secretName: minicloud-plane-tls
 tls:
-  enabled: true
+  enabled: true        # minicloud-plane-tls Certificate (wrapper template)
 ghcrPull:
-  enabled: true
+  enabled: true        # ghcr-pull imagePullSecret ES (wrapper template)
