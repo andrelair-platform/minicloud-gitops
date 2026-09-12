@@ -36,7 +36,7 @@ Each artefact removes a **different kind of ambiguity**, in order: Brief = *busi
 
 | # | Artefact (file) | Path B | Path C | Owner (role) | Tool |
 |---|---|---|---|---|---|
-| 0 | **Constitution** `docs/project-context.md` | 🟢 | 🔴 (once/repo) | DO/Eng | manual |
+| 0 | **Context block** `AGENTS.md` (repo-specific, tiny) | 🟢 | 🔴 (once/repo) | DO/Eng | `/bmad-project-context` |
 | 1 | Research `research.md` | 🟡 if novel | 🟡 if novel | BA / Product | `/bmad-deep-recon` |
 | 1 | **Product Brief** `brief.md` (+`addendum.md`) | 🟡 | 🟢 recommended | PM / PO | `/bmad-product-brief` |
 | 1 | *(alt)* PRFAQ `prfaq-<p>.md` | 🟡 | 🟡 optional | PM | `/bmad-prfaq` |
@@ -118,6 +118,47 @@ epic; engineers take epics in parallel **only when boundaries are explicit**. An
 **inherits the parent's decisions** and records only what the parent left open. Run **integration
 checks + a retrospective at *every* epic boundary**, not only at the end.
 
+## Existing-codebase context — the code is primary; the context block is tiny
+
+**Almost all our work is brownfield** (retrieva, ktayl-*, the agents, the platform itself). The rule
+there is the opposite of "write everything down": **the source IS the context.** Agents read code
+better than prose about code — feeding them textual descriptions of what they can already read creates
+contradiction, context-bloat, and staleness (measured: restating the repo gives **no success gain and
++20% inference cost**). So:
+
+- **Code is read live, never stored.** Repo overviews, directory trees, stack lists, architecture
+  *summaries* do **not** go in a context file — they rot on every commit and the agent derives them
+  in seconds. (This is why the old `bmad-document-project` / `bmad-generate-project-context` skills are
+  **deprecated** → both forward to `bmad-project-context`.)
+- **The implementation-context block is tiny and evidence-based** — it holds only what the code
+  *cannot* cheaply say: **policy** (frozen paths, generated files, branch rules, security/compliance),
+  the **command-with-a-catch** (the right command when several look plausible; "suite needs a service
+  up first"), **conventions that differ from ecosystem defaults**, **observed pitfalls** (a mistake
+  actually seen, not a scan guess), **cross-component rules + required versions**, and **pointers**.
+  Test: *would removing this line change agent behaviour?* If not, it doesn't earn a line.
+- **Where it lives:** BMAD's standard is a verified block in **`AGENTS.md`** at the repo root (written
+  by `/bmad-project-context`, tool-specific imports like `CLAUDE.md` → `@AGENTS.md`). On **our**
+  platform the org-level equivalent already exists and is correct: the auto-loaded **`.claude/rules/*.md`**
+  ARE the "earns-a-line" layer (policy, non-default conventions, cross-component rules), and
+  `claude-md-maintenance.md` already forbids storing code structure/history in `CLAUDE.md`. A per-repo
+  `project-context.md`/`AGENTS.md` adds only the **repo-specific** tiny block on top — not a stack/overview doc.
+- **Maintain it:** `bmad-project-context` has setup/adopt/**refresh**/**record**/**audit** intents. A
+  pitfall goes in only **after** a mistake is seen; audit ends the block **smaller or equal, never larger**;
+  a working rule stays until what it's about is gone ("nothing broke lately" is never grounds to delete).
+
+**Two kinds of context, two artefacts (don't merge them):**
+- **Implementation context** — constraints/commands/conventions/pitfalls → the tiny `AGENTS.md`/rules
+  block (checkable against code, loaded every session, so it must stay small).
+- **Planning context** — PRD, rationale, rejected approaches, domain meaning → **archived**, consulted
+  in bursts, and kept **out of reach of an ordinary change** (a small Build shouldn't even find the
+  greenfield PRD by accident; code can recover behaviour but not intent/rationale).
+
+**Existing-codebase change flow:** small → `/bmad-build` directly (it investigates the repo, records
+what to reuse/not-change, asks only if intent is unsettled); several sessions → `/bmad-spec` → a Build
+per piece → `/bmad-retrospective`; bigger → a project (Path C). `/bmad-architecture` on an existing
+system **reads the live code and records the conventions already there**, not new ones. To break a
+pattern, say so in the request **and** record why in the spec — otherwise Build matches the code.
+
 ### Mandatory sections (don't leave NFR / security / compliance to memory)
 
 BMAD's default PRD/architecture cover the **functional** product (requirements, journeys, stack,
@@ -166,7 +207,7 @@ L0–L4 (`testing.md`), runbooks (`gitops.md`/`ops-runbooks`).
 
 ```bash
 # In the service repo:
-ls docs/project-context.md
+ls AGENTS.md    # (or docs/project-context.md) — the tiny repo context block
 ls _bmad-output/planning-artifacts/{prd,architecture,epics,sprint-status}.{md,yaml}
 ls _bmad-output/planning-artifacts/specs/*/SPEC.md   # SPEC per epic (mandatory B+C)
 # If the product has a UI: ls _bmad-output/planning-artifacts/{DESIGN,EXPERIENCE}.md
@@ -180,7 +221,7 @@ If any **Path-required** file is missing → STOP. Generate the missing artefact
 | Missing | Command |
 |---|---|
 | BMAD not installed | `npx bmad-method install --directory . --modules bmm --tools claude-code --yes` |
-| `project-context.md` | Create manually with: stack, compliance constraints, domain model, sprint state |
+| context block (`AGENTS.md`) | `/bmad-project-context` → a **tiny** verified block: policy, command-catches, non-default conventions, observed pitfalls, cross-component rules+versions, pointers. **NOT** stack/structure/overview (derivable → hurts). |
 | Product Brief | `/bmad-product-brief` |
 | PRD | `/bmad-agent-pm` → menu option PRD (or `/bmad-prd`) |
 | UX (if UI) | `/bmad-ux` → `DESIGN.md` + `EXPERIENCE.md` |
@@ -280,7 +321,7 @@ In addition to the conventions.md repo standardization checklist, every new cust
 
 - [ ] Run `npx bmad-method install --directory . --modules bmm --tools claude-code --yes`
 - [ ] Add `_bmad/`, `_bmad-output/`, `.claude/` to `.gitignore`
-- [ ] Create `docs/project-context.md` (stack, compliance, domain model, sprint state)
+- [ ] Run `/bmad-project-context` → a **tiny** `AGENTS.md` block (policy/command-catches/non-default conventions/observed pitfalls/cross-component rules — NOT stack/structure/overview); `.claude/rules/*` already carry the org-level layer
 - [ ] For **Path B/C** work: complete the planning steps above BEFORE writing story code (Path A/E exempt)
 - [ ] Add SPRINT-OVERVIEW.md to the relevant sprint directory in minicloud-gitops
 
