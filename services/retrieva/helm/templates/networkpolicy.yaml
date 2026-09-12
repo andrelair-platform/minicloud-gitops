@@ -70,12 +70,13 @@ spec:
       ports:
         - { protocol: UDP, port: 53 }
         - { protocol: TCP, port: 53 }
-    # Same-namespace datastores: MongoDB (27017) + Redis/Valkey (6379)
+    # Same-namespace datastores: MongoDB (27017) + Redis/Valkey (6379) + PostgreSQL (5432, RTV-46)
     - to:
         - podSelector: {}
       ports:
         - { protocol: TCP, port: 27017 }
         - { protocol: TCP, port: 6379 }
+        - { protocol: TCP, port: 5432 }
     # The AI platform (ai ns): LiteLLM gateway (4000) + Qdrant (6333/6334)
     # + document conversion for ingestion (RTV-14): markitdown-proxy (8000) and
     # docling-serve (5001) — layout-aware parsing + OCR of scanned PDFs/images.
