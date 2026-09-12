@@ -2,7 +2,10 @@
 # (1) `minicloud-app-deployment:` = the library subchart (workload + Ingress);
 # (2) top-level keys drive THIS chart's templates/ (TLS cert both envs; prod-only Postgres/ES).
 minicloud-app-deployment:
-  nameOverride: ktayl-policy-service
+  # NO nameOverride: dev's live Deployment was migrated to the chart earlier (selector uses the
+  # chart-default app.kubernetes.io/name=minicloud-app-deployment, IMMUTABLE) — an override would
+  # change it → SyncFailed. prod pins its own selector via selectorLabels {app: ktayl-policy-service},
+  # so it's unaffected either way. Leaving nameOverride unset keeps dev's selector matching live.
   serviceAccount:
     create: true
     name: ktayl-policy-service

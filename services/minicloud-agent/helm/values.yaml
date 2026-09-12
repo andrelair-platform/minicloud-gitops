@@ -2,7 +2,10 @@
 # (1) `minicloud-app-deployment:` configures the library subchart (workload + litellm-credentials ESO);
 # (2) top-level keys drive THIS chart's templates/ (the prod TLS Certificate).
 minicloud-app-deployment:
-  nameOverride: minicloud-agent
+  # NO nameOverride: this service's live Deployment selector uses the chart-default
+  # app.kubernetes.io/name=minicloud-app-deployment (it was migrated to the chart earlier without an
+  # override). The selector is IMMUTABLE, so setting nameOverride would change it → SyncFailed. Leave
+  # it unset → selector {name: minicloud-app-deployment, instance: <release>} matches live (in-place).
   serviceAccount:
     create: true
     name: minicloud-agent
