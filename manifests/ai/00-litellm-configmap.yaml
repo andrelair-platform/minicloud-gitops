@@ -7,8 +7,8 @@ data:
   config.yaml: |
     model_list:
       # ── SENSITIVITY ROUTING (story #305) — model_info.access_group ─────────
-      # Each model is tagged with the sensitivity tiers it MAY serve, per
-      # docs/ai-governance/model-governance-matrix.md. Virtual keys (#306) then
+      # Each model is tagged with the sensitivity tiers it MAY serve, per the
+      # Model Governance Matrix (org docs: ai-ml/model-governance-matrix). Virtual keys (#306) then
       # restrict a caller to a tier via `models: ["<group>"]`:
       #   onprem = P3/Restricted (on-cluster only) · eu = P2/Confidential (EU
       #   residency) · us = P1/Internal (US enterprise). Models with NO
@@ -250,8 +250,8 @@ data:
 
       # ── AWS BEDROCK (EU-resident, enterprise-governed — story #303) ────────
       # Mistral Large on Bedrock eu-west-1: EU jurisdiction + contractual
-      # no-training → governance class P2/Confidential (see docs/ai-governance/
-      # model-governance-matrix.md). Runtime IAM user litellm-bedrock
+      # no-training → governance class P2/Confidential (see the Model Governance
+      # Matrix — org docs: ai-ml/model-governance-matrix). Runtime IAM user litellm-bedrock
       # (bedrock:InvokeModel only). Cost = tokens on-demand.
       - model_name: bedrock-mistral-large
         litellm_params:

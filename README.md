@@ -60,7 +60,7 @@ Every resource running in the minicloud k3s cluster originates from this repo. A
 | `manifests/<concern>/` | Platform-level **raw K8s/CRD** manifests not owned by one app (network-policies, quotas, rbac, gatekeeper-policies, argocd-project, argocd-repos, kargo, ai, backup-dr…). |
 | `environments/overlays/{dev,prod}` | Shared per-environment config. |
 | `bmad/` | Story authoring — `templates/` + this product's stories (`stories/platform/`). Per-product BMAD otherwise lives in each product's home repo. |
-| `docs/` | **In-repo detailed docs** — ADRs (`helm-golden-path.md`) + governance (`ai-governance/`). Detail lives *with the code*; the org site ([minicloud-platform-docs](https://andrelair-platform.github.io/minicloud-platform-docs/)) is the **map** that links here (no per-repo Docusaurus site for this infra repo). |
+| `docs/` | **In-repo ADRs** — design decisions coupled to the code (`helm-golden-path.md`), reviewed in the same PR. Reference/governance docs live on the org site ([minicloud-platform-docs](https://andrelair-platform.github.io/minicloud-platform-docs/), e.g. the *AI Model Governance Matrix* / *DORA Audit Trail* under AI & ML). Rule: **ADRs/runbooks with the code; reference & governance on the org site.** No per-repo Docusaurus site for this infra repo. |
 | `scripts/github-project/` | GitHub Projects sprint-assignment helpers. |
 | root | `catalog-info.yaml` (Backstage), `README`, `CHANGELOG`, release-please, renovate, `tech-radar.json`. |
 
