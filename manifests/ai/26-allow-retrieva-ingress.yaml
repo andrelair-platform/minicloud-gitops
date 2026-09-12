@@ -3,7 +3,7 @@
 # LiteLLM (4000) + Qdrant (6333/6334) + document conversion for ingestion
 # (RTV-14): markitdown-proxy (8000) + docling-serve (5001). The ai namespace is
 # default-deny-ingress, so each target needs its own ingress allow rule (the
-# egress side lives in services/retrieva/base/networkpolicy.yaml — two-sided).
+# egress side lives in services/retrieva/helm/templates/networkpolicy.yaml — two-sided).
 # (RTV-03) Prod routes to EU cloud, dev to the free tier — both via LiteLLM.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
