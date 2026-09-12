@@ -177,10 +177,17 @@ npx bmad-method install --directory . --modules bmm --tools claude-code --yes
 | Phase | Tool | What it does |
 |-------|------|--------------|
 | Pre-sprint | `/bmad-forge-idea` | Adversarial pressure-test: hardened / killed / clearer |
+| Research | `/bmad-deep-recon` | 6 research types × 3 modes (discovery/targeted/validation) → `research.md` |
+| Discovery | `/bmad-product-brief` | `brief.md` (+ addendum) — business need framed |
+| Discovery (alt) | `/bmad-prfaq` | `prfaq-<p>.md` — press-release + FAQ framing |
+| Product reqs | `/bmad-prd` (or `/bmad-agent-pm`) | `prd.md` — the product contract (incl. NFR/security/compliance/cost) |
+| UX (if UI) | `/bmad-ux` | `DESIGN.md` + `EXPERIENCE.md` |
+| Architecture | `/bmad-architecture` (or `/bmad-agent-winston`) | `architecture.md` — the technical spine |
+| Epic contract | `/bmad-spec` | `specs/spec-<x>/SPEC.md` — compact per-epic implementation contract (+ `stories.yaml`) |
+| Epics & stories | `/bmad-create-epics-and-stories` | epic map + story list (ACs, deps, DoD) |
 | Sprint kick-off | `/bmad-sprint-planning` | Readiness gate (PASS/CONCERNS/FAIL) + sprint-status.yaml |
 | Writing ACs / specs | `/bmad-advanced-elicitation` | Pre-mortem, red-team, first-principles |
-| Architecture | `/bmad-party-mode` | Multi-agent design discussion |
-| Research | `/bmad-deep-recon` | 6 research types × 3 modes (discovery/targeted/validation) |
+| Architecture discuss | `/bmad-party-mode` | Multi-agent design discussion |
 | Story build | `/bmad-build` | Spec-driven loop: clarify → implement → review → report; out-of-scope finds → `deferred-work.md` |
 | Multi-story autonomous | `/bmad-build-auto` | Unattended loop; terminal statuses: blocked / done |
 | Independent review | `/bmad-code-review` | Fresh-context validation pass (layer 2) — run before the human PR review |
