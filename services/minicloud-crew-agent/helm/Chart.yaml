@@ -1,0 +1,13 @@
+apiVersion: v2
+name: minicloud-crew-agent
+description: >-
+  minicloud-crew-agent wrapper chart (GAP golden path). Depends on the minicloud-app-deployment
+  library chart (OCI) for the hardened workload + its litellm-credentials ExternalSecret; the prod
+  TLS Certificate lives in this chart's own templates/. One Helm render, one ArgoCD source.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: minicloud-app-deployment
+    version: 0.2.0
+    repository: oci://ghcr.io/andrelair-platform

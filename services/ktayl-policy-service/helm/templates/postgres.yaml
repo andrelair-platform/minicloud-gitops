@@ -1,5 +1,7 @@
 # Dedicated prod Postgres for ktayl-policy-service — mirrors the dev ktayl-postgres
 # StatefulSet (which was created outside gitops). Password from Vault via ESO.
+# prod-only: dev's Postgres + secret live outside gitops (manual).
+{{- if .Values.prodExtras.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -110,3 +112,4 @@ spec:
         resources:
           requests:
             storage: 5Gi
+{{- end }}

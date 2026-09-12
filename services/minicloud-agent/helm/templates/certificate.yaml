@@ -1,7 +1,12 @@
+# Prod TLS Certificate (single-owner). Kept as a wrapper template (name minicloud-agent-tls) so the
+# flip off the multi-source satellite is an in-place update — no rename churn on the live cert/secret.
+{{- if .Values.tls.enabled }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: minicloud-agent-tls
+  labels:
+    app: minicloud-agent
 spec:
   dnsNames:
     - agent.10.0.0.200.nip.io
@@ -15,3 +20,4 @@ spec:
     algorithm: ECDSA
     size: 256
   secretName: minicloud-agent-tls
+{{- end }}
