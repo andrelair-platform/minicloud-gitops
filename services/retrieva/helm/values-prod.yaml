@@ -1,5 +1,7 @@
 # prod (ns retrieva) — ghcr SHA images, 2 replicas. Kargo bumps both image.tag (git Warehouse → same SHA).
 secretsVaultPath: platform/retrieva
+postgres:
+  enabled: true          # RTV-46 — provision prod Postgres (additive; Mongo still serves until RTV-49 cutover)
 ingress:
   host: retrieva.online
   tlsSecretName: retrieva-tls
@@ -7,9 +9,9 @@ quota:
   name: retrieva-quota
   limitRangeName: retrieva-limits
   requestsCpu: "1"
-  requestsMemory: 2Gi
+  requestsMemory: 2560Mi   # +512Mi for Postgres (req 256Mi + headroom) — RTV-46; was 2Gi (1920Mi used)
   limitsCpu: "6"
-  limitsMemory: 6Gi
+  limitsMemory: 6Gi        # fits (5148Mi used + PG 512Mi limit = 5660 < 6144)
   pods: "16"
 
 backend:
