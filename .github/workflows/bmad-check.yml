@@ -26,7 +26,7 @@ jobs:
             # 1. SPRINT-OVERVIEW.md must exist
             if [ ! -f "$dir/SPRINT-OVERVIEW.md" ]; then
               echo "  ❌ MISSING: $dir/SPRINT-OVERVIEW.md"
-              echo "     Fix: copy from bmad/stories/cert-1/m1-m2/SPRINT-OVERVIEW.md and adapt"
+              echo "     Fix: copy from bmad/templates/SPRINT-OVERVIEW.md and adapt"
               ERRORS=$((ERRORS + 1))
             else
               echo "  ✅ SPRINT-OVERVIEW.md"

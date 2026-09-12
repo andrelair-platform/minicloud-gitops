@@ -48,6 +48,22 @@ Every resource running in the minicloud k3s cluster originates from this repo. A
 
 **Rule:** if it runs in the cluster, its manifest or Helm values file lives here. No `kubectl apply` ever runs manually for managed workloads.
 
+### Repository map
+
+| Path | Role |
+|---|---|
+| `bootstrap/` | The app-of-apps **seed** (`root-app.yaml`) — the only thing applied by hand to bootstrap ArgoCD. |
+| `apps/` | ArgoCD **`Application` manifests** = what ArgoCD watches. `platform/` (third-party/infra apps) · `workloads/` (custom-app apps) · `previews/`. |
+| `services/<svc>/` | Per-custom-app **deployment artifacts**: `helm/` (GAP **wrapper chart** — the standard), `kargo/` (promotion pipeline). (`base/`+`minicloud-1/` = legacy kustomize kept as rollback during migration.) |
+| `charts/` | The shared **`minicloud-app-deployment` library chart** (the golden path consumed by every wrapper chart). |
+| `helm-values/` | Values for **third-party** Helm charts (Grafana/Vault/Harbor/ERPNext…) consumed by `apps/platform`. |
+| `manifests/<concern>/` | Platform-level **raw K8s/CRD** manifests not owned by one app (network-policies, quotas, rbac, gatekeeper-policies, argocd-project, argocd-repos, kargo, ai, backup-dr…). |
+| `environments/overlays/{dev,prod}` | Shared per-environment config. |
+| `bmad/` | Story authoring — `templates/` + this product's stories (`stories/platform/`). Per-product BMAD otherwise lives in each product's home repo. |
+| `docs/` | **In-repo detailed docs** — ADRs (`helm-golden-path.md`) + governance (`ai-governance/`). Detail lives *with the code*; the org site ([minicloud-platform-docs](https://andrelair-platform.github.io/minicloud-platform-docs/)) is the **map** that links here (no per-repo Docusaurus site for this infra repo). |
+| `scripts/github-project/` | GitHub Projects sprint-assignment helpers. |
+| root | `catalog-info.yaml` (Backstage), `README`, `CHANGELOG`, release-please, renovate, `tech-radar.json`. |
+
 ---
 
 ## Features
@@ -170,27 +186,33 @@ LiteLLM config is managed in [minicloud-litellm-custom](https://github.com/andre
 
 ---
 
-## Adding a New Service (Kustomize Combo 1)
+## Adding a New Service (GAP wrapper-chart golden path)
+
+A custom app is **its own thin Helm chart** that depends on the shared `minicloud-app-deployment`
+library chart — no kustomize, one ArgoCD Helm source. Full workflow:
+[delivery-workflow](https://andrelair-platform.github.io/minicloud-platform-docs/developer-platform/delivery-workflow)
+· scaffold: `services/_template-helm/` · design: [`docs/helm-golden-path.md`](docs/helm-golden-path.md).
 
 ```
-services/<name>/
-├── base/                       # no namespace, no image tag
-│   ├── kustomization.yaml
-│   ├── deployment.yaml
-│   └── service.yaml
-└── minicloud-1/                 # cluster dimension
-    ├── dev/                     # CI auto-updates newTag here
-    ├── staging/                 # PR to promote
-    └── prod/                    # ingress + cert here
+services/<name>/helm/
+├── Chart.yaml        # dependencies: minicloud-app-deployment @ X.Y.Z (oci://ghcr.io/andrelair-platform)
+├── Chart.lock        # committed — ArgoCD runs `helm dependency build`
+├── values.yaml       # common: "minicloud-app-deployment:" block + wrapper-local keys
+├── values-dev.yaml   # dev overlay  (image.tag, hosts)  ← Kargo yaml-updates this
+├── values-prod.yaml  # prod overlay (image.tag, hosts, replicas)
+└── templates/        # service-specific extras the library can't cover (DB, AnalysisTemplate, ES…)
 ```
 
 **Checklist:**
 
-1. Copy `services/_template/` and replace `SERVICE_NAME`
-2. Add the namespace to `manifests/argocd-project/00-project.yaml` (destinations list)
-3. Add ArgoCD Application YAMLs in `apps/`
-4. Update the Vault Kubernetes auth role: add `<name>-dev` + `<name>-staging` to `bound_service_account_namespaces`
-5. Add `minicloud-1/prod/ingress.yaml` + `certificate.yaml` for a public URL
+1. Copy `services/_template-helm/` → `services/<name>/helm/`; replace `SERVICE_NAME`; `helm dependency update .` → commit `Chart.lock`.
+2. Fill `values.yaml` (under the `minicloud-app-deployment:` key) + `values-{dev,prod}.yaml`.
+3. Copy `services/_template-helm/apps/*` → `apps/workloads/<name>-{dev,prod}.yaml`; keep `helm.releaseName: <name>`.
+4. Add the namespaces to `manifests/argocd-project/00-project.yaml`; update the Vault k8s auth role.
+5. Add a Kargo pipeline (`services/<name>/kargo/`) — promotion does a `yaml-update` on `minicloud-app-deployment.image.tag`.
+
+> Validate locally: `cd services/<name>/helm && helm dependency update . && helm template <name> . -f values-dev.yaml`
+> Gotchas (Chart.lock, `.helmignore`, `releaseName`, `{{ }}` escaping, `selectorLabels`): see `.claude/rules/gitops.md`.
 
 ---
 
