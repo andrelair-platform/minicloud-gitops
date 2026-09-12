@@ -63,6 +63,61 @@ work in parallel without re-deriving the product.
 **sprint-status.yaml ≠ the system of record.** It's BMAD's *engineering-side* status view; the
 **GitHub Project board is the org tracker** (`github-projects.md`). They coexist — don't duplicate.
 
+## Operating the chain in an organization (disciplines, not just documents)
+
+The chain above is *which* documents exist; these are the rules for *how they behave* once more than
+one person must agree, several epics build against the same decisions, or someone signs off before
+spend. Planning docs are **contracts between people first**, skill-input second.
+
+**1. Spec-first is the default; the PRD is the exception.** Most work goes **straight to `/bmad-spec`**
+from whatever defined the intent (a forged idea, a PRFAQ summary, an issue) → one SPEC per epic. Reach
+for a **PRD only** when (a) people who didn't do the thinking must approve *what the product is*, (b)
+several epics/teams/agents build against the same decisions and must not diverge, or (c) a
+regulator/steering-committee requires named evidence. `/bmad-spec` tells you if the input is too thin
+(→ escalate to PRD); until it does, **no PRD is required**. This is Path A/B; the full PRD chain is Path C.
+
+**2. One source of truth — change flows from the source outward.** Each document has **one writer +
+one owner**: the PRD says *what the product is* (Product), the spine says *how epics stay compatible*
+(Architect/TL), a SPEC says *what one epic does* (its engineer). Reviewers read **copies** and will ask
+for a change in whatever doc they're holding — apply it to the doc it **belongs** to (product →
+PRD, cross-epic → spine, one-epic → that SPEC), then **re-run the downstream skill to regenerate**.
+**Never hand-edit a derived doc** (`prd.md`/`architecture.md`/`SPEC.md`) to patch around an upstream
+one — that's how the documents stop agreeing. Editing the source + regenerating keeps them consistent.
+
+**3. Brownfield onboarding — bring the documents you have (our normal case).** Most of our products
+already exist (retrieva, ktayl-*, the agents). Don't replace the planning you run — **feed it in**:
+- `/bmad-prd` opens with a brain-dump + reads files you point at → run **Validate** for a findings
+  report (nothing changed), or **Create/Update** to bring `prd.md` in line with your existing PRD,
+  tagging filled gaps `[ASSUMPTION]`. After that the team-edited copy is the source; re-run in
+  **Update** mode when it changes — never hand-edit `prd.md` to catch up.
+- `/bmad-architecture` on an existing system **reads the live code and records the conventions already
+  there**, rather than proposing new ones (it becomes the spine of what *is*).
+- Tracker stays the tracker (GitHub Projects); `sprint-status.yaml` is the engineering view, **no auto-sync**.
+
+**4. The five sign-off moments (put existing approvals here — each produces reviewable evidence).**
+
+| Moment | What's judged | Blocks |
+|---|---|---|
+| PRFAQ / brief verdict | is the concept strong enough to resource? | writing the PRD |
+| PRD **validate** | findings report on the PRD, unchanged | design + architecture work |
+| **Architecture spine review** (= the *Governance gate* below) | the cross-epic decisions, alternatives weighed | writing epic SPECs |
+| **Readiness gate** (`/bmad-sprint-planning`) | could a dev implement these stories without inventing decisions? | generating sprint tracking |
+| **Retrospective verdict** (`/bmad-review`) | did the epic meet its own acceptance criteria? | starting the next epic |
+
+In regulated/cert settings these written results **are the audit trail** (map to the RNCP blocs / DORA).
+
+**5. Mid-flight requirement change — same path as the original, from the source out.**
+`/bmad-prd` **Update** (surfaces conflicts with earlier decisions before applying) → if it touches a
+cross-epic call, update the **spine** → re-run `/bmad-spec` for affected epics (**capability IDs stay
+stable**, so unaffected stories stay unaffected) → re-run story-breakdown / `/bmad-sprint-planning`
+(finished work stays finished). For a change too big for one story to absorb, run **`/bmad-correct-course`**
+first (it produces a sprint change proposal — what changes, what stays, in what order).
+
+**6. Several epics at once — the spine is what makes parallel safe.** One PRD, one spine, one SPEC per
+epic; engineers take epics in parallel **only when boundaries are explicit**. An epic's spine
+**inherits the parent's decisions** and records only what the parent left open. Run **integration
+checks + a retrospective at *every* epic boundary**, not only at the end.
+
 ### Mandatory sections (don't leave NFR / security / compliance to memory)
 
 BMAD's default PRD/architecture cover the **functional** product (requirements, journeys, stack,
