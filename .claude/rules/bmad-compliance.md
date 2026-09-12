@@ -48,6 +48,14 @@ deliberate, recorded choice, not an omission):
 - **Compliance mapping** — which of DORA / EU AI Act / GDPR / ACPR apply and how (for AI products,
   reuse the `ai-governance` matrix + DORA-audit pattern; cert products map to the RNCP blocs).
 - **KPIs / success metrics** + **acceptance criteria** at the product level.
+- **Cost / capacity** — the expected footprint, stated before code (this is a resource-constrained
+  5-node cluster with tight per-namespace quotas + hard cloud budgets):
+  - **cluster footprint** — CPU/mem requests+limits, replica counts, PVC sizes → fits which namespace
+    ResourceQuota? (`manifests/quotas/`);
+  - **LLM/token cost** — if it calls the AI gateway: tier (on-cluster free / EU paid / US), rough
+    tokens/month, the LiteLLM team + budget;
+  - **cloud cost** — any cloud resource vs the **€10/mo/provider** cap + the `cloud-adoption.md` gate;
+  - **storage/egress growth** — Longhorn PVC growth, backup footprint, external egress.
 
 **Architecture (`architecture.md`) must include:**
 - **System boundaries + APIs** (public surface, cross-service contracts).
