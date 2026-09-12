@@ -1,6 +1,20 @@
 # ADR: Helm library-chart golden path for custom apps
 
-**Status:** Accepted (pilot pending) · **Date:** 2026-09-10 · **Board:** GitOps — Platform Engineering (#3)
+**Status:** Accepted · **Date:** 2026-09-10 (rev 2026-09-12) · **Board:** GitOps — Platform Engineering (#3)
+
+> **Update 2026-09-12 — consumption model is the GAP WRAPPER CHART (not ArgoCD multi-source).**
+> The *decision* below stands (one shared `minicloud-app-deployment` library chart). What changed is
+> HOW an app consumes it: each app is **its own thin Helm chart** whose `Chart.yaml` declares a
+> `dependencies:` on the library chart (pulled from ghcr OCI), configures it under the
+> `minicloud-app-deployment:` values key, and carries its service-specific extras in its **own
+> `templates/`**. The ArgoCD app is a **single Helm source** (`helm dependency build` resolves the OCI
+> dep via the `ghcr-oci-repo` cred; `Chart.lock` committed). This supersedes the earlier **multi-source
+> + `$values` + separate satellites** shape — it is pure Helm, locally renderable, and matches HDI's
+> GAP model (sample: `deployment-acc082-french-ai-poc`). Converted: platform-demo, minicloud-agent,
+> minicloud-crew-agent, minicloud-plane, ktayl-policy-service. Operational rules + gotchas
+> (Chart.lock, `releaseName`, `.helmignore` no-`charts/`, `{{ }}` escaping, `selectorLabels` in-place
+> flip) live in `.claude/rules/gitops.md`. **retrieva** is the last un-migrated app (dual-workload →
+> two aliased library subchart deps; pair with its RTV-45 Mongo→PostgreSQL change).
 
 ## Context
 Custom services used **Kustomize** (base + overlays); third-party apps use **Helm**. Two paradigms.

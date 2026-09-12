@@ -1,12 +1,17 @@
-# prod — ghcr SHA image (Kargo bumps tag), 2 replicas, public host, PDB, ns SERVICE_NAME
-image:
-  repository: ghcr.io/andrelair-platform/SERVICE_NAME
-  tag: "0000000"     # Kargo yaml-update sets this to the promoted SHA
-imagePullSecrets: [ghcr-pull]   # for Internal ghcr packages (drop if the package is Public)
-workload:
-  replicas: 2
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
-ingress:
-  host: SERVICE_NAME.devandre.sbs
+# prod — ghcr SHA image (Kargo bumps tag), 2 replicas, public host, PDB, ns SERVICE_NAME-prod
+minicloud-app-deployment:
+  image:
+    repository: ghcr.io/andrelair-platform/SERVICE_NAME
+    tag: "REPLACE_ME"      # Kargo bumps to the promoted SHA
+  imagePullSecrets: [{name: ghcr-pull}]   # omit if the ghcr package is Public
+  workload:
+    replicas: 2
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  ingress:
+    host: SERVICE_NAME.10.0.0.200.nip.io
+  certificate:
+    dnsNames: [SERVICE_NAME.10.0.0.200.nip.io]
+  # Migrating an existing kustomize service? match its live selector for a zero-downtime in-place flip:
+  # selectorLabels: { app: SERVICE_NAME }

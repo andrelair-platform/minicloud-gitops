@@ -1,8 +1,11 @@
 # dev — Harbor image (Kargo bumps tag), 1 replica, dev host, ns SERVICE_NAME-dev
-image:
-  repository: harbor.10.0.0.200.nip.io/library/SERVICE_NAME
-  tag: latest        # Kargo yaml-update sets this
-workload:
-  replicas: 1
-ingress:
-  host: SERVICE_NAME-dev.10.0.0.200.nip.io
+minicloud-app-deployment:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/SERVICE_NAME
+    tag: dev-REPLACE_ME    # Kargo bumps
+  workload:
+    replicas: 1
+  ingress:
+    host: SERVICE_NAME-dev.10.0.0.200.nip.io
+  certificate:
+    dnsNames: [SERVICE_NAME-dev.10.0.0.200.nip.io]
