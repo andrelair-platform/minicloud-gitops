@@ -14,7 +14,7 @@
 #   may delete them if selfHeal is enabled. Pause auto-sync or add an ignoreDifferences
 #   entry for Job resources during active upgrade windows.
 #
-# Current cluster version: v1.36.3+k3s1 (all 5 nodes upgraded 2026-08-13).
+# Current cluster version: v1.36.4+k3s1 (all 5 nodes upgraded 2026-08-13).
 # Next target: bump version below when a new k3s release is validated.
 #
 # DRAIN GOTCHA — set-hog (control plane) hosts active Longhorn volumes with
@@ -40,7 +40,7 @@ spec:
   cordon: true
   # No drain: k3s-server upgrade is in-place; draining the CP node blocks on
   # Longhorn instance-manager finalizers (iSCSI volumes active on set-hog).
-  version: v1.36.3+k3s1
+  version: v1.36.4+k3s1
   upgrade:
     image: rancher/k3s-upgrade
   tolerations:
@@ -73,7 +73,7 @@ spec:
     args:
       - prepare
       - k3s-server
-  version: v1.36.3+k3s1
+  version: v1.36.4+k3s1
   upgrade:
     image: rancher/k3s-upgrade
   tolerations:
