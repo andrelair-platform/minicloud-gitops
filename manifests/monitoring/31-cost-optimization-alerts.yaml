@@ -130,7 +130,7 @@ spec:
               This is ingest-time captioning; spend should scale with documents/figures
               ingested, not chat traffic. Sanity-check cost-per-document against upload
               volume. If it's an unexpected spike, the kill-switch is
-              INGEST_VLM_CAPTION=false in services/retrieva/minicloud-1/prod (VLM off,
+              INGEST_VLM_CAPTION=false in services/retrieva/helm/values-prod.yaml (VLM off,
               Docling text/OCR stays). Break down by caller:
               sum(increase(litellm_spend_metric_total{requested_model="azure-gpt-4.1-mini"}[24h])) by (team_alias, api_key_alias)
 
