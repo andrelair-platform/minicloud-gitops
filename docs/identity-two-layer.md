@@ -1,6 +1,6 @@
 # ADR: Two-layer identity — self-hosted workforce IdP + managed customer IdP
 
-**Status:** Accepted · **Date:** 2026-09-12 · **Board:** GitOps — Platform Engineering (#3)
+**Status:** Accepted (federation spike verified 2026-09-12) · **Date:** 2026-09-12 · **Board:** GitOps — Platform Engineering (#3)
 
 ## Context
 The platform authenticates ~30 internal tools (ArgoCD, Grafana, Vault, Harbor, Backstage, Plane,
@@ -43,6 +43,36 @@ the platform's sovereignty/availability/cost constraints make the *core* IdP cho
   Microsoft"; it adds a *source*, not a dependency.
 - Skill coverage stays complementary: Authentik internals here (flows, outposts, LDAP, SCIM, property
   mappings) + managed Entra at HDI.
+
+## Federation spike — verified 2026-09-12
+
+Proved the **Authentik ← Entra** federation mechanism (decision point 3) end-to-end, **without**
+making the platform depend on Entra.
+
+- **Entra app registration** `authentik-federation-spike` (single-tenant `a194b1ec…`; redirect URIs
+  `https://auth.10.0.0.200.nip.io/source/oauth/callback/entra/` + the `auth.devandre.sbs` variant;
+  delegated `openid/profile/email/User.Read` with admin consent; 90-day client secret). Creds in
+  **Vault `secret/platform/entra-authentik`** (client-id/secret/tenant + a disposable `test-admin-*`).
+- **Authentik OAuthSource** `entra` created via the **ORM** (`ak shell`) — `provider_type=openidconnect`,
+  Entra v2.0 endpoints, default auth+enrollment flows, `email_link` matching — bound to the default
+  identification stage with `show_source_labels=True`. *(Authentik's REST API 403s every token on
+  2026.5.3, and the shell-minted token too → config here is effectively **ORM/UI-only**, not scriptable
+  via the API. Noted so neither agent re-attempts the API path.)*
+- **Verified:** the **"Microsoft Entra"** button renders on the login page; the authentik pod reaches
+  Entra's OIDC well-known (HTTP 200); clicking it redirects to `login.microsoftonline.com`, which
+  accepts the app (client/secret/redirect valid), authenticates the user, and reaches **Entra's own
+  MFA gate** — i.e. the full OIDC round-trip up to the tenant's auth policy. Landing-back-logged-in
+  was not exercised (the `admin@` test account has MFA unconfigured), but that is an account-setup
+  detail, not a federation gap — the mechanism is proven.
+
+**Conclusion:** federation *works*; it is **not** useful as a workforce IdP here — this is a 2-user
+personal tenant, so there is no population to federate. Entra's genuine value remains **customer
+identity (External ID)** or federating a **real org directory**, per the decision above. The spike
+validates plumbing, not a migration.
+
+**Teardown (when done):** delete the Authentik source (`OAuthSource.objects.filter(slug="entra").delete()`
+via `ak shell`) + the Entra app registration + the Vault secret. Or keep it as a standing
+"Login with Microsoft" demo (the 90-day secret will expire on its own).
 
 ## Compliance mapping
 - **DORA (Art. 28–29, concentration & exit):** splitting workforce vs customer identity across a
