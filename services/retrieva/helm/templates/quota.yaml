@@ -1,0 +1,23 @@
+# Namespace ResourceQuota + LimitRange — sizes/names per env (.Values.quota.*). Namespace comes
+# from destination.namespace.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ .Values.quota.name }}
+spec:
+  hard:
+    requests.cpu: {{ .Values.quota.requestsCpu | quote }}
+    requests.memory: {{ .Values.quota.requestsMemory }}
+    limits.cpu: {{ .Values.quota.limitsCpu | quote }}
+    limits.memory: {{ .Values.quota.limitsMemory }}
+    count/pods: {{ .Values.quota.pods | quote }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ .Values.quota.limitRangeName }}
+spec:
+  limits:
+    - type: Container
+      default: { cpu: 300m, memory: 384Mi }
+      defaultRequest: { cpu: 50m, memory: 128Mi }

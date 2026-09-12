@@ -1,0 +1,19 @@
+apiVersion: v2
+name: retrieva
+description: >-
+  retrieva wrapper chart (GAP golden path). Dual-workload: the minicloud-app-deployment library chart
+  is used TWICE via aliased dependencies (backend + frontend). Stateful deps (MongoDB, Redis), the
+  shared ESO secret, NetworkPolicies, the path-routing Ingress, Certificate and quota live in this
+  chart's own templates/. One Helm render, one ArgoCD source.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: minicloud-app-deployment
+    alias: backend
+    version: 0.4.0
+    repository: oci://ghcr.io/andrelair-platform
+  - name: minicloud-app-deployment
+    alias: frontend
+    version: 0.4.0
+    repository: oci://ghcr.io/andrelair-platform

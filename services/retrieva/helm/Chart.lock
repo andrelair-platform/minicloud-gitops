@@ -1,0 +1,9 @@
+dependencies:
+- name: minicloud-app-deployment
+  repository: oci://ghcr.io/andrelair-platform
+  version: 0.4.0
+- name: minicloud-app-deployment
+  repository: oci://ghcr.io/andrelair-platform
+  version: 0.4.0
+digest: sha256:7c9db6195c7423104a7265e9b0679a6852da0fb30bf0794301f3d6cc9369fbff
+generated: "2026-09-12T19:59:20.673203+02:00"
