@@ -181,8 +181,16 @@ npx bmad-method install --directory . --modules bmm --tools claude-code --yes
 | Writing ACs / specs | `/bmad-advanced-elicitation` | Pre-mortem, red-team, first-principles |
 | Architecture | `/bmad-party-mode` | Multi-agent design discussion |
 | Research | `/bmad-deep-recon` | 6 research types × 3 modes (discovery/targeted/validation) |
-| Story build | `/bmad-build` | Spec-driven loop: clarify → implement → review → report |
+| Story build | `/bmad-build` | Spec-driven loop: clarify → implement → review → report; out-of-scope finds → `deferred-work.md` |
 | Multi-story autonomous | `/bmad-build-auto` | Unattended loop; terminal statuses: blocked / done |
+| Independent review | `/bmad-code-review` | Fresh-context validation pass (layer 2) — run before the human PR review |
+| Change walkthrough | `/bmad-walkthrough` | Explains a diff by design concern; flags high-risk areas (auth/schema/public API/security) |
 | Post-sprint | `/bmad-review` (via agent) | Evidence-based retrospective |
 
 Named agents for co-authoring stories: `/bmad-agent-mary` (BA), `/bmad-agent-john` (PM), `/bmad-agent-winston` (Architect), `/bmad-agent-amelia` (Dev).
+
+**Scale the process to the work — pick a delivery path (A/B/C/E).** The artefact burden is gated on
+the **path**, not the repo: a one-line fix (Path A) goes straight to build+PR; a new product (Path C)
+runs the full lifecycle above; a hotfix (Path E) fixes first and backfills. The review depth and the
+security/architecture gate also scale by path. See `bmad-compliance.md` (*Delivery paths* +
+*Implementation loop* + *Governance gate*) — that is the authoritative sizing rule.
