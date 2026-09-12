@@ -30,14 +30,18 @@ jobs:
           FILES=$(gh pr view "${{ github.event.pull_request.number }}" \
             --repo "${{ github.repository }}" --json files -q '.files[].path')
           echo "Changed files:"; echo "$FILES"
-          # Every changed path must live under services/<svc>/minicloud-1/dev/
-          BAD=$(echo "$FILES" | grep -vE '^services/[^/]+/minicloud-1/dev/' || true)
+          # Every changed path must be dev-only — EITHER a legacy dev overlay
+          # (services/<svc>/minicloud-1/dev/**) OR the wrapper chart's dev values file
+          # (services/<svc>/helm/values-dev.yaml). NOTHING else rides an automerge label:
+          # prod values (helm/values-prod.yaml), common values.yaml, Chart.yaml/lock, prod
+          # overlays, base, apps, kargo all stay CODEOWNERS-gated.
+          BAD=$(echo "$FILES" | grep -vE '^services/[^/]+/minicloud-1/dev/|^services/[^/]+/helm/values-dev\.yaml$' || true)
           if [ -n "$BAD" ]; then
             echo "::error::Refusing auto-merge — PR touches non-dev paths:"
             echo "$BAD"
             exit 1
           fi
-          echo "All changes are dev-overlay only — safe to auto-merge."
+          echo "All changes are dev-only (overlay or wrapper values-dev.yaml) — safe to auto-merge."
 
       - name: Merge (squash)
         env:
