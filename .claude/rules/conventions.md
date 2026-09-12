@@ -214,7 +214,7 @@ Every repo must have these three files at the root:
 **BMAD setup (before any story implementation begins):**
 - [ ] `npx bmad-method install --directory . --modules bmm --tools claude-code --yes`
 - [ ] Add `_bmad/`, `_bmad-output/`, `.claude/` to `.gitignore`
-- [ ] Create `docs/project-context.md` (stack, compliance constraints, domain model, sprint state)
+- [ ] Run `/bmad-project-context` → a **tiny** `AGENTS.md` block (policy / command-catches / non-default conventions / observed pitfalls — **not** stack/structure/overview, which rot + hurt; the code is the context). See `bmad-compliance.md` *Existing-codebase context*.
 - [ ] Run `/bmad-agent-pm` → generate PRD in `_bmad-output/planning-artifacts/prd.md`
 - [ ] Run `/bmad-agent-architect` → generate architecture doc
 - [ ] Run `/bmad-create-epics-and-stories` → generate epic map

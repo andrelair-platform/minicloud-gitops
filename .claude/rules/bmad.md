@@ -176,6 +176,7 @@ npx bmad-method install --directory . --modules bmm --tools claude-code --yes
 
 | Phase | Tool | What it does |
 |-------|------|--------------|
+| Repo context | `/bmad-project-context` | Tiny verified `AGENTS.md` block (policy/command-catches/pitfalls) — NOT a repo overview; replaces the deprecated document-project/generate-project-context |
 | Pre-sprint | `/bmad-forge-idea` | Adversarial pressure-test: hardened / killed / clearer |
 | Research | `/bmad-deep-recon` | 6 research types × 3 modes (discovery/targeted/validation) → `research.md` |
 | Discovery | `/bmad-product-brief` | `brief.md` (+ addendum) — business need framed |
