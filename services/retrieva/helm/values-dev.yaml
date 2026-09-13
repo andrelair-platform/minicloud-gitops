@@ -17,7 +17,7 @@ quota:
 backend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-backend
-    tag: "607290"
+    tag: "2538356"
   workload:
     replicas: 1
   env:
@@ -61,7 +61,7 @@ backend:
 frontend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-frontend
-    tag: "607290"
+    tag: "2538356"
   workload:
     replicas: 1
   env:
