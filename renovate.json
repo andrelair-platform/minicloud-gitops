@@ -22,10 +22,18 @@
     "fileMatch": ["^helm-values/.*\\.yaml$"]
   },
 
+  "comment:helmv3": "Manage ONLY the wrapper charts' library dependency (services/<svc>/helm/Chart.yaml). NOT the values files — image tags there are Kargo's domain (see ignorePaths).",
+  "helmv3": {
+    "fileMatch": ["^services/[^/]+/helm/Chart\\.yaml$"]
+  },
+
   "ignorePaths": [
     "manifests/**",
-    "services/**",
-    "bootstrap/**"
+    "bootstrap/**",
+    "services/**/values*.yaml",
+    "services/**/templates/**",
+    "services/**/kargo/**",
+    "services/**/charts/**"
   ],
 
   "packageRules": [
@@ -34,6 +42,17 @@
       "matchDatasources": ["docker"],
       "matchPackagePatterns": ["^harbor\\.10\\.0\\.0\\.200\\.nip\\.io/"],
       "enabled": false
+    },
+
+    {
+      "description": "minicloud-app-deployment library chart — one grouped PR bumps ALL wrapper charts in lockstep (fixes the 0.2/0.3/0.4 drift). Manual review: it affects every service. Needs the ghcr package readable by Mend (public, or a hostRules cred).",
+      "matchManagers": ["helmv3"],
+      "matchPackageNames": ["minicloud-app-deployment"],
+      "groupName": "minicloud-app-deployment library",
+      "groupSlug": "app-deployment-library",
+      "dependencyDashboardApproval": false,
+      "automerge": false,
+      "labels": ["dependencies", "renovate", "helm-library"]
     },
 
     {
