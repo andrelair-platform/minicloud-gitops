@@ -103,7 +103,7 @@ singleBinary:
   # Init container is idempotent: rm -rf on non-existent dir is a no-op.
   initContainers:
     - name: clean-corrupted-tsdb-cache
-      image: busybox:1.36
+      image: busybox:1.38
       command:
         - sh
         - -c

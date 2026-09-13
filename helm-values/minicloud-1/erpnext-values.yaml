@@ -256,7 +256,7 @@ mariadb-sts:
     repository: mariadb
     # Pinned to the running patch (was floating "10.6"). 10.6.27 freezes the DB
     # version while still allowing upstream base-OS security rebuilds of that patch.
-    tag: "10.6.27"
+    tag: "10.11.19"
     pullPolicy: IfNotPresent
   rootPassword: "placeholder-overridden-by-eso"
   persistence:
