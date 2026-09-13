@@ -18,15 +18,32 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Mint a short-lived token for the andrelair-renovate GitHub App so PRs are
+      # authored by andrelair-renovate[bot], NOT a human PAT. This lets the sole
+      # code owner (@AndreLair) actually Approve Renovate PRs on CODEOWNERS-gated
+      # paths (services/*/helm/ etc.) — GitHub forbids approving your own PR, which
+      # deadlocked the old GITOPS_TOKEN (=AndreLiar) setup. Scoped to the whole org
+      # (repository selection: all) so the global config's repo list resolves.
+      - name: Mint Renovate bot token (GitHub App andrelair-renovate)
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RENOVATE_APP_ID }}
+          private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Run Renovate
         uses: renovatebot/github-action@v46.2.1
         with:
           # Global config lists all repos; each repo's own renovate.json
           # provides manager-specific rules (Dockerfile, go.mod, npm, etc.)
           configurationFile: .github/renovate-global.json
-          token: ${{ secrets.GITOPS_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
         env:
           LOG_LEVEL: info
           # RENOVATE_DRY_RUN: 'full' logs every PR it would open without
           # actually creating anything. 'null' (string) disables dry-run.
           RENOVATE_DRY_RUN: ${{ inputs.dry_run == true && 'full' || 'null' }}
+          # Author commits/PRs as the App's bot identity (explicit — don't rely on autodetect).
+          RENOVATE_GIT_AUTHOR: 'andrelair-renovate[bot] <328846623+andrelair-renovate[bot]@users.noreply.github.com>'
+          RENOVATE_USERNAME: 'andrelair-renovate[bot]'
