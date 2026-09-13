@@ -63,14 +63,24 @@ jobs:
             | tar xz kubeconform
           sudo mv kubeconform /usr/local/bin/
 
-      # Validate every Kustomize overlay. Custom resources (Rollout, ScaledObject,
+      # Validate any Kustomize overlay. Custom resources (Rollout, ScaledObject,
       # ExternalSecret, Certificate, ServiceMonitor, etc.) are skipped with
       # -ignore-missing-schemas — only core k8s objects are validated strictly.
+      # All custom services are now wrapper Helm charts (services/<svc>/helm/,
+      # validated by `helm template`), so there may be NO kustomize overlays left —
+      # nullglob makes this a clean no-op in that case instead of failing on the
+      # unexpanded glob, while still validating any overlay that reappears.
       - name: Validate service overlays
         run: |
           set -euo pipefail
+          shopt -s nullglob
+          overlays=(services/*/minicloud-1/*/)
+          if [ ${#overlays[@]} -eq 0 ]; then
+            echo "No kustomize overlays (all services on wrapper Helm charts) — skipping."
+            exit 0
+          fi
           FAILED=0
-          for overlay in services/*/minicloud-1/*/; do
+          for overlay in "${overlays[@]}"; do
             echo "── $overlay"
             if ! kustomize build "$overlay" \
               | kubeconform \
