@@ -22,8 +22,8 @@
     "fileMatch": ["^helm-values/.*\\.yaml$"]
   },
 
-  "comment:helmv3": "Manage ONLY the wrapper charts' library dependency (services/<svc>/helm/Chart.yaml). NOT the values files — image tags there are Kargo's domain (see ignorePaths).",
   "helmv3": {
+    "description": "Manage ONLY the wrapper charts' library dependency (services/<svc>/helm/Chart.yaml). NOT the values files — image tags there are Kargo's domain (see ignorePaths).",
     "fileMatch": ["^services/[^/]+/helm/Chart\\.yaml$"]
   },
 
