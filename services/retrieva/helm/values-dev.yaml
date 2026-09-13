@@ -1,7 +1,7 @@
 # dev (ns retrieva-dev) — Harbor images, 1 replica, free-tier AI (ollama-cloud + nvidia-embed).
 secretsVaultPath: platform/retrieva-dev
 postgres:
-  enabled: true          # RTV-46 — provision dev Postgres (additive; Mongo still serves)
+  enabled: true          # dev Postgres — the primary datastore (RTV-49 cutover complete)
 ingress:
   host: retrieva-dev.10.0.0.200.nip.io
   tlsSecretName: retrieva-dev-tls

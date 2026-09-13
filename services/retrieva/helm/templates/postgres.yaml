@@ -1,4 +1,4 @@
-# RTV-46: retrieva PostgreSQL (additive — runs ALONGSIDE Mongo; nothing connects until RTV-47/48).
+# retrieva PostgreSQL — the primary datastore (RTV-45 cutover complete; Mongo removed RTV-49).
 # Gated by .Values.postgres.enabled (dev first; prod enabled via the gated quota-bump PR). Password
 # from retrieva-secrets (ESO → Vault secretsVaultPath/postgres-password). Mirrors the ktayl pattern.
 {{- if .Values.postgres.enabled }}

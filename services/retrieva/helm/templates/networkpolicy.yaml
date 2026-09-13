@@ -45,7 +45,7 @@ spec:
               kubernetes.io/metadata.name: monitoring
 ---
 # Governance enforcement (RTV-03e): the RAG backend may egress ONLY to the
-# governed LiteLLM gateway + Qdrant (ai ns), its own datastores (Mongo/Redis,
+# governed LiteLLM gateway + Qdrant (ai ns), its own datastores (Postgres/Redis,
 # same ns) and DNS. Any direct call to an external LLM provider (ollama.com,
 # api.groq.com, api.openai.com, …) is dropped at L3/L4 — EU-residency/PII/audit
 # governance is enforced by the network, not just by config. See the LLM factory
@@ -70,11 +70,10 @@ spec:
       ports:
         - { protocol: UDP, port: 53 }
         - { protocol: TCP, port: 53 }
-    # Same-namespace datastores: MongoDB (27017) + Redis/Valkey (6379) + PostgreSQL (5432, RTV-46)
+    # Same-namespace datastores: Redis/Valkey (6379) + PostgreSQL (5432, RTV-46)
     - to:
         - podSelector: {}
       ports:
-        - { protocol: TCP, port: 27017 }
         - { protocol: TCP, port: 6379 }
         - { protocol: TCP, port: 5432 }
     # The AI platform (ai ns): LiteLLM gateway (4000) + Qdrant (6333/6334)
