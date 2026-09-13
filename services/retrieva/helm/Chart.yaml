@@ -2,7 +2,7 @@ apiVersion: v2
 name: retrieva
 description: >-
   retrieva wrapper chart (GAP golden path). Dual-workload: the minicloud-app-deployment library chart
-  is used TWICE via aliased dependencies (backend + frontend). Stateful deps (MongoDB, Redis), the
+  is used TWICE via aliased dependencies (backend + frontend). Stateful deps (PostgreSQL, Redis), the
   shared ESO secret, NetworkPolicies, the path-routing Ingress, Certificate and quota live in this
   chart's own templates/. One Helm render, one ArgoCD source.
 type: application

@@ -1,7 +1,7 @@
 # prod (ns retrieva) — ghcr SHA images, 2 replicas. Kargo bumps both image.tag (git Warehouse → same SHA).
 secretsVaultPath: platform/retrieva
 postgres:
-  enabled: true          # RTV-46 — provision prod Postgres (additive; Mongo still serves until RTV-49 cutover)
+  enabled: true          # prod Postgres — the primary datastore (RTV-49 cutover complete)
 ingress:
   host: retrieva.online
   tlsSecretName: retrieva-tls
