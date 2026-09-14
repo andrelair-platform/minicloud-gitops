@@ -1,0 +1,44 @@
+---
+# trust-manager (cert-manager sub-project) — distributes the minicloud CA to every namespace
+# as a ConfigMap, so new apps trust the internal PKI at RUNTIME (mount + NODE_EXTRA_CA_CERTS)
+# instead of baking the CA into a custom image. See docs: developer-platform/custom-images
+# ("CA trust: bake vs runtime") + the Bundle in manifests/cert-manager-config/.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trust-manager
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    # after cert-manager (-2); trust-manager depends on cert-manager being present.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: minicloud-platform
+  sources:
+    - repoURL: https://charts.jetstack.io
+      chart: trust-manager
+      targetRevision: "v0.25.0"
+      helm:
+        releaseName: trust-manager
+        valueFiles:
+          - $values/helm-values/minicloud-1/trust-manager-values.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /status

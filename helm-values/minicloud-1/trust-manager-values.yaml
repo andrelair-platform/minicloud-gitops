@@ -1,0 +1,20 @@
+# trust-manager — runs in cert-manager namespace (its default trust namespace), where the CA
+# Bundle sources live. Small footprint (tight-quota cluster).
+app:
+  trust:
+    namespace: cert-manager
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 96Mi
+
+# secretTargets lets a Bundle also write a Secret (not just a ConfigMap) — enable so apps that
+# need the CA as a Secret (e.g. a TLS trust store mount) can consume it too.
+secretTargets:
+  enabled: true
+  authorizedSecrets:
+    - minicloud-ca-bundle
