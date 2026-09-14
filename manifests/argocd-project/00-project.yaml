@@ -238,6 +238,9 @@ spec:
     # Kargo cluster-scoped kinds (Project maps 1:1 to a namespace)
     - group: "kargo.akuity.io"
       kind: "*"
+    # trust-manager Bundle is cluster-scoped — distributes the minicloud CA to all namespaces
+    - group: "trust.cert-manager.io"
+      kind: "Bundle"
 
   # Explicit group allowlist — group: "*" wildcard removed
   namespaceResourceWhitelist:
