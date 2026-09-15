@@ -119,8 +119,14 @@ priority: P1                 # sets the board Priority field — see note below
 assignee: AndreLiar
 repo: andrelair-platform/retrieva   # OPTIONAL — 2-tier routing: create the issue in THIS repo
 project: 2                          # OPTIONAL — add to THIS project (2 = Retrieva certification)
+initiative: Certification           # OPTIONAL — sets the board Initiative field (Insurance LOB | Certification | IS Foundations)
 ---
 ```
+
+**`type:` → board `Kind`, `initiative:` → board `Initiative` — since 2026-09-15.** The bridge now also
+sets the board **`Kind`** single-select from `type:` (Epic/Story/Bug/Spike) and **`Initiative`** from
+`initiative:`, alongside `priority:`. Both are non-fatal (no-op if the board lacks the field). See the
+standard board schema in `github-projects.md` (*project constitution*).
 
 **`priority:` drives the board Priority field — since 2026-09-08.** The bridge sets the target
 board's **Priority** single-select on the issue it creates (previously issues landed with no
