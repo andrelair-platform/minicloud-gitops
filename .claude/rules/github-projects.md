@@ -194,3 +194,61 @@ gh project field-list <n> --owner andrelair-platform --format json             #
 
 Every product board (#2–#25) has a **Priority** single-select (`P1 — Critical … P5 — Deferred`) and
 the default **Status** field; boards created via the API were given Priority explicitly (2026-09-10).
+
+## Standard board schema + views — the "project constitution" (2026-09-15)
+
+Boards serve **two end users**: the **Product Owner** (direction / roadmap / backlog health) and the
+**Engineer** (today's sprint / WIP / blockers). One board, role-tailored **views**. The design splits
+into what `gh project`/the API can automate and what is **UI-only** — know the line before promising
+"zero manual".
+
+### Standard field schema (applied to all boards #2–#25, 2026-09-15)
+| Field | Type | Values | Automatable? |
+|---|---|---|---|
+| `Status` | single-select | Backlog · This Sprint · In Progress · Blocked · In Review · Done | ✋ **UI only** (no `field-edit`; can't edit built-in options via CLI) |
+| `Kind` | single-select | Initiative · Epic · Story · Task · Bug · Spike | ✅ `field-create`; **auto-set** by the BMAD bridge from `type:` |
+| `Priority` | single-select | P1–P5 | ✅ auto-set by the bridge from `priority:` |
+| `Effort` | single-select | XS · S · M · L · XL | ✅ `field-create` (value set by hand / future bridge) |
+| `Initiative` | single-select | Insurance LOB · Certification · IS Foundations | ✅ `field-create`; **auto-set** by the bridge from `initiative:` |
+| `Start date` / `Target date` | date | — | ✅ `field-create` |
+| `Sprint` | iteration | 2-week | ✋ **UI only** (API has no iteration data-type) |
+| `Bloc` | single-select | BC01–BC04 | retrieva #2 only |
+
+`Kind`/`Effort`/`Initiative`/`Start date`/`Target date` were created on every board via
+`gh project field-create` (idempotent script). `Status` (the 6-state flow) + `Sprint` (iteration)
+**cannot** be set via CLI → configured once on the template (below).
+
+### The hard automation line (GitHub Projects, 2026-09)
+- ✅ **CLI/API:** create TEXT/SINGLE_SELECT/DATE/NUMBER fields, set field **values** on items
+  (`item-edit`), add/copy/delete boards + items, `mark-template`.
+- ✋ **UI-only (no CLI/API):** the built-in **Status** options, **iteration** fields, **views**
+  (board/table/roadmap, grouping, slicing, filters), and **Insights** charts (burndown).
+- **Consequence:** the *presentation layer* can't be scripted. The pattern is **gold template +
+  copy** — configure it **once** on the template, then `gh project copy` inherits fields + views.
+
+### Standard view set (configure once on the template #26)
+| View | Layout | Primary user | Config |
+|---|---|---|---|
+| 🚀 **Sprint Board** *(default)* | Board | Engineer | group by `Status`; filter `sprint:@current`; **slice by `Kind`** (the "epic sidebar") |
+| 🧭 **My Work** | Board | Engineer | filter `assignee:@me`; group `Status` |
+| 📊 **Epic Roadmap** | Roadmap | PO | date range `Start date`→`Target date`; group by Parent issue (Epic); `Sub-issues progress` bars |
+| 🔍 **Backlog Readiness** | Table | Shared | filter `Status:Backlog`; sort `Priority`; columns `Kind`,`Effort`,`Sub-issues progress` |
+| + **Insights → Burndown** | chart | Both | `Effort` remaining over `sprint:@current` |
+
+### Gold template + copy workflow
+- **Template = board #26** (`🧩 Product Board Template`) — carries the CLI-creatable fields already.
+- **One-time manual on #26** (the only manual step; UI): (1) edit `Status` → the 6-state flow;
+  (2) add the `Sprint` iteration field (2-week); (3) build the 4 views above; (4) add the Burndown
+  insight; then `gh project mark-template 26 --owner andrelair-platform`.
+- **Every NEW product board** → `gh project copy 26 --title "<name>" --owner andrelair-platform`
+  (inherits fields **+ views**; NOT items, NOT insights). Then add its namespaces/repos as usual.
+- **Existing boards (#2–#25)** already have the fields; add the 4 views **by hand on the boards you
+  actively work** (retrieva #2, policy #6, underwriting #12, …) using the recipe above — don't
+  bulk-retrofit dormant scaffold boards; they get views when their work starts (recreate from copy).
+- **Field population is automatic** going forward: the BMAD bridge sets `Kind` (from `type:`),
+  `Priority` (from `priority:`), `Initiative` (from `initiative:`) on every synced issue.
+  Add `initiative:` to a product's story frontmatter to have it grouped by theme.
+
+> **True zero-manual role dashboards** (if the UI-only limits ever chafe) = an external read-only
+> dashboard (Grafana / static page) over the Projects **GraphQL API**, with GH Projects as the data
+> store. Deferred — the template+copy model covers the need without a hosted build.
