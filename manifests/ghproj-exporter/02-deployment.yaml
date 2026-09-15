@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghproj-exporter
+  namespace: monitoring
+  labels:
+    app: ghproj-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghproj-exporter
+  template:
+    metadata:
+      labels:
+        app: ghproj-exporter
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: exporter
+          image: docker.io/library/python:3.12-slim
+          command: ["python", "/app/exporter.py"]
+          ports:
+            - name: http-metrics
+              containerPort: 8080
+          env:
+            - name: GITHUB_OWNER
+              value: andrelair-platform
+            - name: POLL_SECONDS
+              value: "900"
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ghproj-exporter-token
+                  key: token
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: http-metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: http-metrics
+            initialDelaySeconds: 20
+            periodSeconds: 60
+          volumeMounts:
+            - name: script
+              mountPath: /app
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: script
+          configMap:
+            name: ghproj-exporter-script
+        - name: tmp
+          emptyDir: {}
