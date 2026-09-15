@@ -1,0 +1,42 @@
+# Pod-scoped policies (only affect app=ghproj-exporter — safe in the shared monitoring ns).
+# Egress: DNS + HTTPS (to reach api.github.com). Ingress: Prometheus scrape on 8080.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ghproj-exporter-egress
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: ghproj-exporter
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - ports:
+        - port: 443
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ghproj-exporter-ingress
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: ghproj-exporter
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: http-metrics
+          protocol: TCP

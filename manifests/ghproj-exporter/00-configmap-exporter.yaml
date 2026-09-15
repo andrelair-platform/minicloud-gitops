@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ghproj-exporter-script
+  namespace: monitoring
+  labels:
+    app: ghproj-exporter
+data:
+  exporter.py: |
+    #!/usr/bin/env python3
+    """GitHub Projects (v2) → Prometheus exporter. Stdlib only.
+    Polls every board's items via the GraphQL API and exposes a single cube:
+      ghproj_items{board,board_name,initiative,status,kind,priority} = count
+    Prometheus scrapes this → the time series IS the history (burndown/CFD/velocity).
+    """
+    import json, os, time, threading, urllib.request, http.server, re
+
+    OWNER   = os.environ.get("GITHUB_OWNER", "andrelair-platform")
+    TOKEN   = os.environ.get("GITHUB_TOKEN", "")
+    POLL    = int(os.environ.get("POLL_SECONDS", "900"))
+    BOARDS  = [int(x) for x in os.environ.get(
+        "BOARDS", ",".join(str(n) for n in range(2, 26))).split(",")]
+    GQL     = "https://api.github.com/graphql"
+
+    _lock = threading.Lock()
+    _text = "# ghproj-exporter starting\n"
+
+    QUERY = """
+    query($org:String!,$num:Int!,$cursor:String){
+      organization(login:$org){
+        projectV2(number:$num){
+          title
+          items(first:100, after:$cursor){
+            pageInfo{ hasNextPage endCursor }
+            nodes{
+              type
+              content{ __typename ... on Issue{ state } ... on PullRequest{ state } }
+              fieldValues(first:20){
+                nodes{
+                  __typename
+                  ... on ProjectV2ItemFieldSingleSelectValue{
+                    name field{ ... on ProjectV2FieldCommon{ name } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }"""
+
+    def _gql(num, cursor):
+        body = json.dumps({"query": QUERY,
+                           "variables": {"org": OWNER, "num": num, "cursor": cursor}}).encode()
+        req = urllib.request.Request(GQL, data=body, method="POST", headers={
+            "Authorization": "bearer " + TOKEN,
+            "Content-Type": "application/json",
+            "User-Agent": "ghproj-exporter/1.0"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read().decode())
+
+    def _norm_priority(v):
+        m = re.match(r"(P[1-5])", v or "")
+        return m.group(1) if m else (v or "none")
+
+    def _esc(v):
+        return (v or "none").replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+
+    def collect():
+        # cube[(board,name,initiative,status,kind,priority)] = count
+        cube, names = {}, {}
+        for num in BOARDS:
+            cursor, title = None, str(num)
+            while True:
+                d = _gql(num, cursor)
+                proj = (((d or {}).get("data") or {}).get("organization") or {}).get("projectV2")
+                if not proj:
+                    break
+                title = proj.get("title") or str(num)
+                names[num] = title
+                items = proj.get("items") or {}
+                for it in (items.get("nodes") or []):
+                    fv = {}
+                    for n in ((it.get("fieldValues") or {}).get("nodes") or []):
+                        if n.get("__typename") == "ProjectV2ItemFieldSingleSelectValue":
+                            fn = (n.get("field") or {}).get("name")
+                            if fn:
+                                fv[fn] = n.get("name")
+                    key = (str(num), title,
+                           fv.get("Initiative", "none"),
+                           fv.get("Status", "none"),
+                           fv.get("Kind", "none"),
+                           _norm_priority(fv.get("Priority")))
+                    cube[key] = cube.get(key, 0) + 1
+                pi = items.get("pageInfo") or {}
+                if pi.get("hasNextPage"):
+                    cursor = pi.get("endCursor")
+                else:
+                    break
+        return cube, names
+
+    def render(cube, names, ok, dur):
+        out = []
+        out.append("# HELP ghproj_items Count of project items by board/initiative/status/kind/priority")
+        out.append("# TYPE ghproj_items gauge")
+        for (board, name, init, status, kind, prio), c in sorted(cube.items()):
+            out.append('ghproj_items{board="%s",board_name="%s",initiative="%s",status="%s",kind="%s",priority="%s"} %d'
+                       % (board, _esc(name), _esc(init), _esc(status), _esc(kind), _esc(prio), c))
+        out.append("# HELP ghproj_board_items_total Total items per board")
+        out.append("# TYPE ghproj_board_items_total gauge")
+        tot = {}
+        for (board, name, *_), c in cube.items():
+            tot[(board, name)] = tot.get((board, name), 0) + c
+        for (board, name), c in sorted(tot.items()):
+            out.append('ghproj_board_items_total{board="%s",board_name="%s"} %d' % (board, _esc(name), c))
+        out.append("# HELP ghproj_scrape_success 1 if the last scrape succeeded")
+        out.append("# TYPE ghproj_scrape_success gauge")
+        out.append("ghproj_scrape_success %d" % (1 if ok else 0))
+        out.append("# HELP ghproj_scrape_duration_seconds Duration of the last scrape")
+        out.append("# TYPE ghproj_scrape_duration_seconds gauge")
+        out.append("ghproj_scrape_duration_seconds %.3f" % dur)
+        out.append("# HELP ghproj_last_success_timestamp_seconds Unix ts of last successful scrape")
+        out.append("# TYPE ghproj_last_success_timestamp_seconds gauge")
+        out.append("ghproj_last_success_timestamp_seconds %d" % (int(time.time()) if ok else 0))
+        return "\n".join(out) + "\n"
+
+    def refresh_loop():
+        global _text
+        while True:
+            t0 = time.time()
+            try:
+                cube, names = collect()
+                txt = render(cube, names, True, time.time() - t0)
+            except Exception as e:
+                with _lock:
+                    prev = _text
+                txt = prev.split("ghproj_scrape_success")[0] + \
+                    "ghproj_scrape_success 0\n# last_error %s\n" % _esc(str(e)[:200])
+            with _lock:
+                _text = txt
+            time.sleep(POLL)
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path.rstrip("/") in ("/metrics", ""):
+                with _lock:
+                    body = _text.encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; version=0.0.4")
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_response(404); self.end_headers()
+        def log_message(self, *a):
+            pass
+
+    if __name__ == "__main__":
+        threading.Thread(target=refresh_loop, daemon=True).start()
+        http.server.HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()

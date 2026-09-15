@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ghproj-portfolio-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  ghproj-portfolio.json: |
+    {
+      "uid": "ghproj-portfolio",
+      "title": "Delivery Portfolio (GitHub Projects)",
+      "description": "PO + Engineer view across all product boards. Data: ghproj-exporter → Prometheus.",
+      "tags": ["minicloud", "delivery", "github-projects"],
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "5m",
+      "time": {"from": "now-30d", "to": "now"},
+      "templating": {
+        "list": [
+          {"name": "datasource", "type": "datasource", "query": "prometheus", "label": "Prometheus", "hide": 0, "refresh": 1},
+          {"name": "board", "type": "query", "datasource": {"type": "prometheus", "uid": "${datasource}"},
+           "query": "label_values(ghproj_board_items_total, board_name)", "label": "Board",
+           "current": {"text": "ktayl Underwriting & Pricing", "value": "ktayl Underwriting & Pricing"},
+           "multi": false, "includeAll": false, "refresh": 2}
+        ]
+      },
+      "panels": [
+        {"type": "stat", "title": "Open P1 (not Done)", "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}},
+         "targets": [{"expr": "sum(ghproj_items{priority=\"P1\",status!=\"Done\"})", "instant": true, "refId": "A"}]},
+        {"type": "stat", "title": "Blocked", "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}]}}},
+         "targets": [{"expr": "sum(ghproj_items{status=\"Blocked\"})", "instant": true, "refId": "A"}]},
+        {"type": "stat", "title": "WIP (In Progress + In Review)", "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "targets": [{"expr": "sum(ghproj_items{status=~\"In Progress|In Review\"})", "instant": true, "refId": "A"}]},
+        {"type": "stat", "title": "Exporter health", "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "OK", "color": "green"}}}]}},
+         "targets": [{"expr": "ghproj_scrape_success", "instant": true, "refId": "A"}]},
+        {"type": "row", "title": "📊 Product Owner — direction", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 4}},
+        {"type": "piechart", "title": "Items by Initiative", "gridPos": {"h": 8, "w": 8, "x": 0, "y": 5},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "targets": [{"expr": "sum by(initiative)(ghproj_items)", "legendFormat": "{{initiative}}", "instant": true, "refId": "A"}]},
+        {"type": "barchart", "title": "Backlog readiness by board (status=Backlog)", "gridPos": {"h": 8, "w": 16, "x": 8, "y": 5},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "targets": [{"expr": "sum by(board_name)(ghproj_items{status=\"Backlog\"})", "legendFormat": "{{board_name}}", "instant": true, "refId": "A"}]},
+        {"type": "timeseries", "title": "Epics in flight (all boards)", "gridPos": {"h": 7, "w": 12, "x": 0, "y": 13},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "targets": [{"expr": "sum(ghproj_items{kind=\"Epic\",status!=\"Done\"})", "legendFormat": "open epics", "refId": "A"}]},
+        {"type": "timeseries", "title": "Velocity — items reaching Done (all boards)", "gridPos": {"h": 7, "w": 12, "x": 12, "y": 13},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "targets": [{"expr": "sum(ghproj_items{status=\"Done\"})", "legendFormat": "done (cumulative)", "refId": "A"}]},
+        {"type": "row", "title": "🚀 Engineer — execution", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 20}},
+        {"type": "barchart", "title": "WIP by board (In Progress + In Review + Blocked)", "gridPos": {"h": 8, "w": 24, "x": 0, "y": 21},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "targets": [{"expr": "sum by(board_name)(ghproj_items{status=~\"In Progress|In Review|Blocked\"})", "legendFormat": "{{board_name}}", "instant": true, "refId": "A"}]},
+        {"type": "timeseries", "title": "Burndown — $board (open items over time)", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 29},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "targets": [{"expr": "sum(ghproj_items{board_name=\"$board\",status!=\"Done\"})", "legendFormat": "open", "refId": "A"}]},
+        {"type": "timeseries", "title": "Cumulative flow — $board (by status)", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 29},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "fieldConfig": {"defaults": {"custom": {"stacking": {"mode": "normal"}, "fillOpacity": 40}}},
+         "targets": [{"expr": "sum by(status)(ghproj_items{board_name=\"$board\"})", "legendFormat": "{{status}}", "refId": "A"}]}
+      ]
+    }
