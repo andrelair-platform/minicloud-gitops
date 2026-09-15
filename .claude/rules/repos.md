@@ -20,6 +20,15 @@ All repos cloned under `~/Developer/cloudplateform/`:
 | [minicloud-crew-agent](https://github.com/andrelair-platform/minicloud-crew-agent)       | `minicloud-crew-agent/`          | CrewAI 3-agent pipeline (model: deep-research-agent) |
 | [aisystemmaster](https://github.com/andrelair-platform/aisystemmaster)                   | `aisystemmaster/`                | AI Systems Engineer playbook + 3 flagship project specs |
 | [minicloud-ops](https://github.com/andrelair-platform/minicloud-ops)                     | controller`~/minicloud-ops` only | Python platform recovery check + systemd services |
+| [ktayl-risk-engineering](https://github.com/andrelair-platform/ktayl-risk-engineering)   | `ktayl-risk-engineering/`        | Risk engineering domain (board #21) — scaffold |
+| [ktayl-reinsurance](https://github.com/andrelair-platform/ktayl-reinsurance)             | `ktayl-reinsurance/`             | Reinsurance domain (board #22) — scaffold |
+| [ktayl-international-programs](https://github.com/andrelair-platform/ktayl-international-programs) | `ktayl-international-programs/` | International programs domain (board #23) — scaffold |
+| [ktayl-dms](https://github.com/andrelair-platform/ktayl-dms)                             | `ktayl-dms/`                     | Documents/DMS transversal layer (board #24) — scaffold |
+| [ktayl-integration](https://github.com/andrelair-platform/ktayl-integration)             | `ktayl-integration/`             | Integration transversal layer (board #25) — scaffold |
+
+> The full **ktayl-\* domain repo ↔ product board** mapping (Claims/#11, Underwriting/#12,
+> Distribution/#13, Finance/#14, Compliance/#15, ITSM/#16, IAM/#17, MDM/#20, + the 5 above, etc.)
+> is authoritative in [`github-projects.md`](./github-projects.md) *Product boards*.
 
 ## Docs Site (minicloud-platform-docs)
 

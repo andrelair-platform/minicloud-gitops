@@ -37,7 +37,7 @@ down a level. The structure is a **portfolio of products**:
   product gets its own board **and** its own BMAD home (see `bmad.md`).
 - **Product boards are authoritative — there is NO roll-up board.** The old aggregator Project **#1
   was deleted (2026-09-10)** as redundant: it duplicated every issue into a flat, unnavigable list
-  and added maintenance with little value. The **product boards (#2–#17) are the source of truth**;
+  and added maintenance with little value. The **product boards (#2–#25) are the source of truth**;
   each issue lives in its repo and on exactly its product board(s).
 - **Initiative is a grouping concept (a label / per-board field), not a board.** The three
   initiatives — **Insurance LOB**, **Certification**, **IS Foundations** — group products; use a
@@ -72,12 +72,17 @@ down a level. The structure is a **portfolio of products**:
 | Insurance LOB | **ktayl Insurance Finance & Billing** (#14) | `ktayl-finance` | `ktayl-finance` (billing, IFRS 17, reserving, reinsurance) |
 | Insurance LOB | **ktayl Insurance LOB — Product Lines** (#9) | `ktayl-solution-web` | the actual LOB lines (Marine, Engineering, Financial Lines, Collaborateurs, International, ART) until each graduates |
 | Insurance LOB | **Regulatory & Compliance** (#15) | `ktayl-compliance` | GDPR/AML-KYC/PIA/BCP/ACPR (the insurer's regulatory obligations) |
+| Insurance LOB | **ktayl Risk Engineering** (#21) | `ktayl-risk-engineering` | `ktayl-risk-engineering` (site audits, inspections, prevention recommendations, risk-quality scoring) |
+| Insurance LOB | **ktayl Reinsurance** (#22) | `ktayl-reinsurance` | `ktayl-reinsurance` (treaty & facultative, cessions, capacity, bordereaux, recoveries) |
+| Insurance LOB | **ktayl International Programs** (#23) | `ktayl-international-programs` | `ktayl-international-programs` (master + local policies, PO/SO network, cross-border premium/claims flows) |
 | IS Foundations | **GitOps — Platform Engineering** (#3) | `minicloud-gitops` | `-gitops`, `-ansible`, `-opentofu`, `-backstage`, `-ops`, `platform-demo` |
 | IS Foundations | **AI Platform** (#4) | `minicloud-agent` | `-agent`, `-crew-agent`, `-open-webui`, `-plane` |
 | IS Foundations | **Data Platform** (#5) | `minicloud-gitops` | (data pipeline / BI work) |
 | IS Foundations | **Digital Workplace (M365 Alternative)** (#10) | `ktayl-workplace` | `ktayl-workplace`, `minicloud-onlyoffice` (+ Stalwart/Nextcloud/Matrix/Jitsi/Docuseal/n8n/Authentik/Vaultwarden/Homer/Paperless/Asterisk via `minicloud-gitops`) |
 | IS Foundations | **ktayl ITSM (GLPI)** (#16) | `ktayl-itsm` | `ktayl-itsm` (GLPI ITIL v4, CMDB, SLA/KPI, helpdesk) |
 | IS Foundations | **Access Governance (IAM/IGA)** (#17) | `ktayl-iam` | `ktayl-iam` (MidPoint IGA, role/entitlement, certification, PAM, SCIM, SoD) |
+| IS Foundations | **ktayl Documents & DMS** (#24) | `ktayl-dms` | `ktayl-dms` (GED/records-mgmt, archiving, doc generation, OCR/IDP, templates, e-sign) — the Documents transversal layer |
+| IS Foundations | **ktayl Integration Platform** (#25) | `ktayl-integration` | `ktayl-integration` (API gateway, events, ETL, MFT/SFTP, EDI, broker APIs, batch) — the Integration transversal layer |
 
 **ktayl-IS split (2026-09-09→10):** the vague "ktayl Insurance LOB" catch-all (#9) was broken into
 real products — **Digital Workplace** (#10), **Claims** (#11), **Underwriting & Pricing** (#12),
@@ -187,5 +192,5 @@ gh project view <n> --owner andrelair-platform --format json --jq .id          #
 gh project field-list <n> --owner andrelair-platform --format json             # fields + option ids
 ```
 
-Every product board (#2–#17) has a **Priority** single-select (`P1 — Critical … P5 — Deferred`) and
+Every product board (#2–#25) has a **Priority** single-select (`P1 — Critical … P5 — Deferred`) and
 the default **Status** field; boards created via the API were given Priority explicitly (2026-09-10).
