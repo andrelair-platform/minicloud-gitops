@@ -57,7 +57,12 @@ data:
             "Content-Type": "application/json",
             "User-Agent": "ghproj-exporter/1.0"})
         with urllib.request.urlopen(req, timeout=30) as r:
-            return json.loads(r.read().decode())
+            d = json.loads(r.read().decode())
+        if d.get("errors"):
+            # GraphQL 200-with-errors (rate limit, perms) → treat as failure so
+            # ghproj_scrape_success reflects reality instead of "healthy but empty".
+            raise RuntimeError(str(d["errors"][0].get("message", "graphql error"))[:200])
+        return d
 
     def _norm_priority(v):
         m = re.match(r"(P[1-5])", v or "")
