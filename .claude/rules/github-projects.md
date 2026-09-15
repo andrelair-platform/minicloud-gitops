@@ -55,6 +55,11 @@ down a level. The structure is a **portfolio of products**:
    `portal` before it exists. Promote a sub-product to its own board when it earns it
    (multi-repo, own sprint cadence, own stakeholders) — exactly how Retrieva graduated out of
    "Certification" and the LOB products split out of the "Insurance LOB" catch-all.
+   **When you do create it, create it from the template — MANDATORY:**
+   `gh project copy 26 --title "<name>" --owner andrelair-platform` (board **#26 = 🧩 Product Board
+   Template**). **Never `gh project create`** — a bare board has none of the standard schema/views and
+   can't be retro-fitted (see *Standard board schema + views* below). Copy inherits the fields **and**
+   the role-tailored views at creation time; that is the only way a board gets the views.
 3. **Each product board is self-contained** (own backlog + BMAD home) — that, plus the per-product
    BMAD sync, is what keeps many boards coherent without a central roll-up.
 
@@ -94,8 +99,11 @@ The old aggregator **Project #1 was then deleted (2026-09-10)** once every issue
 home — the product boards are the source of truth; there is no roll-up.
 
 Future products (`portal`, a broker portal, …) get a board **the day their work starts** with a BMAD
-home repo. **Known polish debt:** issues that landed on boards #3–#9 (which pre-dated the Priority
-field) may not have a Priority set yet — populate on next grooming.
+home repo — **created via `gh project copy 26`** (the template), never `gh project create`.
+**Known polish debt:** issues that landed on boards #3–#9 (which pre-dated the Priority
+field) may not have a Priority set yet — populate on next grooming. Boards #2–#25 pre-date the template,
+so they carry the standard **fields** (pushed via API) but **not** its views — that's accepted; the
+cross-board view lives in Grafana (*Delivery Portfolio*). Only new boards (copy-created) get the views.
 
 ### Where does a new issue go? (decision rule)
 - Identify the **product** it belongs to → it goes on **that product's board**, in the **repo it
@@ -235,19 +243,32 @@ into what `gh project`/the API can automate and what is **UI-only** — know the
 | 🔍 **Backlog Readiness** | Table | Shared | filter `Status:Backlog`; sort `Priority`; columns `Kind`,`Effort`,`Sub-issues progress` |
 | + **Insights → Burndown** | chart | Both | `Effort` remaining over `sprint:@current` |
 
-### Gold template + copy workflow
-- **Template = board #26** (`🧩 Product Board Template`) — carries the CLI-creatable fields already.
-- **One-time manual on #26** (the only manual step; UI): (1) edit `Status` → the 6-state flow;
-  (2) add the `Sprint` iteration field (2-week); (3) build the 4 views above; (4) add the Burndown
-  insight; then `gh project mark-template 26 --owner andrelair-platform`.
-- **Every NEW product board** → `gh project copy 26 --title "<name>" --owner andrelair-platform`
-  (inherits fields **+ views**; NOT items, NOT insights). Then add its namespaces/repos as usual.
-- **Existing boards (#2–#25)** already have the fields; add the 4 views **by hand on the boards you
-  actively work** (retrieva #2, policy #6, underwriting #12, …) using the recipe above — don't
-  bulk-retrofit dormant scaffold boards; they get views when their work starts (recreate from copy).
+### Gold template + copy workflow — **MANDATORY for every new board**
+
+**Template = board #26** (`🧩 Product Board Template`, `template: true` — marked 2026-09-15). It carries
+the standard fields + the 4 role-tailored views + the Sprint iteration + the Burndown insight.
+
+> **The rule: create every future board with `gh project copy 26 --title "<name>" --owner
+> andrelair-platform`.** Never `gh project create` (a bare board has no schema/views and **cannot be
+> retro-fitted** — GitHub has no API to push views into an existing board; copy only seeds them at
+> creation). Copy inherits **fields + views** (NOT items, NOT Insights charts — recreate the Burndown
+> insight per new board, it's the one thing copy drops). After copying, add the product's namespaces/
+> repos and its board row to the *Product boards* table above.
+
+- **Existing boards (#2–#25) are intentionally NOT retro-fitted.** They pre-date the template; they
+  carry the standard **fields** (pushed via API) + backfilled values, but **not** the views — accepted,
+  because GitHub can't propagate views to an existing board. The **cross-board view for all of them is
+  Grafana** (*Delivery Portfolio (GitHub Projects)* dashboard, `manifests/ghproj-exporter/`). If you
+  want native views on a *specific* active board (retrieva #2 / policy #6 / underwriting #12), hand-build
+  the 4 views on it once — do **not** delete+recreate a board (changes its number, breaks every
+  `project:` reference + the exporter + this doc).
 - **Field population is automatic** going forward: the BMAD bridge sets `Kind` (from `type:`),
   `Priority` (from `priority:`), `Initiative` (from `initiative:`) on every synced issue.
   Add `initiative:` to a product's story frontmatter to have it grouped by theme.
+- **Template upkeep:** the template's `Status` must hold the full 6-state flow
+  `Backlog · This Sprint · In Progress · Blocked · In Review · Done` (the API can't edit Status options,
+  so fix on #26 in the UI). Copies inherit `Status` *as it is at copy time* — keep #26 correct before
+  copying, or the new board (and the Grafana `status="Blocked"` panel) will be missing a state.
 
 > **True zero-manual role dashboards** (if the UI-only limits ever chafe) = an external read-only
 > dashboard (Grafana / static page) over the Projects **GraphQL API**, with GH Projects as the data
