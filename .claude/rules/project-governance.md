@@ -85,3 +85,36 @@ ADR log). Copy its shape for a new Path-C product.
 |---------|----------|--------|
 | ktayl Claims & Policy Platform (CERT-1) | `docs/certification/01-cahier-des-charges-fonctionnel.md` section 15 | ✅ Done (RACI) |
 | Retrieva (RNCP39583) | `retrieva/docs/docs/architecture/solution-architecture.md` | ✅ SA artefact-set reference |
+
+## IS scope boundaries (deliberate — documented, not gaps)
+
+A well-architected IS is defined as much by what it **deliberately excludes** as by what it builds.
+These are **explicit, justified scope decisions** for the ktayl-solution IS — a boundary here is an
+*accepted risk with compensating controls + a revisit trigger*, not an oversight. State them so an
+auditor/interviewer sees intent, not incompleteness.
+
+### BYOD — no managed physical endpoints (since 2026-09-15)
+**Decision:** ktayl manages **no company computers, phones, or desk telephony**. Employees use their own
+laptop/phone; access is **browser-first**. Device fleet / MDM-UEM (Intune-equivalent), endpoint
+hardening, and hardware asset lifecycle are **OUT of scope for now**.
+
+**Why it's coherent:** the whole digital workplace is already **web apps behind Authentik SSO + MFA**,
+reached over Tailscale/Cloudflare — an inherently BYOD / zero-trust shape. Not managing endpoints fits
+the architecture rather than fighting it.
+
+**What we give up (the accepted risk):** remote wipe / lost-device response, guaranteed disk encryption,
+endpoint hardening, device-level DLP (data can reach personal storage), asset lifecycle.
+
+**Compensating controls — identity IS the perimeter:** MFA everywhere; every app SSO-gated (Authentik);
+access only via Tailscale/Cloudflare; browser-first to minimise data-at-rest; app/gateway DLP (Presidio
++ default-deny egress netpols); session controls. This is the answer to *"how do you secure access with
+no managed devices?"*
+
+**Domain impact:** Enterprise IT (#12) → endpoints/MDM/Intune/telephony **out of scope**; ITSM/CMDB
+(#16, GLPI) → CMDB scopes to **software/services/logical + cloud assets**, not a hardware fleet (cleaner);
+IAM/IGA (#17) → becomes **the** primary control (more important, not less); threat model → "lost personal
+device / endpoint compromise" is an **accepted, documented** risk.
+
+**Revisit trigger:** bring endpoints in-scope when there are **real employees + PII at volume**, a real
+audit, or a production-grade DORA-compliance claim. The self-hosted-fit successor is **Fleet/osquery** or
+a UEM — not before the need is real (apply the `cloud-adoption.md` need-first gate).
