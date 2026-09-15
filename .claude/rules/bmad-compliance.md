@@ -229,9 +229,19 @@ business process → pain → systems + data → AI/automation → business valu
 5. **Two-layer, don't conflate:** the **IS holds the obligation + control library**; **Retrieva** is the
    *product* that proves the DORA third-party-ICT slice — same graph shape, different layer.
 
+**The two concrete artifacts (built 2026-09-15):**
+- **Obligations register** — `ktayl-compliance/docs/obligations-register.md` (epic RC-05): the single
+  source of truth for what applies to ktayl (17 frameworks × owner/systems/controls/ref/caveat/status).
+  The method points **here**; don't restate obligations elsewhere.
+- **AI-Act gate** — docs `ai-ml/ai-act-gate`: classify every AI use case by risk tier → proportionate
+  controls + a system card, enforced at the Path-C security gate. **Scoping note:** ktayl is B2B/IARD,
+  so most UW/pricing AI is *limited-risk*, **not** Annex-III high-risk (which targets life/health for
+  natural persons) — classify proportionately; GDPR Art. 22 often bites harder. Overview: docs
+  `insurance-platform/regulatory-operating-model`.
+
 **Reference implementation:** the *Regulatory impact* section of the underwriting FDE playbook
 (`ktayl-underwriting/docs/fde-underwriting-playbook.md`). Copy its shape into every new domain playbook.
-Framework→domain ownership map: EA Blueprint. This is cert evidence for **BC03 (déployer & sécuriser)**.
+Framework→domain ownership map: EA Blueprint. This is cert evidence for **BC01 · BC02 · BC03**.
 
 ## Required Artefacts (per sprint, in minicloud-gitops)
 
