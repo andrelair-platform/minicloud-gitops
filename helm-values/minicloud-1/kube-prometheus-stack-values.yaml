@@ -241,16 +241,17 @@ alertmanager:
         - matchers: ['severity = info']
           receiver: "null"
     global:
-      smtp_smarthost: stalwart.mail.svc.cluster.local:587
+      # Alertmanager → SES DIRECTLY (not via in-cluster Stalwart). The Stalwart→SES
+      # relay was silently dropping alert mail (2026-09-16 node outage went 14h with no
+      # notification); SES→Gmail is proven working, and going direct also means alerting
+      # no longer depends on the in-cluster mail pod (which could itself be an outage
+      # casualty). Password comes from the mounted alertmanager-ses secret (ESO ← Vault),
+      # so it is NEVER in this public repo; the username is an AWS access-key ID (non-secret).
+      smtp_smarthost: email-smtp.eu-west-1.amazonaws.com:587
       smtp_from: alertmanager@devandre.sbs
-      smtp_auth_username: admin
-      smtp_auth_password: hJYZh6ZAe8tE5o2nzWdn5fwqRi0iLbX7
+      smtp_auth_username: AKIAZDNTLNEA6EFN6LKW
+      smtp_auth_password_file: /etc/alertmanager/secrets/alertmanager-ses/password
       smtp_require_tls: true
-      smtp_tls_config:
-        # Stalwart uses a self-signed/internal-CA cert on port 587 STARTTLS.
-        # Alertmanager Go smtp.PlainAuth refuses plaintext; STARTTLS with
-        # insecure_skip_verify is the correct workaround for cluster-internal SMTP.
-        insecure_skip_verify: true
     receivers:
       - name: "null"
       # GAP 1: dead-man's switch — Alertmanager pings healthchecks.io every 1m.
@@ -300,6 +301,9 @@ alertmanager:
     # /etc/alertmanager/secrets/alertmanager-slack/slack-webhook-url
     secrets:
       - alertmanager-slack
+      # SES SMTP password (ESO ← Vault) → mounted at
+      # /etc/alertmanager/secrets/alertmanager-ses/password for smtp_auth_password_file.
+      - alertmanager-ses
     resources:
       requests:
         cpu: 50m
