@@ -219,6 +219,15 @@ alertmanager:
         # and targets are confirmed up — removed from null route so they can fire.
         - matchers: ['alertname = "KubeProxyDown"']
           receiver: "null"
+        # Infra-down ALWAYS emails Gmail, regardless of severity. Lesson from the
+        # 2026-09-16 swift-mac outage: a node died ~14h with no notification because
+        # KubeNodeNotReady is severity=warning (→ webhook only, no email). These node/
+        # storage/kubelet-down alerts are the ones that must never be silent → route
+        # them to webhook-critical (email kanmegnea@gmail.com + Slack). Placed BEFORE
+        # the severity routes so it wins for the warning-severity ones too.
+        - matchers: ['alertname =~ "KubeNodeNotReady|KubeNodeUnreachable|NodeDown|KubeletDown|LonghornNodeNotReady|NodeReadonlyFilesystem"']
+          receiver: webhook-critical
+          continue: false
         - matchers: ['severity = critical']
           receiver: webhook-critical
           continue: false
