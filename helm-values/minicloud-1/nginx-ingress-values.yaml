@@ -34,6 +34,13 @@ controller:
       limit_req_zone $binary_remote_addr zone=auth_ratelimit:10m rate=5r/s;
     # Default upload size — overridden per-ingress via proxy-body-size annotation
     proxy-body-size: "100m"
+    # Disable upstream keepalive connection pooling (2026-09-18).
+    # Stalwart's webadmin HTTP server (mail.devandre.sbs) RSTs pooled/idle keepalive
+    # connections that nginx reuses → ACK-then-RST-no-response → 502 (packet-proven,
+    # minicloud-gitops#1154). Stalwart 0.16 exposes no HTTP keepalive-idle knob, so the
+    # only reliable fix is nginx not pooling upstream connections. 0 = a fresh upstream
+    # connection per request. Homelab-scale traffic → negligible latency cost.
+    upstream-keepalive-connections: "0"
 
   metrics:
     enabled: true
