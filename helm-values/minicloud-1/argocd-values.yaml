@@ -173,8 +173,22 @@ configs:
 
 server:
   priorityClassName: minicloud-platform
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
+  # HA (fixes SPOF #1168): 2 replicas, soft anti-affinity to spread across nodes, no
+  # hard nodeSelector — the server is stateless (no PVC). A single node loss or a stale
+  # cordon (the 2026-09-18 incident) no longer takes the ArgoCD UI/API down.
+  replicas: 2
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: argocd-server
+            topologyKey: kubernetes.io/hostname
+  pdb:
+    enabled: true
+    minAvailable: 1
   podLabels:
     backstage.io/kubernetes-id: argocd
   # F5 NGINX Ingress gets confused when the chart's default Service has both
@@ -227,16 +241,33 @@ server:
     limits:   { cpu: 500m, memory: 512Mi }
 
 repoServer:
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
+  # HA (fixes SPOF #1168): 2 replicas, soft anti-affinity, no node pin (stateless).
+  # repo-server is the git/manifest cache whose single instance stalled all syncs when
+  # fast-skunk was cordoned — 2 spread replicas remove that single point.
+  replicas: 2
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: argocd-repo-server
+            topologyKey: kubernetes.io/hostname
+  pdb:
+    enabled: true
+    minAvailable: 1
   resources:
     requests: { cpu: 50m,  memory: 256Mi }
     limits:   { cpu: 1000m, memory: 2500Mi }
 
 controller:
   priorityClassName: minicloud-platform
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
+  # No node pin (fixes SPOF #1168): the application-controller is a StatefulSet
+  # reconciler; keep 1 replica (HA needs sharding — overkill here) but let it reschedule
+  # to ANY node so a node loss doesn't strand it. Deliberately NO pdb — a minAvailable:1
+  # PDB on a single replica would block node drains (the k3s system-upgrade footgun that
+  # left fast-skunk cordoned in the first place).
   metrics:
     enabled: true
     serviceMonitor:
