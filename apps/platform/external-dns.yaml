@@ -38,15 +38,19 @@ spec:
           txtPrefix: _extdns.
           sources:
             - ingress
+          extraArgs:
+            # Org records are Cloudflare TUNNEL CNAMEs (→ <tunnel>.cfargotunnel.com), which
+            # MUST be proxied (orange cloud) — the edge is what connects to the tunnel. A
+            # DNS-only record would not route. All records external-dns manages here are
+            # tunnel CNAMEs, so proxied=true is the correct global default. (Boolean kingpin
+            # flag: bare = true; `=false` is a parse error.)
+            - --cloudflare-proxied
           # Opt-in is the HOSTNAME: an Ingress is managed only when its host is under
-          # ktayl.devandre.sbs (domainFilters) — combined with the per-record tunnel
-          # target annotation, both set via the library ingress values (host +
-          # annotations). No custom label is used because the shared library ingress
-          # emits only standard app.labels (no hook for one) and the library can't be
-          # republished from here (read-only ghcr token). Verified safe: no existing
-          # Ingress uses a ktayl.devandre.sbs host → external-dns is idle today.
-          # `cloudflare-proxied` defaults to false (DNS-only / grey cloud); it's
-          # controlled per-record via external-dns.alpha.kubernetes.io/cloudflare-proxied.
+          # ktayl.devandre.sbs (domainFilters), combined with the per-record tunnel target
+          # annotation — both set via the library ingress values (host + annotations). No
+          # custom label is used because the shared library ingress emits only standard
+          # app.labels (no hook) and the library can't be republished from here (read-only
+          # ghcr token). Verified safe: no existing Ingress uses a ktayl.devandre.sbs host.
           logLevel: info
           # Gatekeeper: non-root + no-priv-esc + drop caps + seccomp + resource limits.
           securityContext:
