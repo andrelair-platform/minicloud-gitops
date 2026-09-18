@@ -72,7 +72,7 @@ impossible-to-misfire:
 | target annotation | `external-dns.alpha.kubernetes.io/target: <tunnel>.cfargotunnel.com` | required per-record so the record is a **CNAME to the tunnel**, not an A-record to the private MetalLB IP |
 | `registry` / `txtOwnerId` | `txt` / `minicloud-externaldns` | ownership TXT records so it only manages what it created |
 | `--cloudflare-proxied` | **`true`** (global) | tunnel CNAMEs **must be proxied** (orange cloud) — the edge connects to the tunnel; a DNS-only record would not route |
-| provider token | Vault `secret/platform/cloudflare` `api-token` via ESO → `cloudflare-api-token` | (least-privilege dedicated token = a future improvement; noted below) |
+| provider token | Vault `secret/platform/cloudflare` `api-token` (the broad `MINICLOUD` token) via ESO → `cloudflare-api-token` | **accepted risk** — the token is account-wide, but ExternalDNS's *own* blast radius is already capped by `--domain-filter` + `upsert-only` regardless of token scope. A dedicated scoped token is defense-in-depth (see *Consequences*). |
 
 > **Why no `--label-filter`?** An earlier design used a `external-dns=enabled` label as an extra opt-in,
 > but the shared **`minicloud-app-deployment` library ingress emits only the standard `app.labels`** (no
@@ -157,8 +157,16 @@ URIs, tunnel rules, and Ingress hosts). Instead:
   split-horizon (`corp.ktayl.devandre.sbs` stays as a *target*, nip.io+Tailscale meets the need today);
   no Gateway API migration (ingress-nginx is fine); no Terraform-managed DNS zone yet (ExternalDNS covers
   the app-record flow; zone-as-code is a later step).
-- **Least-privilege token** (dedicated Cloudflare token scoped to `devandre.sbs` Zone:Read + DNS:Edit,
-  vs reusing the platform token) is a recommended hardening follow-up.
+- **Least-privilege token — accepted-risk (2026-09-18), scoped token = deferred defense-in-depth.**
+  ExternalDNS uses the broad account-wide `MINICLOUD` token (Vault `platform/cloudflare` `api-token`) —
+  the same one that runs the Tunnel + R2. **Why accepted:** ExternalDNS can only ever upsert records
+  under `ktayl.devandre.sbs` (its `--domain-filter` + `upsert-only`), so the *live* blast radius is the
+  same whether the token is broad or scoped. The scoped token only matters **if the ExternalDNS
+  pod/secret were compromised** — then a `devandre.sbs`-only Zone:Read+DNS:Edit token would limit what a
+  leaked credential could do (vs. the broad token = all DNS + R2 + Tunnel). Minting it needs a
+  **dashboard** step (the broad token lacks User→API-Tokens permission, so it can't self-mint) → store
+  at `secret/platform/cloudflare-externaldns` + repoint the `cloudflare-api-token` ES. Deferred as
+  hardening, not a live gap.
 
 ## References
 - Access/PKI: `.claude/rules/connectivity.md` · Tunnel/DNS ops: `.claude/rules/ops-runbooks.md`
