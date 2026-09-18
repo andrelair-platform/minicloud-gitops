@@ -5,44 +5,54 @@ metadata:
   name: cloudflared-config
   namespace: cloudflare-tunnel
 data:
-  # Public (internet) routes only. Platform/ops + internal workplace tools are
-  # DELIBERATELY NOT here — they are reachable only over Tailscale via their
-  # *.10.0.0.200.nip.io Ingress (identity-as-perimeter; see the DNS ADR
-  # docs/dns-naming-and-externaldns.md, Decision 3). Adding a tool here re-exposes
-  # it publicly, so it needs a stated reason. `controller.devandre.sbs` (SSH) is the
-  # Zero-Trust break-glass and MUST stay.
+  # PUBLIC (internet) routes, gated by Authentik SSO + MFA. Three access tiers — see
+  # the DNS ADR docs/dns-naming-and-externaldns.md (Decision 3):
+  #   ① Tailscale-only (operator/admin infra) — NOT here; reachable only via their
+  #      *.10.0.0.200.nip.io Ingress over Tailscale: argocd, vault, grafana, harbor,
+  #      backstage, temporal, nats, litellm, langfuse, flowise, homer.
+  #   ② Public + SSO (employees, BYOD/browser-first) — business apps below.
+  #   ③ Public, external-facing — demo, auth (IdP), retrieva.online, sign.
+  # Adding an infra tool here re-exposes it publicly → needs a stated reason.
+  # `controller.devandre.sbs` (SSH) is the Zero-Trust break-glass and MUST stay.
   config.yml: |
     tunnel: bf5117ec-5986-47f0-a3ce-b96ab8854d21
     credentials-file: /etc/cloudflared/credentials.json
     no-autoupdate: true
 
     ingress:
-      # ── org / public-facing ──────────────────────────────────────────
+      # ── ③ external-facing ────────────────────────────────────────────
       - hostname: demo.devandre.sbs
         service: https://10.0.0.200
         originRequest:
           noTLSVerify: true
           originServerName: platform-demo.10.0.0.200.nip.io
 
-      # Authentik — the SSO IdP; stays public so public services can complete OAuth.
+      # Authentik — the SSO IdP; public so every public service can complete OAuth.
       - hostname: auth.devandre.sbs
         service: https://10.0.0.200
         originRequest:
           noTLSVerify: true
           originServerName: auth.10.0.0.200.nip.io
 
-      # ── digital workplace (kept public for remote / external access) ──
+      # Docuseal — e-signature; external signers must reach it.
+      - hostname: sign.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: sign.10.0.0.200.nip.io
+
+      # ── ② business apps (employees, public + SSO, BYOD browser-first) ─
       - hostname: chat.devandre.sbs
         service: https://10.0.0.200
         originRequest:
           noTLSVerify: true
           originServerName: chat.10.0.0.200.nip.io
 
-      - hostname: vault-pw.devandre.sbs
+      - hostname: mail.devandre.sbs
         service: https://10.0.0.200
         originRequest:
           noTLSVerify: true
-          originServerName: vault-pw.10.0.0.200.nip.io
+          originServerName: mail.10.0.0.200.nip.io
 
       - hostname: cloud.devandre.sbs
         service: https://10.0.0.200
@@ -50,12 +60,41 @@ data:
           noTLSVerify: true
           originServerName: cloud.devandre.sbs
 
-      # Docuseal — e-signature; external signers need to reach it → public.
-      - hostname: sign.devandre.sbs
+      - hostname: erp.devandre.sbs
         service: https://10.0.0.200
         originRequest:
           noTLSVerify: true
-          originServerName: sign.10.0.0.200.nip.io
+          originServerName: erp.devandre.sbs
+
+      - hostname: plane.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: plane.devandre.sbs
+
+      - hostname: n8n.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: n8n.10.0.0.200.nip.io
+
+      - hostname: onlyoffice.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: onlyoffice.10.0.0.200.nip.io
+
+      - hostname: meet.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: meet.10.0.0.200.nip.io
+
+      - hostname: vault-pw.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: vault-pw.10.0.0.200.nip.io
 
       - hostname: matrix.devandre.sbs
         service: https://10.0.0.200
@@ -79,5 +118,10 @@ data:
       # ── break-glass (KEEP — emergency access if Tailscale is down) ───
       - hostname: controller.devandre.sbs
         service: ssh://10.0.0.1:22
+
+      # NOTE: `intranet` + `wiki` routes were REMOVED (2026-09-18) — they backed no
+      # service (404). Their function already exists: intranet ≈ Homer / Nextcloud
+      # Dashboard; wiki ≈ Nextcloud Collectives / Backstage TechDocs. If a dedicated
+      # one is ever built, add it here as a ② public+SSO route.
 
       - service: http_status:404
