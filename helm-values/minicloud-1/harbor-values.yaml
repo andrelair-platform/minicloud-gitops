@@ -31,8 +31,12 @@ persistence:
       storageClass: longhorn
 trivy:
   enabled: true
+  # Off the control-plane node (set-hog) → a worker (SPOF hardening, epic #1189). Pinned
+  # to loving-gannet, which already holds a healthy replica of trivy's Longhorn volume
+  # (fast local attach). Still pinned (RWO placement stability); failover-unpinning is a
+  # later pass once Longhorn node-down handling is trusted.
   nodeSelector:
-    kubernetes.io/hostname: set-hog
+    kubernetes.io/hostname: loving-gannet
 
 metrics:
   enabled: true
