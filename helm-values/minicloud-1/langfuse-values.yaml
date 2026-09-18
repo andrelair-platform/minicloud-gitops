@@ -21,8 +21,8 @@ langfuse:
     pod:
       labels:
         backstage.io/kubernetes-id: langfuse
-      nodeSelector:
-        kubernetes.io/hostname: star-kitten
+      # No node pin — the worker is stateless (reads from DB/redis/clickhouse), so it
+      # reschedules to any healthy node on failure. (clickhouse/redis keep pins: PVCs.)
 
   securityContext:
     capabilities:

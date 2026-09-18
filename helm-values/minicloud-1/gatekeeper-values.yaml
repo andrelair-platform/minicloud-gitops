@@ -1,9 +1,7 @@
 auditInterval: 60
 constraintViolationsLimit: 100
 replicas: 1
-controllerManager:
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
-audit:
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
+# No node pins: gatekeeper controller-manager + audit are stateless — unpinned so they
+# reschedule to any healthy node if theirs goes down (auto-failover; SPOF hardening).
+controllerManager: {}
+audit: {}

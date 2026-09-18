@@ -34,3 +34,18 @@ metadata:
   name: snapshot-data-integrity-immediate-check-after-snapshot-creation
   namespace: longhorn-system
 value: "true"
+---
+# Node-failure auto-failover for STATEFUL workloads. Default "do-nothing" means when a
+# node goes down, Longhorn leaves the stuck pod in place → the StatefulSet/Deployment
+# never reschedules it → no failover (the gap that stranded workloads in the 2026-09-18
+# incidents). "delete-both-…" makes Longhorn delete the pod on a confirmed-down node so
+# the controller recreates it on a healthy node and the RWO volume reattaches there.
+# Safe: Longhorn's single-engine guarantee prevents split-brain; it only acts once the
+# node is genuinely down (not a brief blip). Pairs with unpinning (a pinned pod still
+# can't move) — see the auto-failover epic.
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: node-down-pod-deletion-policy
+  namespace: longhorn-system
+value: "delete-both-statefulset-and-deployment-pod"
