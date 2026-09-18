@@ -41,16 +41,19 @@ nextcloud:
         'allow_local_remote_servers' => true,
       );
 
-  # Mail via Stalwart internal SMTP (stalwart.mail.svc.cluster.local:587)
+  # Mail via Amazon SES DIRECT (bypasses the degraded Stalwart outbound relay — see
+  # gitops#1160). Host/username/password come from nextcloud-secrets (Vault
+  # platform/nextcloud-secrets smtp-* keys, set to SES SMTP creds). SES REQUIRES
+  # auth → authtype LOGIN (Stalwart internal relay used NONE). STARTTLS on 587.
   mail:
     enabled: true
     fromAddress: noreply
     domain: devandre.sbs
     smtp:
-      host: stalwart.mail.svc.cluster.local
+      host: email-smtp.eu-west-1.amazonaws.com
       port: 587
       secure: false
-      authtype: NONE
+      authtype: LOGIN
 
 nodeSelector:
   kubernetes.io/hostname: set-hog
