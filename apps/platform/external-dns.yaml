@@ -42,8 +42,10 @@ spec:
             # Opt-in: only manage Ingresses explicitly labelled external-dns=enabled
             # → zero blast radius; idle until an org app opts in.
             - --label-filter=external-dns=enabled
-            # Tunnel CNAMEs must be DNS-only (grey cloud), not Cloudflare-proxied.
-            - --cloudflare-proxied=false
+          # Tunnel CNAMEs must be DNS-only (grey cloud). `cloudflare-proxied` is a
+          # boolean flag that defaults to false (not proxied) — so we leave it unset
+          # here and control it per-record via the Ingress annotation
+          # external-dns.alpha.kubernetes.io/cloudflare-proxied: "false" (see the ADR).
           logLevel: info
           # Gatekeeper: non-root + no-priv-esc + drop caps + seccomp + resource limits.
           securityContext:
