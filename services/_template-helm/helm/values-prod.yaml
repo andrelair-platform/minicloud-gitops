@@ -18,14 +18,16 @@ minicloud-app-deployment:
   # switch to the org namespace `<app>.ktayl.devandre.sbs` and add the tunnel-target
   # annotation → ExternalDNS auto-creates the Cloudflare CNAME (no manual DNS step).
   # The ktayl.devandre.sbs host IS the opt-in (external-dns domainFilters); the
-  # annotation makes it a CNAME-to-tunnel, not an A-record. Convention + guards:
-  # docs/dns-naming-and-externaldns.md. Companion (one-time, controller-side): a
-  # wildcard `*.ktayl.devandre.sbs` cloudflared rule + cert.
+  # annotation makes it a proxied CNAME-to-tunnel, not an A-record. Convention + guards:
+  # docs/dns-naming-and-externaldns.md. NOTE (deferred): public onboarding also needs a
+  # wildcard `*.ktayl.devandre.sbs` cloudflared rule + an edge cert — and Cloudflare's free
+  # Universal SSL does NOT cover a 2-level subdomain, so the first public org app must
+  # resolve that (ACM ~$10/mo or a 1-level name). ExternalDNS makes the record either way.
   #   ingress:
   #     host: SERVICE_NAME.ktayl.devandre.sbs
   #     annotations:
   #       external-dns.alpha.kubernetes.io/target: "bf5117ec-5986-47f0-a3ce-b96ab8854d21.cfargotunnel.com"
-  #       external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+  #       # proxied defaults to true globally (tunnel CNAMEs must be proxied) — no per-record override needed
   #   certificate:
   #     dnsNames: [SERVICE_NAME.ktayl.devandre.sbs]
   # ─────────────────────────────────────────────────────────────────────────────

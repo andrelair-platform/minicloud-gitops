@@ -25,8 +25,9 @@ This ADR fixes the two operational-maturity gaps: **one naming convention** and 
 - **Retrieva** (the RNCP cert product) keeps its **own** domain `retrieva.online` — two-layer model,
   stays separate from the IS.
 - Public exposure rides the **Cloudflare Tunnel** (id `bf5117ec-5986-47f0-a3ce-b96ab8854d21`), not a
-  public LoadBalancer IP → public records are **CNAMEs to `<tunnel-id>.cfargotunnel.com`**, DNS-only
-  (grey cloud), and each hostname needs a `cloudflared` ingress rule (origin `https://10.0.0.200`,
+  public LoadBalancer IP → public records are **proxied CNAMEs to `<tunnel-id>.cfargotunnel.com`**
+  (orange cloud — the edge connects to the tunnel; a DNS-only record would not route), and each hostname
+  needs a `cloudflared` ingress rule (origin `https://10.0.0.200`,
   `originServerName` = the internal name).
 
 ## Decision 1 — the naming convention
@@ -70,7 +71,7 @@ impossible-to-misfire:
 | `policy` | **`upsert-only`** | **never deletes** a record — worst case is an extra record, never a removal |
 | target annotation | `external-dns.alpha.kubernetes.io/target: <tunnel>.cfargotunnel.com` | required per-record so the record is a **CNAME to the tunnel**, not an A-record to the private MetalLB IP |
 | `registry` / `txtOwnerId` | `txt` / `minicloud-externaldns` | ownership TXT records so it only manages what it created |
-| `--cloudflare-proxied` | `false` (default) | tunnel CNAMEs must be **DNS-only** (grey cloud); set per-record via the annotation |
+| `--cloudflare-proxied` | **`true`** (global) | tunnel CNAMEs **must be proxied** (orange cloud) — the edge connects to the tunnel; a DNS-only record would not route |
 | provider token | Vault `secret/platform/cloudflare` `api-token` via ESO → `cloudflare-api-token` | (least-privilege dedicated token = a future improvement; noted below) |
 
 > **Why no `--label-filter`?** An earlier design used a `external-dns=enabled` label as an extra opt-in,
@@ -89,25 +90,29 @@ minicloud-app-deployment:
     host: broker.ktayl.devandre.sbs                          # the org name = the opt-in
     annotations:
       external-dns.alpha.kubernetes.io/target: "bf5117ec-5986-47f0-a3ce-b96ab8854d21.cfargotunnel.com"
-      external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+      # proxied defaults to true globally (tunnel CNAMEs must be proxied) — no per-record override
   certificate:
     dnsNames: [broker.ktayl.devandre.sbs]
 ```
-On sync, ExternalDNS creates `broker.ktayl.devandre.sbs CNAME <tunnel>.cfargotunnel.com` (DNS-only) +
+On sync, ExternalDNS creates `broker.ktayl.devandre.sbs CNAME <tunnel>.cfargotunnel.com` (proxied) +
 its ownership TXT. **On first deploy it manages nothing** (no Ingress uses a `ktayl.devandre.sbs` host
 yet) — installed, scoped, and ready; records appear as apps adopt the convention.
 
-### The companion piece — the tunnel ingress rule (NOT automated by ExternalDNS)
-ExternalDNS creates the **DNS record**; it does **not** create the `cloudflared` ingress rule that maps
-the hostname to `https://10.0.0.200`. Two ways to close that gap for the org plane:
-- **Preferred (zero-touch):** add ONE **wildcard** rule to the controller's `~/.cloudflared/config.yml`
-  — `- hostname: "*.ktayl.devandre.sbs" → service: https://10.0.0.200` with Host-based routing on
-  ingress-nginx (the org Ingress host = the public name, so no `originServerName` rewrite needed) — plus
-  a **wildcard TLS cert** `*.ktayl.devandre.sbs`. Then a new org app needs only its Ingress
-  (label + host); DNS + routing are automatic. *(Controller-side + cert = a follow-up step, tracked
-  separately — cloudflared runs as systemd on the controller, outside GitOps.)*
-- **Interim (per-host):** keep adding a per-host `cloudflared` rule as today, while ExternalDNS handles
-  the record. Removes half the manual work immediately.
+### The companion piece — tunnel rule + edge cert (DEFERRED to the first public org app)
+ExternalDNS creates the **DNS record**; it does **not** create the `cloudflared` ingress rule, and it
+cannot conjure the **Cloudflare edge TLS certificate**. Two gaps remain for a fully public org app, both
+**deliberately deferred** (2026-09-18) because **no public org app exists yet**:
+
+1. **Tunnel routing (cheap, controller-side).** Add ONE **wildcard** rule to `~/.cloudflared/config.yml`
+   — `- hostname: "*.ktayl.devandre.sbs" → service: https://10.0.0.200` (Host-based routing to
+   ingress-nginx) — plus an internal wildcard cert `*.ktayl.devandre.sbs` from ClusterIssuer
+   `minicloud-ca` for the cloudflared↔ingress-nginx leg (`noTLSVerify` anyway). Free. *(Interim: a
+   per-host `cloudflared` rule as today; ExternalDNS still makes the record.)*
+2. **Edge TLS (the real blocker — NOT free).** `*.ktayl.devandre.sbs` is a **two-level** subdomain.
+   Cloudflare's free **Universal SSL covers `devandre.sbs` + `*.devandre.sbs` (one level only)** — a
+   browser hitting `broker.ktayl.devandre.sbs` gets an edge TLS error unless we either buy **Advanced
+   Certificate Manager (~$10/mo)** or adopt a **one-level** org name (e.g. `ktayl-<app>.devandre.sbs`).
+   The first public org app resolves this (apply the `cloud-adoption.md` need-first gate then).
 
 ## Decision 3 — platform tooling defaults to Tailscale-only (security posture)
 
@@ -122,7 +127,7 @@ rule + the DNS record) to shrink attack surface. Non-blocking; tracked as a foll
 The existing ~40 hostnames are **not** renamed in a big bang (that would churn certs, Authentik redirect
 URIs, tunnel rules, and Ingress hosts). Instead:
 1. **New org apps** use `*.ktayl.devandre.sbs` + the ExternalDNS opt-in from day one.
-2. **The scaffold** (`services/_template-helm`) ships the convention + the opt-in labels/annotations.
+2. **The scaffold** (`services/_template-helm`) ships the convention + the opt-in (host + target annotation).
 3. **Existing apps** migrate opportunistically when they're next touched (or move to Tailscale-only per
    Decision 3). The portfolio (`www`/apex) and `retrieva.online` are never touched.
 
@@ -133,7 +138,8 @@ URIs, tunnel rules, and Ingress hosts). Instead:
   over time; closer to a mature enterprise platform (the reviewer/interview story).
 - **Cost/risk:** ExternalDNS is a new controller with DNS write access — mitigated to near-zero by
   `upsert-only` + `--domain-filter` (the hostname opt-in) + txt-ownership (see the guard table). Full zero-touch public
-  onboarding still needs the wildcard tunnel rule + wildcard cert (follow-up).
+  onboarding still needs the wildcard tunnel rule + an **edge cert** — the latter isn't free for a 2-level
+  subdomain (deferred to the first public org app; see *The companion piece*).
 - **Deliberately NOT done (need-first, `.claude/rules/cloud-adoption.md`):** no private DNS-zone server /
   split-horizon (`corp.ktayl.devandre.sbs` stays as a *target*, nip.io+Tailscale meets the need today);
   no Gateway API migration (ingress-nginx is fine); no Terraform-managed DNS zone yet (ExternalDNS covers
