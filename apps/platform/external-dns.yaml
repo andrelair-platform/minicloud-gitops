@@ -38,14 +38,15 @@ spec:
           txtPrefix: _extdns.
           sources:
             - ingress
-          extraArgs:
-            # Opt-in: only manage Ingresses explicitly labelled external-dns=enabled
-            # → zero blast radius; idle until an org app opts in.
-            - --label-filter=external-dns=enabled
-          # Tunnel CNAMEs must be DNS-only (grey cloud). `cloudflare-proxied` is a
-          # boolean flag that defaults to false (not proxied) — so we leave it unset
-          # here and control it per-record via the Ingress annotation
-          # external-dns.alpha.kubernetes.io/cloudflare-proxied: "false" (see the ADR).
+          # Opt-in is the HOSTNAME: an Ingress is managed only when its host is under
+          # ktayl.devandre.sbs (domainFilters) — combined with the per-record tunnel
+          # target annotation, both set via the library ingress values (host +
+          # annotations). No custom label is used because the shared library ingress
+          # emits only standard app.labels (no hook for one) and the library can't be
+          # republished from here (read-only ghcr token). Verified safe: no existing
+          # Ingress uses a ktayl.devandre.sbs host → external-dns is idle today.
+          # `cloudflare-proxied` defaults to false (DNS-only / grey cloud); it's
+          # controlled per-record via external-dns.alpha.kubernetes.io/cloudflare-proxied.
           logLevel: info
           # Gatekeeper: non-root + no-priv-esc + drop caps + seccomp + resource limits.
           securityContext:

@@ -66,29 +66,36 @@ impossible-to-misfire:
 
 | Guard | Value | Why |
 |---|---|---|
-| `--domain-filter` | `ktayl.devandre.sbs` | can only ever touch the org namespace — never the portfolio, never `retrieva.online`, never the existing flat `*.devandre.sbs` |
+| `--domain-filter` | `ktayl.devandre.sbs` | **this is the opt-in.** Can only ever touch the org namespace — never the portfolio, never `retrieva.online`, never the existing flat `*.devandre.sbs`. An app is managed only when its Ingress host is under this zone, which is a deliberate act (internal apps use nip.io). Verified: **no existing Ingress uses a `ktayl.devandre.sbs` host** → idle on deploy. |
 | `policy` | **`upsert-only`** | **never deletes** a record — worst case is an extra record, never a removal |
-| `--label-filter` | `external-dns=enabled` | **opt-in**: only Ingresses explicitly labelled are managed; every existing Ingress is ignored → zero blast radius on deploy |
+| target annotation | `external-dns.alpha.kubernetes.io/target: <tunnel>.cfargotunnel.com` | required per-record so the record is a **CNAME to the tunnel**, not an A-record to the private MetalLB IP |
 | `registry` / `txtOwnerId` | `txt` / `minicloud-externaldns` | ownership TXT records so it only manages what it created |
-| `--cloudflare-proxied` | `false` | tunnel CNAMEs must be **DNS-only** (grey cloud) |
+| `--cloudflare-proxied` | `false` (default) | tunnel CNAMEs must be **DNS-only** (grey cloud); set per-record via the annotation |
 | provider token | Vault `secret/platform/cloudflare` `api-token` via ESO → `cloudflare-api-token` | (least-privilege dedicated token = a future improvement; noted below) |
 
-**How an org app opts in** (the scaffold will carry this):
+> **Why no `--label-filter`?** An earlier design used a `external-dns=enabled` label as an extra opt-in,
+> but the shared **`minicloud-app-deployment` library ingress emits only the standard `app.labels`** (no
+> hook for a custom label) and the library can't be republished from here (read-only ghcr token). Since
+> `--domain-filter` + the deliberate `ktayl.devandre.sbs` host is already an explicit, verified-safe
+> opt-in, the label adds no safety worth a library change. Both the host and the target annotation are
+> set through the **library ingress values** the scaffold already exposes (`ingress.host` +
+> `ingress.annotations`) — no custom template needed.
+
+**How an org app opts in** (the scaffold carries this — see `services/_template-helm/helm/values-prod.yaml`):
 ```yaml
-# Ingress metadata for a public org app
-metadata:
-  labels:
-    external-dns: enabled                                   # opt into ExternalDNS
-  annotations:
-    external-dns.alpha.kubernetes.io/target: "bf5117ec-5986-47f0-a3ce-b96ab8854d21.cfargotunnel.com"
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
-spec:
-  rules:
-    - host: broker.ktayl.devandre.sbs                       # the public org name
+# wrapper-chart values (library ingress) for a public org app
+minicloud-app-deployment:
+  ingress:
+    host: broker.ktayl.devandre.sbs                          # the org name = the opt-in
+    annotations:
+      external-dns.alpha.kubernetes.io/target: "bf5117ec-5986-47f0-a3ce-b96ab8854d21.cfargotunnel.com"
+      external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+  certificate:
+    dnsNames: [broker.ktayl.devandre.sbs]
 ```
 On sync, ExternalDNS creates `broker.ktayl.devandre.sbs CNAME <tunnel>.cfargotunnel.com` (DNS-only) +
-its ownership TXT. **On first deploy it manages nothing** (no Ingress is labelled yet) — it is installed,
-scoped, and ready; records appear as apps adopt the convention.
+its ownership TXT. **On first deploy it manages nothing** (no Ingress uses a `ktayl.devandre.sbs` host
+yet) — installed, scoped, and ready; records appear as apps adopt the convention.
 
 ### The companion piece — the tunnel ingress rule (NOT automated by ExternalDNS)
 ExternalDNS creates the **DNS record**; it does **not** create the `cloudflared` ingress rule that maps
@@ -125,7 +132,7 @@ URIs, tunnel rules, and Ingress hosts). Instead:
   apps; the portfolio/org boundary is enforced by tooling, not discipline; smaller public attack surface
   over time; closer to a mature enterprise platform (the reviewer/interview story).
 - **Cost/risk:** ExternalDNS is a new controller with DNS write access — mitigated to near-zero by
-  `upsert-only` + `--domain-filter` + label opt-in (see the guard table). Full zero-touch public
+  `upsert-only` + `--domain-filter` (the hostname opt-in) + txt-ownership (see the guard table). Full zero-touch public
   onboarding still needs the wildcard tunnel rule + wildcard cert (follow-up).
 - **Deliberately NOT done (need-first, `.claude/rules/cloud-adoption.md`):** no private DNS-zone server /
   split-horizon (`corp.ktayl.devandre.sbs` stays as a *target*, nip.io+Tailscale meets the need today);
