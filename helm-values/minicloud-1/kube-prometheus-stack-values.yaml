@@ -93,8 +93,10 @@ prometheus:
         secretName: prometheus-tls
   prometheusSpec:
     priorityClassName: minicloud-platform
+    # Off the control-plane node (set-hog) → fast-skunk worker (SPOF #1189; holds a
+    # healthy replica of the WAL volume → fast attach). Expect a WAL-replay gap on move.
     nodeSelector:
-      kubernetes.io/hostname: set-hog
+      kubernetes.io/hostname: fast-skunk
     # Gap E: store exemplars (trace IDs embedded in histogram observations)
     # so Grafana can render scatter-plot dots with clickable trace IDs.
     enableFeatures:
@@ -294,8 +296,10 @@ alertmanager:
       - /etc/alertmanager/config/*.tmpl
   alertmanagerSpec:
     priorityClassName: minicloud-platform
+    # Off the control-plane node (set-hog) → star-kitten worker (SPOF #1189; holds a
+    # healthy replica of the alertmanager volume → fast attach).
     nodeSelector:
-      kubernetes.io/hostname: set-hog
+      kubernetes.io/hostname: star-kitten
     # Mount the alertmanager-slack k8s Secret (synced from Vault via ESO) so
     # the slack-webhook-url file is available at
     # /etc/alertmanager/secrets/alertmanager-slack/slack-webhook-url
