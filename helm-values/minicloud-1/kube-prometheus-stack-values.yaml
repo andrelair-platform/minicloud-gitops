@@ -93,10 +93,12 @@ prometheus:
         secretName: prometheus-tls
   prometheusSpec:
     priorityClassName: minicloud-platform
-    # Off the control-plane node (set-hog) → fast-skunk worker (SPOF #1189; holds a
-    # healthy replica of the WAL volume → fast attach). Expect a WAL-replay gap on move.
+    # REVERTED to set-hog (2026-09-18): moving the large active WAL volume triggered a
+    # Longhorn detaching/faulted wedge (#1186 class) → monitoring outage. Prometheus's
+    # big active volume is too fragile to migrate outside a real maintenance window with
+    # Longhorn node-down handling hardened first. Stays on set-hog (SPOF accepted, #1189).
     nodeSelector:
-      kubernetes.io/hostname: fast-skunk
+      kubernetes.io/hostname: set-hog
     # Gap E: store exemplars (trace IDs embedded in histogram observations)
     # so Grafana can render scatter-plot dots with clickable trace IDs.
     enableFeatures:
