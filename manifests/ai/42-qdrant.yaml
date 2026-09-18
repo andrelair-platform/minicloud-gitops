@@ -41,8 +41,10 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
-      nodeSelector:
-        kubernetes.io/hostname: fast-skunk
+      # No node pin: qdrant uses Longhorn (network-attached, portable), so there is no
+      # locality reason to pin it. A hard fast-skunk nodeSelector made it a SPOF — when
+      # fast-skunk's Longhorn attach wedged (2026-09-18), qdrant could neither run nor
+      # move, taking RAG ingestion down. Schedule on any available node.
       containers:
         - name: qdrant
           image: qdrant/qdrant:v1.11.0
