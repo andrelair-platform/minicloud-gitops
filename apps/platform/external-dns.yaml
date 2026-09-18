@@ -1,0 +1,94 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  sources:
+    # 1) ExternalDNS itself (kubernetes-sigs chart). Cloudflare provider, publishing
+    #    CNAMEs to the Cloudflare Tunnel for the org namespace only. Full design +
+    #    rationale: docs/dns-naming-and-externaldns.md.
+    - repoURL: https://kubernetes-sigs.github.io/external-dns/
+      chart: external-dns
+      targetRevision: 1.22.0
+      helm:
+        releaseName: external-dns
+        valuesObject:
+          provider:
+            name: cloudflare
+          # CF API token from the ESO-rendered secret (source 2) — never in git.
+          env:
+            - name: CF_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-api-token
+                  key: api-token
+          # ---- fail-safe scoping (see the ADR guard table) ----
+          # Can ONLY ever touch the org namespace — never the portfolio (www/apex
+          # devandre.sbs) nor retrieva.online nor the existing flat *.devandre.sbs.
+          domainFilters:
+            - ktayl.devandre.sbs
+          # NEVER delete a record (worst case: an extra record, never a removal).
+          policy: upsert-only
+          registry: txt
+          txtOwnerId: minicloud-externaldns
+          txtPrefix: _extdns.
+          sources:
+            - ingress
+          extraArgs:
+            # Opt-in: only manage Ingresses explicitly labelled external-dns=enabled
+            # → zero blast radius; idle until an org app opts in.
+            - --label-filter=external-dns=enabled
+            # Tunnel CNAMEs must be DNS-only (grey cloud), not Cloudflare-proxied.
+            - --cloudflare-proxied=false
+          logLevel: info
+          # Gatekeeper: non-root + no-priv-esc + drop caps + seccomp + resource limits.
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+    # 2) The ESO ExternalSecret (+ namespace) that renders the CF token.
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      path: manifests/external-dns
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    # ESO webhook injects these defaults at creation → avoid permanent OutOfSync.
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
