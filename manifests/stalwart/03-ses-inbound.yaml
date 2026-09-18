@@ -67,24 +67,40 @@ data:
     LOCAL_DOMAINS = {d.strip().lower()
                      for d in os.environ.get('LOCAL_DOMAINS', 'devandre.sbs').split(',')
                      if d.strip()}
+    # On a transient 4xx (Stalwart `452 Rate limit exceeded`) back off HARD so the
+    # server's rate window can drain — knocking every few seconds keeps the bucket
+    # saturated forever (the 2026-09-18 backlog stall). This self-paces delivery to
+    # under Stalwart's limit instead of storming it.
+    RATE_LIMIT_BACKOFF = int(os.environ.get('RATE_LIMIT_BACKOFF', '60'))
 
     sqs = boto3.client('sqs', region_name=REGION)
     s3  = boto3.client('s3',  region_name=REGION)
+
+    class RateLimited(Exception):
+        """All local recipients transiently refused (4xx) → retry after a long backoff."""
 
     def is_local(addr):
         return addr.rsplit('@', 1)[-1].lower() in LOCAL_DOMAINS
 
     def inject(raw_bytes, mail_from, rcpt_tos):
-        with smtplib.SMTP(STALWART, SMTP_PORT, timeout=30) as smtp:
-            smtp.ehlo('ses-inbound.mail.svc.cluster.local')
-            # sendmail raises SMTPRecipientsRefused only if ALL recipients are
-            # refused (→ retried, not deleted). If some succeed it returns the
-            # refused ones; a transient 4xx among them → raise to retry later.
-            refused = smtp.sendmail(mail_from, rcpt_tos, raw_bytes)
+        try:
+            with smtplib.SMTP(STALWART, SMTP_PORT, timeout=30) as smtp:
+                smtp.ehlo('ses-inbound.mail.svc.cluster.local')
+                # If ALL recipients are refused, sendmail raises SMTPRecipientsRefused
+                # (no DATA sent). If some succeed it returns the refused ones.
+                refused = smtp.sendmail(mail_from, rcpt_tos, raw_bytes)
+        except smtplib.SMTPRecipientsRefused as e:
+            refused = e.recipients
+            if any(400 <= code < 500 for code, _ in refused.values()):
+                # transient (rate limit) → retry later, do NOT delete
+                raise RateLimited(f'all recipients transiently refused: {refused}')
+            # all permanent (e.g. 550 mailbox does not exist) → nothing to do; drop
+            # so it is not retried forever.
+            log.warning('All recipients permanently refused (dropping): %s', refused)
+            return
         transient = {r: v for r, v in refused.items() if 400 <= v[0] < 500}
         if transient:
-            raise smtplib.SMTPResponseException(
-                next(iter(transient.values()))[0], f'transient refusal: {transient}')
+            raise RateLimited(f'transient refusal after partial delivery: {transient}')
         if refused:
             log.warning('Permanently refused (dropped): %s', refused)
         log.info('Delivered %s → %s', mail_from,
@@ -145,9 +161,15 @@ data:
                             QueueUrl=SQS_URL,
                             ReceiptHandle=msg['ReceiptHandle'],
                         )
+                    except RateLimited as e:
+                        # Stalwart rate-limited us → give its window time to drain
+                        # (leave the message on the queue; it retries next poll).
+                        log.warning('Rate limited, backing off %ss: %s',
+                                    RATE_LIMIT_BACKOFF, e)
+                        time.sleep(RATE_LIMIT_BACKOFF)
                     except Exception as e:
-                        # Back off so a transient refusal (rate limit / Stalwart
-                        # restart) can't become a tight hammering loop.
+                        # Back off so any other transient error can't become a
+                        # tight hammering loop.
                         log.error('Failed to process message: %s', e)
                         time.sleep(3)
             except Exception as e:
@@ -178,8 +200,9 @@ spec:
         backstage.io/kubernetes-id: ses-inbound
       annotations:
         # Bump when injector.py changes so ArgoCD sync rolls the pod (the running
-        # process does not re-read the mounted script). v2 = local-recipient filter.
-        ses-inbound/injector-version: "2"
+        # process does not re-read the mounted script). v2 = local-recipient filter;
+        # v3 = rate-limit-aware backoff + drop permanently-refused messages.
+        ses-inbound/injector-version: "3"
     spec:
       securityContext:
         runAsNonRoot: true
