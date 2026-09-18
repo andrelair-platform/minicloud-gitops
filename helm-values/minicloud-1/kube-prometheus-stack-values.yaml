@@ -249,7 +249,7 @@ alertmanager:
       # so it is NEVER in this public repo; the username is an AWS access-key ID (non-secret).
       smtp_smarthost: email-smtp.eu-west-1.amazonaws.com:587
       smtp_from: alertmanager@devandre.sbs
-      smtp_auth_username: AKIAZDNTLNEA6EFN6LKW
+      smtp_auth_username: AKIAZDNTLNEAX5O3VHQS  # platform/mail SES cred (WORKING); platform/ses AKIA…6EFN6LKW is invalid (535, 2026-09-18)
       smtp_auth_password_file: /etc/alertmanager/secrets/alertmanager-ses/password
       smtp_require_tls: true
     receivers:
