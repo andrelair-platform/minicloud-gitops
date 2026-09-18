@@ -114,13 +114,26 @@ cannot conjure the **Cloudflare edge TLS certificate**. Two gaps remain for a fu
    Certificate Manager (~$10/mo)** or adopt a **one-level** org name (e.g. `ktayl-<app>.devandre.sbs`).
    The first public org app resolves this (apply the `cloud-adoption.md` need-first gate then).
 
-## Decision 3 — platform tooling defaults to Tailscale-only (security posture)
+## Decision 3 — three access tiers (Tailscale vs public+SSO), by *who needs it*
 
-The enterprise model keeps ops tooling on private DNS. We currently expose `argocd`/`grafana`/`vault`/…
-publicly on `*.devandre.sbs` (behind Authentik SSO) for solo-operator convenience. **Going forward the
-default is Tailscale-only** (`*.10.0.0.200.nip.io`); a public record for a platform tool requires a
-stated need. Existing public platform records may be retired opportunistically (drop the `cloudflared`
-rule + the DNS record) to shrink attack surface. Non-blocking; tracked as a follow-up.
+The access decision is **not** "internal vs external" — every public app is already SSO-gated. It is
+*who* needs to reach it and *from where*. **Tailscale** is a private mesh (enrolled devices, any
+network); **public+Cloudflare** is any browser, gated by **Authentik SSO + MFA**. Because the org is
+**BYOD / browser-first** (`project-governance.md` — no managed endpoints), forcing employees onto
+Tailscale for daily apps would fight that model. So three tiers:
+
+| Tier | Reached by | Apps | Rationale |
+|---|---|---|---|
+| **① Tailscale-only** | operator/admins (enrolled devices) | argocd, vault, grafana, harbor, backstage, temporal, nats, litellm, langfuse, flowise, homer | control-plane/infra — **no employee ever needs these**; public = pure attack surface. Reachable via `*.10.0.0.200.nip.io` over Tailscale only. |
+| **② Public + SSO** | employees, any device (BYOD) | chat, mail, cloud, erp, plane, n8n, onlyoffice, meet, vault-pw, matrix, element | daily business apps — browser-first over Cloudflare Tunnel + Authentik SSO + MFA. |
+| **③ Public, external-facing** | anyone outside the org | demo, auth (IdP), retrieva.online, sign (external signers) | must reach people outside the org. |
+
+**Rule:** an infra tool (tier ①) is **not** added to the tunnel config without a stated reason —
+identity-as-perimeter (SSO+MFA) is the control if one ever is. `controller.devandre.sbs` (SSH) stays
+public as the **break-glass** (recover when Tailscale is down). Applied 2026-09-18: tier ① removed from
+the public tunnel config (they keep their nip.io/Tailscale door — verified reachable first); the dead
+`intranet`/`wiki`/`dev.*` routes were cleaned up (they backed no service — intranet ≈ Homer/Nextcloud
+Dashboard, wiki ≈ Nextcloud Collectives/Backstage TechDocs).
 
 ## Migration (phased — no rip-and-replace)
 
