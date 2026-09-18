@@ -24,6 +24,14 @@ consider a story/epic/incident "done" until its documentation reflects reality.
 The org-wide docs site is a **map, not a library** — summary + pointers to the
 detailed docs that live with the code (see `conventions.md`).
 
+**Mandatory pairing — a repo ADR is not "done" without its org-site map entry.** An ADR / detailed
+design in `<repo>/docs/` (e.g. `minicloud-gitops/docs/*.md`) MUST be paired with an **overview + pointer
+page on the org Docusaurus** (`developer-platform/<slug>` or the relevant section) that summarises it and
+links to the ADR's **GitHub blob URL**. The ADR is the source of truth (versioned + CODEOWNERS-gated with
+the code); the org-site page is how it's discovered. Do **not** move the ADR onto Docusaurus, and do
+**not** leave it without a pointer. Reference pattern: `developer-platform/delivery-workflow` →
+`docs/helm-golden-path.md`; `developer-platform/dns-naming-externaldns` → `docs/dns-naming-and-externaldns.md`.
+
 ## What a good technical doc contains
 
 1. **What was done** — the capability/fix in one paragraph.
@@ -42,7 +50,9 @@ detailed docs that live with the code (see `conventions.md`).
 - **Build-check before merge:** `npm run build` on the docs site fails on broken
   internal links — always run it (validates `en` + `fr`).
 - **Branch-protected repos:** docs repos main is protected → land via PR.
-- **Link, don't duplicate:** the overview page points to the detailed in-repo docs.
+- **Link, don't duplicate — and always link:** the org-site overview points to the detailed in-repo
+  doc; never mirror the ADR body onto the org site, and never leave a repo ADR without its org-site
+  pointer (the *Mandatory pairing* rule above).
 
 ## Reference implementation
 
