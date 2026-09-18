@@ -58,15 +58,37 @@ data:
     REGION      = os.environ.get('AWS_DEFAULT_REGION', 'eu-west-1')
     STALWART    = os.environ.get('STALWART_HOST', 'stalwart.mail.svc.cluster.local')
     SMTP_PORT   = int(os.environ.get('STALWART_PORT', '25'))
+    # Only inject recipients whose domain Stalwart is authoritative for. SES's
+    # `destination` lists EVERY To/Cc address, including external ones (e.g. gmail)
+    # that SES already delivered directly — relaying those via Stalwart earns a
+    # `550 Relay not allowed` on every attempt, and the retry loop then trips
+    # Stalwart's rate limiter (`452`) so even the local recipient stops delivering.
+    # Filtering to local domains eliminates that self-inflicted storm.
+    LOCAL_DOMAINS = {d.strip().lower()
+                     for d in os.environ.get('LOCAL_DOMAINS', 'devandre.sbs').split(',')
+                     if d.strip()}
 
     sqs = boto3.client('sqs', region_name=REGION)
     s3  = boto3.client('s3',  region_name=REGION)
 
+    def is_local(addr):
+        return addr.rsplit('@', 1)[-1].lower() in LOCAL_DOMAINS
+
     def inject(raw_bytes, mail_from, rcpt_tos):
         with smtplib.SMTP(STALWART, SMTP_PORT, timeout=30) as smtp:
             smtp.ehlo('ses-inbound.mail.svc.cluster.local')
-            smtp.sendmail(mail_from, rcpt_tos, raw_bytes)
-        log.info('Delivered %s → %s', mail_from, rcpt_tos)
+            # sendmail raises SMTPRecipientsRefused only if ALL recipients are
+            # refused (→ retried, not deleted). If some succeed it returns the
+            # refused ones; a transient 4xx among them → raise to retry later.
+            refused = smtp.sendmail(mail_from, rcpt_tos, raw_bytes)
+        transient = {r: v for r, v in refused.items() if 400 <= v[0] < 500}
+        if transient:
+            raise smtplib.SMTPResponseException(
+                next(iter(transient.values()))[0], f'transient refusal: {transient}')
+        if refused:
+            log.warning('Permanently refused (dropped): %s', refused)
+        log.info('Delivered %s → %s', mail_from,
+                 [r for r in rcpt_tos if r not in refused])
 
     def process(msg):
         body = json.loads(msg['Body'])
@@ -80,7 +102,7 @@ data:
         # key is the inbound messageId assigned by SES, stored at {prefix}{messageId}.
         action    = receipt.get('action', {})
         mail_from = mail.get('source', '')
-        rcpt_tos  = mail.get('destination', [])
+        rcpt_tos  = [r for r in mail.get('destination', []) if is_local(r)]
 
         # Try objectKey first (in case rule has only S3 action sending to SNS),
         # then fall back to mail.messageId (standard dual S3+SNS action setup).
@@ -88,6 +110,13 @@ data:
 
         if not s3_key or s3_key == 'inbound/':
             log.warning('No S3 key in notification, skipping. action=%s', action)
+            return
+
+        if not rcpt_tos:
+            # Nothing Stalwart is authoritative for (external-only recipients that
+            # SES already delivered). Clean up so it is not retried forever.
+            log.info('No local recipients in %s; dropping S3 object.', s3_key)
+            s3.delete_object(Bucket=S3_BUCKET, Key=s3_key)
             return
 
         log.info('Fetching s3://%s/%s', S3_BUCKET, s3_key)
@@ -100,7 +129,8 @@ data:
         s3.delete_object(Bucket=S3_BUCKET, Key=s3_key)
 
     def main():
-        log.info('SES inbound injector started — queue: %s', SQS_URL)
+        log.info('SES inbound injector started — queue: %s (local domains: %s)',
+                 SQS_URL, ','.join(sorted(LOCAL_DOMAINS)))
         while True:
             try:
                 resp = sqs.receive_message(
@@ -116,7 +146,10 @@ data:
                             ReceiptHandle=msg['ReceiptHandle'],
                         )
                     except Exception as e:
+                        # Back off so a transient refusal (rate limit / Stalwart
+                        # restart) can't become a tight hammering loop.
                         log.error('Failed to process message: %s', e)
+                        time.sleep(3)
             except Exception as e:
                 log.error('SQS poll error: %s', e)
                 time.sleep(5)
@@ -143,6 +176,10 @@ spec:
       labels:
         app: ses-inbound
         backstage.io/kubernetes-id: ses-inbound
+      annotations:
+        # Bump when injector.py changes so ArgoCD sync rolls the pod (the running
+        # process does not re-read the mounted script). v2 = local-recipient filter.
+        ses-inbound/injector-version: "2"
     spec:
       securityContext:
         runAsNonRoot: true
@@ -198,6 +235,8 @@ spec:
               value: stalwart.mail.svc.cluster.local
             - name: STALWART_PORT
               value: "25"
+            - name: LOCAL_DOMAINS
+              value: devandre.sbs
           volumeMounts:
             - name: script
               mountPath: /scripts
