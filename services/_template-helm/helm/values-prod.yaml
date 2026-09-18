@@ -13,5 +13,21 @@ minicloud-app-deployment:
     host: SERVICE_NAME.10.0.0.200.nip.io
   certificate:
     dnsNames: [SERVICE_NAME.10.0.0.200.nip.io]
+  # ── PUBLIC ORG APP? (ExternalDNS opt-in) ─────────────────────────────────────
+  # DEFAULT above = internal (Tailscale-only nip.io). If this is a *public* org app,
+  # switch to the org namespace `<app>.ktayl.devandre.sbs` and add the tunnel-target
+  # annotation → ExternalDNS auto-creates the Cloudflare CNAME (no manual DNS step).
+  # The ktayl.devandre.sbs host IS the opt-in (external-dns domainFilters); the
+  # annotation makes it a CNAME-to-tunnel, not an A-record. Convention + guards:
+  # docs/dns-naming-and-externaldns.md. Companion (one-time, controller-side): a
+  # wildcard `*.ktayl.devandre.sbs` cloudflared rule + cert.
+  #   ingress:
+  #     host: SERVICE_NAME.ktayl.devandre.sbs
+  #     annotations:
+  #       external-dns.alpha.kubernetes.io/target: "bf5117ec-5986-47f0-a3ce-b96ab8854d21.cfargotunnel.com"
+  #       external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+  #   certificate:
+  #     dnsNames: [SERVICE_NAME.ktayl.devandre.sbs]
+  # ─────────────────────────────────────────────────────────────────────────────
   # Migrating an existing kustomize service? match its live selector for a zero-downtime in-place flip:
   # selectorLabels: { app: SERVICE_NAME }

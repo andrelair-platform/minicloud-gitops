@@ -17,6 +17,19 @@ multi-source `$values`, no separate satellites source. See `docs/helm-golden-pat
 5. Copy `apps/*` → `apps/workloads/<svc>-{dev,prod}.yaml`; keep `helm.releaseName: <svc>`.
 6. Add the namespaces to the AppProject. Kargo promotion edits `minicloud-app-deployment.image.tag`.
 
+## DNS — internal (default) vs public org app
+Follow the one convention in `docs/dns-naming-and-externaldns.md`. **Env is a subdomain PREFIX, prod is
+the clean name** (dev = `<svc>.dev.<zone>`, prod = `<svc>.<zone>`).
+- **Internal (default in the values):** Tailscale-only `<svc>.dev.10.0.0.200.nip.io` / `<svc>.10.0.0.200.nip.io`.
+  Nothing else to do — nip.io self-resolves.
+- **Public org app:** move onto the org namespace **`<svc>.ktayl.devandre.sbs`** and add the ExternalDNS
+  opt-in (see the *PUBLIC ORG APP* block in `values-prod.yaml`). The `ktayl.devandre.sbs` host **is** the
+  opt-in (ExternalDNS `domainFilters`); the `external-dns.alpha.kubernetes.io/target` annotation makes it
+  a CNAME to the Cloudflare Tunnel → the DNS record is created automatically (no manual
+  `cloudflared tunnel route dns`). **Never** use `www`/apex `devandre.sbs` (that's the personal
+  portfolio) or `retrieva.online` (separate product). Companion one-time step for zero-touch public
+  onboarding: a wildcard `*.ktayl.devandre.sbs` cloudflared rule + cert (controller-side).
+
 ## Gotchas (proven converting 5 services — see gitops.md for the full list)
 - **`helm.releaseName` is mandatory** — the library uses it for `fullname`; without it the workload
   takes the ArgoCD app name.

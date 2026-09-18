@@ -6,6 +6,13 @@ minicloud-app-deployment:
   workload:
     replicas: 1
   ingress:
-    host: SERVICE_NAME-dev.10.0.0.200.nip.io
+    # Env is a subdomain PREFIX, prod = the clean name (see docs/dns-naming-and-externaldns.md).
+    host: SERVICE_NAME.dev.10.0.0.200.nip.io
   certificate:
-    dnsNames: [SERVICE_NAME-dev.10.0.0.200.nip.io]
+    dnsNames: [SERVICE_NAME.dev.10.0.0.200.nip.io]
+  # Public org app whose dev env is also externally reachable? use the org namespace
+  # + the ExternalDNS opt-in (see the PUBLIC ORG APP block in values-prod.yaml):
+  #   ingress:
+  #     host: SERVICE_NAME.dev.ktayl.devandre.sbs
+  #     annotations:
+  #       external-dns.alpha.kubernetes.io/target: "bf5117ec-5986-47f0-a3ce-b96ab8854d21.cfargotunnel.com"
