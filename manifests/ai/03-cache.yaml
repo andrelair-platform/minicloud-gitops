@@ -34,6 +34,14 @@ spec:
             - 400mb
             - --maxmemory-policy
             - allkeys-lru
+            # Pure in-memory cache — disable RDB + AOF so /data (emptyDir) is never
+            # written. The semantic cache is disposable (LRU, repopulates), so it needs
+            # no persistence; this + emptyDir removes the node-pin that stranded it
+            # Pending after the swift-mac/star-kitten outage (#1147).
+            - --save
+            - ""
+            - --appendonly
+            - "no"
           ports:
             - containerPort: 6379
               name: redis
@@ -57,18 +65,14 @@ spec:
               command: ["valkey-cli", "ping"]
             initialDelaySeconds: 5
             periodSeconds: 10
-  volumeClaimTemplates:
-    - apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: data
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        storageClassName: local-path
-        volumeMode: Filesystem
-        resources:
-          requests:
-            storage: 1Gi
+      # emptyDir, not a local-path PVC: a disposable cache must reschedule on ANY
+      # node. The old local-path PVC pinned the pod to one node → Pending whenever
+      # that node was down/cordoned (#1147). Capped so it can't fill node ephemeral
+      # storage (valkey itself is memory-capped at 400mb and no longer writes to disk).
+      volumes:
+        - name: data
+          emptyDir:
+            sizeLimit: 512Mi
 ---
 apiVersion: v1
 kind: Service
