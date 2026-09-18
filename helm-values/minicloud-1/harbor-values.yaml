@@ -46,8 +46,8 @@ core:
   priorityClassName: minicloud-critical
   existingSecret: harbor-stable-secrets
   existingSecretKey: secret
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
+  # No node pin — harbor-core is stateless (config from secret + DB), so it reschedules
+  # to any healthy node on failure. (registry/jobservice/trivy keep pins: they own PVCs.)
 
 updateStrategy:
   type: Recreate

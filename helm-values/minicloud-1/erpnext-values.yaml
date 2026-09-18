@@ -269,19 +269,17 @@ mariadb-sts:
 # Valkey (Redis fork) for cache and queue — enabled by default, keep bundled
 # valkey-io/valkey-helm chart uses flat structure (no 'primary' key). Probes are
 # hardcoded in the chart template and cannot be overridden via values.
-# Move both pods off fast-heron to reduce blast radius of probe storms.
+# No node pins — the valkey cache/queue are stateless (no PVC), so they reschedule to
+# any healthy node on failure (auto-failover; SPOF hardening). Previously pinned to
+# fast-skunk to dodge fast-heron probe storms; failover resilience takes precedence.
 valkey-cache:
   enabled: true
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits:   { cpu: 200m, memory: 256Mi }
 
 valkey-queue:
   enabled: true
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits:   { cpu: 200m, memory: 256Mi }
