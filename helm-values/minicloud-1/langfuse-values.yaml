@@ -216,8 +216,10 @@ redis:
     existingSecretPasswordKey: redis-password
     enabled: true
   primary:
+    # Off the control-plane node (set-hog) → swift-mac worker (SPOF hardening #1189;
+    # holds a healthy replica of the redis Longhorn volume → fast attach).
     nodeSelector:
-      kubernetes.io/hostname: set-hog
+      kubernetes.io/hostname: swift-mac
     extraFlags:
       - "--maxmemory-policy noeviction"
     # Default exec ping probes: liveness 6s timeout/5s period, readiness 2s/5s.

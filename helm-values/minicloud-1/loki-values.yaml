@@ -68,8 +68,10 @@ read:
 resultsCache:
   enabled: false
 singleBinary:
+  # Off the control-plane node (set-hog) → loving-gannet worker (SPOF hardening #1189;
+  # holds a healthy replica of loki's Longhorn volume → fast attach).
   nodeSelector:
-    kubernetes.io/hostname: set-hog
+    kubernetes.io/hostname: loving-gannet
   persistence:
     accessModes:
     - ReadWriteOnce
