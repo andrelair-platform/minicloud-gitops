@@ -10,6 +10,10 @@ data:
     subtitle: "Company Portal — GitOps via ArgoCD · 6-node bare-metal k3s"
     header: true
     footer: false
+    # Custom CSS — force the access-tier tag badge ALWAYS visible (Homer's theme
+    # hides the tag text until card hover). See the custom.css key in this ConfigMap.
+    stylesheet:
+      - "assets/custom.css"
     # Access-tier legend — every service is tagged by how it's reached:
     #   🟢 Public   (green tag)  = reachable from anywhere (public URL + SSO login)
     #   🟠 Tailscale (amber tag) = internal operator tool, requires the Tailscale VPN
@@ -252,3 +256,14 @@ data:
         tagstyle: is-success
         url: https://demo.devandre.sbs
         target: _blank
+  # Force the access-tier tag badge ALWAYS visible. Homer's theme collapses the
+  # tag to a sliver and hides its text until card hover; override to the hovered
+  # state permanently so Public / Tailscale is readable at a glance.
+  custom.css: |
+    body #main-section .card .tag {
+      width: auto !important;
+      padding: 0 0.6em !important;
+    }
+    body #main-section .card .tag .tag-text {
+      display: block !important;
+    }
