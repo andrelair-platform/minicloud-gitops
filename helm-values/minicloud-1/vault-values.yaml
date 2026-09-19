@@ -110,13 +110,9 @@ server:
       - host: vault.10.0.0.200.nip.io
         paths:
           - /
-      - host: vault.devandre.sbs
-        paths:
-          - /
     tls:
       - hosts:
           - vault.10.0.0.200.nip.io
-          - vault.devandre.sbs
         secretName: vault-tls
 
 ui:

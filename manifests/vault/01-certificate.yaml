@@ -17,4 +17,3 @@ spec:
     size: 256
   dnsNames:
     - vault.10.0.0.200.nip.io
-    - vault.devandre.sbs

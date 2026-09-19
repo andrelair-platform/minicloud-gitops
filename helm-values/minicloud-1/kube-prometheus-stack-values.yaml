@@ -347,7 +347,10 @@ grafana:
   # Local admin account (~/.grafana-admin) preserved as emergency fallback.
   grafana.ini:
     server:
-      root_url: https://grafana.devandre.sbs
+      # Grafana is Tailscale-only (operator tool, gitops#1180) — root_url MUST be
+      # the internal host or the OIDC login callback redirects to the removed
+      # public route and 404s (same class as the Backstage baseUrl bug).
+      root_url: https://grafana.10.0.0.200.nip.io
     auth.anonymous:
       enabled: true
       org_name: Main Org.
@@ -423,7 +426,6 @@ grafana:
     annotations:
     hosts:
       - grafana.10.0.0.200.nip.io
-      - grafana.devandre.sbs
     path: /
     pathType: Prefix
     tls:

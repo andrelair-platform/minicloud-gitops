@@ -11,4 +11,3 @@ spec:
     kind: ClusterIssuer
   dnsNames:
     - temporal.10.0.0.200.nip.io
-    - temporal.devandre.sbs

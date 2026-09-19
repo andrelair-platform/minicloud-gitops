@@ -36,20 +36,9 @@ spec:
   tls:
     - hosts:
         - temporal.10.0.0.200.nip.io
-        - temporal.devandre.sbs
       secretName: temporal-tls
   rules:
     - host: temporal.10.0.0.200.nip.io
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: temporal-web
-                port:
-                  number: 8080
-    - host: temporal.devandre.sbs
       http:
         paths:
           - path: /

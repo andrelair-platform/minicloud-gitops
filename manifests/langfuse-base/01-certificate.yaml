@@ -7,7 +7,6 @@ metadata:
 spec:
   dnsNames:
     - langfuse.10.0.0.200.nip.io
-    - langfuse.devandre.sbs
   duration: 2160h
   renewBefore: 720h
   issuerRef:

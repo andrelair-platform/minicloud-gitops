@@ -50,7 +50,7 @@ spec:
               a subscriber cannot keep up with message throughput — NATS will drop messages.
               Check minicloud-plane logs for NATS consumer backlog:
                 kubectl logs -n minicloud-plane-dev deploy/minicloud-plane --tail=50
-              Check NATS monitor: https://nats.devandre.sbs/subsz
+              Check NATS monitor: https://nats.10.0.0.200.nip.io/subsz
 
         - alert: NATSJetStreamAPIErrors
           expr: increase(nats_varz_jetstream_stats_api_errors[5m]) > 0
@@ -62,7 +62,7 @@ spec:
             description: |
               NATS JetStream API returned {{ $value | printf "%.0f" }} error(s) in the last 5m.
               This may indicate stream/consumer configuration issues or resource exhaustion.
-              Check NATS monitor: https://nats.devandre.sbs/jsz
+              Check NATS monitor: https://nats.10.0.0.200.nip.io/jsz
 
         - alert: NATSStaleConnections
           expr: increase(nats_varz_stale_connections[5m]) > 0

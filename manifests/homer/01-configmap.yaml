@@ -51,7 +51,7 @@ data:
         icon: fas fa-anchor
         subtitle: "Sovereign container registry — proxy caches + library project — OIDC via Authentik"
         tag: SSO
-        url: https://harbor.devandre.sbs
+        url: https://harbor.10.0.0.200.nip.io
         target: _blank
       - name: MinIO
         icon: fas fa-database
@@ -72,7 +72,7 @@ data:
         icon: fas fa-chart-bar
         subtitle: "Dashboards & metrics visualization — OIDC via Authentik"
         tag: SSO
-        url: https://grafana.devandre.sbs
+        url: https://grafana.10.0.0.200.nip.io
         target: _blank
       - name: Prometheus
         icon: fas fa-fire
@@ -111,7 +111,7 @@ data:
         icon: fas fa-lock
         subtitle: "Secrets management — HashiCorp Vault, AWS KMS auto-unseal, ESO sync"
         tag: live
-        url: https://vault.devandre.sbs
+        url: https://vault.10.0.0.200.nip.io
         target: _blank
       - name: Vaultwarden
         icon: fas fa-user-shield
@@ -126,13 +126,13 @@ data:
         icon: fas fa-sync
         subtitle: "GitOps continuous reconciliation — all cluster state from git — OIDC via Authentik"
         tag: SSO
-        url: https://argocd.devandre.sbs
+        url: https://argocd.10.0.0.200.nip.io
         target: _blank
       - name: Backstage
         icon: fas fa-th-large
         subtitle: "Internal Developer Portal — catalog, API docs, Tech Radar, Software Templates — OIDC via Authentik"
         tag: SSO
-        url: https://backstage.devandre.sbs
+        url: https://backstage.10.0.0.200.nip.io
         target: _blank
       - name: Plane
         icon: fas fa-tasks
@@ -144,7 +144,7 @@ data:
         icon: fas fa-bolt
         subtitle: "Message broker — 3-replica JetStream HA, KEDA event-driven autoscaling"
         tag: live
-        url: https://nats.devandre.sbs
+        url: https://nats.10.0.0.200.nip.io
         target: _blank
     - name: AI / ML
       icon: fas fa-robot
@@ -159,13 +159,13 @@ data:
         icon: fas fa-sliders-h
         subtitle: "AI Gateway admin — virtual keys, budget governance, cloud + local provider routing"
         tag: admin
-        url: https://litellm.devandre.sbs/ui
+        url: https://litellm.10.0.0.200.nip.io/ui
         target: _blank
       - name: Langfuse
         icon: fas fa-chart-line
         subtitle: "LLM observability — traces, scores, prompt versioning, eval datasets"
         tag: AI
-        url: https://langfuse.devandre.sbs
+        url: https://langfuse.10.0.0.200.nip.io
         target: _blank
     - name: Collaboration & Showcase
       icon: fas fa-cubes

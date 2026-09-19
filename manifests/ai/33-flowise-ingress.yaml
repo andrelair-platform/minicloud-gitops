@@ -1,10 +1,7 @@
 ---
-# Internal + public TLS certificate for Flowise.
-# After merge, add the Cloudflare DNS route:
-#   ssh controller "~/.local/bin/cloudflared tunnel route dns minicloud flowise.devandre.sbs"
-# Then create the Authentik application in the Authentik UI:
-#   Provider type: Proxy (Forward auth single application)
-#   External host: https://flowise.devandre.sbs
+# Internal TLS certificate for Flowise.
+# Flowise is an operator tool → Tailscale-only (gitops#1180); the public
+# flowise.devandre.sbs route was removed. Reachable at flowise.10.0.0.200.nip.io.
 #   Internal host: http://flowise.ai.svc.cluster.local:3000
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -18,7 +15,6 @@ spec:
     kind: ClusterIssuer
   dnsNames:
     - flowise.10.0.0.200.nip.io
-    - flowise.devandre.sbs
 ---
 # Authentik configuration-snippet and server-snippet copied from n8n (same outpost).
 # Flowise has its own username/password, but Authentik adds SSO single-sign-on on top.
@@ -62,20 +58,9 @@ spec:
   tls:
     - hosts:
         - flowise.10.0.0.200.nip.io
-        - flowise.devandre.sbs
       secretName: flowise-tls
   rules:
     - host: flowise.10.0.0.200.nip.io
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: flowise
-                port:
-                  number: 3000
-    - host: flowise.devandre.sbs
       http:
         paths:
           - path: /

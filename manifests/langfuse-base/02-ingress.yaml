@@ -12,20 +12,9 @@ spec:
   tls:
     - hosts:
         - langfuse.10.0.0.200.nip.io
-        - langfuse.devandre.sbs
       secretName: langfuse-tls
   rules:
     - host: langfuse.10.0.0.200.nip.io
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: langfuse-web
-                port:
-                  number: 3000
-    - host: langfuse.devandre.sbs
       http:
         paths:
           - path: /
