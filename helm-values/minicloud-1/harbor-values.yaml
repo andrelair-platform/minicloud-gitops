@@ -15,7 +15,11 @@ expose:
     secret:
       secretName: harbor-tls-cert
   type: ingress
-externalURL: https://harbor.devandre.sbs
+# Harbor is Tailscale-only (operator tool, gitops#1180) — externalURL must be the
+# internal host or the Harbor UI OIDC login redirects to the removed public route
+# and 404s. NOTE: this does NOT affect the registry token realm (docker login/pull),
+# which is derived from the request host and is already harbor.10.0.0.200.nip.io.
+externalURL: https://harbor.10.0.0.200.nip.io
 persistence:
   persistentVolumeClaim:
     database:

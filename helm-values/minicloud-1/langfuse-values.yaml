@@ -49,7 +49,11 @@ langfuse:
     automountServiceAccountToken: false
 
   nextauth:
-    url: https://langfuse.devandre.sbs
+    # Langfuse is Tailscale-only (operator tool, gitops#1180) — NEXTAUTH_URL must be
+    # the internal host or the OIDC login callback redirects to the removed public
+    # route and 404s (same class as the Backstage baseUrl bug). Authentik already
+    # whitelists langfuse.10.0.0.200.nip.io/api/auth/callback/custom.
+    url: https://langfuse.10.0.0.200.nip.io
     secret:
       secretKeyRef:
         name: langfuse-secrets
