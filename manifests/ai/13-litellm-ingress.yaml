@@ -12,20 +12,9 @@ spec:
   tls:
     - hosts:
         - litellm.10.0.0.200.nip.io
-        - litellm.devandre.sbs
       secretName: litellm-tls
   rules:
     - host: litellm.10.0.0.200.nip.io
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: litellm
-                port:
-                  number: 4000
-    - host: litellm.devandre.sbs
       http:
         paths:
           - path: /

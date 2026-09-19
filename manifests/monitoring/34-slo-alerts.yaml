@@ -26,7 +26,7 @@ spec:
               sustainable rate (threshold: 14.4×). At this rate the monthly
               error budget exhausts in under 2 hours. Investigate the ingress
               error logs immediately.
-            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+            runbook_url: "https://grafana.10.0.0.200.nip.io/d/minicloud-slo"
 
         # Slow burn: sustained >1× burn rate over 1h means we'll miss the month.
         - alert: SLOAvailabilityBurnRateElevated
@@ -42,7 +42,7 @@ spec:
               Availability burn rate {{ $value | printf "%.2f" }}× sustained
               for 1h. At this rate the 30-day error budget will be exhausted
               before the end of the month.
-            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+            runbook_url: "https://grafana.10.0.0.200.nip.io/d/minicloud-slo"
 
     - name: slo.latency
       rules:
@@ -59,7 +59,7 @@ spec:
               Current p95 latency: {{ $value | printf "%.0f" }}ms (SLO: <200ms).
               Sustained for 10 minutes. Check NGINX ingress metrics, upstream
               service latency, and node CPU saturation.
-            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+            runbook_url: "https://grafana.10.0.0.200.nip.io/d/minicloud-slo"
 
     - name: slo.errors
       rules:
@@ -75,7 +75,7 @@ spec:
             description: >-
               Current HTTP 5xx error rate: {{ $value | humanizePercentage }}.
               SLO target: <1%. Sustained for 5 minutes.
-            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+            runbook_url: "https://grafana.10.0.0.200.nip.io/d/minicloud-slo"
 
         - alert: SLOErrorRateCritical
           expr: job:slo_http_error_rate:ratio5m * 100 > 5
@@ -89,7 +89,7 @@ spec:
             description: >-
               Current HTTP 5xx error rate: {{ $value | humanizePercentage }}.
               This is 5× the SLO budget. Users are actively experiencing errors.
-            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+            runbook_url: "https://grafana.10.0.0.200.nip.io/d/minicloud-slo"
 
     - name: slo.pod-restarts
       rules:
@@ -106,7 +106,7 @@ spec:
               {{ $value | printf "%.0f" }} container restarts in the last 24h
               (SLO: <5/day). Check for OOMKill, CrashLoopBackOff, or
               liveness probe failures.
-            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+            runbook_url: "https://grafana.10.0.0.200.nip.io/d/minicloud-slo"
 
     - name: slo.resources
       rules:
@@ -123,7 +123,7 @@ spec:
               Average CPU utilization across app containers:
               {{ $value | humanizePercentage }} (SLO: <70%). Sustained 15 min.
               Review VPA recommendations and consider scaling or raising limits.
-            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+            runbook_url: "https://grafana.10.0.0.200.nip.io/d/minicloud-slo"
 
         - alert: SLOMemoryUtilizationHigh
           expr: job:slo_memory_utilization:ratio5m * 100 > 80
@@ -138,7 +138,7 @@ spec:
               Cluster memory utilization (working set / limits):
               {{ $value | humanizePercentage }} (SLO: <80%). Sustained 15 min.
               Risk of OOMKill. Check VPA recommendations.
-            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+            runbook_url: "https://grafana.10.0.0.200.nip.io/d/minicloud-slo"
 
     - name: slo.deployment
       rules:
@@ -155,4 +155,4 @@ spec:
               {{ $value | humanizePercentage }} of desired deployment replicas
               are available (SLO: >99%). A service may be partially down.
               Check: kubectl get deploy -A | grep -v "1/1"
-            runbook_url: "https://grafana.devandre.sbs/d/minicloud-slo"
+            runbook_url: "https://grafana.10.0.0.200.nip.io/d/minicloud-slo"

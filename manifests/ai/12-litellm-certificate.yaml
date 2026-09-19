@@ -7,7 +7,6 @@ metadata:
 spec:
   dnsNames:
     - litellm.10.0.0.200.nip.io
-    - litellm.devandre.sbs
   duration: 2160h
   renewBefore: 720h
   issuerRef:

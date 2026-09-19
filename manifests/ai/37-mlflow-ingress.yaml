@@ -1,10 +1,7 @@
 ---
-# Internal + public TLS certificate for MLflow.
-# After merge, add the Cloudflare DNS route:
-#   ssh controller "~/.local/bin/cloudflared tunnel route dns minicloud mlflow.devandre.sbs"
-# Then create the Authentik application in the Authentik UI:
-#   Provider type: Proxy (Forward auth single application)
-#   External host: https://mlflow.devandre.sbs
+# Internal TLS certificate for MLflow.
+# MLflow is an operator tool → Tailscale-only (gitops#1180); the public
+# mlflow.devandre.sbs route was removed. Reachable at mlflow.10.0.0.200.nip.io.
 #   Internal host: http://mlflow.ai.svc.cluster.local:5000
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -18,7 +15,6 @@ spec:
     kind: ClusterIssuer
   dnsNames:
     - mlflow.10.0.0.200.nip.io
-    - mlflow.devandre.sbs
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -60,20 +56,9 @@ spec:
   tls:
     - hosts:
         - mlflow.10.0.0.200.nip.io
-        - mlflow.devandre.sbs
       secretName: mlflow-tls
   rules:
     - host: mlflow.10.0.0.200.nip.io
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: mlflow
-                port:
-                  number: 5000
-    - host: mlflow.devandre.sbs
       http:
         paths:
           - path: /

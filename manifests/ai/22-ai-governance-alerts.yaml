@@ -27,7 +27,7 @@ spec:
             description: >-
               Estimated Groq spend this month exceeds $5
               (input at $0.05/M tokens, output at $0.08/M tokens).
-              Review usage at https://grafana.devandre.sbs/d/litellm-cost-dept
+              Review usage at https://grafana.10.0.0.200.nip.io/d/litellm-cost-dept
         - alert: AIAdoptionLow
           expr: sum(increase(litellm_proxy_total_requests_metric_total[24h])) < 5
           for: 6h
@@ -39,4 +39,4 @@ spec:
             description: >-
               The AI platform has received fewer than 5 requests in the past 24 h
               for at least 6 consecutive hours. This may indicate low adoption or
-              a platform health issue. Check https://grafana.devandre.sbs/d/ai-roi-v1
+              a platform health issue. Check https://grafana.10.0.0.200.nip.io/d/ai-roi-v1

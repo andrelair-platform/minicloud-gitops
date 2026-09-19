@@ -67,7 +67,10 @@ configs:
     # GPG commit signature verification — key FD6D39D681DEFA34 (AndreLiar, expires 2028-06-28)
     gpg.enabled: "true"
     # Phase 23 Stage 3 — Authentik OIDC integration
-    url: https://argocd.devandre.sbs
+    # ArgoCD is Tailscale-only (operator tool, gitops#1180) — url MUST be the
+    # internal host or the OIDC login callback redirects to the removed public
+    # route and 404s (same class as the Backstage baseUrl bug).
+    url: https://argocd.10.0.0.200.nip.io
     oidc.config: |
       name: Authentik
       issuer: https://auth.devandre.sbs/application/o/argo-cd/
@@ -216,20 +219,6 @@ server:
       - hosts:
           - argocd.10.0.0.200.nip.io
         secretName: argocd-tls
-      - hosts:
-          - argocd.devandre.sbs
-        secretName: argocd-tls
-    extraRules:
-      - host: argocd.devandre.sbs
-        http:
-          paths:
-            - path: /
-              pathType: Prefix
-              backend:
-                service:
-                  name: argo-cd-argocd-server
-                  port:
-                    number: 80
   metrics:
     enabled: true
     serviceMonitor:
