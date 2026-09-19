@@ -33,8 +33,23 @@ backstage:
     failureThreshold: 30
     periodSeconds: 10
 
+  # PodSecurity "restricted" compliance — the off-the-shelf chart doesn't set
+  # runAsNonRoot/seccompProfile, so the backstage-backend pod tripped the
+  # restricted admission warning. The Backstage node image runs as the `node`
+  # user (uid 1000). fsGroup 1000 lets the pod write its writable dirs.
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+
   containerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
     allowPrivilegeEscalation: false
+    seccompProfile:
+      type: RuntimeDefault
     capabilities:
       drop: ["ALL"]
 
