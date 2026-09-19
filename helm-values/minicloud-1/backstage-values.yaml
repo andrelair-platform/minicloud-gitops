@@ -51,11 +51,14 @@ backstage:
 
   # Inline app-config — OIDC via Authentik + catalog locations targeting our
   # GitHub repos. Each repo has a catalog-info.yaml at its root.
-  # Primary URL is devandre.sbs (public via Cloudflare Tunnel).
+  # Backstage is an operator tool → Tailscale-only (3-tier access, gitops#1180):
+  # its public backstage.devandre.sbs route was removed from the cloudflare-tunnel
+  # ConfigMap, so every self-URL below MUST be the internal Tailscale host or the
+  # OIDC login callback 404s (Authentik at auth.devandre.sbs stays public).
   appConfig:
     app:
       title: minicloud platform
-      baseUrl: https://backstage.devandre.sbs
+      baseUrl: https://backstage.10.0.0.200.nip.io
       # Map the catalog page to the root so the user lands on /catalog after login
       extensions:
         - page:catalog:
@@ -64,11 +67,11 @@ backstage:
     organization:
       name: andrelair-platform
     backend:
-      baseUrl: https://backstage.devandre.sbs
+      baseUrl: https://backstage.10.0.0.200.nip.io
       listen:
         port: 7007
       cors:
-        origin: https://backstage.devandre.sbs
+        origin: https://backstage.10.0.0.200.nip.io
         methods: [GET, POST, PUT, DELETE]
         credentials: true
       # URL whitelist for catalog locations and other reading. Without
@@ -100,7 +103,7 @@ backstage:
             metadataUrl: https://auth.devandre.sbs/application/o/backstage/.well-known/openid-configuration
             clientId: ${AUTH_OIDC_CLIENT_ID}
             clientSecret: ${AUTH_OIDC_CLIENT_SECRET}
-            callbackUrl: https://backstage.devandre.sbs/api/auth/oidc/handler/frame
+            callbackUrl: https://backstage.10.0.0.200.nip.io/api/auth/oidc/handler/frame
             prompt: login
             additionalScopes: []
             signIn:
