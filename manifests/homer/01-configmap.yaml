@@ -7,9 +7,16 @@ metadata:
 data:
   config.yml: |
     title: Mini Cloud Platform
-    subtitle: "Private Bare-Metal Infrastructure — GitOps via ArgoCD"
+    subtitle: "Company Portal — GitOps via ArgoCD · 6-node bare-metal k3s"
     header: true
     footer: false
+    # Access-tier legend — every service is tagged by how it's reached:
+    #   🟢 Public   (green tag)  = reachable from anywhere (public URL + SSO login)
+    #   🟠 Tailscale (amber tag) = internal operator tool, requires the Tailscale VPN
+    message:
+      style: "is-info"
+      title: "Access legend"
+      content: '<span class="tag is-success">Public</span> reachable from anywhere (SSO login) &nbsp;·&nbsp; <span class="tag is-warning">Tailscale</span> internal tool — requires the Tailscale VPN + minicloud CA'
     colors:
       light:
         highlight-primary: '#3367d6'
@@ -43,26 +50,30 @@ data:
       items:
       - name: MAAS
         icon: fas fa-network-wired
-        subtitle: "Bare-metal provisioning — 5-node k3s cluster — Tailscale only"
-        tag: internal
+        subtitle: "Bare-metal provisioning — 6-node k3s cluster"
+        tag: Tailscale
+        tagstyle: is-warning
         url: http://100.88.123.8:5240/MAAS
         target: _blank
       - name: Harbor
         icon: fas fa-anchor
-        subtitle: "Sovereign container registry — proxy caches + library project — OIDC via Authentik"
-        tag: SSO
+        subtitle: "Sovereign container registry — proxy caches + library project"
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://harbor.10.0.0.200.nip.io
         target: _blank
       - name: MinIO
         icon: fas fa-database
-        subtitle: "S3 object store — Velero backup target — Tailscale only"
-        tag: internal
+        subtitle: "S3 object store — Velero backup target"
+        tag: Tailscale
+        tagstyle: is-warning
         url: http://100.88.123.8:9001
         target: _blank
       - name: GitHub
         icon: fab fa-github
         subtitle: "Source of truth — andrelair-platform org"
-        tag: live
+        tag: Public
+        tagstyle: is-success
         url: https://github.com/orgs/andrelair-platform/repositories
         target: _blank
     - name: Observability
@@ -70,32 +81,37 @@ data:
       items:
       - name: Grafana
         icon: fas fa-chart-bar
-        subtitle: "Dashboards & metrics visualization — OIDC via Authentik"
-        tag: SSO
+        subtitle: "Dashboards & metrics visualization"
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://grafana.10.0.0.200.nip.io
         target: _blank
       - name: Prometheus
         icon: fas fa-fire
-        subtitle: "Metrics scraping & storage — Tailscale only"
-        tag: internal
+        subtitle: "Metrics scraping & storage"
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://prometheus.10.0.0.200.nip.io
         target: _blank
       - name: Alertmanager
         icon: fas fa-bell
-        subtitle: "Alert routing & silencing — Tailscale only"
-        tag: internal
+        subtitle: "Alert routing & silencing"
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://alertmanager.10.0.0.200.nip.io
         target: _blank
       - name: Polaris
         icon: fas fa-star
-        subtitle: "Workload best-practice scorer — resource limits, security context — Tailscale only"
-        tag: internal
+        subtitle: "Workload best-practice scorer — resource limits, security context"
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://polaris.10.0.0.200.nip.io
         target: _blank
       - name: Hubble
         icon: fas fa-network-wired
-        subtitle: "Cilium network observability — eBPF flow visibility, service map — Tailscale only"
-        tag: internal
+        subtitle: "Cilium network observability — eBPF flow visibility, service map"
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://hubble.10.0.0.200.nip.io
         target: _blank
     - name: Identity & Secrets
@@ -104,19 +120,22 @@ data:
       - name: Authentik
         icon: fas fa-key
         subtitle: "SSO + IAM — OIDC provider for all platform services, forward-auth proxy"
-        tag: SSO
+        tag: Public
+        tagstyle: is-success
         url: https://auth.devandre.sbs
         target: _blank
       - name: Vault
         icon: fas fa-lock
         subtitle: "Secrets management — HashiCorp Vault, AWS KMS auto-unseal, ESO sync"
-        tag: live
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://vault.10.0.0.200.nip.io
         target: _blank
       - name: Vaultwarden
         icon: fas fa-user-shield
-        subtitle: "Password manager — Bitwarden-compatible — OIDC via Authentik"
-        tag: SSO
+        subtitle: "Password manager — Bitwarden-compatible"
+        tag: Public
+        tagstyle: is-success
         url: https://vault-pw.devandre.sbs
         target: _blank
     - name: Platform & DevOps
@@ -124,26 +143,30 @@ data:
       items:
       - name: ArgoCD
         icon: fas fa-sync
-        subtitle: "GitOps continuous reconciliation — all cluster state from git — OIDC via Authentik"
-        tag: SSO
+        subtitle: "GitOps continuous reconciliation — all cluster state from git"
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://argocd.10.0.0.200.nip.io
         target: _blank
       - name: Backstage
         icon: fas fa-th-large
-        subtitle: "Internal Developer Portal — catalog, API docs, Tech Radar, Software Templates — OIDC via Authentik"
-        tag: SSO
+        subtitle: "Internal Developer Portal — catalog, API docs, Tech Radar, Software Templates"
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://backstage.10.0.0.200.nip.io
         target: _blank
       - name: Plane
         icon: fas fa-tasks
-        subtitle: "Project & issue tracking — Plane CE — minicloud-plane API integration"
-        tag: live
+        subtitle: "Project & issue tracking — Plane CE"
+        tag: Public
+        tagstyle: is-success
         url: https://plane.devandre.sbs
         target: _blank
       - name: NATS
         icon: fas fa-bolt
         subtitle: "Message broker — 3-replica JetStream HA, KEDA event-driven autoscaling"
-        tag: live
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://nats.10.0.0.200.nip.io
         target: _blank
     - name: AI / ML
@@ -151,70 +174,81 @@ data:
       items:
       - name: Chat
         icon: fas fa-comments
-        subtitle: "Open WebUI — LiteLLM gateway, RAG pipeline, web search — OIDC via Authentik"
-        tag: SSO
+        subtitle: "Open WebUI — LiteLLM gateway, RAG pipeline, web search"
+        tag: Public
+        tagstyle: is-success
         url: https://chat.devandre.sbs
         target: _blank
       - name: LiteLLM Admin
         icon: fas fa-sliders-h
-        subtitle: "AI Gateway admin — virtual keys, budget governance, cloud + local provider routing"
-        tag: admin
+        subtitle: "AI Gateway admin — virtual keys, budget governance, provider routing"
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://litellm.10.0.0.200.nip.io/ui
         target: _blank
       - name: Langfuse
         icon: fas fa-chart-line
         subtitle: "LLM observability — traces, scores, prompt versioning, eval datasets"
-        tag: AI
+        tag: Tailscale
+        tagstyle: is-warning
         url: https://langfuse.10.0.0.200.nip.io
         target: _blank
-    - name: Collaboration & Showcase
+    - name: Business & Collaboration
       icon: fas fa-cubes
       items:
       - name: Mail
         icon: fas fa-envelope
         subtitle: "Self-hosted email — Stalwart v0.16, webmail + IMAP/SMTP — login with full email address"
-        tag: mail
+        tag: Public
+        tagstyle: is-success
         url: https://mail.devandre.sbs/webmail
         target: _blank
       - name: Sign
         icon: fas fa-file-signature
         subtitle: "e-Signature platform — Docuseal, PDF templates, audit trail, eIDAS-compatible"
-        tag: SSO
+        tag: Public
+        tagstyle: is-success
         url: https://sign.devandre.sbs
         target: _blank
       - name: Element
         icon: fas fa-comments
-        subtitle: "Self-hosted Matrix chat — Synapse homeserver, E2E encryption — OIDC via Authentik"
-        tag: SSO
+        subtitle: "Self-hosted Matrix chat — Synapse homeserver, E2E encryption"
+        tag: Public
+        tagstyle: is-success
         url: https://element.devandre.sbs
         target: _blank
       - name: Jitsi Meet
         icon: fas fa-video
-        subtitle: "Self-hosted video conferencing — Spaces, screen share — OIDC via Authentik"
-        tag: SSO
+        subtitle: "Self-hosted video conferencing — Spaces, screen share"
+        tag: Public
+        tagstyle: is-success
         url: https://meet.devandre.sbs
         target: _blank
       - name: Nextcloud
         icon: fas fa-cloud
-        subtitle: "Document collaboration & file sharing — OnlyOffice integration — OIDC via Authentik"
-        tag: SSO
+        subtitle: "Document collaboration & file sharing — OnlyOffice integration"
+        tag: Public
+        tagstyle: is-success
         url: https://cloud.devandre.sbs
         target: _blank
       - name: ERPNext
         icon: fas fa-building
-        subtitle: "Frappe HR / ERP — employee management, departments, HR source of truth — OIDC via Authentik"
-        tag: HR
+        subtitle: "Frappe HR / ERP — employee management, departments, HR source of truth"
+        tag: Public
+        tagstyle: is-success
         url: https://erp.devandre.sbs
         target: _blank
       - name: ktayl-solution
         icon: fas fa-briefcase
         subtitle: "Insurance consulting platform — 7 Lines of Business (Astro + Tailwind)"
-        tag: live
+        tag: Public
+        tagstyle: is-success
         url: https://ktayl.devandre.sbs
         target: _blank
       - name: platform-demo
         icon: fas fa-rocket
         subtitle: "CI/CD golden path demo — GHA → Harbor → ArgoCD canary rollout"
-        tag: live
+        tag: Public
+        tagstyle: is-success
         url: https://demo.devandre.sbs
         target: _blank
