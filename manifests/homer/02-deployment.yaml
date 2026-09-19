@@ -51,6 +51,9 @@ spec:
         - mountPath: /www/assets/config.yml
           name: config
           subPath: config.yml
+        - mountPath: /www/assets/custom.css
+          name: config
+          subPath: custom.css
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
