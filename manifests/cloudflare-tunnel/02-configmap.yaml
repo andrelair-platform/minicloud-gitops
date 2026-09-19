@@ -42,6 +42,15 @@ data:
           originServerName: sign.10.0.0.200.nip.io
 
       # ── ② business apps (employees, public + SSO, BYOD browser-first) ─
+      # Homer — the company portal / landing page. SSO-gated by the embedded
+      # outpost's minicloud-forward-auth-public (*.devandre.sbs, cookie devandre.sbs),
+      # so it is public-reachable but requires an Authentik login (not fail-open).
+      - hostname: homer.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: homer.10.0.0.200.nip.io
+
       - hostname: chat.devandre.sbs
         service: https://10.0.0.200
         originRequest:
