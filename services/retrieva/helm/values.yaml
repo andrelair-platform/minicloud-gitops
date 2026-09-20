@@ -75,6 +75,11 @@ postgres:
   requestMemory: 256Mi
   limitMemory: 512Mi
   storage: 5Gi
+# Transactional/notification email via Resend. Off by default (dev stays unconfigured —
+# emails no-op). Prod enables it: the ExternalSecret then pulls `resend-api-key` from the
+# retrieva Vault path and the backend gets RESEND_API_KEY. (#475)
+email:
+  enabled: false
 secretsVaultPath: platform/retrieva
 ingress:
   host: retrieva.online

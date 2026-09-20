@@ -1,5 +1,10 @@
 # prod (ns retrieva) — ghcr SHA images, 2 replicas. Kargo bumps both image.tag (git Warehouse → same SHA).
 secretsVaultPath: platform/retrieva
+# Enable Resend email in prod — the ExternalSecret pulls `resend-api-key` from
+# Vault (platform/retrieva) into retrieva-secrets. Requires the key to exist in Vault
+# BEFORE this merges, or ESO fails the whole secret (#475).
+email:
+  enabled: true
 postgres:
   enabled: true          # prod Postgres — the primary datastore (RTV-49 cutover complete)
 ingress:
@@ -55,6 +60,10 @@ backend:
     - { name: JWT_ACCESS_SECRET,  valueFrom: { secretKeyRef: { name: retrieva-secrets, key: jwt-access-secret } } }
     - { name: JWT_REFRESH_SECRET, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: jwt-refresh-secret } } }
     - { name: ENCRYPTION_KEY,     valueFrom: { secretKeyRef: { name: retrieva-secrets, key: encryption-key } } }
+    # Resend transactional/notification email (#475). Key from Vault via ESO.
+    - { name: RESEND_API_KEY,   valueFrom: { secretKeyRef: { name: retrieva-secrets, key: resend-api-key } } }
+    - { name: RESEND_FROM_EMAIL, value: "noreply@retrieva.online" }
+    - { name: SMTP_FROM_NAME, value: "Retrieva" }
     - { name: FRONTEND_URL, value: "https://retrieva.online" }
     - { name: ALLOWED_ORIGINS, value: "https://retrieva.online" }
 
