@@ -1,6 +1,6 @@
 # ktayl-iam — DEV overlay (ns ktayl-iam). Kargo updates backend/frontend .image.tag.
 backend:
-  image: { tag: "585ae01" }        # Harbor (repository from values.yaml); Kargo bumps
+  image: { tag: "1429b54" }        # Harbor (repository from values.yaml); Kargo bumps
   env:
     - { name: PORT, value: "3000" }
     - { name: NODE_ENV, value: "production" }
@@ -21,7 +21,7 @@ backend:
     - secretRef: { name: ktayl-iam-secret }
 
 frontend:
-  image: { tag: "585ae01" }
+  image: { tag: "1429b54" }
 
 postgres:
   enabled: true
