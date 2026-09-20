@@ -18,7 +18,7 @@ backend:
     - { name: AUTHENTIK_TOKEN_URL, value: "https://auth.devandre.sbs/application/o/token/" }
     - { name: AUTHENTIK_USERINFO_URL, value: "https://auth.devandre.sbs/application/o/userinfo/" }
     - { name: AUTHENTIK_CALLBACK_URL, value: "https://iam.10.0.0.200.nip.io/api/auth/callback" }
-    - { name: AUTHENTIK_SCOPE, value: "openid profile email groups" }
+    - { name: AUTHENTIK_SCOPE, value: "profile email groups" }
     - { name: ADMIN_GROUP, value: "Platform Admins" }
   envFrom:
     - secretRef: { name: ktayl-iam-secret }
