@@ -25,9 +25,9 @@ backend:
     - { name: NODE_ENV, value: "production" }
     - { name: LOG_LEVEL, value: "info" }
     - { name: DOCKER_ENV, value: "true" }
-    # RTV-54 entity isolation — dev runs SHADOW first (log would-be denials, no filtering)
-    # to observe impact before flipping to enforce. See retrieva authorization-model ADR.
-    - { name: ENTITY_ISOLATION_MODE, value: "shadow" }
+    # RTV-54 entity isolation — dev now ENFORCE (shadow observed clean: the scoped read
+    # logged its would-be filter, no false denials). See retrieva authorization-model ADR.
+    - { name: ENTITY_ISOLATION_MODE, value: "enforce" }
     - { name: DATABASE_URL,    valueFrom: { secretKeyRef: { name: retrieva-secrets, key: database-url } } }
     - { name: REDIS_URL,       valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-url } } }
     - { name: REDIS_PASSWORD,  valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-password } } }
