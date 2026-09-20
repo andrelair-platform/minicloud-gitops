@@ -53,6 +53,9 @@ backend:
 
 frontend:
   <<: *shared
+  # Only the backend subchart creates the shared ServiceAccount `ktayl-iam`; the frontend
+  # reuses it (create: false) — else both render it → RepeatedResourceWarning.
+  serviceAccount: { create: false, name: ktayl-iam, automountServiceAccountToken: false }
   nameOverride: frontend
   fullnameOverride: ktayl-iam-frontend
   selectorLabels: { app: ktayl-iam-frontend }
