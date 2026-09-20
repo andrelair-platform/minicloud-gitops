@@ -1,0 +1,44 @@
+# ktayl-iam — PROD overlay (ns ktayl-iam-prod). Images from ghcr (immutable SHA). Kargo bumps tags.
+backend:
+  image:
+    repository: ghcr.io/andrelair-platform/ktayl-iam-backend
+    tag: "388ad08"
+  # prod pulls the Internal ghcr package → needs the shared ghcr-pull secret
+  imagePullSecrets: [{ name: ghcr-pull }]
+  env:
+    - { name: PORT, value: "3000" }
+    - { name: NODE_ENV, value: "production" }
+    - { name: FRONTEND_URL, value: "https://iam.10.0.0.200.nip.io" }
+    - { name: DATABASE_HOST, value: "ktayl-iam-postgres" }
+    - { name: DATABASE_PORT, value: "5432" }
+    - { name: DATABASE_USER, value: "ktayl_iam" }
+    - { name: DATABASE_NAME, value: "ktayl_iam" }
+    - { name: AUTHENTIK_ISSUER, value: "https://auth.devandre.sbs/application/o/ktayl-iam/" }
+    - { name: AUTHENTIK_AUTH_URL, value: "https://auth.devandre.sbs/application/o/authorize/" }
+    - { name: AUTHENTIK_TOKEN_URL, value: "https://auth.devandre.sbs/application/o/token/" }
+    - { name: AUTHENTIK_USERINFO_URL, value: "https://auth.devandre.sbs/application/o/userinfo/" }
+    - { name: AUTHENTIK_CALLBACK_URL, value: "https://iam.10.0.0.200.nip.io/api/auth/callback" }
+    - { name: AUTHENTIK_SCOPE, value: "openid profile email groups" }
+    - { name: ADMIN_GROUP, value: "ktayl-admin" }
+  envFrom:
+    - secretRef: { name: ktayl-iam-secret }
+
+frontend:
+  image:
+    repository: ghcr.io/andrelair-platform/ktayl-iam-frontend
+    tag: "388ad08"
+  imagePullSecrets: [{ name: ghcr-pull }]
+
+postgres:
+  enabled: true
+  requestMemory: 256Mi
+  limitMemory: 512Mi
+  storage: 5Gi
+appSecret:
+  enabled: true
+secretsVaultPath: platform/ktayl-iam-prod
+ingress:
+  host: iam.10.0.0.200.nip.io
+
+ghcrPull:
+  enabled: true

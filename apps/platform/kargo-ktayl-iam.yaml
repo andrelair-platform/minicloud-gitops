@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # Dedicated Kargo app (not the kargo-projects ApplicationSet) — prod owns ktayl-iam-prod,
+  # so the Kargo project lives in its own ns ktayl-iam-kargo. Per-image Warehouses (backend +
+  # frontend), dev→prod stages; see services/ktayl-iam/kargo/.
+  name: kargo-ktayl-iam
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: kargo
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/ktayl-iam/kargo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ktayl-iam-kargo
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+    - group: kargo.akuity.io
+      kind: Warehouse
+      jqPathExpressions:
+        - .spec.interval
+        - .spec.subscriptions[].image.strictSemvers
+        - .spec.subscriptions[].image.discoveryLimit
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
