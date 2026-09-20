@@ -33,7 +33,10 @@ backend:
     - { name: MARKITDOWN_URL, value: "http://markitdown-proxy.ai.svc.cluster.local:8000" }
     - { name: DOCLING_URL, value: "http://docling.ai.svc.cluster.local:5001" }
     - { name: INGEST_VLM_CAPTION, value: "true" }          # dev validates VLM captioning
-    - { name: VLM_CAPTION_MODEL, value: "azure-gpt-4.1-mini" }
+    # dev = FREE tier only (dev-free litellm access_group). Was azure-gpt-4.1-mini
+    # (PAID Azure OpenAI) — the only paid leak in dev; paid models are prod-only.
+    # nvidia-vision-90b = llama-3.2-90b-vision-instruct on NVIDIA NIM (free).
+    - { name: VLM_CAPTION_MODEL, value: "nvidia-vision-90b" }
     - { name: QDRANT_API_KEY,  valueFrom: { secretKeyRef: { name: retrieva-secrets, key: qdrant-api-key } } }
     - { name: QDRANT_COLLECTION_NAME, value: "retrieva-dev" }   # dev's own collection
     - { name: LLM_PROVIDER, value: "azure_openai" }
