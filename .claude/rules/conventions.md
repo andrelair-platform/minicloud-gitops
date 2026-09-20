@@ -258,7 +258,7 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name:        ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: google-github-actions/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release
         with:
           token:         ${{ secrets.GITHUB_TOKEN }}
