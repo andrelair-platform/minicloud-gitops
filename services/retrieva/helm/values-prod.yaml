@@ -63,6 +63,7 @@ backend:
     # Resend transactional/notification email (#475). Key from Vault via ESO.
     - { name: RESEND_API_KEY,   valueFrom: { secretKeyRef: { name: retrieva-secrets, key: resend-api-key } } }
     - { name: RESEND_FROM_EMAIL, value: "noreply@retrieva.online" }
+    - { name: RESEND_REPLY_TO, value: "support@retrieva.online" }   # routed to owner inbox via CF Email Routing
     - { name: SMTP_FROM_NAME, value: "Retrieva" }
     - { name: FRONTEND_URL, value: "https://retrieva.online" }
     - { name: ALLOWED_ORIGINS, value: "https://retrieva.online" }
