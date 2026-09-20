@@ -1,0 +1,19 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: retrieva-frontend
+  namespace: retrieva-kargo
+spec:
+  # Post-split (RFC retrieva#474): the frontend keeps building from the `retrieva` repo →
+  # its own single image. Single-image NewestBuild Warehouse, promoted independently of
+  # the backend. Replaces the shared git Warehouse (which existed only because both images
+  # lived in one repo/commit — no longer true after the split).
+  interval: 5m
+  freightCreationPolicy: Automatic
+  subscriptions:
+    - image:
+        repoURL: ghcr.io/andrelair-platform/retrieva-frontend
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - ^[0-9a-f]{7,40}$
+        discoveryLimit: 5

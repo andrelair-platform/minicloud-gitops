@@ -1,0 +1,67 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: backend-dev
+  namespace: retrieva-kargo
+spec:
+  # Promotes the newest retrieva-backend image to the DEV overlay (Harbor repo, bare SHA —
+  # CI dual-pushes the same SHA to Harbor + ghcr, so the ghcr-discovered tag exists in Harbor).
+  # Only backend.image.tag is touched; the frontend has its own Stage. dev auto-promotes; PR auto-merges.
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: retrieva-backend
+      sources:
+        direct: true
+  verification:
+    analysisTemplates:
+      - name: retrieva-backend-dev-verify
+  promotionTemplate:
+    spec:
+      vars:
+        - name: gitopsRepo
+          value: https://github.com/andrelair-platform/minicloud-gitops.git
+        - name: img
+          value: ghcr.io/andrelair-platform/retrieva-backend
+      steps:
+        - uses: git-clone
+          as: clone
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            checkout:
+              - branch: main
+                path: ./repo
+        - uses: yaml-update
+          as: set-image
+          config:
+            path: ./repo/services/retrieva/helm/values-dev.yaml
+            updates:
+              - key: backend.image.tag
+                value: '${{ quote(imageFrom(vars.img).Tag) }}'
+        - uses: git-commit
+          as: commit
+          config:
+            path: ./repo
+            message: 'kargo(retrieva): promote backend ${{ imageFrom(vars.img).Tag }} to dev'
+        - uses: git-push
+          as: push
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            path: ./repo
+            generateTargetBranch: true
+        - uses: git-open-pr
+          as: open-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            sourceBranch: ${{ outputs.push.branch }}
+            targetBranch: main
+            provider: github
+            title: 'kargo(retrieva): promote backend ${{ imageFrom(vars.img).Tag }} to dev'
+            labels: [kargo, env-dev, automerge]
+        - uses: git-wait-for-pr
+          as: wait-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            prNumber: ${{ outputs['open-pr'].pr.id }}

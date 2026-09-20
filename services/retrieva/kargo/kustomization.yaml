@@ -1,14 +1,20 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-# Kargo PROD-promotion pipeline for retrieva. Git-based Warehouse (Freight = a main
-# commit → both images promoted at the same SHA). Deployed by apps/platform/kargo-retrieva.yaml.
+# Kargo promotion pipeline for retrieva. Post-split (RFC retrieva#474): TWO single-image
+# Warehouses (backend from andrelair-platform/retrieva-backend, frontend from retrieva) each
+# with its own dev+prod Stages, promoted independently. Replaces the shared git Warehouse.
+# Deployed by apps/platform/kargo-retrieva.yaml.
 resources:
   - namespace.yaml
   - project.yaml
   - git-credentials.yaml
-  - warehouse.yaml
-  - projectconfig.yaml       # auto-promote dev
-  - analysis-dev-smoke.yaml  # dev verification (Variant C, 2 images)
-  - netpol-dev.yaml          # cross-ns netpol in retrieva-dev
-  - stage-dev.yaml
-  - stage-prod.yaml
+  - projectconfig.yaml            # auto-promote backend-dev + frontend-dev
+  - netpol-dev.yaml               # cross-ns netpol in retrieva-dev (kargo verification probes)
+  - warehouse-backend.yaml
+  - warehouse-frontend.yaml
+  - analysis-backend-dev.yaml     # dev verification: backend /health/detailed (LLM live)
+  - analysis-frontend-dev.yaml    # dev verification: frontend / = 200
+  - stage-backend-dev.yaml
+  - stage-backend-prod.yaml
+  - stage-frontend-dev.yaml
+  - stage-frontend-prod.yaml

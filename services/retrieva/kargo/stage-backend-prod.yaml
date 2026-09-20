@@ -1,22 +1,22 @@
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
-  name: prod
+  name: backend-prod
   namespace: retrieva-kargo
 spec:
-  # Prod-only: promote a main commit directly. Both images pinned to that commit's SHA
-  # (they're built + tagged with the same `git rev-parse --short`), so prod is always a
-  # consistent, auditable set. retrieva dev stays on its own dev-branch track.
+  # Prod: only backend Freight already verified in backend-dev is promotable (the dev->prod
+  # gate). Bumps only backend.image.tag in values-prod.yaml (ghcr SHA). PR is CODEOWNERS-gated;
+  # ArgoCD auto-syncs prod once merged (squash — signed-commit rule).
   requestedFreight:
-    - origin: { kind: Warehouse, name: retrieva }
-      sources: { stages: [dev] }
+    - origin: { kind: Warehouse, name: retrieva-backend }
+      sources: { stages: [backend-dev] }
   promotionTemplate:
     spec:
       vars:
         - name: gitopsRepo
           value: https://github.com/andrelair-platform/minicloud-gitops.git
-        - name: sha
-          value: ${{ commitFrom("https://github.com/andrelair-platform/retrieva.git").ID[0:7] }}
+        - name: img
+          value: ghcr.io/andrelair-platform/retrieva-backend
       steps:
         - uses: git-clone
           as: clone
@@ -28,18 +28,15 @@ spec:
         - uses: yaml-update
           as: set-image
           config:
-            # prod wrapper values already pin the ghcr repo; bump BOTH image tags to the promoted SHA.
             path: ./repo/services/retrieva/helm/values-prod.yaml
             updates:
               - key: backend.image.tag
-                value: ${{ quote(vars.sha) }}
-              - key: frontend.image.tag
-                value: ${{ quote(vars.sha) }}
+                value: '${{ quote(imageFrom(vars.img).Tag) }}'
         - uses: git-commit
           as: commit
           config:
             path: ./repo
-            message: 'kargo(retrieva): promote ${{ vars.sha }} to prod (backend+frontend)'
+            message: 'kargo(retrieva): promote backend ${{ imageFrom(vars.img).Tag }} to prod'
         - uses: git-push
           as: push
           if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
@@ -52,8 +49,8 @@ spec:
             sourceBranch: ${{ outputs.push.branch }}
             targetBranch: main
             provider: github
-            title: 'kargo(retrieva): promote ${{ vars.sha }} to PROD'
-            description: 'Promotion opened by Kargo — retrieva backend+frontend @ ${{ vars.sha }} to prod (retrieva.online). CODEOWNERS-gated; ArgoCD auto-syncs prod once merged.'
+            title: 'kargo(retrieva): promote backend ${{ imageFrom(vars.img).Tag }} to PROD'
+            description: 'Promotion opened by Kargo — retrieva BACKEND @ ${{ imageFrom(vars.img).Tag }} to prod (retrieva.online). CODEOWNERS-gated; ArgoCD auto-syncs prod once merged.'
             labels: [kargo, env-prod]
         - uses: git-wait-for-pr
           as: wait-pr
