@@ -30,6 +30,9 @@ backend:
     - { name: NODE_ENV, value: "production" }
     - { name: LOG_LEVEL, value: "info" }
     - { name: DOCKER_ENV, value: "true" }
+    # RTV-54 entity isolation — prod ENFORCE from the start (empty DB = zero blast radius;
+    # verified shadow->enforce clean on dev). See retrieva authorization-model ADR.
+    - { name: ENTITY_ISOLATION_MODE, value: "enforce" }
     - { name: DATABASE_URL,    valueFrom: { secretKeyRef: { name: retrieva-secrets, key: database-url } } }
     - { name: REDIS_URL,       valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-url } } }
     - { name: REDIS_PASSWORD,  valueFrom: { secretKeyRef: { name: retrieva-secrets, key: redis-password } } }
