@@ -1,0 +1,203 @@
+---
+# ============================================================================
+# ENGINEERING "Platform Portal" — engineer roles only.
+# Two independent controls (RBAC model: ktayl-iam #17 IGA-02):
+#   1. NETWORK  — host is homer-eng.10.0.0.200.nip.io (Tailscale only)
+#   2. ROLE     — the Authentik application for this host requires an engineer
+#                 group (ktayl-developer|devops|data|sre|admin) → non-members get 403.
+# Shows the operator/engineering tools. Business apps live in homer-config.
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homer-eng-config
+  namespace: homer
+data:
+  config.yml: |
+    title: ktayl — Engineering Platform
+    subtitle: "Operator tools — Tailscale + engineer role (Authentik)"
+    header: true
+    footer: false
+    stylesheet:
+      - "assets/custom.css"
+    message:
+      style: "is-warning"
+      title: "Engineering platform (restricted)"
+      content: 'Operator tools — requires the <b>Tailscale VPN + minicloud CA</b> and an <b>engineer role</b> (Authentik group). Business apps are on the <b>Company Portal</b>.'
+    colors:
+      light:
+        highlight-primary: '#b45309'
+        highlight-secondary: '#d97706'
+        highlight-hover: '#f59e0b'
+        background: '#f2f4f8'
+        card-background: '#ffffff'
+        text: '#363636'
+        text-header: '#ffffff'
+        text-title: '#303030'
+        text-subtitle: '#424242'
+        card-shadow: rgba(0, 0, 0, 0.1)
+        link: '#3273dc'
+        link-hover: '#363636'
+      dark:
+        highlight-primary: '#b45309'
+        highlight-secondary: '#d97706'
+        highlight-hover: '#f59e0b'
+        background: '#131313'
+        card-background: '#2b2b2b'
+        text: '#eaeaea'
+        text-header: '#ffffff'
+        text-title: '#fafafa'
+        text-subtitle: '#f5f5f5'
+        card-shadow: rgba(0, 0, 0, 0.4)
+        link: '#3273dc'
+        link-hover: '#ffdd57'
+    services:
+    - name: Infrastructure
+      icon: fas fa-server
+      items:
+      - name: MAAS
+        icon: fas fa-network-wired
+        subtitle: "Bare-metal provisioning — 6-node k3s cluster"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: http://100.88.123.8:5240/MAAS
+        target: _blank
+      - name: Harbor
+        icon: fas fa-anchor
+        subtitle: "Sovereign container registry — proxy caches + library project"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://harbor.10.0.0.200.nip.io
+        target: _blank
+      - name: MinIO
+        icon: fas fa-database
+        subtitle: "S3 object store — Velero backup target"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: http://100.88.123.8:9001
+        target: _blank
+      - name: GitHub
+        icon: fab fa-github
+        subtitle: "Source of truth — andrelair-platform org"
+        tag: Public
+        tagstyle: is-success
+        url: https://github.com/orgs/andrelair-platform/repositories
+        target: _blank
+    - name: Observability
+      icon: fas fa-chart-line
+      items:
+      - name: Grafana
+        icon: fas fa-chart-bar
+        subtitle: "Dashboards & metrics visualization"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://grafana.10.0.0.200.nip.io
+        target: _blank
+      - name: Prometheus
+        icon: fas fa-fire
+        subtitle: "Metrics scraping & storage"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://prometheus.10.0.0.200.nip.io
+        target: _blank
+      - name: Alertmanager
+        icon: fas fa-bell
+        subtitle: "Alert routing & silencing"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://alertmanager.10.0.0.200.nip.io
+        target: _blank
+      - name: Polaris
+        icon: fas fa-star
+        subtitle: "Workload best-practice scorer — resource limits, security context"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://polaris.10.0.0.200.nip.io
+        target: _blank
+      - name: Hubble
+        icon: fas fa-network-wired
+        subtitle: "Cilium network observability — eBPF flow visibility, service map"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://hubble.10.0.0.200.nip.io
+        target: _blank
+    - name: Identity & Secrets
+      icon: fas fa-shield-alt
+      items:
+      - name: Authentik
+        icon: fas fa-key
+        subtitle: "SSO + IAM admin — OIDC provider, forward-auth proxy"
+        tag: Public
+        tagstyle: is-success
+        url: https://auth.devandre.sbs
+        target: _blank
+      - name: Vault
+        icon: fas fa-lock
+        subtitle: "Secrets management — HashiCorp Vault, AWS KMS auto-unseal, ESO sync"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://vault.10.0.0.200.nip.io
+        target: _blank
+    - name: Platform & DevOps
+      icon: fas fa-code-branch
+      items:
+      - name: ArgoCD
+        icon: fas fa-sync
+        subtitle: "GitOps continuous reconciliation — all cluster state from git"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://argocd.10.0.0.200.nip.io
+        target: _blank
+      - name: Backstage
+        icon: fas fa-th-large
+        subtitle: "Internal Developer Portal — catalog, API docs, Tech Radar, Software Templates"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://backstage.10.0.0.200.nip.io
+        target: _blank
+      - name: Plane
+        icon: fas fa-tasks
+        subtitle: "Project & issue tracking — Plane CE"
+        tag: Public
+        tagstyle: is-success
+        url: https://plane.devandre.sbs
+        target: _blank
+      - name: NATS
+        icon: fas fa-bolt
+        subtitle: "Message broker — 3-replica JetStream HA, KEDA event-driven autoscaling"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://nats.10.0.0.200.nip.io
+        target: _blank
+      - name: platform-demo
+        icon: fas fa-rocket
+        subtitle: "CI/CD golden path demo — GHA → Harbor → ArgoCD canary rollout"
+        tag: Public
+        tagstyle: is-success
+        url: https://demo.devandre.sbs
+        target: _blank
+    - name: AI / ML Ops
+      icon: fas fa-robot
+      items:
+      - name: LiteLLM Admin
+        icon: fas fa-sliders-h
+        subtitle: "AI Gateway admin — virtual keys, budget governance, provider routing"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://litellm.10.0.0.200.nip.io/ui
+        target: _blank
+      - name: Langfuse
+        icon: fas fa-chart-line
+        subtitle: "LLM observability — traces, scores, prompt versioning, eval datasets"
+        tag: Tailscale
+        tagstyle: is-warning
+        url: https://langfuse.10.0.0.200.nip.io
+        target: _blank
+  custom.css: |
+    body #main-section .card .tag {
+      width: auto !important;
+      padding: 0 0.6em !important;
+    }
+    body #main-section .card .tag .tag-text {
+      display: block !important;
+    }
