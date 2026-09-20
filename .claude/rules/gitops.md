@@ -1,21 +1,24 @@
 # GitOps & Backstage
 
-## GitOps Service Structure (Kustomize)
+## GitOps Service Structure (Helm wrapper standard)
 
-Own services use Kustomize base + minicloud-1/{env} overlays in `minicloud-gitops/services/`.
-**All Helm values live in `minicloud-gitops/helm-values/minicloud-1/`** — never edit `minicloud-ansible/helm-values/` for ArgoCD-managed tools.
+Custom services use thin Helm wrapper charts under `services/<service>/helm/`, depending on the
+shared `minicloud-app-deployment` library chart. Service-specific Kubernetes resources live in the
+wrapper's `templates/`; third-party platform chart values live in `helm-values/minicloud-1/`.
+Never edit `minicloud-ansible/helm-values/` for ArgoCD-managed tools. All six promoted custom
+services, including the dual-image Retrieva wrapper, follow this structure.
 
 **The standard is exactly 2 environments: `dev` + `prod`.** dev = 1 replica, prod = 2–3 replicas. **Both auto-sync** (git-gated — see below). **Staging was removed (2026-08-30)** — no `staging` overlays, no `_staging-optional` template, no `staging` in `environments.yaml`. A resource-constrained cluster + Kargo's dev→prod promotion make a third gate unnecessary; do not reintroduce staging.
 
-```
-minicloud-gitops/services/<service>/
-├── base/                          # no namespace, no image tag; replicas: 1
-│   ├── kustomization.yaml
-│   ├── deployment.yaml
-│   └── service.yaml
-└── minicloud-1/               # cluster dimension
-    ├── dev/                       # auto-sync, CI updates newTag; replicas 1 (base)
-    └── prod/                      # auto-sync (git-gated), ingress+cert; patch-replicas → 2–3
+```text
+services/<service>/
+├── helm/
+│   ├── Chart.yaml + Chart.lock
+│   ├── values.yaml
+│   ├── values-dev.yaml
+│   ├── values-prod.yaml
+│   └── templates/
+└── kargo/                         # when the service meets the Kargo criteria
 ```
 
 A Kargo-promotable service also has a `services/<service>/kargo/` dir (Project +
@@ -23,19 +26,19 @@ Warehouse + dev/prod Stages). See *Multi-stage promotion — Kargo* below.
 
 **ArgoCD apps split:** `apps/platform/` (43 infra apps) + `apps/workloads/` services. Root-app has `recurse: true`.
 
-**Promotion flow (2-env):** CI builds + pushes the image; promotion of the tag into the overlays is where **Kargo** takes over (see *Multi-stage promotion — Kargo*). `dev (auto) → prod (CODEOWNERS-gated PR → auto-sync)`. prod moves only via a PR that bumps the prod newTag; ArgoCD then auto-syncs it (no manual UI click). Legacy path (pre-Kargo, no longer used — all custom services are on Kargo): CI did `kustomize edit set image` in `minicloud-1/dev/` + a manual prod PR.
+**Promotion flow (2-env):** CI builds and proves the image; Kargo updates the wrapper's environment values with `yaml-update` and opens the GitOps PR. `dev (auto-promoted and verified) → prod (manual promotion, CODEOWNERS-gated PR → ArgoCD auto-sync)`. Legacy CI-driven manifest/value mutation still exists for non-promoted applications; classify the workload before editing it.
 
-**Prod HA:** give each prod overlay a `patch-replicas.yaml` (`replicas: 2`, up to 3) targeting the Deployment/Rollout — dev inherits base `replicas: 1`. Only skip for singletons (RWO PVC / stateful). Reference: minicloud-plane (Rollout), minicloud-agent + minicloud-crew-agent (Deployment).
+**Prod HA:** declare the production replica count in `values-prod.yaml` (normally 2, up to 3). Keep dev economical in `values-dev.yaml`. Only use one replica when workload or RWO/stateful semantics require it.
 
 ### Git-gated automated prod (the standard since 2026-08-27)
 
 Prod apps are **auto-sync** (`syncPolicy.automated: {prune: true, selfHeal: true}` + a `retry` backoff), NOT manual-sync. The approval gate lives entirely **upstream in Git**, which preserves continuous reconciliation (selfHeal corrects live drift, prune removes what leaves Git):
 
-- **Merge gate** — CODEOWNERS requires `@AndreLair` review on `services/*/minicloud-1/prod/`, **`services/*/base/`** (prod inherits base — gating it prevents a base-change bypass), **`services/*/kargo/`** + **`manifests/kargo/`** (a Stage's promotionTemplate can write to any overlay), **`apps/`** (the Application manifests that define the sync gate itself), `helm-values/` (third-party app config), plus `manifests/quotas/*-prod.yaml` and `manifests/network-policies/*-prod.yaml`. This gate is what Kargo's prod-promotion PR lands against.
+- **Merge gate** — CODEOWNERS requires `@AndreLair` review on `services/*/helm/`, legacy `services/*/base|overlays|minicloud-1/` paths, **`services/*/kargo/`** + **`manifests/kargo/`**, **`apps/`**, `helm-values/`, bootstrap/RBAC, and selected prod quota/network-policy paths. This gate is what Kargo's prod-promotion PR lands against.
 - **Immutable artifacts** — prod pins **SHA image tags**, never `:latest`.
 - **Progressive delivery** — the canary/BlueGreen Rollout + its `*-health-gate` analysis auto-aborts a bad rollout on metrics; that is the runtime safety brake (not a human clicking Sync).
 
-**selfHeal vs autoscalers (critical):** if an autoscaler owns replicas (KEDA/HPA), put `.spec.replicas` in `ignoreDifferences` + `RespectIgnoreDifferences=true` so selfHeal doesn't fight it (e.g. platform-demo's KEDA HTTP add-on). If Git owns replicas (a static `patch-replicas`, no autoscaler), leave it enforced — selfHeal keeping prod at the declared count is correct (e.g. plane/agent/crew).
+**selfHeal vs autoscalers (critical):** if an autoscaler owns replicas (KEDA/HPA), put `.spec.replicas` in `ignoreDifferences` + `RespectIgnoreDifferences=true` so selfHeal doesn't fight it (e.g. platform-demo's KEDA HTTP add-on). If Git owns replicas through Helm values, leave it enforced — selfHeal keeping prod at the declared count is correct.
 
 **Before enabling auto-sync on an existing manual app:** manually sync it to `Synced/Healthy` first (apply any pending git changes under watch), then flip to `automated` — so selfHeal engages on a clean app, not a surprise reconcile.
 
@@ -48,22 +51,22 @@ stages. **Kargo** fills that gap: it watches the built image, and **writes the G
 change** (opens PRs) that Argo CD then reconciles. It never touches the cluster —
 so the GitOps model and the CODEOWNERS prod gate stay intact. Division of labour:
 **CI builds & proves the artifact; Kargo promotes it; Argo CD deploys it.** Kargo
-replaces only CI's overlay image-bump — all testing/build/scan/sign/SBOM stays in CI.
+replaces only CI's GitOps image-tag mutation — all testing/build/scan/sign/SBOM stays in CI.
 
 - Install: `apps/platform/kargo.yaml` (Helm `oci://ghcr.io/akuity/kargo-charts/kargo`, pinned) + `manifests/kargo/` (TLS cert, ingress at `kargo.10.0.0.200.nip.io`, README with the one-time admin/PAT bootstrap). Projects are generated by the `apps/platform/kargo-projects.yaml` ApplicationSet over `services/*/kargo/`.
-- Per service `services/<svc>/kargo/`: `Project` + `Warehouse` (watches the prod ghcr image, `imageSelectionStrategy: NewestBuild`, `allowTagsRegexes: [^[0-9a-f]{7,40}$]` — note `allowTags` is removed in Kargo ≥1.11) + `Stage dev` (`sources.direct: true`) + `Stage prod` (`sources.stages: [dev]` — the multi-stage gate: only freight already live in dev is promotable). Both Stages' promotionTemplate = `git-clone → kustomize-set-image → git-commit → git-push (generateTargetBranch) → git-open-pr → git-wait-for-pr`. dev PR is `automerge`-labelled (dev overlays aren't CODEOWNERS-gated); prod PR is **not** — it lands on the CODEOWNERS gate.
+- Per service `services/<svc>/kargo/`: `Project` + `Warehouse` + `Stage dev` (`sources.direct: true`) + `Stage prod` (`sources.stages: [dev]`). Both Stages use `git-clone → yaml-update` on the appropriate `values-{dev,prod}.yaml` image tag → `git-commit → git-push (generateTargetBranch) → git-open-pr → git-wait-for-pr`. The dev PR is `automerge`-labelled; the prod PR is **not** and lands on the CODEOWNERS gate.
 - **Credentials** (per project namespace, via ESO): `kargo-git-credentials` (label `kargo.akuity.io/cred-type: git`, from Vault `secret/platform/kargo` git-username/git-token) opens the PRs; `kargo-image-credentials` (label `…/cred-type: image`, from `secret/platform/ghcr`) for **Internal** ghcr packages (plane/agent/crew). platform-demo's package is Public → no image cred.
-- **Verification stays in CI** (smoke + k6) — Kargo owns promotion mechanics only, no `Stage.verification` blocks (don't duplicate the checks CI already runs).
-- **Safe posture / cutover:** no auto-promotion is configured, so promotions are **manual** (Kargo UI) and cannot fight CI's dev image-bump. Full cutover per service = enable a `dev` auto-promotion `ProjectConfig` policy + delete that service's CI `bump-gitops` step. The `automerge` auto-merge is already wired (`.github/workflows/kargo-automerge.yml` — merges dev-overlay-only PRs, refuses prod/base/apps).
+- **Verification is layered:** CI proves the artifact before publication; after dev promotion, each Kargo `Stage` runs its configured `AnalysisTemplate` against the deployed service. A passing AnalysisRun marks the Freight verified and makes it eligible for prod; it does not replace CI unit/integration/security checks.
+- **Current posture:** the six promoted services have a `ProjectConfig` enabling dev auto-promotion and Kargo-owned verification; prod remains manual and CODEOWNERS-gated. Kargo is the sole GitOps image promoter for those services. The guarded `.github/workflows/kargo-automerge.yml` only merges eligible dev promotion PRs and refuses production/platform paths.
 - **Signed-commits gotcha:** Kargo's promotion commits are **unsigned**, but `main`'s ruleset requires verified signatures. So **merge Kargo PRs with `--squash`** (GitHub creates one *signed* squash commit) — a plain `--merge` fails with "Commits must have verified signatures". The dev auto-merge workflow uses `--squash`; approve **prod** PRs with squash too (or configure Kargo commit signing via `signingKey`).
 - **Two Warehouse models — pick per service:**
   - **image** (`imageSelectionStrategy: NewestBuild` + `allowTagsRegexes: [^[0-9a-f]{7,40}$]`) for a **single-image** service, or images that always change together. platform-demo / plane / agent / crew / ktayl.
   - **git** (a `git` subscription on the source repo `main`) for a **multi-image** service where one image can be **unchanged**: Freight = a commit, and the Stage pins **all** images to `${{ commitFrom("<repo>.git").ID[0:7] }}`. Reference: **retrieva** (backend + frontend). **Why it's mandatory there:** two `NewestBuild` image subscriptions produce a **MIXED Freight** when one image is unchanged (a byte-identical *cached* rebuild has no newer timestamp, so `NewestBuild` can't rank the new SHA as "newest") → prod would get mismatched image versions. The git model keys Freight on the commit → always a consistent set. A **public** source repo needs no git credential. **Phantom-commit guard (mandatory for a git Warehouse):** it creates Freight for *every* main commit, but the CI build skips docs-only commits (`paths-ignore: docs/** + *.md`) → promoting a docs-only commit points at a SHA whose images were **never built** → `ImagePullBackOff`. **Mirror the CI's `paths-ignore` on the git subscription** so Freight is only produced for commits that build images: `git.excludePaths: [docs, "regex:.*\\.md$"]` (make excludePaths a **superset** of the CI filter — the safe direction is never promoting an un-built commit). This is why the image model has **no** such gap (it only ever sees real, pushed images). retrieva warehouse: `services/retrieva/kargo/warehouse.yaml`.
   - **Do NOT standardise single-image services onto the git model for "uniformity".** For a single image, the mixed-Freight bug is impossible, so git buys nothing while *adding* the phantom-commit gap + a source-repo coupling. The two-model split maps to a real distinction (single vs multi image) — that is the correct design, not an inconsistency. Use git **only** when a service has ≥2 independently-built images.
-- **Env-agnostic images are a prerequisite.** The *same* artifact must run in dev and prod — read env at **runtime**, never bake it. If an image bakes env (e.g. a Next.js frontend baking `NEXT_PUBLIC_*`), fix that first (server-inject `window.__ENV__` in the layout + a `getApiUrl()`/`getRuntimeEnv()` accessor; set the value per-overlay env — reference impl **live in retrieva**: `frontend/src/lib/runtime-env.ts` wired through the layout + `lib/api/client.ts`). A mutable `:latest` prod tag also can't be promoted → migrate to ghcr/SHA first (see ktayl).
+- **Env-agnostic images are a prerequisite.** The *same* artifact must run in dev and prod — read env at **runtime**, never bake it. If an image bakes env (e.g. a Next.js frontend baking `NEXT_PUBLIC_*`), fix that first (server-inject `window.__ENV__` in the layout + a `getApiUrl()`/`getRuntimeEnv()` accessor; set the value through environment-specific runtime configuration — reference impl **live in retrieva**: `frontend/src/lib/runtime-env.ts` wired through the layout + `lib/api/client.ts`). A mutable `:latest` prod tag also can't be promoted → migrate to ghcr/SHA first.
 - **All 6 custom services are wired** (dev→prod gate): platform-demo, minicloud-plane, minicloud-agent, minicloud-crew-agent, ktayl-policy-service (image Warehouses) + retrieva (git Warehouse, 2 images). retrieva uses a **dedicated app** (`apps/platform/kargo-retrieva.yaml`, ns `retrieva-kargo`) because its prod workload owns the bare `retrieva` ns; the others come from the `kargo-projects` ApplicationSet. Once a service is fully on Kargo, drop its CI dev-branch/bump-gitops track (Kargo owns dev→prod — e.g. retrieva builds on `main` only). Litmus test: **Kargo promotes one immutable artifact across stages.**
 - **When does a service warrant Kargo? (why only 6 of ~91 Argo apps)** ALL FOUR must hold: (1) **you build the image** (your source→CI, not a vendor chart); (2) **two envs run the same artifact** (a `dev` AND a `prod`); (3) the image is **env-agnostic** (runtime config); (4) the prod tag is **immutable** (ghcr/SHA). Everything else self-updates by a Git version bump → Argo CD sync, with nothing to promote: **third-party charts** (Grafana/Vault/Harbor/ERPNext… — conditions 1+2 fail), **platform infra** (cert-manager/ESO/Cilium… — single instance, cond 2 fails), and **your single-environment custom images** (backstage/open-webui/onlyoffice/erpnext/ktayl-solution-web — you build them but there's one prod instance, no dev→prod, cond 2 fails). Note **one Kargo service ≈ 3 Argo apps** (`<svc>-dev`+`<svc>-prod`+`kargo-<svc>`), so 91 apps ≠ 91 candidates. Full taxonomy: docs `developer-platform/kargo-promotion` *Which deployments need Kargo?*.
-- **Auto-promotion + Kargo-owned dev verification (Option 2, the target model — pilot = platform-demo).** Kargo becomes the SOLE promoter of dev AND owns dev verification; the CI's `bump-gitops`/`smoke`/`canary` jobs are **removed** (driving+smoking a deploy synchronously from CI is a *sync-over-async* anti-pattern once Kargo owns promotion — CI then only builds+proves the artifact). Three pieces in `services/<svc>/kargo/`: (1) `ProjectConfig` (singleton, `metadata.name` = project ns) `spec.promotionPolicies: [{stage: dev, autoPromotionEnabled: true}]` → new Freight auto-promoted to dev (prod stays manual/CODEOWNERS). (2) Stage dev `spec.verification.analysisTemplates: [{name: <svc>-dev-verify}]` → after promoting, Kargo creates an AnalysisRun (needs argo-rollouts, which is cluster-scoped here); a Freight is `verifiedIn:[dev]` ONLY if it passes → the prod Stage (`sources.stages:[dev]`) accepts only verified Freight = the dev→prod gate. (3) an `AnalysisTemplate` (argoproj.io) = a `job`-provider curl smoke. **A failed verification does NOT roll back dev** (promotion already happened) — it just blocks prod-promotability; prod keeps its canary Rollout brake. **Smoke pod MUST be Gatekeeper-compliant** (runAsNonRoot+runAsUser, allowPrivilegeEscalation:false, drop ALL caps, resource limits, seccomp RuntimeDefault) and use a **fully-qualified image** (`docker.io/curlimages/curl:…` — bare `curlimages/curl` is denied by the allowed-registries policy). **Two smoke variants by dev topology:** (A) **scale-to-zero (KEDA) + SSO'd dev** (platform-demo) → curl the **KEDA interceptor directly** (`keda-add-ons-http-interceptor-proxy.keda.svc:8080` + `Host: <dev-host>`) to wake dev 0→1 AND bypass the ingress SSO (you test the app, not the identity chain); needs the label-scoped `allow-kargo-verification-interceptor` netpol in `manifests/network-policies/keda.yaml` (allows ingress from `kargo.akuity.io/project=true` ns — one rule for all Kargo services). (B) **always-on + no-SSO dev** (plane/agent/crew/ktayl) → curl the dev app **via ingress-nginx** (`--connect-to <dev-host>:443:nginx-ingress-…-controller.ingress-nginx.svc:443` for correct SNI, `-k`) — ingress-nginx accepts from all ns and the dev ns already allows ingress-nginx, so **no new netpol**. Verify live before stripping CI: create an AnalysisRun from the deployed template → `Successful`. (Reverify-by-annotation `kargo.akuity.io/reverify` is unreliable — prove via a direct AnalysisRun; the real auto path — new Freight→auto-promote→verify — needs no reverify.)
+- **Auto-promotion + Kargo-owned dev verification (current model for all six promoted services).** Kargo is the sole promoter of dev and owns post-deployment verification; CI only builds and proves the artifact. Three pieces in `services/<svc>/kargo/`: (1) `ProjectConfig` (singleton, `metadata.name` = project namespace) enables dev auto-promotion while prod stays manual/CODEOWNERS-gated. (2) Stage dev references `<svc>-dev-verify`; Kargo creates an AnalysisRun after promotion, and only successful Freight is eligible for the prod Stage. (3) an Argo Rollouts `AnalysisTemplate` runs the service-specific smoke job. **A failed verification does not roll back dev**; it blocks prod eligibility. Smoke pods must remain Gatekeeper-compliant and use fully qualified allowed images. Test the correct dependency path for each topology (for example the KEDA interceptor for scale-to-zero workloads, or ingress-nginx with correct SNI for always-on services) and preserve the corresponding least-privilege NetworkPolicy.
 
 ### Helm golden path — GAP wrapper-chart standard (since 2026-09-12, supersedes multi-source)
 
@@ -95,7 +98,7 @@ ArgoCD app = single source: `repoURL: <gitops git>, path: services/<svc>/helm, h
 5. Add namespaces to AppProject; ghcr OCI is already a registered ArgoCD repo (`ghcr-oci-repo`, type=helm/enableOCI) so `helm dependency build` resolves the dep.
 6. Kargo promotion = **yaml-update on `minicloud-app-deployment.image.tag`** in the values file.
 
-**Gotchas (proven converting platform-demo/agent/crew/plane/ktayl, HGP-07/10/11):**
+**Gotchas (proven converting platform-demo/agent/crew/plane/ktayl/retrieva, HGP-07/10/11 and RTV-49):**
 - **`.helmignore` must NOT contain `charts/`** — it makes helm treat the vendored dep as missing at render. Gitignore `charts/` instead; commit `Chart.lock`.
 - **`helm.releaseName` is mandatory** — the library uses the release name for `fullname`; without it the workload/Service/Rollout take the ArgoCD app name (proven in the render test).
 - **Escape non-Helm `{{ }}`** in wrapper templates — ESO output-templates (`{{ .username }}`) and Argo-Rollouts analysis args (`{{args.preview-url}}`) must be backtick-wrapped `{{ `…` }}` so Helm emits them verbatim. **Also no `{{ }}` in YAML comments** (Helm parses comments too).
@@ -104,13 +107,10 @@ ArgoCD app = single source: `repoURL: <gitops git>, path: services/<svc>/helm, h
 - **Certificate = a wrapper template** (name kept, e.g. `<svc>-tls`) for an in-place flip, `certificate.enabled: false` in the subchart — avoids the library-cert rename churn; a simple single-host service can instead use the library ingress + cert.
 - **cert-manager issuer** = ClusterIssuer `minicloud-ca`.
 
-**Legacy kustomize overlays retired (2026-09-12):** the 5 migrated services are now `helm/` + `kargo/`
-only — their `base/` + `minicloud-1/` overlays and the `services/_template` kustomize scaffold were
-removed once the wrapper flips were verified (nothing referenced them; pure repo cleanup). The only
-remaining kustomize tree is **retrieva** (`services/retrieva/{base,minicloud-1}`), the last un-migrated
-custom app — dual-workload (backend+frontend) → convert with **two aliased library subchart deps**,
-ideally paired with its RTV-45 Mongo→PostgreSQL datastore change (convert once). During a *future*
-migration, keep a service's overlay as rollback only until its wrapper flip is verified, then remove it.
+**Legacy Kustomize overlays retired:** all six promoted services are now `helm/` + `kargo/` only.
+The old `base/`, `minicloud-1/`, and `services/_template` trees were removed after their wrapper
+cutovers were verified. Retrieva uses two aliased library dependencies and Kargo `yaml-update` changes
+both backend and frontend tags together. Do not recreate the retired overlay pattern.
 
 ```bash
 # render/validate a wrapper-chart service locally:
@@ -122,9 +122,9 @@ cd services/<svc>/helm && helm dependency update . && helm template <svc> . -f v
 To keep the controller disk bounded, prod images live in **ghcr.io** (free, durable, off local disk); Harbor is a **dev-only** registry (retention keep-10 + daily GC).
 
 - **CI dual-push:** on `main`, build + push to **both** Harbor (dev/prod tag) and `ghcr.io/andrelair-platform/<repo>:<sha>`; sign (keyless cosign) + attach SBOM to the ghcr image. The `dev` branch pushes Harbor-only. Reference edits: platform-demo CI (`packages: write`, GHCR login via `GITHUB_TOKEN`, `tags:` from a meta step that appends the ghcr ref only for main).
-- **Prod overlay** repoints the image with kustomize `newName: ghcr.io/andrelair-platform/<repo>` + `newTag: <sha>`; dev stays Harbor. **If CI bumps the prod overlay** (agent/crew use the branch=env model where main→prod), its `kustomize edit set image` MUST set the ghcr **name** for prod (`set image harbor..=ghcr..:SHA`) — else the next push reverts `newName`. Services using main→dev + PR→prod (platform-demo/plane) don't have this issue.
+- **Environment values:** wrapper charts declare Harbor in `values-dev.yaml` and GHCR plus an immutable SHA in `values-prod.yaml`; Kargo changes only the tag with `yaml-update`. Retrieva updates both aliased image tags from the same Git Freight SHA.
 - **Visibility:** demos → **Public** (k3s pulls anonymously, no secret). Real services → **Internal/Private** + an imagePullSecret. **GitHub has NO API to set package visibility** — the org must allow non-Public packages (org Settings→Packages), then flip each package in its UI.
-- **Internal-pull pattern:** a `read:packages` PAT → Vault `secret/platform/ghcr` (`username`,`token`; **write needs the Vault root token**) → an **ESO ExternalSecret** renders a `kubernetes.io/dockerconfigjson` secret `ghcr-pull` (auth = `printf "%s:%s" .username .token | b64enc`) → the pod spec gets `imagePullSecrets: [ghcr-pull]` via a prod-overlay patch. One shared `ghcr-pull` ES per namespace suffices (e.g. one in `ai` for agent+crew, in `manifests/ai/`). The app that owns the ES needs the ESO `ignoreDifferences` (see below) if it uses ServerSideApply.
+- **Internal-pull pattern:** a `read:packages` PAT → Vault `secret/platform/ghcr` (`username`,`token`; **write needs the Vault root token**) → an **ESO ExternalSecret** renders a `kubernetes.io/dockerconfigjson` secret `ghcr-pull` → wrapper values or the owning workload manifest references `imagePullSecrets: [ghcr-pull]`. One shared `ghcr-pull` ExternalSecret per namespace suffices. The Argo CD app that owns it needs the ESO `ignoreDifferences` below when using ServerSideApply.
 - **CI-secret trap (recurring):** a stale **repo-level** `HARBOR_USER`/`HARBOR_PASSWORD` **shadows the org-level** secret (repo scope wins) → CI fails at `docker login harbor` with 401. Delete the repo-level ones so the Vault-sourced org secrets govern: `gh secret delete HARBOR_PASSWORD --repo <repo>`. When a build fails at registry login, check BOTH `gh secret list --repo` and `--org`.
 
 Reference: platform-demo (Public), minicloud-plane / minicloud-agent / minicloud-crew-agent (Internal + `ghcr-pull`).
@@ -157,7 +157,7 @@ Reference: PRs #729 (minicloud-agent-dev + minicloud-crew-agent-dev fix).
 Source at `~/Developer/cloudplateform/minicloud-backstage`. CI is fully automated.
 
 **CRITICAL — production config is NOT in minicloud-backstage:**
-`app-config.yaml` in that repo is local dev only. Production config comes from ConfigMap `backstage-app-config` rendered from `minicloud-gitops/helm-values/minicloud-1/backstage-values.yaml` (`appConfig` section). To add catalog locations, proxy endpoints, or any prod config → edit that values file, push, then `kubectl rollout restart deployment/backstage -n backstage`.
+`app-config.yaml` in that repo is local dev only. Production config comes from ConfigMap `backstage-app-config` rendered from `minicloud-gitops/helm-values/minicloud-1/backstage-values.yaml` (`appConfig` section). To add catalog locations, proxy endpoints, or any prod config, edit that values file and merge it through the protected Git flow; let Argo CD reconcile it. Verify the resulting rollout with read-only Argo CD and Kubernetes inspection.
 
 ```bash
 cd ~/Developer/cloudplateform/minicloud-backstage
