@@ -22,7 +22,7 @@ quota:
 backend:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-backend
-    tag: 16c16e0
+    tag: 9e34ff8
   workload:
     replicas: 2
   env:
