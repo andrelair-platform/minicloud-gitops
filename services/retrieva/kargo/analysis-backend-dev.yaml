@@ -1,0 +1,73 @@
+# Kargo dev-Stage verification for the BACKEND image (post-split, single-image).
+# Curls the backend dev Service directly cross-namespace: waits until it's reachable
+# (rolling gap tolerance), then asserts the promoted artifact's LLM path is live via
+# /health/detailed (services.llm.responsive). /health is not exposed via the ingress
+# (only /api + /socket.io), so a cross-ns Service probe is the right call. Needs the
+# allow-kargo-verification NetworkPolicy in retrieva-dev (netpol-dev.yaml).
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: retrieva-backend-dev-verify
+  namespace: retrieva-kargo
+spec:
+  metrics:
+    - name: backend-dev-smoke
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 3
+            activeDeadlineSeconds: 300
+            ttlSecondsAfterFinished: 300
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/part-of: retrieva
+                  kargo.akuity.io/verify: backend-dev-smoke
+              spec:
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: smoke
+                    image: docker.io/curlimages/curl:8.11.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests: {cpu: 25m, memory: 32Mi}
+                      limits: {cpu: 100m, memory: 64Mi}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        B=http://retrieva-backend.retrieva-dev.svc.cluster.local:3007/health
+                        BD=http://retrieva-backend.retrieva-dev.svc.cluster.local:3007/health/detailed
+
+                        # Readiness gate first (retrieva-dev rolls maxSurge:0 → a Service-endpoints
+                        # gap outlasts a plain curl retry budget → false-fail). Poll until reachable.
+                        wait_up() {  # $1=url $2=label
+                          i=0
+                          while [ "$i" -lt 50 ]; do
+                            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" 2>/dev/null || true)
+                            [ -z "$code" ] && code=000
+                            if [ "$code" != "000" ]; then
+                              echo "$2 reachable (HTTP $code) after $((i*3))s"; return 0
+                            fi
+                            i=$((i+1)); sleep 3
+                          done
+                          echo "$2 never became reachable after 150s"; return 1
+                        }
+                        wait_up "$B" backend
+
+                        # Assert the promoted artifact's LLM path (getDefaultLLM().invoke() via the
+                        # gateway) — not the aggregate 200/503 which can flip on env-state deps.
+                        body=$(curl -sS --max-time 60 --retry 6 --retry-delay 5 --retry-all-errors "$BD")
+                        echo "$body" | grep -qE '"responsive":[[:space:]]*true' || {
+                          echo "backend LLM not responsive via gateway: $body"; exit 1; }
+                        echo "backend: real generation verified (llm.responsive via gateway) — dev smoke passed"

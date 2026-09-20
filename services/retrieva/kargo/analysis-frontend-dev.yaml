@@ -1,0 +1,65 @@
+# Kargo dev-Stage verification for the FRONTEND image (post-split, single-image).
+# Curls the frontend dev Service root cross-namespace: waits until reachable, then asserts
+# / = 200. Needs the allow-kargo-verification NetworkPolicy in retrieva-dev (netpol-dev.yaml).
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: retrieva-frontend-dev-verify
+  namespace: retrieva-kargo
+spec:
+  metrics:
+    - name: frontend-dev-smoke
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 3
+            activeDeadlineSeconds: 300
+            ttlSecondsAfterFinished: 300
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/part-of: retrieva
+                  kargo.akuity.io/verify: frontend-dev-smoke
+              spec:
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: smoke
+                    image: docker.io/curlimages/curl:8.11.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests: {cpu: 25m, memory: 32Mi}
+                      limits: {cpu: 100m, memory: 64Mi}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        F=http://retrieva-frontend.retrieva-dev.svc.cluster.local:3000/
+
+                        wait_up() {  # $1=url $2=label
+                          i=0
+                          while [ "$i" -lt 50 ]; do
+                            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" 2>/dev/null || true)
+                            [ -z "$code" ] && code=000
+                            if [ "$code" != "000" ]; then
+                              echo "$2 reachable (HTTP $code) after $((i*3))s"; return 0
+                            fi
+                            i=$((i+1)); sleep 3
+                          done
+                          echo "$2 never became reachable after 150s"; return 1
+                        }
+                        wait_up "$F" frontend
+
+                        fc=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
+                          --retry 8 --retry-delay 5 --retry-all-errors "$F")
+                        echo "frontend / = $fc"; test "$fc" = 200
+                        echo "frontend healthy — dev smoke passed"

@@ -1,0 +1,20 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: retrieva-backend
+  namespace: retrieva-kargo
+spec:
+  # Post-split (RFC retrieva#474): the backend builds from its OWN repo
+  # (andrelair-platform/retrieva-backend) → its own image. A single-image Warehouse with
+  # NewestBuild is safe here (the mixed-Freight bug only affects ≥2 image subs in ONE
+  # Warehouse — see gitops.md). Freight = one retrieva-backend ghcr image, promoted
+  # independently of the frontend.
+  interval: 5m
+  freightCreationPolicy: Automatic
+  subscriptions:
+    - image:
+        repoURL: ghcr.io/andrelair-platform/retrieva-backend
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - ^[0-9a-f]{7,40}$
+        discoveryLimit: 5

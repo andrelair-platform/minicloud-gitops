@@ -1,31 +1,27 @@
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
-  name: dev
+  name: frontend-dev
   namespace: retrieva-kargo
 spec:
-  # Promotes the git-commit Freight to the DEV overlay (Harbor, bare SHA — same
-  # immutable artifact as prod). retrieva-dev is now Kargo-fed by main builds; the
-  # dev PR auto-merges (dev overlays aren't CODEOWNERS-gated).
+  # Promotes the newest retrieva-frontend image (built from the `retrieva` repo) to the DEV
+  # overlay. Only frontend.image.tag is touched. dev auto-promotes; PR auto-merges.
   requestedFreight:
     - origin:
         kind: Warehouse
-        name: retrieva
+        name: retrieva-frontend
       sources:
         direct: true
-  # After promoting to dev, run the multi-image smoke AnalysisRun (Variant C: backend
-  # /health + frontend / via the dev Services). A Freight is "Verified in dev" only if it
-  # passes → the prod Stage (sources.stages: [dev]) accepts only verified Freight.
   verification:
     analysisTemplates:
-      - name: retrieva-dev-verify
+      - name: retrieva-frontend-dev-verify
   promotionTemplate:
     spec:
       vars:
         - name: gitopsRepo
           value: https://github.com/andrelair-platform/minicloud-gitops.git
-        - name: sha
-          value: ${{ commitFrom("https://github.com/andrelair-platform/retrieva.git").ID[0:7] }}
+        - name: img
+          value: ghcr.io/andrelair-platform/retrieva-frontend
       steps:
         - uses: git-clone
           as: clone
@@ -37,18 +33,15 @@ spec:
         - uses: yaml-update
           as: set-image
           config:
-            # dev wrapper values already pin the Harbor repo; bump BOTH image tags to the promoted SHA.
             path: ./repo/services/retrieva/helm/values-dev.yaml
             updates:
-              - key: backend.image.tag
-                value: ${{ quote(vars.sha) }}
               - key: frontend.image.tag
-                value: ${{ quote(vars.sha) }}
+                value: '${{ quote(imageFrom(vars.img).Tag) }}'
         - uses: git-commit
           as: commit
           config:
             path: ./repo
-            message: 'kargo(retrieva): promote ${{ vars.sha }} to dev'
+            message: 'kargo(retrieva): promote frontend ${{ imageFrom(vars.img).Tag }} to dev'
         - uses: git-push
           as: push
           if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
@@ -63,7 +56,7 @@ spec:
             sourceBranch: ${{ outputs.push.branch }}
             targetBranch: main
             provider: github
-            title: 'kargo(retrieva): promote ${{ vars.sha }} to dev'
+            title: 'kargo(retrieva): promote frontend ${{ imageFrom(vars.img).Tag }} to dev'
             labels: [kargo, env-dev, automerge]
         - uses: git-wait-for-pr
           as: wait-pr
