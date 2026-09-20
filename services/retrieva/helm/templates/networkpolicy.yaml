@@ -106,3 +106,36 @@ spec:
         - ipBlock: { cidr: 10.0.0.1/32 }
       ports:
         - { protocol: TCP, port: 9000 }
+{{- if .Values.email.enabled }}
+---
+# Transactional/notification email egress (#475) — the ONLY approved EXTERNAL egress from
+# the backend. api.resend.com is Cloudflare-fronted (rotating IPs), so a Cilium toFQDNs
+# rule (L7 DNS proxy) pins egress to that hostname:443 without opening the internet. The
+# governance NetworkPolicy above still drops every other external egress (LLM providers,
+# etc.). Prod-only (email.enabled); dev has no email egress.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: backend-egress-resend
+spec:
+  endpointSelector:
+    matchLabels:
+      app: retrieva-backend
+  egress:
+    # DNS visibility so Cilium can learn api.resend.com's rotating IPs.
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - { port: "53", protocol: ANY }
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toFQDNs:
+        - matchName: api.resend.com
+      toPorts:
+        - ports:
+            - { port: "443", protocol: TCP }
+{{- end }}
