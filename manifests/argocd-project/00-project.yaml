@@ -196,6 +196,12 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: ktayl-policy-service
       server: https://kubernetes.default.svc
+    - namespace: ktayl-iam
+      server: https://kubernetes.default.svc
+    - namespace: ktayl-iam-prod
+      server: https://kubernetes.default.svc
+    - namespace: ktayl-iam-kargo
+      server: https://kubernetes.default.svc
     - namespace: retrieva-kargo
       server: https://kubernetes.default.svc
 

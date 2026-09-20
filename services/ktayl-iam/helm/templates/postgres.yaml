@@ -1,0 +1,83 @@
+# Dedicated Postgres for ktayl-iam (the assignment source of truth). Password from Vault via ESO.
+# Enabled per env (.Values.postgres.enabled). Service name = ktayl-iam-postgres (matches DATABASE_HOST).
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: ktayl-iam-postgres
+  labels: { app: ktayl-iam-postgres }
+spec:
+  clusterIP: None
+  selector: { app: ktayl-iam-postgres }
+  ports:
+    - { name: postgres, port: 5432, targetPort: 5432 }
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ktayl-iam-postgres-secret
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { name: vault-backend, kind: ClusterSecretStore }
+  target: { name: ktayl-iam-postgres-secret, creationPolicy: Owner }
+  data:
+    - secretKey: postgres-password
+      remoteRef: { key: {{ .Values.secretsVaultPath }}, property: postgres-password }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ktayl-iam-postgres
+spec:
+  serviceName: ktayl-iam-postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: ktayl-iam-postgres }
+  template:
+    metadata:
+      labels: { app: ktayl-iam-postgres }
+    spec:
+      securityContext:
+        fsGroup: 999
+        runAsNonRoot: true
+        runAsUser: 999
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:16-alpine
+          env:
+            - { name: POSTGRES_USER, value: ktayl_iam }
+            - { name: POSTGRES_DB, value: ktayl_iam }
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: ktayl-iam-postgres-secret, key: postgres-password }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+            - { name: LANG, value: "C" }
+            - { name: LC_ALL, value: "C" }
+          ports:
+            - { name: postgres, containerPort: 5432 }
+          resources:
+            requests: { cpu: 50m, memory: {{ .Values.postgres.requestMemory }} }
+            limits:   { cpu: 500m, memory: {{ .Values.postgres.limitMemory }} }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["NET_RAW"] }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "ktayl_iam", "-d", "ktayl_iam"] }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate: { partition: 0 }
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: longhorn
+        volumeMode: Filesystem
+        resources:
+          requests: { storage: {{ .Values.postgres.storage }} }
+{{- end }}

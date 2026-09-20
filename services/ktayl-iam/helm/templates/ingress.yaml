@@ -1,0 +1,26 @@
+# One path-routing Ingress for both workloads: /api → backend:3000, / → frontend:3000.
+# host + tls per env. NO Authentik forward-auth — the backend runs its OWN Authentik OIDC
+# login (admin-only); the app IS the auth boundary. Same-origin ⇒ session cookie just works.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ktayl-iam
+  labels:
+    app: ktayl-iam
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [{{ .Values.ingress.host | quote }}]
+      secretName: {{ .Values.ingress.tlsSecretName }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: ktayl-iam-backend, port: { number: 3000 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: ktayl-iam-frontend, port: { number: 3000 } } }

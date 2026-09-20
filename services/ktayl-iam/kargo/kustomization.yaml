@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Kargo promotion for ktayl-iam. TWO single-image Warehouses (backend + frontend, monorepo →
+# both from ghcr.io/…/ktayl-iam-<app>), each with dev+prod Stages promoted independently.
+# Safe posture: no auto-promotion (manual via Kargo UI) — add a ProjectConfig later to auto-promote dev.
+# Deployed by apps/platform/kargo-ktayl-iam.yaml.
+resources:
+  - namespace.yaml
+  - project.yaml
+  - git-credentials.yaml
+  - warehouse-backend.yaml
+  - warehouse-frontend.yaml
+  - stage-backend-dev.yaml
+  - stage-backend-prod.yaml
+  - stage-frontend-dev.yaml
+  - stage-frontend-prod.yaml

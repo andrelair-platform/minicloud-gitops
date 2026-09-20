@@ -1,0 +1,89 @@
+# ktayl-iam wrapper — common values. Two aliased library subcharts: `backend:` and `frontend:`.
+# Per-env image tags / host / vault path / replicas live in values-{dev,prod}.yaml
+# (Helm lists don't merge → env/probes restated per alias here; tags set per env).
+
+# ---- shared library-subchart config applied to BOTH (subcharts don't inherit top-level) ----
+_shared: &shared
+  serviceAccount: { create: true, name: ktayl-iam, automountServiceAccountToken: false }
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000          # node images run as uid 1000
+    fsGroup: 1000
+    seccompProfile: { type: RuntimeDefault }
+  securityContext:           # node apps write to fs (Next cache) → disable the library's readOnlyRootFilesystem:true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities: { drop: ["ALL"] }
+  workload:
+    kind: Deployment
+    strategy:                # tight quota → no surge
+      type: RollingUpdate
+      rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }
+  ingress: { enabled: false }       # shared path-routing Ingress is a wrapper template
+  certificate: { enabled: false }   # cert is a wrapper template
+
+backend:
+  <<: *shared
+  nameOverride: backend
+  fullnameOverride: ktayl-iam-backend
+  selectorLabels: { app: ktayl-iam-backend }
+  image: { repository: harbor.10.0.0.200.nip.io/library/ktayl-iam-backend }   # tag per env
+  ports:
+    - { name: http, containerPort: 3000, protocol: TCP }
+  service:
+    ports: [{ name: http, port: 3000, targetPort: http }]
+  env:
+    - { name: PORT, value: "3000" }
+    - { name: NODE_ENV, value: "production" }
+    # FRONTEND_URL + all OIDC/DB/session vars come from the app secret (envFrom) / per env
+  envFrom:
+    - secretRef: { name: ktayl-iam-secret }
+  readinessProbe:
+    httpGet: { path: /api/health, port: http }
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 6
+  livenessProbe:
+    httpGet: { path: /api/health, port: http }
+    initialDelaySeconds: 30
+    periodSeconds: 20
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+frontend:
+  <<: *shared
+  nameOverride: frontend
+  fullnameOverride: ktayl-iam-frontend
+  selectorLabels: { app: ktayl-iam-frontend }
+  image: { repository: harbor.10.0.0.200.nip.io/library/ktayl-iam-frontend }  # tag per env
+  ports:
+    - { name: http, containerPort: 3000, protocol: TCP }
+  service:
+    ports: [{ name: http, port: 3000, targetPort: http }]
+  readinessProbe:
+    httpGet: { path: /, port: http }
+    initialDelaySeconds: 15
+    periodSeconds: 15
+    failureThreshold: 6
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+# ---- wrapper-local (drive templates/) — overridden per env ----
+postgres:
+  enabled: false            # each env enables its own dedicated Postgres
+  requestMemory: 128Mi
+  limitMemory: 256Mi
+  storage: 2Gi
+# The app ExternalSecret (DB creds + Authentik client secret + least-privilege API token).
+secretsVaultPath: platform/ktayl-iam
+appSecret:
+  enabled: false            # each env enables it (dev may use a manual secret instead)
+ingress:
+  host: ""                  # per env
+  tlsSecretName: ktayl-iam-tls
+
+# ghcr imagePullSecret (prod uses Internal ghcr packages)
+ghcrPull:
+  enabled: false

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  # Dedicated Kargo project ns — the prod workload owns ktayl-iam-prod, dev owns ktayl-iam,
+  # so the Kargo project lives in its own ns (like retrieva-kargo).
+  name: ktayl-iam-kargo
+  labels:
+    kargo.akuity.io/project: "true"
