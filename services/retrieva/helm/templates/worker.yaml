@@ -1,0 +1,53 @@
+{{- /*
+  retrieva-backend#437 — the BullMQ worker as its OWN single-replica Deployment.
+
+  The worker PROCESSORS used to run in-process inside the API (retrieva-backend), so on the API's
+  2 prod replicas they double-ran and executed CPU-heavy jobs (gap analysis, embedding) inside the
+  API event loop. This runs `workers/index.js` in a dedicated pod instead.
+
+  Reuses the backend subchart's image + env + security context (single source → no drift). No
+  Service/Ingress (the worker has no HTTP endpoint). replicas: 1 + Recreate so there is never more
+  than one worker instance (correct BullMQ concurrency; no duplicate scheduled-job processing).
+  No liveness probe — the base image has no pgrep and the worker has no HTTP port; a crash exits the
+  process and the Deployment restarts it. (Queue-depth alerting is deferred hardening, see #437.)
+*/ -}}
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrieva-worker
+  labels:
+    app: retrieva-worker
+    app.kubernetes.io/name: retrieva-worker
+    app.kubernetes.io/part-of: retrieva
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: retrieva-worker
+  template:
+    metadata:
+      labels:
+        app: retrieva-worker
+        app.kubernetes.io/part-of: retrieva
+    spec:
+      serviceAccountName: {{ .Values.backend.serviceAccount.name | default "default" }}
+      securityContext:
+{{ toYaml .Values.backend.podSecurityContext | indent 8 }}
+      containers:
+        - name: worker
+          image: "{{ required "backend.image.repository is required" .Values.backend.image.repository }}:{{ required "backend.image.tag is required" .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy | default "IfNotPresent" }}
+          # workers/index.js = the same BullMQ processors the API used to import in-process.
+          command: ["node", "--import", "tsx", "--import", "./instrument.js", "workers/index.js"]
+          securityContext:
+{{ toYaml .Values.backend.securityContext | indent 12 }}
+          # Identical env to the API (DB, Redis, secrets, LLM, ENTITY_ISOLATION_MODE, …) — reused
+          # from the backend subchart values so the two can never drift.
+          env:
+{{ toYaml .Values.backend.env | indent 12 }}
+          resources:
+{{ toYaml .Values.worker.resources | indent 12 }}
+{{- end }}

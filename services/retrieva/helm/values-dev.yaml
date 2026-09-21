@@ -14,6 +14,10 @@ quota:
   limitsMemory: 4Gi
   pods: "12"
 
+# Dedicated BullMQ worker (retrieva-backend#437) — dev enables it first for verification.
+worker:
+  enabled: true
+
 backend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-backend
