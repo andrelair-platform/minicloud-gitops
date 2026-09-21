@@ -67,6 +67,14 @@ frontend:
     requests: { cpu: 50m, memory: 256Mi }
     limits:   { cpu: 500m, memory: 640Mi }
 
+# ---- worker (retrieva-backend#437) — a custom wrapper template (templates/worker.yaml), NOT a
+# library subchart (the library has no command override). Runs workers/index.js in a dedicated
+# single-replica pod, reusing backend.image + backend.env. Only its resources are set here.
+worker:
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits:   { cpu: "1", memory: 1Gi }
+
 # ---- wrapper-local (drive templates/) — defaults overridden per env ----
 # PostgreSQL — the primary datastore. Disabled by default; each env enables it.
 # Prod enables it via the gated quota-bump PR. Nothing connects until RTV-47/48 (Drizzle + schema).

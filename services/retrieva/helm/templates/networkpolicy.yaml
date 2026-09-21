@@ -57,9 +57,11 @@ kind: NetworkPolicy
 metadata:
   name: backend-egress-governed
 spec:
+  # Governs the API (retrieva-backend) AND the dedicated worker (retrieva-worker, #437) — both
+  # need the same egress (Redis/PG, ai-ns LLM/Qdrant/docling, langfuse, MinIO).
   podSelector:
-    matchLabels:
-      app: retrieva-backend
+    matchExpressions:
+      - { key: app, operator: In, values: [retrieva-backend, retrieva-worker] }
   policyTypes: [Egress]
   egress:
     # DNS resolution (CoreDNS in kube-system)
@@ -118,9 +120,10 @@ kind: CiliumNetworkPolicy
 metadata:
   name: backend-egress-resend
 spec:
+  # The worker also sends notification email (monitoring digests) → same Resend egress (#437).
   endpointSelector:
-    matchLabels:
-      app: retrieva-backend
+    matchExpressions:
+      - { key: app, operator: In, values: [retrieva-backend, retrieva-worker] }
   egress:
     # DNS visibility so Cilium can learn api.resend.com's rotating IPs.
     - toEndpoints:
