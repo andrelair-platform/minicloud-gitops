@@ -1,6 +1,6 @@
 # ktayl-iam — DEV overlay (ns ktayl-iam). Kargo updates backend/frontend .image.tag.
 backend:
-  image: { tag: "d40b150" }        # Harbor (repository from values.yaml); Kargo bumps
+  image: { tag: "e0dc0c5" }        # Harbor (repository from values.yaml); Kargo bumps
   env:
     - { name: PORT, value: "3000" }
     - { name: NODE_ENV, value: "production" }
