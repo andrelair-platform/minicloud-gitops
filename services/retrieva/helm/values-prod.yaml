@@ -19,10 +19,10 @@ quota:
   limitsMemory: 6Gi        # fits (5148Mi used + PG 512Mi limit = 5660 < 6144)
   pods: "16"
 
-# Dedicated BullMQ worker (retrieva-backend#437) — OFF until dev is verified; flip to true
-# together with promoting the worker-free API image so prod never loses its worker.
+# Dedicated BullMQ worker (retrieva-backend#437) — enabled after dev verification. Enabled
+# together with promoting the worker-free API image (Kargo) so prod never loses its worker.
 worker:
-  enabled: false
+  enabled: true
 
 backend:
   image:
