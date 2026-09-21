@@ -21,7 +21,7 @@ worker:
 backend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-backend
-    tag: 08a5808
+    tag: f107755
   workload:
     replicas: 1
   env:
