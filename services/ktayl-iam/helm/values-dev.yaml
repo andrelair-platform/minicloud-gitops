@@ -1,6 +1,6 @@
 # ktayl-iam — DEV overlay (ns ktayl-iam). Kargo updates backend/frontend .image.tag.
 backend:
-  image: { tag: "b35e85d" }        # Harbor (repository from values.yaml); Kargo bumps
+  image: { tag: "870adc8" }        # Harbor (repository from values.yaml); Kargo bumps
   env:
     - { name: PORT, value: "3000" }
     - { name: NODE_ENV, value: "production" }
@@ -16,6 +16,11 @@ backend:
     - { name: AUTHENTIK_CALLBACK_URL, value: "https://iam-dev.10.0.0.200.nip.io/api/auth/callback" }
     - { name: AUTHENTIK_SCOPE, value: "profile email groups" }
     - { name: ADMIN_GROUP, value: "Platform Admins" }
+    # S003 directory + manager resolution
+    - { name: AUTHENTIK_API_URL, value: "https://auth.devandre.sbs/api/v3" }
+    - { name: FALLBACK_APPROVER, value: "100001" }
+    - { name: ERPNEXT_URL, value: "https://erp.devandre.sbs" }
+    # ERPNEXT_API_KEY/SECRET come from the ktayl-iam-secret (Vault) → live manager lookup (AC-2).
   # secrets (DATABASE_PASSWORD · SESSION_SECRET · AUTHENTIK_CLIENT_ID/SECRET · AUTHENTIK_API_TOKEN)
   envFrom:
     - secretRef: { name: ktayl-iam-secret }
