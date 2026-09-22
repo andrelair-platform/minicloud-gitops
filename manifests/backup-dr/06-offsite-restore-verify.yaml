@@ -42,6 +42,7 @@ spec:
       template:
         spec:
           restartPolicy: Never
+          automountServiceAccountToken: false  # S3 creds via env; no k8s API access needed (CKV_K8S_38)
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
