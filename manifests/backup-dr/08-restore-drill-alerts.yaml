@@ -1,0 +1,46 @@
+# Alerts for the Stage 3 app-consistent backup + restore drill (audit R-07).
+# Netpol-free: both jobs simply exit non-zero on failure; these alerts fire off the
+# kube-state-metrics CronJob success timestamp (same pattern as K3sSQLiteBackupStale),
+# so a failing OR non-running job is caught without any egress to Alertmanager.
+# Separate file from 00-prometheusrule.yaml to avoid churn on the core backup-dr rules.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: restore-drill
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: restore-drill
+      rules:
+        - alert: SynapseLogicalBackupStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="synapse-logical-backup", namespace="chat"}) / 3600 > 26
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "App-consistent synapse logical backup has not succeeded in 26+ hours"
+            description: |
+              The synapse-logical-backup CronJob (pg_dump → MinIO db-logical/synapse) last
+              succeeded {{ $value | printf "%.1f" }} hours ago. The app-consistent restore
+              drill has nothing fresh to validate against.
+              Check: kubectl get cronjob synapse-logical-backup -n chat
+              Logs:  kubectl logs -n chat -l job-name --since=26h
+
+        - alert: AppRestoreDrillStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="app-restore-drill", namespace="velero"}) / 3600 > 26
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "App-consistent restore drill has not passed in 26+ hours"
+            description: |
+              The app-restore-drill CronJob last succeeded {{ $value | printf "%.1f" }} hours
+              ago — it is either failing (the synapse dump does not restore cleanly / too few
+              tables or rows) or not running. An untested restore is not a backup.
+              Check: kubectl get cronjob app-restore-drill -n velero
+              Logs:  kubectl logs -n velero -l job-name --since=26h
