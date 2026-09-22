@@ -9,7 +9,12 @@ ipam:
   mode: kubernetes              # use pod CIDR managed by k3s (10.42.0.0/16)
 
 operator:
-  replicas: 1                   # single control plane, no anti-affinity needed
+  # HA (audit R-04/R-05): 2 leader-elected operators so operator loss doesn't stall
+  # LB-IP / L2 / CRD reconciliation. The chart adds pod anti-affinity for replicas>1.
+  replicas: 2
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
 
 hubble:
   enabled: true

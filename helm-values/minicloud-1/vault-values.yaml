@@ -16,9 +16,13 @@ server:
   extraLabels:
     backstage.io/kubernetes-id: vault
 
-  nodeSelector:
-    kubernetes.io/hostname: set-hog
-
+  # Un-pinned from set-hog (audit R-03 / SM-2, interim step before full Raft HA in Stage 2).
+  # A hostname pin made Vault unable to reschedule when set-hog is cordoned — the exact
+  # failure class the DBs were un-pinned to avoid. The Raft data PVC is Longhorn
+  # network-attached, and the seal is AWS KMS auto-unseal, so a rescheduled vault-0 comes
+  # back unsealed automatically on any node. NOTE: applying this rolls vault-0 once (brief
+  # Vault downtime). After it restarts, ESO may need a reconnect — see the VaultPodRestarted
+  # runbook (kubectl rollout restart deploy/external-secrets -n external-secrets).
   updateStrategyType: RollingUpdate
 
   # Default readinessProbe runs exec `vault status` every 5s with 3s timeout.

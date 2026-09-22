@@ -298,10 +298,23 @@ alertmanager:
       - /etc/alertmanager/config/*.tmpl
   alertmanagerSpec:
     priorityClassName: minicloud-platform
-    # Off the control-plane node (set-hog) → star-kitten worker (SPOF #1189; holds a
-    # healthy replica of the alertmanager volume → fast attach).
-    nodeSelector:
-      kubernetes.io/hostname: star-kitten
+    # HA (audit R-10): 2 replicas, gossip-clustered by the operator, so an alert is never
+    # lost when one AM pod/node is down — closes the incident-time visibility gap. The
+    # dead-man's switch covers total silence; this covers single-instance loss.
+    replicas: 2
+    # Un-pinned from star-kitten: a hard nodeSelector would stack BOTH replicas on one
+    # node (defeating HA). The AM volume is Longhorn network-attached, so schedule by
+    # availability and SPREAD the 2 replicas with soft pod anti-affinity instead — same
+    # reasoning as the postgresql-ai / postgresql-synapse un-pinning.
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: alertmanager
     # Mount the alertmanager-slack k8s Secret (synced from Vault via ESO) so
     # the slack-webhook-url file is available at
     # /etc/alertmanager/secrets/alertmanager-slack/slack-webhook-url
