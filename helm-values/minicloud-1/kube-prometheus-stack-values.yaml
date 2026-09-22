@@ -188,8 +188,6 @@ alertmanager:
           - alertmanager.10.0.0.200.nip.io
         secretName: alertmanager-tls
   config:
-    global:
-      resolve_timeout: 5m
     inhibit_rules:
       - source_matchers: ['severity = critical']
         target_matchers: ['severity =~ "warning|info"']
@@ -256,6 +254,9 @@ alertmanager:
       smtp_auth_username: AKIAZDNTLNEAX5O3VHQS  # platform/mail SES cred (WORKING); platform/ses AKIA…6EFN6LKW is invalid (535, 2026-09-18)
       smtp_auth_password_file: /etc/alertmanager/secrets/alertmanager-ses/password
       smtp_require_tls: true
+      # Merged here from a former duplicate `config.global` block (YAML last-wins was
+      # silently dropping it; 5m is also the AM default, so no behaviour change).
+      resolve_timeout: 5m
     receivers:
       - name: "null"
       # GAP 1: dead-man's switch — Alertmanager pings healthchecks.io every 1m.
