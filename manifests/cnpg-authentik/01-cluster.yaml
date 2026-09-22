@@ -43,9 +43,25 @@ spec:
   monitoring:
     enablePodMonitor: true
 
+  # Manage the `authentik` role's password so it equals the value Authentik already uses
+  # (Vault platform/authentik-env → AUTHENTIK_POSTGRESQL__PASSWORD, via 00b ESO). This is
+  # what makes the cluster a drop-in: at cutover only postgresql.host changes.
+  managed:
+    roles:
+      - name: authentik
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: authentik-cnpg-role
+
   # One-shot logical import of the live Authentik DB (read-only pg_dump against the source).
+  # database/owner = authentik so the imported data lands in db `authentik` owned by role
+  # `authentik` (NOT the CNPG default `app`/`app`) — required for a drop-in replacement.
   bootstrap:
     initdb:
+      database: authentik
+      owner: authentik
       import:
         type: microservice
         databases:
