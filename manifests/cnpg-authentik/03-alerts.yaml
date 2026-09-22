@@ -1,0 +1,45 @@
+# Alert on stale CNPG backups (audit R-06/R-07). CNPG exports
+# cnpg_collector_last_available_backup_timestamp (unix seconds) per cluster via the
+# PodMonitor enabled on the Cluster. Fires if no successful base backup to R2 in 26h.
+# Placed in the monitoring namespace (kps rule selector); applied there by the
+# cnpg-authentik app (monitoring is an allowed AppProject destination).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cnpg-authentik
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: cnpg-authentik
+      rules:
+        - alert: CNPGAuthentikBackupStale
+          expr: |
+            (time() - max(cnpg_collector_last_available_backup_timestamp{namespace="authentik"})) / 3600 > 26
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Authentik CNPG has no fresh R2 backup in 26+ hours"
+            description: |
+              The authentik-cnpg cluster's last available Barman/R2 backup is
+              {{ $value | printf "%.1f" }} hours old (or the metric is absent → no backup yet).
+              Check: kubectl -n authentik get cluster authentik-cnpg
+                     kubectl -n authentik get backup,scheduledbackup
+              Logs:  kubectl -n authentik logs -l cnpg.io/cluster=authentik-cnpg -c postgres --tail=100
+
+        - alert: CNPGAuthentikNotHealthy
+          expr: |
+            max(cnpg_collector_up{namespace="authentik"}) < 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Authentik CNPG cluster reporting unhealthy"
+            description: |
+              The authentik-cnpg CloudNativePG cluster is not reporting healthy instances.
+              This is the PARALLEL cluster (Authentik still uses authentik-postgresql), so SSO
+              is unaffected, but investigate before any cutover.
+              Check: kubectl -n authentik get cluster authentik-cnpg -o wide

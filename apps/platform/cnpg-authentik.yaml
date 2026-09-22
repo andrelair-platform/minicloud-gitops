@@ -1,0 +1,38 @@
+---
+# The Authentik CloudNativePG cluster (audit R-06, Stage 4) — runs in PARALLEL to the
+# existing bitnami authentik-postgresql, importing a copy of its data, with off-site PITR
+# to R2. Authentik is NOT repointed here (no cutover); the actual switch is a later
+# supervised step (edit authentik-values.yaml postgresql.host → authentik-cnpg-rw).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cnpg-authentik
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: manifests/cnpg-authentik
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: authentik
+  # ESO webhook injects 4 defaults into ExternalSecrets → ignore to avoid permanent OutOfSync.
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

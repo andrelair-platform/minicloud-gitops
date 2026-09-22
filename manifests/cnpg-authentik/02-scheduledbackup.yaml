@@ -1,0 +1,13 @@
+---
+# Daily base backup of the Authentik CNPG cluster to R2 (WAL is archived continuously by
+# the Cluster's barmanObjectStore). CNPG cron is 6-field (seconds first): 04:00:00 UTC.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: authentik-cnpg-daily
+  namespace: authentik
+spec:
+  schedule: "0 0 4 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: authentik-cnpg

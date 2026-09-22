@@ -1,0 +1,65 @@
+---
+# CloudNativePG operator (audit R-06, Stage 4). Cluster-wide DB operator that gives
+# Postgres HA (primary + streaming replica, automated failover) + continuous WAL
+# archiving/PITR to object storage. Deployed as GitOps infra; the Authentik cluster
+# it manages is defined separately (apps/platform/cnpg-authentik.yaml) and runs in
+# PARALLEL to the existing Authentik DB — NO cutover in this stage.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudnative-pg
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    # Before the cnpg-authentik Cluster app (which needs the CRDs). Cross-Application
+    # ordering isn't guaranteed by waves, but the Cluster app auto-retries until CRDs exist.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://cloudnative-pg.github.io/charts
+    chart: cloudnative-pg
+    # Verify/bump against the chart repo (Renovate manages this repo's chart pins).
+    targetRevision: "0.23.2"
+    helm:
+      releaseName: cnpg
+      values: |
+        resources:
+          requests:
+            cpu: 50m
+            memory: 100Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        monitoring:
+          # Per-Cluster PodMonitor is enabled on the Cluster CR instead (kps scrapes it).
+          podMonitorEnabled: false
+          grafanaDashboard:
+            create: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cnpg-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # CRDs carry large annotations → CSA fails; SSA required (same as cert-manager/gatekeeper).
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /status
+        - /spec/conversion/webhook/clientConfig/caBundle
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle

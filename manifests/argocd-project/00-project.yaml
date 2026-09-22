@@ -65,6 +65,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: cert-manager
       server: https://kubernetes.default.svc
+    - namespace: cnpg-system
+      server: https://kubernetes.default.svc
     - namespace: chaos-mesh
       server: https://kubernetes.default.svc
     - namespace: cilium-secrets
@@ -315,4 +317,7 @@ spec:
       kind: "*"
     # Kargo namespaced kinds (Warehouse, Stage, Freight, Promotion, ProjectConfig)
     - group: "kargo.akuity.io"
+      kind: "*"
+    # CloudNativePG namespaced kinds (Cluster, ScheduledBackup, Backup, Pooler, Database)
+    - group: "postgresql.cnpg.io"
       kind: "*"
