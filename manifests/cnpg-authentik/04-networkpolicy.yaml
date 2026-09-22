@@ -1,0 +1,25 @@
+# Allow the CloudNativePG operator (cnpg-system) to reach the authentik-cnpg instances'
+# status endpoint. Without this, authentik's default-deny-ingress drops the operator's
+# https://<pod>:8000/pg/status probe → "Instance Status Extraction Error: HTTP
+# communication issue" → the cluster never goes healthy and the replica is never created
+# (observed live 2026-09-22). Instance-to-instance replication is already covered by the
+# ns allow-same-namespace policy; monitoring scrape (9187) by allow-monitoring-scrape.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator
+  namespace: authentik
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: authentik-cnpg
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 5432 }
