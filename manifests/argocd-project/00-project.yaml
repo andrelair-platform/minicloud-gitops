@@ -20,6 +20,7 @@ spec:
     - https://charts.external-secrets.io
     - https://charts.fairwinds.com/stable
     - https://charts.jetstack.io
+    - https://cloudnative-pg.github.io/charts
     - https://falcosecurity.github.io/charts
     - https://grafana.github.io/helm-charts
     - https://helm.cilium.io
