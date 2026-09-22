@@ -1,0 +1,83 @@
+---
+# Authentik CloudNativePG cluster (audit R-06, Stage 4) — PARALLEL to authentik-postgresql.
+#
+# HA: 2 instances (primary + streaming replica), operator-managed automated failover, pod
+# anti-affinity across nodes. Off-site PITR: continuous WAL + base backups to Cloudflare R2
+# (Barman), retained 14 days. Bootstraps by IMPORTING a copy of the live `authentik` DB via
+# a read-only pg_dump (microservice import) — so this cluster holds real data + real backups
+# WITHOUT touching the running Authentik (no cutover).
+#
+# CUTOVER (later, supervised — NOT this PR): point authentik-values.yaml
+# `postgresql.host` at `authentik-cnpg-rw`, refresh a fresh import (or switch to replica),
+# restart Authentik, verify SSO, then retire the bitnami authentik-postgresql.
+#
+# AVX512 caveat: CNPG uses its own ghcr postgres image. Core Postgres (no pgvector/HNSW)
+# didn't hit the SIGILL that forced the noavx512 rebuild, and Authentik uses no pgvector.
+# If an instance SIGILLs on an older ThinkPad CPU, pin `imageName` to a noavx512 build.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: authentik-cnpg
+  namespace: authentik
+spec:
+  instances: 2
+  primaryUpdateStrategy: unsupervised
+
+  storage:
+    size: 2Gi
+    storageClass: longhorn
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: preferred
+
+  monitoring:
+    enablePodMonitor: true
+
+  # One-shot logical import of the live Authentik DB (read-only pg_dump against the source).
+  bootstrap:
+    initdb:
+      import:
+        type: microservice
+        databases:
+          - authentik
+        source:
+          externalCluster: authentik-source
+
+  externalClusters:
+    - name: authentik-source
+      connectionParameters:
+        host: authentik-postgresql.authentik.svc.cluster.local
+        user: authentik
+        dbname: authentik
+        sslmode: prefer
+      password:
+        name: authentik-postgres-secret
+        key: password
+
+  # Off-site PITR to R2 (reuses the confirmed-existing velero R2 bucket, distinct prefix).
+  backup:
+    retentionPolicy: "14d"
+    barmanObjectStore:
+      destinationPath: s3://minicloud-velero-offsite/cnpg/authentik
+      endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
+      s3Credentials:
+        accessKeyId:
+          name: cnpg-authentik-r2
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: cnpg-authentik-r2
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
