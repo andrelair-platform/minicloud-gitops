@@ -188,8 +188,6 @@ alertmanager:
           - alertmanager.10.0.0.200.nip.io
         secretName: alertmanager-tls
   config:
-    global:
-      resolve_timeout: 5m
     inhibit_rules:
       - source_matchers: ['severity = critical']
         target_matchers: ['severity =~ "warning|info"']
@@ -256,6 +254,9 @@ alertmanager:
       smtp_auth_username: AKIAZDNTLNEAX5O3VHQS  # platform/mail SES cred (WORKING); platform/ses AKIA…6EFN6LKW is invalid (535, 2026-09-18)
       smtp_auth_password_file: /etc/alertmanager/secrets/alertmanager-ses/password
       smtp_require_tls: true
+      # Merged here from a former duplicate `config.global` block (YAML last-wins was
+      # silently dropping it; 5m is also the AM default, so no behaviour change).
+      resolve_timeout: 5m
     receivers:
       - name: "null"
       # GAP 1: dead-man's switch — Alertmanager pings healthchecks.io every 1m.
@@ -298,10 +299,23 @@ alertmanager:
       - /etc/alertmanager/config/*.tmpl
   alertmanagerSpec:
     priorityClassName: minicloud-platform
-    # Off the control-plane node (set-hog) → star-kitten worker (SPOF #1189; holds a
-    # healthy replica of the alertmanager volume → fast attach).
-    nodeSelector:
-      kubernetes.io/hostname: star-kitten
+    # HA (audit R-10): 2 replicas, gossip-clustered by the operator, so an alert is never
+    # lost when one AM pod/node is down — closes the incident-time visibility gap. The
+    # dead-man's switch covers total silence; this covers single-instance loss.
+    replicas: 2
+    # Un-pinned from star-kitten: a hard nodeSelector would stack BOTH replicas on one
+    # node (defeating HA). The AM volume is Longhorn network-attached, so schedule by
+    # availability and SPREAD the 2 replicas with soft pod anti-affinity instead — same
+    # reasoning as the postgresql-ai / postgresql-synapse un-pinning.
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: alertmanager
     # Mount the alertmanager-slack k8s Secret (synced from Vault via ESO) so
     # the slack-webhook-url file is available at
     # /etc/alertmanager/secrets/alertmanager-slack/slack-webhook-url

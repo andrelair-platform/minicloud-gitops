@@ -5,6 +5,25 @@ controller:
     default: true
     controllerValue: "k8s.io/ingress-nginx"
 
+  # HA (audit R-04): 2 controllers so a node reboot (kured) / k3s upgrade / pod crash
+  # never blacks out ALL ingress. The L2-announced VIP 10.0.0.200 already fails over
+  # between nodes; this gives it a second backing pod.
+  replicaCount: 2
+  # replicaCount>1 makes the chart render a PDB; minAvailable:1 keeps ≥1 controller
+  # serving during voluntary disruptions (drains/upgrades).
+  minAvailable: 1
+  # Soft spread across nodes. ScheduleAnyway (not DoNotSchedule) on purpose: on this
+  # capacity-constrained cluster a hard rule could leave the 2nd replica Pending if the
+  # spread can't be satisfied — availability beats perfect placement.
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+          app.kubernetes.io/component: controller
+
   resources:
     requests:
       cpu: 100m

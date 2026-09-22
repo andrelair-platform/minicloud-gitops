@@ -1,0 +1,23 @@
+# PodDisruptionBudget for Alertmanager (audit R-05/R-10).
+# kube-prometheus-stack does not expose a PDB value for the operator-managed
+# Alertmanager StatefulSet, so this is a standalone PDB (chart-version-independent)
+# targeting the pods the Prometheus operator labels. Paired with alertmanagerSpec.replicas: 2
+# (kube-prometheus-stack-values.yaml) — with 2 replicas, minAvailable: 1 keeps at least
+# one Alertmanager serving through node drains (kured) and k3s upgrades.
+#
+# NOTE: only safe BECAUSE Alertmanager now runs 2 replicas. A minAvailable:1 PDB on a
+# SINGLE-replica workload would block ALL voluntary evictions of its node — which is why
+# single-replica Prometheus/Grafana deliberately get NO PDB here.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alertmanager
+      alertmanager: kps-alertmanager
