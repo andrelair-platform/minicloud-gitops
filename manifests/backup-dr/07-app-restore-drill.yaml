@@ -1,0 +1,146 @@
+---
+# App-consistent restore drill (audit R-07, Stage 3) — proves the synapse logical dump
+# ACTUALLY RESTORES, not just that a backup file exists (Stage 0's verify checks presence).
+#
+# SHAPE (fully self-contained, no PVC / no new namespace / no k8s API access):
+#   initContainer (k3s-backup image) → rclone-downloads the LATEST db-logical/synapse dump
+#   into a shared emptyDir. main (bitnami postgres image) → initdb a THROWAWAY local cluster
+#   in the emptyDir (trust auth, unix socket only, no TCP), createdb, restore the dump with
+#   ON_ERROR_STOP, ANALYZE, then ASSERT table + row counts. Everything is ephemeral (emptyDir),
+#   so this is the "restore into a throwaway env" the plan calls for without touching any
+#   production namespace. Exits non-zero on failure → AppRestoreDrillStale alert
+#   (08-restore-drill-alerts.yaml) fires off the kube-state-metrics success timestamp.
+#
+# Runs 02:45 UTC — after the 02:15 dump (50-synapse-logical-backup.yaml in chat).
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: restore-drill-minio-creds
+  namespace: velero
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: restore-drill-minio-creds
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: MINIO_ACCESS_KEY
+      remoteRef: { key: platform/minio, property: access_key_id }
+    - secretKey: MINIO_SECRET_KEY
+      remoteRef: { key: platform/minio, property: password }
+    - secretKey: MINIO_ENDPOINT
+      remoteRef: { key: platform/minio, property: endpoint }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: app-restore-drill
+  namespace: velero
+  annotations:
+    checkov.io/skip1: CKV_K8S_22=postgres server requires writable rootfs (ephemeral drill)
+spec:
+  schedule: "45 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            fsGroup: 1001
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - name: work
+              emptyDir: {}
+          initContainers:
+            - name: fetch
+              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
+              env:
+                - { name: HOME, value: /work }
+                - { name: TMPDIR, value: /work }
+                - { name: RCLONE_CONFIG, value: /work/rclone.conf }
+                - name: MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: restore-drill-minio-creds, key: MINIO_ACCESS_KEY } }
+                - name: MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: restore-drill-minio-creds, key: MINIO_SECRET_KEY } }
+                - name: MINIO_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: restore-drill-minio-creds, key: MINIO_ENDPOINT } }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  umask 077
+                  cat > /work/rclone.conf <<CONF
+                  [minio]
+                  type = s3
+                  provider = Minio
+                  access_key_id = ${MINIO_ACCESS_KEY}
+                  secret_access_key = ${MINIO_SECRET_KEY}
+                  endpoint = ${MINIO_ENDPOINT}
+                  region = us-east-1
+                  CONF
+                  LATEST=$(rclone lsf minio:db-logical/synapse/ --include '*.sql.gz' | sort | tail -1)
+                  if [ -z "${LATEST}" ]; then echo "FAIL: no synapse dump in MinIO"; exit 1; fi
+                  echo "fetching latest dump: ${LATEST}"
+                  rclone copyto "minio:db-logical/synapse/${LATEST}" /work/dump.sql.gz --s3-no-check-bucket
+                  ls -la /work/dump.sql.gz
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                runAsUser: 1000
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { cpu: 300m, memory: 256Mi }
+          containers:
+            - name: restore-assert
+              image: harbor.10.0.0.200.nip.io/library/postgresql:18.4.0-noavx512
+              env:
+                - { name: HOME, value: /work }
+                - { name: MIN_TABLES, value: "20" }   # synapse public schema has 100+ tables
+                - { name: MIN_ROWS, value: "1" }      # ≥1 live row proves data (not just schema) restored
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  export PATH=/opt/bitnami/postgresql/bin:$PATH
+                  export PGDATA=/work/pgdata
+                  mkdir -p "$PGDATA"
+                  echo "== initdb throwaway cluster =="
+                  initdb -D "$PGDATA" -U postgres --auth-local=trust --auth-host=trust >/work/initdb.log 2>&1
+                  pg_ctl -D "$PGDATA" -o "-c listen_addresses='' -c unix_socket_directories=/work" -w -t 60 start
+                  createdb -h /work -U postgres synapse
+                  echo "== restore dump (ON_ERROR_STOP) =="
+                  if ! gunzip -c /work/dump.sql.gz | psql -h /work -U postgres -d synapse -v ON_ERROR_STOP=1 -q; then
+                    echo "FAIL: restore returned an error"; pg_ctl -D "$PGDATA" -m immediate stop || true; exit 1
+                  fi
+                  psql -h /work -U postgres -d synapse -q -c "ANALYZE;"
+                  TABLES=$(psql -h /work -U postgres -d synapse -tAc "SELECT count(*) FROM pg_tables WHERE schemaname='public'")
+                  ROWS=$(psql -h /work -U postgres -d synapse -tAc "SELECT COALESCE(sum(n_live_tup),0) FROM pg_stat_user_tables")
+                  pg_ctl -D "$PGDATA" -m fast stop || true
+                  echo "== RESULT: restored tables=${TABLES} rows=${ROWS} (min tables=${MIN_TABLES} min rows=${MIN_ROWS}) =="
+                  [ "${TABLES}" -ge "${MIN_TABLES}" ] || { echo "FAIL: only ${TABLES} tables restored (< ${MIN_TABLES})"; exit 1; }
+                  [ "${ROWS}" -ge "${MIN_ROWS}" ]     || { echo "FAIL: only ${ROWS} rows restored (< ${MIN_ROWS})"; exit 1; }
+                  echo "RESTORE DRILL PASS ✅ — synapse dump restores app-consistently"
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                runAsUser: 1001
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 100m, memory: 256Mi }
+                limits: { cpu: 1000m, memory: 768Mi }

@@ -1,0 +1,137 @@
+---
+# App-consistent logical backup of the synapse Postgres DB (audit R-07, Stage 3).
+#
+# WHY: the platform's DB backups are Longhorn volume snapshots — CRASH-consistent, not
+# APP-consistent, and never test-restored. This adds a transactionally-consistent pg_dump
+# and (with 07-app-restore-drill.yaml) a daily restore-into-throwaway-Postgres that asserts
+# the dump actually loads. Synapse is the reference DB — non-critical (Matrix chat), a clean
+# single-database target; extend the same two-file pattern to authentik/other DBs next.
+#
+# SHAPE: initContainer (bitnami postgres image) runs pg_dump → shared emptyDir; main
+# container (k3s-backup image, rclone baked in) pushes to MinIO db-logical/synapse and prunes
+# to the last 7 days. Runs in `chat` so it reaches postgresql-synapse via same-namespace
+# ingress (allow-same-namespace) — NO netpol change. chat has no egress policy → MinIO reachable.
+# Off-siting these dumps = add `db-logical` to the Stage-0 backup-offsite-mirror bucket list.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: synapse-backup-minio-creds
+  namespace: chat
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: synapse-backup-minio-creds
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: MINIO_ACCESS_KEY
+      remoteRef: { key: platform/minio, property: access_key_id }
+    - secretKey: MINIO_SECRET_KEY
+      remoteRef: { key: platform/minio, property: password }
+    - secretKey: MINIO_ENDPOINT
+      remoteRef: { key: platform/minio, property: endpoint }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: synapse-logical-backup
+  namespace: chat
+  annotations:
+    # pg_dump (bitnami postgres client) needs a writable rootfs for its runtime dirs;
+    # ephemeral backup job, non-root + caps dropped + SA token off.
+    checkov.io/skip1: CKV_K8S_22=postgres client requires writable rootfs (ephemeral job)
+spec:
+  schedule: "15 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            fsGroup: 1001
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - name: work
+              emptyDir: {}
+          initContainers:
+            - name: pgdump
+              image: harbor.10.0.0.200.nip.io/library/postgresql:18.4.0-noavx512
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgresql-synapse-secret
+                      key: pg-password
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  export PATH=/opt/bitnami/postgresql/bin:$PATH
+                  TS=$(date +%Y%m%d-%H%M%S)
+                  echo "pg_dump synapse@postgresql-synapse -> /work/synapse-${TS}.sql.gz"
+                  pg_dump -h postgresql-synapse -U synapse -d synapse --no-owner --no-privileges \
+                    | gzip -c > "/work/synapse-${TS}.sql.gz"
+                  ls -la /work
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                runAsUser: 1001
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 128Mi }
+                limits: { cpu: 500m, memory: 512Mi }
+          containers:
+            - name: push
+              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
+              env:
+                - { name: HOME, value: /work }
+                - { name: TMPDIR, value: /work }
+                - { name: RCLONE_CONFIG, value: /work/rclone.conf }
+                - name: MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: synapse-backup-minio-creds, key: MINIO_ACCESS_KEY } }
+                - name: MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: synapse-backup-minio-creds, key: MINIO_SECRET_KEY } }
+                - name: MINIO_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: synapse-backup-minio-creds, key: MINIO_ENDPOINT } }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  umask 077
+                  cat > /work/rclone.conf <<CONF
+                  [minio]
+                  type = s3
+                  provider = Minio
+                  access_key_id = ${MINIO_ACCESS_KEY}
+                  secret_access_key = ${MINIO_SECRET_KEY}
+                  endpoint = ${MINIO_ENDPOINT}
+                  region = us-east-1
+                  CONF
+                  rclone mkdir minio:db-logical 2>/dev/null || true
+                  rclone copy /work minio:db-logical/synapse/ --include '*.sql.gz' --s3-no-check-bucket
+                  # Standalone daily dumps → keep the last 7 days on MinIO (independent files).
+                  rclone delete minio:db-logical/synapse/ --min-age 7d --s3-no-check-bucket || true
+                  echo "on-site logical dumps:"; rclone ls minio:db-logical/synapse/
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                runAsUser: 1000
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { cpu: 300m, memory: 256Mi }
