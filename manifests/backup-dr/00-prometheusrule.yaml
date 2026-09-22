@@ -40,6 +40,39 @@ spec:
             summary: "Velero BackupStorageLocation unavailable"
             description: "BackupStorageLocation {{ $labels.backup_storage_location }} is unavailable. MinIO may be down or disk full."
 
+        - alert: MinioR2MirrorStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="backup-offsite-mirror", namespace="velero"}) / 3600 > 26
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Off-site backup mirror to R2 has not succeeded in 26+ hours"
+            description: |
+              The backup-offsite-mirror CronJob (MinIO → Cloudflare R2) last succeeded
+              {{ $value | printf "%.1f" }} hours ago. Volume + Kine backups are NOT being
+              copied off-site → a controller/site loss would lose all recoverable data
+              (DORA Art. 11–12 off-site DR requirement, see cloud-adoption.md).
+              Check: kubectl get cronjob backup-offsite-mirror -n velero
+              Logs:  kubectl logs -n velero -l job-name --since=26h
+              Likely causes: MinIO down, R2 credentials expired (Vault platform/cloudflare),
+              or R2 bucket 'minicloud-backup-offsite' missing.
+
+        - alert: OffsiteRestoreVerifyStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="offsite-restore-verify", namespace="velero"}) / 3600 > 26
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Off-site restore verification has not passed in 26+ hours"
+            description: |
+              The offsite-restore-verify CronJob last succeeded {{ $value | printf "%.1f" }}
+              hours ago. Either it is failing (the R2 off-site copy is incomplete/unreadable)
+              or not running. A backup that cannot be verified is not a backup.
+              Check: kubectl get cronjob offsite-restore-verify -n velero
+              Logs:  kubectl logs -n velero -l job-name --since=26h
+
         - alert: MinioDiskFull
           expr: |
             (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.10
