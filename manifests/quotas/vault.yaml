@@ -1,6 +1,9 @@
 ---
-# Actual peak: ~5m CPU / 65Mi memory (vault-0: 1m/54Mi, agent-injector: 4m/11Mi)
-# Vault is intentionally lean; quota still allows headroom for unsealing and raft sync
+# Sized for Raft HA (Stage 2): 3 vault servers (250m/256Mi req, 500m/512Mi lim each)
+# + the agent-injector (50m/64Mi req, 250m/128Mi lim). Peak requests ≈ 832Mi / 800m;
+# limits ≈ 1.6Gi / 1.75. Quota set above that for unsealing + raft-sync headroom.
+# (Pre-HA it was 512Mi/1Gi for a single vault-0 — too small for 3 replicas, which would
+# have silently rejected vault-1/vault-2 pod creation.)
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -8,10 +11,10 @@ metadata:
   namespace: vault
 spec:
   hard:
-    requests.cpu: "1"
-    limits.cpu: "2"
-    requests.memory: 512Mi
-    limits.memory: 1Gi
+    requests.cpu: "1500m"
+    limits.cpu: "3"
+    requests.memory: 1280Mi
+    limits.memory: 2Gi
     count/pods: "10"
 ---
 apiVersion: v1

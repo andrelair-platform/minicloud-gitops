@@ -64,39 +64,58 @@ server:
       secretName: vault-kms-credentials
       secretKey: AWS_SECRET_ACCESS_KEY
 
+  # Raft HA (audit R-03 / SM-2, Stage 2). Already on raft storage → this is a MODE FLIP,
+  # not a storage migration: vault-0 REUSES its existing PVC (data-vault-0) and stays raft
+  # leader; vault-1/vault-2 get fresh PVCs, KMS-auto-unseal, and retry_join into a 3-node
+  # quorum. `setNodeId: true` keeps each node_id = pod name, so vault-0 still matches its
+  # existing raft data. Standalone is disabled — ha takes over. The chart default hard
+  # podAntiAffinity spreads the 3 replicas across nodes (needs the Stage 1 un-pin — this PR
+  # is stacked on #1283). See the PR for the supervised rollout + rollback procedure.
   standalone:
-    enabled: true
-    config: |
-      ui = true
-
-      listener "tcp" {
-        tls_disable = 1
-        address = "[::]:8200"
-        cluster_address = "[::]:8201"
-        telemetry {
-          unauthenticated_metrics_access = true
-        }
-      }
-
-      telemetry {
-        prometheus_retention_time = "30"
-        disable_hostname          = true
-      }
-
-      seal "awskms" {
-        region     = "eu-west-1"
-        kms_key_id = "arn:aws:kms:eu-west-1:625830750465:key/a562e4a3-3708-4656-b2f9-365a073f6457"
-      }
-
-      storage "raft" {
-        path    = "/vault/data"
-        node_id = "vault-0"
-      }
-
-      service_registration "kubernetes" {}
+    enabled: false
 
   ha:
-    enabled: false
+    enabled: true
+    replicas: 3
+    raft:
+      enabled: true
+      setNodeId: true
+      config: |
+        ui = true
+
+        listener "tcp" {
+          tls_disable = 1
+          address = "[::]:8200"
+          cluster_address = "[::]:8201"
+          telemetry {
+            unauthenticated_metrics_access = true
+          }
+        }
+
+        telemetry {
+          prometheus_retention_time = "30"
+          disable_hostname          = true
+        }
+
+        seal "awskms" {
+          region     = "eu-west-1"
+          kms_key_id = "arn:aws:kms:eu-west-1:625830750465:key/a562e4a3-3708-4656-b2f9-365a073f6457"
+        }
+
+        storage "raft" {
+          path = "/vault/data"
+          retry_join {
+            leader_api_addr = "http://vault-0.vault-internal:8200"
+          }
+          retry_join {
+            leader_api_addr = "http://vault-1.vault-internal:8200"
+          }
+          retry_join {
+            leader_api_addr = "http://vault-2.vault-internal:8200"
+          }
+        }
+
+        service_registration "kubernetes" {}
 
   dataStorage:
     enabled: true
