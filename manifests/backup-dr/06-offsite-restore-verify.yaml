@@ -1,0 +1,155 @@
+---
+# Off-site restore verification drill — proves the R2 mirror is COMPLETE and READABLE.
+# (Audit R-07, Stage 0. An untested backup is a hope, not a backup.)
+#
+# WHAT IT CHECKS (safe, unattended, read-only — no cluster state is mutated):
+#   `rclone check --one-way --size-only` (MinIO source → R2 dest) per bucket.
+#   --one-way  : older objects retained only in R2 don't fail the check.
+#   --size-only: avoids false negatives from multipart-ETag differences MinIO↔R2.
+#   The check performs real listings/GETs against R2, exercising the off-site
+#   credentials + endpoint + reachability end-to-end.
+#
+# AGE-AWARENESS (must match 05-minio-r2-mirror.yaml's retention shapes):
+#   * longhorn / velero (full mirror)         → check the whole bucket.
+#   * k3s-backup / db-backups (R2 keeps 3d)   → check ONLY files newer than the window
+#     (--max-age), else the check falsely fails: MinIO keeps 7–30d, R2 keeps 3d by design.
+#
+# A non-zero result = the off-site copy is missing objects that SHOULD be there → Job FAILS.
+#
+# ALERTING is netpol-free: the Job just exits non-zero; OffsiteRestoreVerifyStale
+# (00-prometheusrule.yaml) fires off the kube-state-metrics CronJob success timestamp —
+# no egress to Alertmanager required.
+#
+# SCOPE NOTE: this is a *verification* drill (off-site copy exists + matches). A full
+# application-consistent restore-into-backup-test (row-count assertions) + the scripted
+# control-plane rebuild are the Stage-3 deepening (see INFRASTRUCTURE_REMEDIATION_PLAN.md).
+#
+# Runs 05:00 UTC — 30 min after the 04:30 mirror.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: offsite-restore-verify
+  namespace: velero
+spec:
+  schedule: "0 5 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 3600
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - name: tmp
+              emptyDir: {}
+          containers:
+            - name: verify
+              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
+              env:
+                - name: HOME
+                  value: /tmp
+                - name: RCLONE_CONFIG
+                  value: /tmp/rclone.conf
+                - name: OFFSITE_RETENTION_DAYS
+                  value: "3"     # must match 05-minio-r2-mirror.yaml
+                - name: MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: MINIO_ACCESS_KEY } }
+                - name: MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: MINIO_SECRET_KEY } }
+                - name: MINIO_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: MINIO_ENDPOINT } }
+                - name: R2_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: R2_ACCESS_KEY } }
+                - name: R2_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: R2_SECRET_KEY } }
+                - name: R2_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: R2_ENDPOINT } }
+                - name: R2_BUCKET
+                  value: minicloud-backup-offsite
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  umask 077
+                  cat > /tmp/rclone.conf <<CONF
+                  [minio]
+                  type = s3
+                  provider = Minio
+                  access_key_id = ${MINIO_ACCESS_KEY}
+                  secret_access_key = ${MINIO_SECRET_KEY}
+                  endpoint = ${MINIO_ENDPOINT}
+                  region = us-east-1
+
+                  [r2]
+                  type = s3
+                  provider = Cloudflare
+                  access_key_id = ${R2_ACCESS_KEY}
+                  secret_access_key = ${R2_SECRET_KEY}
+                  endpoint = ${R2_ENDPOINT}
+                  region = auto
+                  CONF
+
+                  AGE="${OFFSITE_RETENTION_DAYS}d"
+                  RC=0
+
+                  is_empty() {
+                    # true if the MinIO source bucket has 0 objects (within optional --max-age)
+                    rclone size "minio:$1" ${2:-} --json 2>/dev/null \
+                      | grep -q '"count":0'
+                  }
+
+                  # --- full-mirror repos: verify the whole bucket ---
+                  for B in longhorn velero; do
+                    echo "=== [full] verify r2:${R2_BUCKET}/${B} == minio:${B} ==="
+                    if is_empty "${B}"; then echo "SKIP ${B} (source empty)"; continue; fi
+                    if rclone check "minio:${B}" "r2:${R2_BUCKET}/${B}" \
+                         --one-way --size-only --fast-list --s3-no-check-bucket; then
+                      echo "OK ${B} — off-site copy complete"
+                    else
+                      echo "FAILED ${B} — off-site copy incomplete/unreadable"; RC=1
+                    fi
+                  done
+
+                  # --- rolling-window repos: verify only the last ${AGE} is present on R2 ---
+                  for B in k3s-backup db-backups; do
+                    echo "=== [${AGE}] verify r2:${R2_BUCKET}/${B} has recent minio:${B} ==="
+                    if is_empty "${B}" "--max-age ${AGE}"; then
+                      echo "SKIP ${B} (no source files in last ${AGE})"; continue
+                    fi
+                    if rclone check "minio:${B}" "r2:${R2_BUCKET}/${B}" \
+                         --one-way --size-only --max-age "${AGE}" \
+                         --fast-list --s3-no-check-bucket; then
+                      echo "OK ${B} — recent off-site copy complete"
+                    else
+                      echo "FAILED ${B} — recent off-site copy incomplete/unreadable"; RC=1
+                    fi
+                  done
+
+                  echo "verify finished rc=${RC}"
+                  exit "${RC}"
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 300m
+                  memory: 384Mi

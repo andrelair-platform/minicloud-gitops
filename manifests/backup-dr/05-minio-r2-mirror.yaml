@@ -1,0 +1,200 @@
+---
+# Off-site backup mirror — MinIO (controller) → Cloudflare R2.  (Audit R-01 / R-08, Stage 0)
+#
+# WHY: the controller MinIO (10.0.0.1:9000) is the SINGLE target for ALL data backups —
+# Longhorn volume backups, Velero object backups, and the k3s Kine/SQLite control-plane
+# backups. The only pre-existing off-site copy (Velero → R2) holds k8s OBJECTS ONLY
+# (defaultVolumesToFsBackup: false). So if the controller/site is lost, every recoverable
+# VOLUME and the control-plane datastore are lost with it.
+#
+# This CronJob mirrors the MinIO backup buckets to R2, giving an off-site copy of:
+#   - longhorn     : Longhorn volume backups (the actual PV data)      [dedup — full sync]
+#   - velero       : Velero object backups (redundant w/ native BSL)   [dedup — full sync]
+#   - k3s-backup   : Kine/SQLite backup, k8s CronJob path              [daily files — 3d cap]
+#   - db-backups   : Kine/SQLite backup, controller systemd path       [daily files — 3d cap]
+#
+# R2 RETENTION — two strategies, by data shape (protects the 10 GB R2 free tier):
+#   * DEDUP REPOS (longhorn Longhorn-blockstore, velero kopia): `rclone sync`. Objects are
+#     content-addressed and a recent backup REFERENCES older blocks, so age-based deletion
+#     would CORRUPT the chain. sync makes R2 match the source, so R2 inherits the source's
+#     own retention (Longhorn retain:3 ≈ 3 daily backups; Velero ttl). Already bounded.
+#   * STANDALONE DAILY FILES (k3s-backup/db-backups — one independent .db.gz per day, no
+#     dedup): cap R2 at the last OFFSITE_RETENTION_DAYS (default 3). The controller keeps
+#     30d and the k8s path keeps 7d locally; off-site we only need a short site-loss window,
+#     so we copy-recent + prune-old on R2. Safe precisely because each file is independent.
+#
+# HOW: reuses the self-contained `k3s-backup:1.0` image (rclone baked in — no runtime
+# `apk add`, which fails mid-incident when DNS/CDN is down; see 01-k3s-sqlite-backup.yaml).
+# Runs at 04:30 UTC — AFTER the nightly producers (Longhorn 02:00, Kine 02:30/03:30,
+# Velero 03:00) so it mirrors the freshest backups. The MinioR2MirrorStale alert
+# (00-prometheusrule.yaml) fires if this job stops succeeding.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: backup-offsite-mirror-creds
+  namespace: velero
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: backup-offsite-mirror-creds
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    # MinIO source — same Vault path + properties as longhorn-backup-credentials
+    # (Vault KV v2 mount "secret" → key is store-relative, no `secret/` prefix).
+    - secretKey: MINIO_ACCESS_KEY
+      remoteRef:
+        key: platform/minio
+        property: access_key_id
+    - secretKey: MINIO_SECRET_KEY
+      remoteRef:
+        key: platform/minio
+        property: password
+    - secretKey: MINIO_ENDPOINT
+      remoteRef:
+        key: platform/minio
+        property: endpoint
+    # Cloudflare R2 dest — Vault secret/data/platform/cloudflare (see ops-runbooks.md).
+    - secretKey: R2_ACCESS_KEY
+      remoteRef:
+        key: platform/cloudflare
+        property: r2-access-key-id
+    - secretKey: R2_SECRET_KEY
+      remoteRef:
+        key: platform/cloudflare
+        property: r2-secret-access-key
+    - secretKey: R2_ENDPOINT
+      remoteRef:
+        key: platform/cloudflare
+        property: r2-s3-endpoint
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-offsite-mirror
+  namespace: velero
+spec:
+  schedule: "30 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 10800  # 3h ceiling — first full sync can be large
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - name: tmp
+              emptyDir: {}
+          containers:
+            - name: mirror
+              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
+              env:
+                - name: HOME
+                  value: /tmp
+                - name: RCLONE_CONFIG
+                  value: /tmp/rclone.conf
+                - name: OFFSITE_RETENTION_DAYS
+                  value: "3"     # R2 cap for standalone daily Kine backups (protects 10GB tier)
+                - name: MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: MINIO_ACCESS_KEY } }
+                - name: MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: MINIO_SECRET_KEY } }
+                - name: MINIO_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: MINIO_ENDPOINT } }
+                - name: R2_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: R2_ACCESS_KEY } }
+                - name: R2_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: R2_SECRET_KEY } }
+                - name: R2_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: backup-offsite-mirror-creds, key: R2_ENDPOINT } }
+                - name: R2_BUCKET
+                  value: minicloud-backup-offsite
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  umask 077
+                  cat > /tmp/rclone.conf <<CONF
+                  [minio]
+                  type = s3
+                  provider = Minio
+                  access_key_id = ${MINIO_ACCESS_KEY}
+                  secret_access_key = ${MINIO_SECRET_KEY}
+                  endpoint = ${MINIO_ENDPOINT}
+                  region = us-east-1
+
+                  [r2]
+                  type = s3
+                  provider = Cloudflare
+                  access_key_id = ${R2_ACCESS_KEY}
+                  secret_access_key = ${R2_SECRET_KEY}
+                  endpoint = ${R2_ENDPOINT}
+                  region = auto
+                  CONF
+
+                  AGE="${OFFSITE_RETENTION_DAYS}d"
+                  # Idempotent — create the R2 bucket if the creds allow CreateBucket;
+                  # if not, create it once in the Cloudflare dashboard (name = $R2_BUCKET).
+                  rclone mkdir "r2:${R2_BUCKET}" 2>/dev/null || true
+
+                  RC=0
+
+                  # --- Dedup repos: mirror in full (sync = R2 tracks source retention) ---
+                  for B in longhorn velero; do
+                    echo "=== [full sync] minio:${B} -> r2:${R2_BUCKET}/${B} ==="
+                    if rclone sync "minio:${B}" "r2:${R2_BUCKET}/${B}" \
+                         --transfers 4 --checkers 8 --fast-list \
+                         --s3-no-check-bucket --stats-one-line --stats 30s; then
+                      echo "OK ${B}"
+                    else
+                      echo "FAILED ${B}"; RC=1
+                    fi
+                  done
+
+                  # --- Standalone daily files: keep only the last ${AGE} on R2 ---
+                  for B in k3s-backup db-backups; do
+                    echo "=== [rolling ${AGE}] minio:${B} -> r2:${R2_BUCKET}/${B} ==="
+                    # 1) push only files newer than the window
+                    if rclone copy "minio:${B}" "r2:${R2_BUCKET}/${B}" \
+                         --max-age "${AGE}" --transfers 4 --checkers 8 --fast-list \
+                         --s3-no-check-bucket --stats-one-line --stats 30s; then
+                      # 2) prune R2 objects older than the window (safe: independent files)
+                      rclone delete "r2:${R2_BUCKET}/${B}" --min-age "${AGE}" \
+                         --fast-list --s3-no-check-bucket || RC=1
+                      echo "OK ${B}"
+                    else
+                      echo "FAILED ${B}"; RC=1
+                    fi
+                  done
+
+                  echo "mirror finished rc=${RC}"
+                  exit "${RC}"
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
