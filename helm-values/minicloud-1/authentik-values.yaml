@@ -32,7 +32,7 @@ authentik:
 server:
   priorityClassName: minicloud-critical
   enabled: true
-  replicas: 1
+  replicas: 0   # MAINTENANCE: quiesced for the Authentik→CNPG DB cutover (restore to 1 with the host change)
   containerSecurityContext:
     capabilities:
       drop:
@@ -68,7 +68,7 @@ server:
 worker:
   priorityClassName: minicloud-critical
   enabled: true
-  replicas: 1
+  replicas: 0   # MAINTENANCE: quiesced for the Authentik→CNPG DB cutover (restore to 1 with the host change)
   containerSecurityContext:
     capabilities:
       drop:
