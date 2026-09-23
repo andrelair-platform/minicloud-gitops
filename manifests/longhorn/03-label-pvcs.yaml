@@ -103,7 +103,10 @@ spec:
               }
 
               # Identity / auth / secrets
-              labelVol authentik    data-authentik-postgresql-0
+              # authentik DB decommissioned 2026-09-23 (cut over to CloudNativePG); the CNPG
+              # cluster's own Barman/R2 PITR is now the backup of record. Actively remove the
+              # backup-group label from the orphaned bitnami volume so it stops being backed up.
+              unlabelVol authentik    data-authentik-postgresql-0
               labelVol vault        data-vault-0
               labelVol vaultwarden  vaultwarden-data
 
