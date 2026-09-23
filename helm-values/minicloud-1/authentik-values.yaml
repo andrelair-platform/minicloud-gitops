@@ -20,7 +20,7 @@ authentik:
   # DO NOT add secret_key back — changing it invalidates all active sessions.
 
   postgresql:
-    host: "authentik-postgresql"
+    host: "authentik-cnpg-rw"
     name: "authentik"
     user: "authentik"
     port: 5432
@@ -32,7 +32,7 @@ authentik:
 server:
   priorityClassName: minicloud-critical
   enabled: true
-  replicas: 0   # MAINTENANCE: quiesced for the Authentik→CNPG DB cutover (restore to 1 with the host change)
+  replicas: 1
   containerSecurityContext:
     capabilities:
       drop:
@@ -68,7 +68,7 @@ server:
 worker:
   priorityClassName: minicloud-critical
   enabled: true
-  replicas: 0   # MAINTENANCE: quiesced for the Authentik→CNPG DB cutover (restore to 1 with the host change)
+  replicas: 1
   containerSecurityContext:
     capabilities:
       drop:
