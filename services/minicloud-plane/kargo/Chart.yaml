@@ -1,0 +1,8 @@
+apiVersion: v2
+name: kargo-minicloud-plane
+description: >-
+  Kargo promotion pipeline for minicloud-plane. Raw Kargo CRs under files/ emitted verbatim by
+  templates/manifests.yaml via .Files.Get (NOT Helm-templated, so Kargo/ESO ${{ }} + {{ }}
+  expressions are preserved). Packaging shim replacing the former kustomize resources: list.
+type: application
+version: 0.1.0

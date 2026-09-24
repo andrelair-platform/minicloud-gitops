@@ -1,0 +1,9 @@
+apiVersion: v2
+name: env-insurance-prod
+description: >-
+  Namespace bootstrap for the insurance-prod environment (Namespace + ResourceQuota + LimitRange
+  insurance). Raw manifests under files/ emitted verbatim via .Files.Get. env/team labels are
+  baked into the files (previously injected by kustomize commonLabels); the destination
+  namespace comes from the environments ApplicationSet. Replaces the kustomize overlay.
+type: application
+version: 0.1.0
