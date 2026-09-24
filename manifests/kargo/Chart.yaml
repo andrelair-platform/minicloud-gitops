@@ -1,0 +1,9 @@
+apiVersion: v2
+name: kargo-support
+description: >-
+  Supporting manifests for the Kargo control plane (namespace TLS Certificate, SSO Ingress,
+  admin ExternalSecret) — the second source of the `kargo` Application (source 1 = the Kargo
+  Helm chart). Raw manifests under files/ emitted verbatim via .Files.Get so the ESO {{ }}
+  output templates pass through unescaped. Replaces the former kustomize resources: list.
+type: application
+version: 0.1.0

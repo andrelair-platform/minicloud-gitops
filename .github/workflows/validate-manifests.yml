@@ -31,12 +31,14 @@ jobs:
           python3 - <<'PY'
           import sys, glob, yaml
           bad = 0
-          # Helm wrapper-chart templates (services/*/helm/templates/**) are Go templates, NOT raw
-          # YAML — they legitimately contain {{ ... }}, so exclude them from this raw-parse gate.
-          # They're validated with `helm template` before merge (a CI helm-render job is a tracked
-          # follow-up). The chart's values*.yaml / Chart.yaml / Chart.lock ARE plain YAML → stay checked.
+          # Helm chart templates (any */templates/** — wrapper charts services/*/helm/templates/**,
+          # the Kargo packaging charts services/*/kargo/templates/** + manifests/kargo/templates/**,
+          # the environments charts) are Go templates, NOT raw YAML — they legitimately contain
+          # {{ ... }}, so exclude them from this raw-parse gate. They're validated by `helm template`
+          # in the "Validate Helm charts render" step below. The chart's values*.yaml / Chart.yaml /
+          # Chart.lock and the raw files/*.yaml CRs ARE plain YAML → stay checked here.
           def skip(f):
-              return "/helm/templates/" in f
+              return "/templates/" in f
           for f in sorted(glob.glob("services/**/*.yaml", recursive=True)
                           + glob.glob("manifests/**/*.yaml", recursive=True)):
               if skip(f):
@@ -62,6 +64,11 @@ jobs:
           curl -sL "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
             | tar xz kubeconform
           sudo mv kubeconform /usr/local/bin/
+
+      - name: Install helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
 
       # Validate any Kustomize overlay. Custom resources (Rollout, ScaledObject,
       # ExternalSecret, Certificate, ServiceMonitor, etc.) are skipped with
@@ -95,14 +102,18 @@ jobs:
           done
           exit $FAILED
 
-      # Validate raw manifests/ YAML files. kustomization.yaml files and CRD
-      # definition files are excluded (kubeconform validates instances, not schemas).
+      # Validate raw manifests/ YAML files. Excluded: kustomization.yaml (none left),
+      # gatekeeper-policies (schemas, not instances), and Helm chart internals
+      # (Chart.yaml + */templates/** — the latter are Go templates, validated by the
+      # "Validate Helm charts render" step; the chart's files/*.yaml raw CRs ARE validated here).
       # xargs passes file paths as arguments (not stdin) so kubeconform reads file contents.
       - name: Validate manifests/
         run: |
           set -euo pipefail
           find manifests/ -name "*.yaml" \
             ! -name "kustomization.yaml" \
+            ! -name "Chart.yaml" \
+            ! -path "*/templates/*" \
             ! -path "*/gatekeeper-policies/*" \
             | sort \
             | xargs -r kubeconform \
@@ -110,3 +121,30 @@ jobs:
                 -kubernetes-version "$K8S_VERSION" \
                 -ignore-missing-schemas \
                 -summary
+
+      # Validate the dependency-free Helm charts that replaced the former kustomize dirs:
+      # the Kargo pipelines (services/*/kargo + manifests/kargo) and the environment
+      # bootstraps (environments/overlays/*/*). They vendor no library dependency, so a plain
+      # `helm template` renders them; pipe to kubeconform (same rules as the overlays). This is
+      # the render-validation the kustomize dirs used to get, now on the Helm equivalents.
+      - name: Validate Helm charts render (kargo + environments)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          charts=(services/*/kargo manifests/kargo environments/overlays/*/*)
+          FAILED=0
+          for c in "${charts[@]}"; do
+            [ -f "$c/Chart.yaml" ] || continue
+            echo "── $c"
+            if ! helm template "$(basename "$c")" "$c" \
+              | kubeconform \
+                  -strict \
+                  -kubernetes-version "$K8S_VERSION" \
+                  -ignore-missing-schemas \
+                  -summary \
+                  -; then
+              echo "FAIL: $c"
+              FAILED=1
+            fi
+          done
+          exit $FAILED
