@@ -1,8 +1,15 @@
 # GitOps & Backstage
 
-## GitOps Service Structure (Kustomize)
+## GitOps Service Structure
 
-Own services use Kustomize base + minicloud-1/{env} overlays in `minicloud-gitops/services/`.
+> **The repo is Helm-only — no kustomize anywhere (zero `kustomization.yaml`, since 2026-09-24).**
+> The kustomize `base/` + `minicloud-1/{env}` overlay model below is **historical** — kept for
+> context on how services were laid out pre-migration. Custom apps are now GAP **wrapper Helm charts**
+> (`services/<svc>/helm/`, see *Helm golden path* below) and raw-CR bundles are **`.Files.Get`
+> packaging charts** (see *Kustomize fully retired*). Ignore the kustomize specifics here except where
+> a path (e.g. `helm-values/minicloud-1/`, the 2-env standard) is still current.
+
+Custom apps live in `minicloud-gitops/services/`.
 **All Helm values live in `minicloud-gitops/helm-values/minicloud-1/`** — never edit `minicloud-ansible/helm-values/` for ArgoCD-managed tools.
 
 **The standard is exactly 2 environments: `dev` + `prod`.** dev = 1 replica, prod = 2–3 replicas. **Both auto-sync** (git-gated — see below). **Staging was removed (2026-08-30)** — no `staging` overlays, no `_staging-optional` template, no `staging` in `environments.yaml`. A resource-constrained cluster + Kargo's dev→prod promotion make a third gate unnecessary; do not reintroduce staging.
@@ -104,13 +111,22 @@ ArgoCD app = single source: `repoURL: <gitops git>, path: services/<svc>/helm, h
 - **Certificate = a wrapper template** (name kept, e.g. `<svc>-tls`) for an in-place flip, `certificate.enabled: false` in the subchart — avoids the library-cert rename churn; a simple single-host service can instead use the library ingress + cert.
 - **cert-manager issuer** = ClusterIssuer `minicloud-ca`.
 
-**Legacy kustomize overlays retired (2026-09-12):** the 5 migrated services are now `helm/` + `kargo/`
-only — their `base/` + `minicloud-1/` overlays and the `services/_template` kustomize scaffold were
-removed once the wrapper flips were verified (nothing referenced them; pure repo cleanup). The only
-remaining kustomize tree is **retrieva** (`services/retrieva/{base,minicloud-1}`), the last un-migrated
-custom app — dual-workload (backend+frontend) → convert with **two aliased library subchart deps**,
-ideally paired with its RTV-45 Mongo→PostgreSQL datastore change (convert once). During a *future*
-migration, keep a service's overlay as rollback only until its wrapper flip is verified, then remove it.
+**Kustomize fully retired — the repo is Helm-only (zero `kustomization.yaml`, 2026-09-24).** Custom
+service *deployments* were migrated to the GAP wrapper-chart golden path earlier (their `base/` +
+`minicloud-1/` overlays + the `services/_template` scaffold removed); retrieva (the last one) is now
+`services/retrieva/helm/` too. The final kustomize residue — which was never app deployments, only
+static resource bundles — was then converted to Helm:
+- **`services/*/kargo/`** (7) + **`manifests/kargo/`** — the Kargo Project/Warehouse/Stage CRs.
+- **`environments/overlays/{dev,prod}/{collab,insurance}/`** (4) — namespace + quota + limitrange (+ rolebinding).
+
+**The pattern for raw-CR bundles = a `.Files.Get` packaging shim (NOT templated Helm).** Kargo CRs carry
+many `${{ … }}` promotion exprs + ESO `{{ … }}` output templates; templating them through Helm would
+force escaping every one. Instead each dir is a minimal chart: `Chart.yaml` + `files/<the raw CRs>` +
+`templates/manifests.yaml` that emits `files/` **verbatim** via `.Files.Get` (which does NOT run content
+through the template engine → expressions preserved, output byte-identical). Use this shim for any raw
+manifest/CR bundle; use the **wrapper library chart** (above) only for actual app *deployments*. ArgoCD
+auto-detects the Helm source from `Chart.yaml`, so consuming apps/ApplicationSets need no change.
+CI validates the dep-free charts with a `helm template → kubeconform` step in `validate-manifests.yml`.
 
 ```bash
 # render/validate a wrapper-chart service locally:
