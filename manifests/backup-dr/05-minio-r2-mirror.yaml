@@ -9,9 +9,14 @@
 #
 # This CronJob mirrors the MinIO backup buckets to R2, giving an off-site copy of:
 #   - longhorn     : Longhorn volume backups (the actual PV data)      [dedup — full sync]
-#   - velero       : Velero object backups (redundant w/ native BSL)   [dedup — full sync]
 #   - k3s-backup   : Kine/SQLite backup, k8s CronJob path              [daily files — 3d cap]
 #   - db-backups   : Kine/SQLite backup, controller systemd path       [daily files — 3d cap]
+#
+# NOT mirrored here: `velero`. Velero ALREADY writes an independent off-site copy to R2 via its
+# native BackupStorageLocation (kopia) — re-syncing MinIO's velero bucket into a SECOND R2 bucket
+# is pure redundancy, and (because the two R2 targets hold different object sets) it made the
+# companion verify job fail on hundreds of "missing" objects. Velero's own R2 BSL is the off-site
+# copy for k8s objects; this job covers only what has no native off-site path.
 #
 # R2 RETENTION — two strategies, by data shape (protects the 10 GB R2 free tier):
 #   * DEDUP REPOS (longhorn Longhorn-blockstore, velero kopia): `rclone sync`. Objects are
@@ -155,7 +160,8 @@ spec:
                   RC=0
 
                   # --- Dedup repos: mirror in full (sync = R2 tracks source retention) ---
-                  for B in longhorn velero; do
+                  # (velero excluded — it self-offsites to R2 via its native BSL; see header note)
+                  for B in longhorn; do
                     echo "=== [full sync] minio:${B} -> r2:${R2_BUCKET}/${B} ==="
                     if rclone sync "minio:${B}" "r2:${R2_BUCKET}/${B}" \
                          --transfers 4 --checkers 8 --fast-list \
