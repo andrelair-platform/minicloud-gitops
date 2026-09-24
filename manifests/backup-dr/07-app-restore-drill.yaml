@@ -56,7 +56,9 @@ spec:
           automountServiceAccountToken: false
           securityContext:
             runAsNonRoot: true
-            fsGroup: 1001
+            # fsGroup 26 = the bitnami postgres group; makes the /work emptyDir writable by the
+            # restore-assert container (which runs as uid 26 — see below).
+            fsGroup: 26
             seccompProfile:
               type: RuntimeDefault
           volumes:
@@ -137,7 +139,11 @@ spec:
               volumeMounts:
                 - { name: work, mountPath: /work }
               securityContext:
-                runAsUser: 1001
+                # uid 26 = the `postgres` user that EXISTS in the bitnami image /etc/passwd.
+                # initdb calls getpwuid(geteuid()); an arbitrary uid (e.g. 1001) is not in
+                # /etc/passwd → "could not look up effective user ID 1001: user does not exist".
+                # 26 is non-root, so PodSecurity restricted + Gatekeeper are still satisfied.
+                runAsUser: 26
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: false
                 capabilities: { drop: ["ALL"] }

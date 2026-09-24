@@ -10,9 +10,12 @@
 #   credentials + endpoint + reachability end-to-end.
 #
 # AGE-AWARENESS (must match 05-minio-r2-mirror.yaml's retention shapes):
-#   * longhorn / velero (full mirror)         → check the whole bucket.
+#   * longhorn (full mirror)                  → check the whole bucket.
 #   * k3s-backup / db-backups (R2 keeps 3d)   → check ONLY files newer than the window
 #     (--max-age), else the check falsely fails: MinIO keeps 7–30d, R2 keeps 3d by design.
+#   NOTE: `velero` is intentionally NOT verified here — it is not mirrored by 05 (Velero writes
+#   its own off-site R2 copy via its native BSL, so the MinIO velero bucket has no counterpart in
+#   r2:${R2_BUCKET}). Verifying it produced hundreds of false "missing" failures.
 #
 # A non-zero result = the off-site copy is missing objects that SHOULD be there → Job FAILS.
 #
@@ -111,7 +114,8 @@ spec:
                   }
 
                   # --- full-mirror repos: verify the whole bucket ---
-                  for B in longhorn velero; do
+                  # (velero excluded — not mirrored by 05; it self-offsites via its native BSL)
+                  for B in longhorn; do
                     echo "=== [full] verify r2:${R2_BUCKET}/${B} == minio:${B} ==="
                     if is_empty "${B}"; then echo "SKIP ${B} (source empty)"; continue; fi
                     if rclone check "minio:${B}" "r2:${R2_BUCKET}/${B}" \
