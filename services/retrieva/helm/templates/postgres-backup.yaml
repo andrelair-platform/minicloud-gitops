@@ -103,8 +103,12 @@ spec:
                   set -eu
                   TS=$(date +%Y%m%d-%H%M%S)
                   echo "pg_dump retrieva@retrieva-postgres -> /work/retrieva-${TS}.sql.gz"
+                  # Dump to a FILE first (no pipe): `set -e` then catches a pg_dump failure directly,
+                  # so a failed/partial dump can never be silently gzipped + shipped as success (the
+                  # worst backup failure mode). gzip the file only after pg_dump exits 0.
                   pg_dump -h retrieva-postgres -U retrieva -d retrieva --no-owner --no-privileges \
-                    | gzip -c > "/work/retrieva-${TS}.sql.gz"
+                    > "/work/retrieva-${TS}.sql"
+                  gzip "/work/retrieva-${TS}.sql"
                   ls -la /work
               volumeMounts:
                 - { name: work, mountPath: /work }
