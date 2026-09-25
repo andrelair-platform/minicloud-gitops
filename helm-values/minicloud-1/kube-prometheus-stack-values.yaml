@@ -93,12 +93,12 @@ prometheus:
         secretName: prometheus-tls
   prometheusSpec:
     priorityClassName: minicloud-platform
-    # REVERTED to set-hog (2026-09-18): moving the large active WAL volume triggered a
-    # Longhorn detaching/faulted wedge (#1186 class) → monitoring outage. Prometheus's
-    # big active volume is too fragile to migrate outside a real maintenance window with
-    # Longhorn node-down handling hardened first. Stays on set-hog (SPOF accepted, #1189).
-    nodeSelector:
-      kubernetes.io/hostname: set-hog
+    # No hostname pin (scheduling.md / #1189). The 2026-09-18 migration wedge (large active
+    # WAL volume stuck detaching/faulted) was the orphaned snapshot-controller ticket leak —
+    # ROOT-CAUSED + FIXED 2026-09-25 (external-snapshotter installed + 645 stale tickets
+    # cleaned), so cross-node volume migration no longer wedges on Multi-Attach. Prometheus
+    # now reschedules off the control-plane node like everything else; a move incurs a brief
+    # monitoring gap + WAL replay (startupProbe budget covers it), not a wedge.
     # Gap E: store exemplars (trace IDs embedded in histogram observations)
     # so Grafana can render scatter-plot dots with clickable trace IDs.
     enableFeatures:
