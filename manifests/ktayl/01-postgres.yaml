@@ -1,6 +1,7 @@
 ---
 # Dedicated PostgreSQL for ktayl-policy-service.
-# Pinned to set-hog (10.0.0.2) — same node as control plane, consistent I/O.
+# No hostname pin — Longhorn is network-attached (scheduling.md / #1189); a pin only loaded
+# the control-plane node + made it a SPOF. Reschedules + reattaches its RWO volume on any node.
 # 5Gi Longhorn RWO PVC; C-locale prevents collation drift across upgrades.
 apiVersion: apps/v1
 kind: StatefulSet
@@ -18,8 +19,6 @@ spec:
       labels:
         app: ktayl-postgres
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: set-hog
       securityContext:
         fsGroup: 999
         runAsUser: 999
