@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-snapshotter
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    # early wave: the snapshot.storage.k8s.io CRDs must exist before Longhorn's
+    # csi-snapshotter sidecar can watch them (fixes its crash-loop).
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: manifests/external-snapshotter
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # ServerSideApply required: the VolumeSnapshot CRDs exceed the client-side-apply
+      # last-applied annotation size limit (262144 bytes).
+      - ServerSideApply=true
