@@ -58,8 +58,9 @@ spec:
         app: stalwart
         backstage.io/kubernetes-id: stalwart
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: set-hog
+      # No hostname pin — Longhorn is network-attached (scheduling.md / #1189); pinning to
+      # set-hog only loaded the control-plane node + made it a SPOF. StatefulSet single
+      # replica reschedules + reattaches its RWO volume on any node.
       securityContext:
         fsGroup: 1000
       containers:
