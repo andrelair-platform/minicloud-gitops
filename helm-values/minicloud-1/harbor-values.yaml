@@ -35,12 +35,10 @@ persistence:
       storageClass: longhorn
 trivy:
   enabled: true
-  # Off the control-plane node (set-hog) → a worker (SPOF hardening, epic #1189). Pinned
-  # to loving-gannet, which already holds a healthy replica of trivy's Longhorn volume
-  # (fast local attach). Still pinned (RWO placement stability); failover-unpinning is a
-  # later pass once Longhorn node-down handling is trusted.
-  nodeSelector:
-    kubernetes.io/hostname: loving-gannet
+  # No hostname pin — Longhorn is network-attached (scheduling.md / #1189). trivy owns its
+  # own RWO PVC and reschedules + reattaches on any node. Failover-unpinning became safe once
+  # the orphaned snapshot-controller tickets were cleaned + external-snapshotter installed
+  # (2026-09-25), so volume migration no longer wedges on Multi-Attach.
 
 metrics:
   enabled: true
@@ -64,26 +62,23 @@ jobservice:
   priorityClassName: minicloud-critical
   existingSecret: harbor-stable-secrets
   existingSecretKey: JOBSERVICE_SECRET
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
+  # No hostname pin — owns its own RWO PVC, reschedules on any node (scheduling.md / #1189).
 
 registry:
   priorityClassName: minicloud-critical
-  nodeSelector:
-    kubernetes.io/hostname: fast-skunk
+  # No hostname pin — owns its own RWO PVC, reschedules on any node (scheduling.md / #1189).
   controller:
     livenessProbe:
       timeoutSeconds: 15
     readinessProbe:
       timeoutSeconds: 15
 
-redis:
-  nodeSelector:
-    kubernetes.io/hostname: set-hog
+# redis: no hostname pin — it owns its own RWO PVC and reschedules off the control-plane
+# node (set-hog) on any node (scheduling.md / #1189). No redis: override block needed now.
 
 database:
-  nodeSelector:
-    kubernetes.io/hostname: set-hog
+  # No hostname pin — owns its own RWO PVC; reschedules off set-hog on any node
+  # (scheduling.md / #1189).
   internal:
     # Default /docker-healthcheck.sh probes: timeout=1s period=10s — accumulate
     # zombie processes under CPU pressure on fast-heron.
