@@ -6,11 +6,12 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  # DRYRUN (audit-only): violations are recorded in this constraint's status +
-  # the gatekeeper audit metrics, but admission is NOT blocked. This is the
-  # layer-2 rollout — surface the ~20 existing hostname-pinned workloads first,
-  # remediate them (staged, GitOps), then flip enforcementAction to "deny".
-  enforcementAction: dryrun
+  # DENY (enforcing) since 2026-09-25: all ~20 existing hostname pins were remediated
+  # (removed, or softened to preferred, or exempt-labeled), the audit reached 0 violations,
+  # and admission now BLOCKS new hostname-pinned Deploy/STS/DaemonSet/Rollout. Legit pins
+  # (hostNetwork media, GPU, control-plane) opt out with the pod-template/workload label
+  # scheduling.minicloud/hostname-pin-allowed=true. See scheduling.md / #1189.
+  enforcementAction: deny
   match:
     kinds:
       - apiGroups: ["apps"]
