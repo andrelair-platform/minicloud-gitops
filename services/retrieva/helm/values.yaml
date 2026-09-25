@@ -84,6 +84,12 @@ postgres:
   requestMemory: 256Mi
   limitMemory: 512Mi
   storage: 5Gi
+  # RTV-46 AC-3 — daily logical pg_dump → MinIO (db-logical/retrieva/<env>), kept retentionDays.
+  # Active wherever postgres is enabled; a per-env subpath keeps dev/prod dumps separate.
+  backup:
+    enabled: true
+    schedule: "30 2 * * *"
+    retentionDays: 7
 # Transactional/notification email via Resend. Off by default (dev stays unconfigured —
 # emails no-op). Prod enables it: the ExternalSecret then pulls `resend-api-key` from the
 # retrieva Vault path and the backend gets RESEND_API_KEY. (#475)

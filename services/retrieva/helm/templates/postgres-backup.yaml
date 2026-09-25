@@ -1,0 +1,161 @@
+# RTV-46 AC-3 — app-consistent LOGICAL backup of the retrieva Postgres DB to MinIO.
+#
+# WHY: the StatefulSet's data lives on a Longhorn PVC (crash-consistent volume replicas only).
+# This adds a transactionally-consistent daily pg_dump pushed off the volume to MinIO, matching the
+# platform convention (manifests/matrix/50-synapse-logical-backup.yaml + backup-dr/*). Retention is
+# the last N daily dumps. Restore: `gunzip -c <dump>.sql.gz | psql -h retrieva-postgres -U retrieva -d retrieva`
+# into a fresh/empty DB (verified once — see the PR).
+#
+# SHAPE: initContainer (postgres client, same version as the server) runs pg_dump → shared emptyDir;
+# main container (k3s-backup image, rclone baked in) pushes to MinIO db-logical/retrieva/<env> and
+# prunes older than retentionDays. A dedicated egress NetworkPolicy scopes the job to DNS + the
+# same-namespace Postgres (5432) + the MinIO host (10.0.0.1:9000) — least privilege, consistent with
+# retrieva's network-enforced governance (the job label is NOT retrieva-backend/worker, so it is not
+# covered by backend-egress-governed; this policy is its own scope).
+{{- if and .Values.postgres.enabled .Values.postgres.backup.enabled }}
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: retrieva-backup-minio-creds
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: retrieva-backup-minio-creds
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: MINIO_ACCESS_KEY
+      remoteRef: { key: platform/minio, property: access_key_id }
+    - secretKey: MINIO_SECRET_KEY
+      remoteRef: { key: platform/minio, property: password }
+    - secretKey: MINIO_ENDPOINT
+      remoteRef: { key: platform/minio, property: endpoint }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: retrieva-postgres-backup-egress
+spec:
+  podSelector:
+    matchLabels: { app: retrieva-postgres-backup }
+  policyTypes: [Egress]
+  egress:
+    # DNS (resolve retrieva-postgres)
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # Same-namespace Postgres
+    - to:
+        - podSelector: {}
+      ports:
+        - { protocol: TCP, port: 5432 }
+    # MinIO object store on the controller host
+    - to:
+        - ipBlock: { cidr: 10.0.0.1/32 }
+      ports:
+        - { protocol: TCP, port: 9000 }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: retrieva-postgres-backup
+  annotations:
+    checkov.io/skip1: CKV_K8S_22=postgres client needs a writable rootfs for runtime dirs (ephemeral job)
+spec:
+  schedule: {{ .Values.postgres.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      backoffLimit: 1
+      template:
+        metadata:
+          labels: { app: retrieva-postgres-backup }
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+            seccompProfile: { type: RuntimeDefault }
+          volumes:
+            - name: work
+              emptyDir: {}
+          initContainers:
+            - name: pgdump
+              image: docker.io/library/postgres:16-alpine
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef: { name: retrieva-secrets, key: postgres-password }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  TS=$(date +%Y%m%d-%H%M%S)
+                  echo "pg_dump retrieva@retrieva-postgres -> /work/retrieva-${TS}.sql.gz"
+                  pg_dump -h retrieva-postgres -U retrieva -d retrieva --no-owner --no-privileges \
+                    | gzip -c > "/work/retrieva-${TS}.sql.gz"
+                  ls -la /work
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 128Mi }
+                limits: { cpu: 500m, memory: 512Mi }
+          containers:
+            - name: push
+              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
+              env:
+                - { name: HOME, value: /work }
+                - { name: TMPDIR, value: /work }
+                - { name: RCLONE_CONFIG, value: /work/rclone.conf }
+                - { name: BACKUP_ENV, value: {{ .Values.secretsVaultPath | quote }} }
+                - name: MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: retrieva-backup-minio-creds, key: MINIO_ACCESS_KEY } }
+                - name: MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: retrieva-backup-minio-creds, key: MINIO_SECRET_KEY } }
+                - name: MINIO_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: retrieva-backup-minio-creds, key: MINIO_ENDPOINT } }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  umask 077
+                  # Per-env subpath so dev + prod dumps never collide in the shared bucket.
+                  ENV_DIR=$(echo "${BACKUP_ENV}" | sed 's#.*/##')   # platform/retrieva-dev -> retrieva-dev
+                  cat > /work/rclone.conf <<CONF
+                  [minio]
+                  type = s3
+                  provider = Minio
+                  access_key_id = ${MINIO_ACCESS_KEY}
+                  secret_access_key = ${MINIO_SECRET_KEY}
+                  endpoint = ${MINIO_ENDPOINT}
+                  region = us-east-1
+                  CONF
+                  rclone mkdir minio:db-logical 2>/dev/null || true
+                  rclone copy /work "minio:db-logical/retrieva/${ENV_DIR}/" --include '*.sql.gz' --s3-no-check-bucket
+                  rclone delete "minio:db-logical/retrieva/${ENV_DIR}/" --min-age {{ .Values.postgres.backup.retentionDays }}d --s3-no-check-bucket || true
+                  echo "on-site logical dumps (${ENV_DIR}):"; rclone ls "minio:db-logical/retrieva/${ENV_DIR}/"
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { cpu: 300m, memory: 256Mi }
+{{- end }}
