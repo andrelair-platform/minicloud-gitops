@@ -55,8 +55,9 @@ nextcloud:
       secure: false
       authtype: LOGIN
 
-nodeSelector:
-  kubernetes.io/hostname: set-hog
+# No hostname pin — Longhorn is network-attached (scheduling.md / #1189); pinning to set-hog
+# only loads the control-plane node + makes it a SPOF. The Deployment is strategy:Recreate
+# (RWO-safe), so it reschedules + reattaches its volume on any node.
 
 persistence:
   enabled: true
@@ -76,8 +77,8 @@ postgresql:
         secretKeys:
           userPasswordKey: nextcloud-db-password
   primary:
-    nodeSelector:
-      kubernetes.io/hostname: set-hog
+    # No hostname pin — Longhorn is network-attached (scheduling.md / #1189); pinning to
+    # set-hog only loads the control-plane node + makes it a SPOF. Reschedules on any node.
     persistence:
       enabled: true
       storageClass: longhorn
