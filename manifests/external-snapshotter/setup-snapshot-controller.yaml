@@ -1,0 +1,59 @@
+# snapshot-controller — the CSI external-snapshotter control loop.
+# Longhorn v1.6.0 ships the csi-snapshotter:v6.3.2 SIDECAR but does NOT bundle the
+# upstream snapshot CRDs + this controller (k3s doesn't ship them either). Without it the
+# sidecar crash-loops on the missing snapshot.storage.k8s.io CRDs (found 2026-09-25:
+# csi-snapshotter had 268 restarts). Pinned to v6.3.2 to match the Longhorn sidecar.
+# Hardened for Gatekeeper (kube-system is NOT webhook-exempt here): non-root + resource
+# limits + seccomp + drop ALL caps + no priv-esc + read-only rootfs.
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: snapshot-controller
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: snapshot-controller
+  # the snapshot controller won't be marked ready if the v1 CRDs are unavailable; it exits
+  # after ~7.5s if it can't find them, so keep minReadySeconds above that.
+  minReadySeconds: 15
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: snapshot-controller
+    spec:
+      serviceAccountName: snapshot-controller
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: snapshot-controller
+          image: registry.k8s.io/sig-storage/snapshot-controller:v6.3.2
+          args:
+            - "--v=5"
+            - "--leader-election=true"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
