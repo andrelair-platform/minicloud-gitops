@@ -16,8 +16,9 @@ spec:
       labels:
         app: vaultwarden
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: star-kitten
+      # No hostname pin — Longhorn is network-attached (scheduling.md / #1189); the pin was a
+      # SPOF. The Deployment is strategy:Recreate (RWO-safe), so it reschedules + reattaches
+      # its volume on any node. Migration unblocked 2026-09-25 (tickets cleaned + snapshotter).
       serviceAccountName: default
       automountServiceAccountToken: false
       securityContext:
