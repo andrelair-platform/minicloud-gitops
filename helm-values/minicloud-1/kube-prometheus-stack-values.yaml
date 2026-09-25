@@ -341,8 +341,11 @@ alertmanager:
               storage: 1Gi
 
 grafana:
-  nodeSelector:
-    kubernetes.io/hostname: star-kitten
+  # Un-pinned from star-kitten (2026-09-25): a hard hostname nodeSelector is a SPOF — when
+  # star-kitten filled up, grafana sat Pending/FailedScheduling → 503 for ~38 min with no
+  # alert. The grafana volume is Longhorn network-attached, so it schedules by availability and
+  # attaches its replica over the network from any node. Recreate keeps the RWO reattach clean.
+  # (Same reasoning as the alertmanager un-pinning above; guarded by the k8snohostnamepin policy.)
   deploymentStrategy:
     type: Recreate
   plugins:
