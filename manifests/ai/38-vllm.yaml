@@ -48,6 +48,9 @@ spec:
       labels:
         app: vllm
         backstage.io/kubernetes-id: vllm
+        # Legit hardware pin (AI/GPU node fast-heron) — opt out of the k8snohostnamepin
+        # guard (scheduling.md / #1189). vLLM needs the AI node's resources.
+        scheduling.minicloud/hostname-pin-allowed: "true"
     spec:
       nodeSelector:
         kubernetes.io/hostname: fast-heron
