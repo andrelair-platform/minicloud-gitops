@@ -1,0 +1,30 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sNoHostnamePin
+metadata:
+  name: no-hostname-pin
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # DRYRUN (audit-only): violations are recorded in this constraint's status +
+  # the gatekeeper audit metrics, but admission is NOT blocked. This is the
+  # layer-2 rollout — surface the ~20 existing hostname-pinned workloads first,
+  # remediate them (staged, GitOps), then flip enforcementAction to "deny".
+  enforcementAction: dryrun
+  match:
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet"]
+      - apiGroups: ["argoproj.io"]
+        kinds: ["Rollout"]
+    namespaceSelector:
+      matchExpressions:
+        # System namespaces where node pinning is expected/benign — kept out of
+        # the report so the signal is the app-workload SPOFs we actually care about.
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
+            - kube-public
+            - kube-node-lease
+            - gatekeeper-system

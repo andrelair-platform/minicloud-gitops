@@ -1,0 +1,64 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8snohostnamepin
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    metadata.gatekeeper.sh/title: "No hostname node pins (SPOF)"
+    metadata.gatekeeper.sh/description: >-
+      Workloads must not hard-pin to a specific node via nodeSelector
+      kubernetes.io/hostname or a required nodeAffinity on the hostname /
+      metadata.name. Longhorn volumes are network-attached, so a hostname pin buys
+      nothing and turns the pinned node into a single point of failure: if it is
+      full, cordoned, or down the pod cannot schedule (see the 2026-09-25 grafana
+      503). Use Longhorn dataLocality:best-effort for locality, or a capability
+      label (e.g. node-role/ai) for real hardware needs. Genuinely-required pins
+      (hostNetwork, GPU, local-disk) opt out with the label
+      scheduling.minicloud/hostname-pin-allowed=true.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sNoHostnamePin
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8snohostnamepin
+
+        # Opt-out for workloads that legitimately need a hostname pin
+        # (hostNetwork media, GPU nodes, node-local disk).
+        exempt {
+          input.review.object.metadata.labels["scheduling.minicloud/hostname-pin-allowed"] == "true"
+        }
+
+        # Pod spec from a bare Pod, or from a workload's pod template.
+        pod_spec[s] { s := input.review.object.spec }
+        pod_spec[s] { s := input.review.object.spec.template.spec }
+
+        # 1) nodeSelector: kubernetes.io/hostname
+        violation[{"msg": msg}] {
+          not exempt
+          s := pod_spec[_]
+          host := s.nodeSelector["kubernetes.io/hostname"]
+          msg := sprintf("%v/%v is hard-pinned via nodeSelector kubernetes.io/hostname=%v — SPOF (Longhorn is network-attached). Remove the pin (use Longhorn dataLocality:best-effort, or a capability label for real hardware); if genuinely required, label the workload scheduling.minicloud/hostname-pin-allowed=true.", [object.get(input.review.object.metadata, "namespace", "<cluster>"), input.review.object.metadata.name, host])
+        }
+
+        # 2) required nodeAffinity matchExpressions key kubernetes.io/hostname
+        violation[{"msg": msg}] {
+          not exempt
+          s := pod_spec[_]
+          term := s.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[_]
+          expr := term.matchExpressions[_]
+          expr.key == "kubernetes.io/hostname"
+          msg := sprintf("%v/%v is hard-pinned via required nodeAffinity kubernetes.io/hostname — SPOF. Remove it, or label scheduling.minicloud/hostname-pin-allowed=true if required.", [object.get(input.review.object.metadata, "namespace", "<cluster>"), input.review.object.metadata.name])
+        }
+
+        # 3) required nodeAffinity matchFields metadata.name (pins to one node by name)
+        violation[{"msg": msg}] {
+          not exempt
+          s := pod_spec[_]
+          term := s.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[_]
+          f := term.matchFields[_]
+          f.key == "metadata.name"
+          msg := sprintf("%v/%v is hard-pinned via required nodeAffinity matchFields metadata.name — SPOF. Remove it, or label scheduling.minicloud/hostname-pin-allowed=true if required.", [object.get(input.review.object.metadata, "namespace", "<cluster>"), input.review.object.metadata.name])
+        }
