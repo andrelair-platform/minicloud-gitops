@@ -1,7 +1,7 @@
 replicas: 1
 
-nodeSelector:
-  kubernetes.io/hostname: star-kitten
+# Un-pinned from star-kitten (SPOF) — StatefulSet reattaches the RWO Longhorn volume in-place
+# on reschedule; schedule by availability. See gitops.md *Scheduling*.
 
 tempo:
   reportingEnabled: false

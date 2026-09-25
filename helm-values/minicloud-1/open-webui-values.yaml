@@ -19,8 +19,8 @@ ollamaUrlsFromExtraEnv: false
 
 priorityClassName: minicloud-workload
 
-nodeSelector:
-  kubernetes.io/hostname: star-kitten
+# Un-pinned from star-kitten (SPOF) — StatefulSet reattaches the RWO Longhorn volume in-place
+# on reschedule; schedule by availability. See gitops.md *Scheduling*.
 
 podLabels:
   backstage.io/kubernetes-id: open-webui
