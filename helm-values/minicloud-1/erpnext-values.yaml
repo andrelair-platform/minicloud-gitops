@@ -100,9 +100,15 @@ worker:
             optional: true
     affinity:
       nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-            - matchExpressions:
+        # Soft PREFERENCE for fast-skunk, not a hard pin — passes the k8snohostnamepin guard
+        # (scheduling.md / #1189) while keeping erpnext's RWO co-location: gunicorn (the
+        # anchor that mounts the RWO sites volume) prefers fast-skunk; nginx/workers/socketio
+        # follow it via podAffinity wherever it lands, and it can now fail over to another
+        # node if fast-skunk is unavailable (volume migration unblocked 2026-09-25).
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
                 - key: kubernetes.io/hostname
                   operator: In
                   values: [fast-skunk]
