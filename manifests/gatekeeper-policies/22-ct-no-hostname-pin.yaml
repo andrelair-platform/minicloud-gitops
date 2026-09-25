@@ -26,9 +26,14 @@ spec:
         package k8snohostnamepin
 
         # Opt-out for workloads that legitimately need a hostname pin
-        # (hostNetwork media, GPU nodes, node-local disk).
+        # (hostNetwork media, GPU nodes, node-local disk). Accept the opt-out label on
+        # EITHER the workload's own metadata OR its pod template — the pod-template label is
+        # the natural place (it also lands on the pods) for Deploy/STS/DaemonSet/Rollout.
         exempt {
           input.review.object.metadata.labels["scheduling.minicloud/hostname-pin-allowed"] == "true"
+        }
+        exempt {
+          input.review.object.spec.template.metadata.labels["scheduling.minicloud/hostname-pin-allowed"] == "true"
         }
 
         # Pod spec from a bare Pod, or from a workload's pod template.
