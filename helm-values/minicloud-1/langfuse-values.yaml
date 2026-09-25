@@ -147,8 +147,8 @@ clickhouse:
   clusterEnabled: false
   replicaCount: 1
   shards: 1
-  nodeSelector:
-    kubernetes.io/hostname: star-kitten
+  # No hostname pin — Longhorn is network-attached (scheduling.md / #1189); pinning only
+  # makes the named node a SPOF. ClickHouse reschedules + reattaches on any node.
   resourcesPreset: "none"
   resources:
     requests:
@@ -220,10 +220,9 @@ redis:
     existingSecretPasswordKey: redis-password
     enabled: true
   primary:
-    # Off the control-plane node (set-hog) → swift-mac worker (SPOF hardening #1189;
-    # holds a healthy replica of the redis Longhorn volume → fast attach).
-    nodeSelector:
-      kubernetes.io/hostname: swift-mac
+    # No hostname pin — Longhorn is network-attached (scheduling.md / #1189); a pin only
+    # makes the named node a SPOF (swift-mac was the de-weighted node). Redis reschedules
+    # + reattaches its volume on any node.
     extraFlags:
       - "--maxmemory-policy noeviction"
     # Default exec ping probes: liveness 6s timeout/5s period, readiness 2s/5s.
