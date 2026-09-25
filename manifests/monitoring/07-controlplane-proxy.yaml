@@ -22,6 +22,10 @@ spec:
     metadata:
       labels:
         app: controlplane-proxy
+        # Legit topology pin — must run ON the control-plane node (set-hog) with hostNetwork
+        # to proxy the control-plane metrics endpoints. Opt out of k8snohostnamepin
+        # (scheduling.md / #1189); this is not a Longhorn/failover workload.
+        scheduling.minicloud/hostname-pin-allowed: "true"
     spec:
       nodeSelector:
         kubernetes.io/hostname: set-hog

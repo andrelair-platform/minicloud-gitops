@@ -116,6 +116,11 @@ jvb:
   # - SFR 5G clients (DS-Lite): direct UDP over IPv6 to star-kitten's IPv6:10000
   # - Other external clients: TURN relay via coturn on the controller
   useHostNetwork: true
+  # Legit hardware/network pin — JVB uses hostNetwork on star-kitten to gather that host's
+  # LAN + IPv6 interfaces as media candidates (see comment above). Opt out of the
+  # k8snohostnamepin guard (scheduling.md / #1189); this is not a Longhorn/failover workload.
+  podLabels:
+    scheduling.minicloud/hostname-pin-allowed: "true"
   nodeSelector:
     kubernetes.io/hostname: star-kitten
 
