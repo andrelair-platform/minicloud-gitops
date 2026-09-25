@@ -29,8 +29,8 @@ spec:
         app: docuseal
         backstage.io/kubernetes-id: docuseal
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: star-kitten
+      # Un-pinned from star-kitten (SPOF): volume is Longhorn network-attached; the Recreate
+      # strategy above handles the RWO reattach cleanly on reschedule. See gitops.md *Scheduling*.
       securityContext:
         seccompProfile:
           type: RuntimeDefault
