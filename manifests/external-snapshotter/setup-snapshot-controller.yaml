@@ -11,6 +11,10 @@ apiVersion: apps/v1
 metadata:
   name: snapshot-controller
   namespace: kube-system
+  annotations:
+    # snapshot-controller MUST mount its SA token — it watches VolumeSnapshot/Content/Class
+    # via the API server and runs leader election. Token mount is required, not optional.
+    checkov.io/skip1: CKV_K8S_38=snapshot-controller requires its ServiceAccount token for API watch + leader election
 spec:
   replicas: 1
   selector:
