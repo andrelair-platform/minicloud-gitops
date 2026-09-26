@@ -5,7 +5,6 @@ metadata:
   name: polaris-dashboard
   namespace: polaris
   annotations:
-    cert-manager.io/cluster-issuer: minicloud-ca
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
     nginx.ingress.kubernetes.io/server-snippet: |
@@ -51,3 +50,22 @@ spec:
     - secretName: polaris-tls
       hosts:
         - polaris.10.0.0.200.nip.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: polaris-tls
+  namespace: polaris
+spec:
+  secretName: polaris-tls
+  duration: 2160h
+  renewBefore: 720h
+  issuerRef:
+    kind: ClusterIssuer
+    name: minicloud-ca
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - polaris.10.0.0.200.nip.io

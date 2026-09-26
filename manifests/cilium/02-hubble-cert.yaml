@@ -5,6 +5,9 @@ metadata:
   namespace: kube-system
 spec:
   secretName: hubble-ui-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 256
   issuerRef:
     name: minicloud-ca
     kind: ClusterIssuer

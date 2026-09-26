@@ -94,7 +94,6 @@ metadata:
   name: docuseal
   namespace: sign
   annotations:
-    cert-manager.io/cluster-issuer: minicloud-ca
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
     nginx.ingress.kubernetes.io/proxy-body-size: "100m"
     # Authentik forward-auth
@@ -146,3 +145,23 @@ spec:
                 name: docuseal
                 port:
                   number: 3000
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: docuseal-tls
+  namespace: sign
+spec:
+  secretName: docuseal-tls
+  duration: 2160h
+  renewBefore: 720h
+  issuerRef:
+    kind: ClusterIssuer
+    name: minicloud-ca
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - sign.devandre.sbs
+    - sign.10.0.0.200.nip.io

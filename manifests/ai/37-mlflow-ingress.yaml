@@ -10,6 +10,9 @@ metadata:
   namespace: ai
 spec:
   secretName: mlflow-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 256
   issuerRef:
     name: minicloud-ca
     kind: ClusterIssuer
