@@ -118,11 +118,8 @@ spec:
               # Cost is bounded — the VLM is called only at ingest, only for figures
               # that pass the pre-filter (never per chat/request).
               DEV_FREE="[\"onprem\",\"eu\",\"ollama-cloud\",\"nvidia-embed\",\"nvidia-nano-30b\",\"nvidia-vision-90b\",\"nvidia-content-safety\",\"azure-gpt-4.1-mini\",${ALIASES}]"
-              # phi3-ci uses synthetic/public test data only → may hit any model.
-              PUBLIC_OK='["all-proxy-models"]'
 
               seed_team "open-webui"   "Open WebUI Users"       100000  60  10 "${GOVERNED}"
-              seed_team "phi3-ci"      "phi3-financial CI Eval" 200000 120  20 "${PUBLIC_OK}"
               seed_team "agents"       "Agent Runtimes"         150000  90  15 "${GOVERNED}"
               seed_team "rag-pipeline" "RAG Ingest Pipeline"     50000  30   5 "${GOVERNED}"
               # Retrieva: prod = EU cloud only; dev = free-tier (ollama/nvidia).

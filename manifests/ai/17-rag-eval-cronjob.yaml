@@ -1,5 +1,5 @@
 ---
-# Online sampling: every 15 min, score 5% of recent phi3-financial production traces.
+# Online sampling: every 15 min, score 5% of recent gpt-4o-mini production traces.
 # Scores appear in Langfuse → Scores tab as "online_faithfulness".
 # Configure drift alerting in Langfuse UI: online_faithfulness 7-day p50 < 0.70
 # → webhook → http://kps-alertmanager.monitoring.svc.cluster.local:9093/api/v1/alerts
