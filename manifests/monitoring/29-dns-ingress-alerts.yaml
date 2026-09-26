@@ -1,0 +1,60 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: dns-ingress-alerts
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  groups:
+    # Dedicated alerts for the two critical-path components the audit (Phase 4) found
+    # uncovered. Generic KubeDeploymentReplicasMismatch fires only after 15m; DNS and
+    # ingress are too central for that — tighter thresholds + explicit severity here.
+    - name: coredns.availability
+      rules:
+        - alert: CoreDNSDown
+          expr: kube_deployment_status_replicas_available{namespace="kube-system",deployment="coredns"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "CoreDNS is DOWN — cluster-wide DNS resolution failing"
+            description: >-
+              No CoreDNS replicas are Available. In-cluster name resolution is broken →
+              cascading failures (Vault/ESO, ingress, app-to-app, backups that resolve DBs
+              by name — the synapse-backup failure was exactly this). Check
+              `kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide`.
+        - alert: CoreDNSDegraded
+          expr: kube_deployment_status_replicas_available{namespace="kube-system",deployment="coredns"} < 2
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CoreDNS running below 2 replicas (HA lost)"
+            description: >-
+              CoreDNS has fewer than 2 Available replicas for 10m — DNS no longer survives a
+              single node loss. Expected 2 (set via the k3s coredns AddOn). If a k3s upgrade
+              reset it to 1, re-assert replicas:2 (minicloud-ansible coredns-ha, or the AddOn on set-hog).
+    - name: ingress-nginx.availability
+      rules:
+        - alert: IngressNginxDown
+          expr: kube_deployment_status_replicas_available{namespace="ingress-nginx",deployment="nginx-ingress-ingress-nginx-controller"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ingress-nginx controller is DOWN — all internal apps unreachable"
+            description: >-
+              No ingress-nginx controller replicas Available. Every `*.10.0.0.200.nip.io` app
+              (and anything routed through it) is unreachable. Check
+              `kubectl get pods -n ingress-nginx -o wide`.
+        - alert: IngressNginxDegraded
+          expr: kube_deployment_status_replicas_available{namespace="ingress-nginx",deployment="nginx-ingress-ingress-nginx-controller"} < 2
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ingress-nginx running below 2 replicas (HA lost)"
+            description: >-
+              The ingress controller has fewer than 2 Available replicas for 10m — ingress no
+              longer survives a single node loss. Check the deployment + node placement.
