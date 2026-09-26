@@ -28,7 +28,9 @@ spec:
               memory: 2Gi
             limits:
               cpu: 2000m
-              memory: 6Gi
+              # Trimmed 6Gi -> 4Gi (P5): baseline ~739Mi; 4Gi keeps a large margin for
+              # big/scanned-PDF conversion spikes while cutting the worst overcommit offender.
+              memory: 4Gi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

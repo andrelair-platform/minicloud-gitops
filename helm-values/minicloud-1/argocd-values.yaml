@@ -248,7 +248,9 @@ repoServer:
     minAvailable: 1
   resources:
     requests: { cpu: 50m,  memory: 256Mi }
-    limits:   { cpu: 1000m, memory: 2500Mi }
+    # Trimmed 2500Mi -> 1Gi (P5): repo-server uses ~100-200Mi; 1Gi is 5-10x headroom
+    # (still fine for helm-render/dep-build spikes) and bounds the OOM blast radius.
+    limits:   { cpu: 1000m, memory: 1Gi }
 
 controller:
   priorityClassName: minicloud-platform
@@ -265,7 +267,9 @@ controller:
         release: kps
   resources:
     requests: { cpu: 100m, memory: 512Mi }
-    limits:   { cpu: 1000m, memory: 3Gi }
+    # Trimmed 3Gi -> 2Gi (P5): app-controller uses ~1Gi; 2Gi keeps 2x headroom
+    # (its memory scales with app count — 2Gi is ample for the current ~101 apps).
+    limits:   { cpu: 1000m, memory: 2Gi }
 
 applicationSet:
   resources:
