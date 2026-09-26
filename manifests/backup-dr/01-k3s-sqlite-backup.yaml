@@ -69,6 +69,16 @@ spec:
                   # VACUUM INTO uses a single read transaction: it completes in
                   # ~3s and also compacts the DB (drops free pages).
                   sqlite3 /db/state.db "VACUUM INTO '${BACKUP_FILE}'"
+
+                  # Self-verify the snapshot BEFORE uploading. A corrupt backup that looks fine is
+                  # worse than a missing one (false confidence at restore time). Fail the job — which
+                  # trips the backup-freshness alert — if integrity_check isn't "ok" or kine is empty.
+                  INTEG=$(sqlite3 "${BACKUP_FILE}" "PRAGMA integrity_check;")
+                  ROWS=$(sqlite3 "${BACKUP_FILE}" "SELECT count(*) FROM kine;")
+                  if [ "${INTEG}" != "ok" ] || [ "${ROWS}" -lt 1 ]; then
+                    echo "FAIL: kine snapshot bad (integrity=${INTEG} rows=${ROWS})"; exit 1
+                  fi
+                  echo "snapshot verified: integrity=ok kine_rows=${ROWS}"
                   gzip "${BACKUP_FILE}"
 
                   # Configure rclone for MinIO
