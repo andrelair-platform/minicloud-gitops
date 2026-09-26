@@ -32,6 +32,18 @@ controller:
       cpu: 500m
       memory: 512Mi
 
+  # Tight-quota rollout: ingress-nginx-quota caps limits.memory at 1Gi = exactly the two
+  # controllers (2 x 512Mi). A default 25% surge tries to create a 3rd pod (+512Mi) →
+  # FailedCreate "exceeded quota: ingress-nginx-quota" → the rollout wedges (bit us 34h+ on
+  # rev 99c654786). maxSurge:0 rolls in place: take one old pod down (PDB minAvailable:1 keeps
+  # the other serving via the 10.0.0.200 VIP), create its replacement, then repeat — peak stays
+  # at 2 pods = 1Gi. See memory feedback_tight_quota_rollout_maxsurge.
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+
   service:
     type: LoadBalancer
     loadBalancerIP: "10.0.0.200"
