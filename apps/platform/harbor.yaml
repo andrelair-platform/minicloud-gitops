@@ -52,3 +52,10 @@ spec:
       jsonPointers:
         - /spec/volumeName
         - /spec/volumeMode
+    # trust-manager owns the CA-bundle Secret content (injects the cluster trust bundle),
+    # so ArgoCD sees perpetual drift on its data. Ignore the data it manages.
+    - kind: Secret
+      name: minicloud-ca-bundle
+      namespace: harbor
+      jsonPointers:
+        - /data
