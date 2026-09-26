@@ -32,7 +32,17 @@ authentik:
 server:
   priorityClassName: minicloud-critical
   enabled: true
-  replicas: 1
+  replicas: 2
+  # HA for SSO: 2 server replicas spread across nodes so a single node loss doesn't
+  # take down login for every app. Hard anti-affinity (6 nodes, small pods → safe).
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: authentik
+              app.kubernetes.io/component: server
+          topologyKey: kubernetes.io/hostname
   containerSecurityContext:
     capabilities:
       drop:
