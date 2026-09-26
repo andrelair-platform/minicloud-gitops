@@ -10,9 +10,13 @@ metadata:
 spec:
   hard:
     requests.cpu: "1500m"
-    limits.cpu: "4"
+    # limits bumped for authentik-server HA (2 replicas) + a rolling-update SURGE pod:
+    # 2 replicas fit, but the surge pod hit `exceeded quota` -> ProgressDeadlineExceeded ->
+    # app Degraded. quota limits.* cap the SUM of limits (not node reservations), so this is
+    # low-cost and keeps rollouts zero-downtime. (limits.cpu 4->5, limits.memory 5Gi->6Gi.)
+    limits.cpu: "5"
     requests.memory: 3Gi
-    limits.memory: 5Gi
+    limits.memory: 6Gi
     count/pods: "20"
 ---
 apiVersion: v1
