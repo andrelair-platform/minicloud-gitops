@@ -10,6 +10,9 @@ spec:
   issuerRef:
     name: {{ .Values.certificate.issuerRef.name }}
     kind: {{ .Values.certificate.issuerRef.kind }}
+  privateKey:
+    algorithm: {{ (.Values.certificate.privateKey).algorithm | default "ECDSA" }}
+    size: {{ (.Values.certificate.privateKey).size | default 256 }}
   dnsNames:
 {{- if .Values.certificate.dnsNames }}
 {{ toYaml .Values.certificate.dnsNames | indent 4 }}

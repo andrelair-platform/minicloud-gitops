@@ -6,6 +6,9 @@ metadata:
   namespace: temporal
 spec:
   secretName: temporal-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 256
   issuerRef:
     name: minicloud-ca
     kind: ClusterIssuer

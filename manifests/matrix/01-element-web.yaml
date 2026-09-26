@@ -114,9 +114,6 @@ metadata:
   name: element-web
   namespace: chat
   annotations:
-    cert-manager.io/cluster-issuer: minicloud-ca
-    cert-manager.io/duration: "2160h"
-    cert-manager.io/renew-before: "720h"
     nginx.ingress.kubernetes.io/server-snippet: |
       location /outpost.goauthentik.io {
           proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
@@ -167,3 +164,23 @@ spec:
                 name: element-web
                 port:
                   number: 80
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: element-tls
+  namespace: chat
+spec:
+  secretName: element-tls
+  duration: 2160h
+  renewBefore: 720h
+  issuerRef:
+    kind: ClusterIssuer
+    name: minicloud-ca
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - element.devandre.sbs
+    - element.10.0.0.200.nip.io

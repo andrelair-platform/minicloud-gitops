@@ -5,6 +5,9 @@ metadata:
   namespace: automation
 spec:
   secretName: n8n-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 256
   issuerRef:
     name: minicloud-ca
     kind: ClusterIssuer

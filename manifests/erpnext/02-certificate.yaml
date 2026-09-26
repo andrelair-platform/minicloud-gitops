@@ -5,6 +5,9 @@ metadata:
   namespace: erp
 spec:
   secretName: erp-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 256
   issuerRef:
     name: minicloud-ca
     kind: ClusterIssuer

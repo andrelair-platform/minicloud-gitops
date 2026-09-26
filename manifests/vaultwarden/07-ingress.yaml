@@ -7,9 +7,6 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    cert-manager.io/cluster-issuer: minicloud-ca
-    cert-manager.io/duration: "2160h"
-    cert-manager.io/renew-before: "720h"
 spec:
   ingressClassName: nginx
   tls:
@@ -38,3 +35,23 @@ spec:
                 name: vaultwarden
                 port:
                   name: http
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vaultwarden-tls
+  namespace: vaultwarden
+spec:
+  secretName: vaultwarden-tls
+  duration: 2160h
+  renewBefore: 720h
+  issuerRef:
+    kind: ClusterIssuer
+    name: minicloud-ca
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - vault-pw.10.0.0.200.nip.io
+    - vault-pw.devandre.sbs

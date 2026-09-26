@@ -128,9 +128,6 @@ persistence:
 ingress:
   enabled: true
   annotations:
-    cert-manager.io/cluster-issuer: minicloud-ca
-    cert-manager.io/duration: "2160h"
-    cert-manager.io/renew-before: "720h"
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
   csHosts:
     - matrix.devandre.sbs
