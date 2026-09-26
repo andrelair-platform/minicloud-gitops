@@ -1,6 +1,12 @@
 ---
-# Peak during controller swap: old pod (512Mi) + 2 admission jobs (128Mi each) = 768Mi
-# Steady state: community ingress-nginx controller (512Mi) + ServiceMonitor scrape pod
+# Steady state (HA): TWO controllers (replicaCount 2) x 512Mi = 1Gi limits.memory.
+# On every helm sync the chart also runs the admission-webhook hook Jobs
+# (admission-create PreSync + admission-patch PostSync, 128Mi each, sequential),
+# so the quota MUST leave headroom above the 1Gi steady state or the PreSync hook
+# can't schedule and the ArgoCD sync hangs "waiting for completion of hook"
+# (which blocked the maxSurge:0 rollout fix from ever applying — 2026-09-26).
+# 1536Mi = 1Gi controllers + a 128Mi hook + margin. With controller maxSurge:0
+# the rollout is in-place (no 3rd controller pod), so 1536Mi is ample.
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -11,7 +17,7 @@ spec:
     requests.cpu: 500m
     limits.cpu: "2"
     requests.memory: 512Mi
-    limits.memory: 1Gi
+    limits.memory: 1536Mi
     count/pods: "10"
 ---
 apiVersion: v1
