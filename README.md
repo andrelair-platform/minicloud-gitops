@@ -158,7 +158,6 @@ The AI stack lives in the `ai` namespace and is fully managed here.
 | **markitdown-proxy** | Document converter: PDF/images → Docling OCR, Office → MarkItDown |
 | **rag-ingest** | Ingest pipeline: convert → French-aware chunking → bge-m3 embed → pgvector HNSW insert |
 | **postgresql-ai** | pgvector (1024-dim HNSW + GIN French FTS) for RAG; LiteLLM + Langfuse databases |
-| **phi3-financial** | PromptOps pipeline — Groq llama-3.1-8b-instant primary + Ollama phi4-mini fallback; LangfusePromptHandler injects production-labelled system prompt at request time |
 
 ### LiteLLM config
 
@@ -263,7 +262,6 @@ services/<name>/helm/
 | [minicloud-onlyoffice](https://github.com/andrelair-platform/minicloud-onlyoffice) | Custom OnlyOffice image (CA cert + NODE_EXTRA_CA_CERTS) |
 | [minicloud-opentofu](https://github.com/andrelair-platform/minicloud-opentofu) | MAAS IaC (OpenTofu) — run only on controller |
 | [platform-demo](https://github.com/andrelair-platform/platform-demo) | Go CI/CD demo service |
-| [phi3-financial](https://github.com/andrelair-platform/phi3-financial) | PromptOps pipeline: LiteLLM CustomLogger + Langfuse + 25-case CI eval |
 | [ktayl-solution-web](https://github.com/andrelair-platform/ktayl-solution-web) | Astro + Tailwind public website |
 
 ---

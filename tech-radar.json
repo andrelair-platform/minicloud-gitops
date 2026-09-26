@@ -112,7 +112,7 @@
       "id": "open-webui",
       "title": "Open WebUI",
       "quadrant": "ai-ml",
-      "description": "AI chat interface with RAG, web search, multi-model. OIDC via Authentik. phi3-financial for financial domain.",
+      "description": "AI chat interface with RAG, web search, multi-model. OIDC via Authentik.",
       "timeline": [{ "moved": 0, "ringId": "adopt", "date": "2026-01-01" }]
     },
     {
