@@ -95,6 +95,9 @@ spec:
                   if [ -z "${LATEST}" ]; then echo "FAIL: no synapse dump in MinIO"; exit 1; fi
                   echo "fetching latest dump: ${LATEST}"
                   rclone copyto "minio:db-logical/synapse/${LATEST}" /work/dump.sql.gz --s3-no-check-bucket
+                  # umask 077 above (protects rclone.conf creds) wrote this 0600 as UID 1000;
+                  # the restore container runs as UID 26 → make the dump group/world-readable.
+                  chmod 0644 /work/dump.sql.gz
                   ls -la /work/dump.sql.gz
               volumeMounts:
                 - { name: work, mountPath: /work }
