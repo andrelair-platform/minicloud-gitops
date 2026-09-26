@@ -234,8 +234,17 @@ jobs:
   configure:
     enabled: true
     fixVolume: true
-    nodeSelector:
-      kubernetes.io/hostname: fast-skunk
+    # Co-locate with gunicorn (the RWO sites-PVC holder), NOT a hostname pin. Pinning to
+    # fast-skunk caused a Multi-Attach error whenever the erpnext pods ran on another node
+    # (the sites PVC is RWO — attachable only on the node already holding it). Follow gunicorn
+    # like every other component does. See scheduling.md (no node-pin SPOFs).
+    affinity:
+      podAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: erpnext-gunicorn
+            topologyKey: kubernetes.io/hostname
 
   # Site erp.devandre.sbs created 2026-07-19. Disabled to avoid spurious Job
   # runs on every ArgoCD sync (each sync creates a new timestamped Job).
