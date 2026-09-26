@@ -52,6 +52,21 @@ MUST sit on the always-free tier; the other two tiers are for second copies and 
 tier — move it to always-free or don't depend on it. Managed-k8s / paid-node / paid-hour services stay
 **ephemeral only** (gate #5). The `$100` Education credit is ~$8/mo — treat it as burst fuel, not a budget.
 
+## Our accounts — which one plays which tier (they are NOT interchangeable)
+
+We hold four provider accounts. **One has no credit shield** — mixing them up is how a mistake bills.
+
+| Account | Shield | Tier role | Runs | Guardrail |
+|---|---|---|---|---|
+| **Azure PAYG** (acct 1, sub `<payg>`) | **none — bills day 1** | **always-free services ONLY** | permanent Azure always-free (Functions/Cosmos/Static Web Apps/Container Apps/Arc) | €15 sub budget (`budgets.tf`); never a standing paid resource; **verify its 12-month-free window isn't already spent** (it runs Azure OpenAI since 2026-08, so likely gone → treat 12-month tiers on it as **paid**) |
+| **AWS** (acct 2) | credit → then always-free | permanent serverless anchor | Anchor 1 heartbeat (Lambda + DynamoDB + CloudFront) — all always-free | €15 budget (`budgets.tf`) |
+| **Azure Education** (acct 3, sub `<edu>`, exp **2027-09-23**) | $100 (~$8/mo) | **burst fuel only** | ephemeral DR game-days, AI experiments (Document Intelligence / Vision) — `apply → evidence → destroy` | its **own** budget on its subscription (`azure-education-budget.tf`); pin bursts to `TF_VAR_azure_education_subscription_id` |
+| **OCI** (acct 4, ADR-0001) | always-free | always-on free compute | DR node / restore target | €1 tripwire (`oci-budget.tf`) |
+
+**Two hard rules from this map:**
+1. **PAYG = always-free only.** The no-credit account is the one where a mistake costs euros immediately.
+2. **Education is a *separate subscription*** — every burst resource pins `TF_VAR_azure_education_subscription_id`, **never** `azurerm_subscription.current` (that is PAYG). It carries its own budget alert; `budgets.tf` does **not** cover it.
+
 ## Always-free service map (the durable primitives — check candidates against this)
 
 The permanent layer is **serverless + a tiny managed store + free CDN/egress + an always-free VM**, not
