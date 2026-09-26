@@ -36,6 +36,47 @@ If a candidate fails any gate → **park it** (note it below), don't build it.
   can be scarce (retry / quieter region).
 - Every adoption ends in an **ADR or runbook** (evidence > tools) — the "because…" written down.
 
+## The 3-tier free model — build *permanent* only on always-free
+
+"Free" is three different things with three different lifespans. Conflating them is how a homelab
+ends up with a surprise bill or an outage in month 13. **Anything permanent, stateful, or always-on
+MUST sit on the always-free tier; the other two tiers are for second copies and bursts only.**
+
+| Tier | Lifespan | Primitive examples | Use it for |
+|---|---|---|---|
+| **Always-free (perpetual)** | forever, within limits | OCI A1.Flex VM · Lambda/Functions · DynamoDB/Cosmos 25 GB · Cloudflare R2 10 GB · CloudFront/Static Web Apps · Workers/Cloud Run | **the permanent hybrid architecture** (DR anchor, external monitor, status page, offsite backup target) |
+| **12-month free** | **expires month 13** | Azure VM 750 h · Blob 5 GB · Postgres B1MS · ACR · AWS EC2 t2.micro 750 h | **second copies / bonus** — disposable, never load-bearing |
+| **Credits** | until spent / dated | **$100 Azure Education** (exp 2027-09-23) · AWS credits | **bursts** — DR game-days, ephemeral bigger VMs, AI-service experiments (`apply → evidence → destroy`) |
+
+**Rule:** if losing the resource at the tier's cliff would degrade the platform, it's on the wrong
+tier — move it to always-free or don't depend on it. Managed-k8s / paid-node / paid-hour services stay
+**ephemeral only** (gate #5). The `$100` Education credit is ~$8/mo — treat it as burst fuel, not a budget.
+
+## Always-free service map (the durable primitives — check candidates against this)
+
+The permanent layer is **serverless + a tiny managed store + free CDN/egress + an always-free VM**, not
+always-on paid VMs. What is genuinely always-free per lane (verify current terms before depending):
+
+- **OCI** *(always-on compute lane)* — **A1.Flex 4 OCPU / 24 GB Arm** + 200 GB block (our DR node,
+  ADR-0001) · 2× AMD micro VMs · 10 GB object · 10 TB/mo egress.
+- **AWS** *(serverless/IAM lane)* — **Lambda 1M req + 400k GB-s** · **DynamoDB 25 GB** · SNS/SQS 1M ·
+  **CloudWatch 5 GB logs/10 metrics** · **CloudFront 1 TB egress + 10M req** · EventBridge · Cognito 10k MAU.
+  *(S3 5 GB is 12-month, NOT always-free — use R2 for permanent object storage.)*
+- **Azure** *(enterprise identity / CI lane)* — **Functions 1M req** · **Container Apps 180k vCPU-s / 2M req** ·
+  **Cosmos 25 GB + 1000 RU/s** · **Static Web Apps 100 GB** · Monitor 5 GB logs · Event Grid 100k · API Mgmt 1M ·
+  Entra ID 50k objects · Azure Arc · Cost Mgmt/Policy/Advisor. *(VM 750 h, Blob 5 GB, Postgres 750 h = 12-month.)*
+- **Cloudflare** — **R2 10 GB + ZERO egress** (best permanent object store of all lanes; already core) ·
+  Workers 100k req/day · Pages (static) · Tunnel.
+- **GCP** *(free GPU/ML lane)* — e2-micro always-free VM (1 region) · Cloud Run 2M req · Kaggle/Colab free GPU.
+
+## The exit test (per resource, written down — sharpens gate #5)
+
+For **every** cloud resource, write the one command that **turns it off** and the check that **the laptop
+cluster is unaffected**. If you can't write both, you've created a hidden dependency — **don't ship it.**
+This is what keeps "teardown is one command" honest and what makes a 12-month/credit resource safe to use:
+it's only a *bonus* if its removal is a no-op to the primary platform. Record the exit test in the resource's
+ADR/runbook next to the "because…". (Reference: ADR-0001's `enable_oci_dr_node=false` one-flag teardown.)
+
 ## Why multi-cloud here is a *feature*, not a spread
 An insurer is **legally required** to have off-site DR (DORA Art. 11–12) and to manage
 **cloud-concentration risk** (DORA Art. 28–29). So ktayl-IS spanning bare-metal + real cloud
