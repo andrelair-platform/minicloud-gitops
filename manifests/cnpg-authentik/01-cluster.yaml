@@ -80,11 +80,14 @@ spec:
         name: authentik-postgres-secret
         key: password
 
-  # Off-site PITR to R2 (reuses the confirmed-existing velero R2 bucket, distinct prefix).
+  # Off-site PITR to R2 — dedicated bucket minicloud-cnpg-offsite (NOT the velero bucket; P0-2b).
   backup:
     retentionPolicy: "14d"
     barmanObjectStore:
-      destinationPath: s3://minicloud-velero-offsite/cnpg/authentik
+      # Dedicated bucket (not the shared velero one): Velero's BSL validation rejects any bucket
+      # with foreign top-level dirs, so a `cnpg/` prefix in minicloud-velero-offsite made the R2
+      # BSL "Unavailable". Separate buckets keep each tool's store clean (P0-2b).
+      destinationPath: s3://minicloud-cnpg-offsite/authentik
       endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
       s3Credentials:
         accessKeyId:
