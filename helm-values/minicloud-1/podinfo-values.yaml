@@ -14,7 +14,7 @@ hpa:
 image:
   pullPolicy: IfNotPresent
   repository: ghcr.io/stefanprodan/podinfo
-  tag: 6.11.2
+  tag: 6.15.0
 ingress:
   annotations:
     nginx.ingress.kubernetes.io/configuration-snippet: |
