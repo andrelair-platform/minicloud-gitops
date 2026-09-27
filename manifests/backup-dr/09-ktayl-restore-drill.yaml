@@ -1,0 +1,122 @@
+---
+# App-consistent restore drill for the ktayl-prod Postgres dump (audit P3 — proves the
+# ktayl-logical-backup dump ACTUALLY restores, not just that a file exists). Mirrors the
+# synapse app-restore-drill: initContainer rclone-fetches the latest db-logical/ktayl dump
+# into an emptyDir; main container initdb's a THROWAWAY local Postgres (unix socket, no TCP),
+# restores with ON_ERROR_STOP, then asserts a minimum table count. Fully ephemeral (emptyDir),
+# reuses the velero-ns restore-drill-minio-creds ESO. Exits non-zero on failure -> the
+# KtaylRestoreDrillStale alert (08-restore-drill-alerts.yaml) fires off the CronJob success ts.
+# ktayl_policy is a small (~6-table) schema today, so MIN_TABLES=1 proves the schema restores
+# cleanly (tighten if the DB grows). Runs 02:50 UTC — after the 02:05 dump.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ktayl-restore-drill
+  namespace: velero
+  annotations:
+    checkov.io/skip1: CKV_K8S_22=postgres server requires writable rootfs (ephemeral drill)
+spec:
+  schedule: "50 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            fsGroup: 26
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - name: work
+              emptyDir: {}
+          initContainers:
+            - name: fetch
+              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
+              env:
+                - { name: HOME, value: /work }
+                - { name: TMPDIR, value: /work }
+                - { name: RCLONE_CONFIG, value: /work/rclone.conf }
+                - name: MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: restore-drill-minio-creds, key: MINIO_ACCESS_KEY } }
+                - name: MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: restore-drill-minio-creds, key: MINIO_SECRET_KEY } }
+                - name: MINIO_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: restore-drill-minio-creds, key: MINIO_ENDPOINT } }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  umask 077
+                  cat > /work/rclone.conf <<CONF
+                  [minio]
+                  type = s3
+                  provider = Minio
+                  access_key_id = ${MINIO_ACCESS_KEY}
+                  secret_access_key = ${MINIO_SECRET_KEY}
+                  endpoint = ${MINIO_ENDPOINT}
+                  region = us-east-1
+                  CONF
+                  LATEST=$(rclone lsf minio:db-logical/ktayl/ --include '*.sql.gz' | sort | tail -1)
+                  if [ -z "${LATEST}" ]; then echo "FAIL: no ktayl dump in MinIO"; exit 1; fi
+                  echo "fetching latest dump: ${LATEST}"
+                  rclone copyto "minio:db-logical/ktayl/${LATEST}" /work/dump.sql.gz --s3-no-check-bucket
+                  # fetch runs as uid 1000 under umask 077 (0600); restore runs as uid 26 -> make it readable.
+                  chmod 0644 /work/dump.sql.gz
+                  ls -la /work/dump.sql.gz
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                runAsUser: 1000
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { cpu: 300m, memory: 256Mi }
+          containers:
+            - name: restore-assert
+              image: harbor.10.0.0.200.nip.io/library/postgresql:18.4.0-noavx512
+              env:
+                - { name: HOME, value: /work }
+                - { name: MIN_TABLES, value: "1" }   # ktayl_policy has ~6 tables; >=1 proves the schema restores
+                - { name: MIN_ROWS, value: "0" }      # near-empty prod today — don't require rows, just a clean load
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  export PATH=/opt/bitnami/postgresql/bin:$PATH
+                  export PGDATA=/work/pgdata
+                  mkdir -p "$PGDATA"
+                  echo "== initdb throwaway cluster =="
+                  initdb -D "$PGDATA" -U postgres --auth-local=trust --auth-host=trust >/work/initdb.log 2>&1
+                  pg_ctl -D "$PGDATA" -o "-c listen_addresses='' -c unix_socket_directories=/work" -w -t 60 start
+                  createdb -h /work -U postgres ktayl_policy
+                  echo "== restore dump (ON_ERROR_STOP) =="
+                  if ! gunzip -c /work/dump.sql.gz | psql -h /work -U postgres -d ktayl_policy -v ON_ERROR_STOP=1 -q; then
+                    echo "FAIL: restore returned an error"; pg_ctl -D "$PGDATA" -m immediate stop || true; exit 1
+                  fi
+                  psql -h /work -U postgres -d ktayl_policy -q -c "ANALYZE;"
+                  TABLES=$(psql -h /work -U postgres -d ktayl_policy -tAc "SELECT count(*) FROM pg_tables WHERE schemaname='public'")
+                  ROWS=$(psql -h /work -U postgres -d ktayl_policy -tAc "SELECT COALESCE(sum(n_live_tup),0) FROM pg_stat_user_tables")
+                  pg_ctl -D "$PGDATA" -m fast stop || true
+                  echo "== RESULT: restored tables=${TABLES} rows=${ROWS} (min tables=${MIN_TABLES} min rows=${MIN_ROWS}) =="
+                  [ "${TABLES}" -ge "${MIN_TABLES}" ] || { echo "FAIL: only ${TABLES} tables restored (< ${MIN_TABLES})"; exit 1; }
+                  [ "${ROWS}" -ge "${MIN_ROWS}" ]     || { echo "FAIL: only ${ROWS} rows restored (< ${MIN_ROWS})"; exit 1; }
+                  echo "RESTORE DRILL PASS ✅ — ktayl_policy dump restores app-consistently"
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                runAsUser: 26
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 100m, memory: 256Mi }
+                limits: { cpu: 1000m, memory: 768Mi }

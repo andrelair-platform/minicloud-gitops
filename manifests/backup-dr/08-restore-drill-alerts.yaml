@@ -44,3 +44,55 @@ spec:
               tables or rows) or not running. An untested restore is not a backup.
               Check: kubectl get cronjob app-restore-drill -n velero
               Logs:  kubectl logs -n velero -l job-name --since=26h
+
+        # --- ktayl-prod (insurance) — dump + restore drill (P3 gap closure) ---
+        - alert: KtaylLogicalBackupStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="ktayl-logical-backup", namespace="ktayl-prod"}) / 3600 > 26
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ktayl-prod logical backup has not succeeded in 26+ hours"
+            description: |
+              The ktayl-logical-backup CronJob (pg_dump → MinIO db-logical/ktayl) last succeeded
+              {{ $value | printf "%.1f" }} hours ago. Check: kubectl get cronjob ktayl-logical-backup -n ktayl-prod
+
+        - alert: KtaylRestoreDrillStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="ktayl-restore-drill", namespace="velero"}) / 3600 > 26
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ktayl restore drill has not passed in 26+ hours"
+            description: |
+              The ktayl-restore-drill last succeeded {{ $value | printf "%.1f" }} hours ago — the
+              insurance-business DB dump is either failing to restore or the drill is not running.
+              Check: kubectl get cronjob ktayl-restore-drill -n velero
+
+        # --- erpnext (HR/ERP) — dump + restore drill (P3 gap closure) ---
+        - alert: ErpnextLogicalBackupStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="erpnext-logical-backup", namespace="erp"}) / 3600 > 26
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "erpnext logical backup has not succeeded in 26+ hours"
+            description: |
+              The erpnext-logical-backup CronJob (mysqldump → MinIO db-logical/erpnext) last succeeded
+              {{ $value | printf "%.1f" }} hours ago. Check: kubectl get cronjob erpnext-logical-backup -n erp
+
+        - alert: ErpnextRestoreDrillStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="erpnext-restore-drill", namespace="velero"}) / 3600 > 26
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "erpnext restore drill has not passed in 26+ hours"
+            description: |
+              The erpnext-restore-drill last succeeded {{ $value | printf "%.1f" }} hours ago — the
+              ERP DB dump is either failing to restore or the drill is not running.
+              Check: kubectl get cronjob erpnext-restore-drill -n velero
