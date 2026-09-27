@@ -1,0 +1,128 @@
+---
+# App-consistent logical backup of the ERPNext MariaDB (audit P3 — closes the RTO/RPO gap:
+# erpnext was Velero-VOLUME-only = crash-consistent + untested, despite being business-critical HR/ERP).
+# Same two-container pattern as the synapse reference (manifests/matrix/50-synapse-logical-backup.yaml):
+#   initContainer (mariadb client) mysqldump --single-transaction -> shared emptyDir;
+#   main (k3s-backup image, rclone) pushes to MinIO db-logical/erpnext and prunes to 7 days.
+# Runs in `erp` (same-namespace DB access; erp has NO default-deny-egress -> MinIO 10.0.0.1 reachable).
+# Off-site: db-logical is already in the MinIO->R2 offsite mirror. Expand the restore-drill to it next.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: erpnext-backup-minio-creds
+  namespace: erp
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: erpnext-backup-minio-creds
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: MINIO_ACCESS_KEY
+      remoteRef: { key: platform/minio, property: access_key_id }
+    - secretKey: MINIO_SECRET_KEY
+      remoteRef: { key: platform/minio, property: password }
+    - secretKey: MINIO_ENDPOINT
+      remoteRef: { key: platform/minio, property: endpoint }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: erpnext-logical-backup
+  namespace: erp
+  annotations:
+    checkov.io/skip1: CKV_K8S_22=mariadb client requires writable rootfs (ephemeral job)
+spec:
+  schedule: "25 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - name: work
+              emptyDir: {}
+          initContainers:
+            - name: mysqldump
+              image: docker.io/library/mariadb:10.6.27
+              env:
+                - name: MYSQL_PWD
+                  valueFrom:
+                    secretKeyRef:
+                      name: erpnext
+                      key: mariadb-root-password
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  TS=$(date +%Y%m%d-%H%M%S)
+                  echo "mysqldump erpnext@erpnext-mariadb-sts -> /work/erpnext-${TS}.sql.gz"
+                  mysqldump -h erpnext-mariadb-sts -u root \
+                    --all-databases --single-transaction --routines --triggers --events \
+                    | gzip -c > "/work/erpnext-${TS}.sql.gz"
+                  ls -la /work
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                runAsUser: 1000
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 128Mi }
+                limits: { cpu: 500m, memory: 512Mi }
+          containers:
+            - name: push
+              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
+              env:
+                - { name: HOME, value: /work }
+                - { name: TMPDIR, value: /work }
+                - { name: RCLONE_CONFIG, value: /work/rclone.conf }
+                - name: MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: erpnext-backup-minio-creds, key: MINIO_ACCESS_KEY } }
+                - name: MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: erpnext-backup-minio-creds, key: MINIO_SECRET_KEY } }
+                - name: MINIO_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: erpnext-backup-minio-creds, key: MINIO_ENDPOINT } }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  umask 077
+                  cat > /work/rclone.conf <<CONF
+                  [minio]
+                  type = s3
+                  provider = Minio
+                  access_key_id = ${MINIO_ACCESS_KEY}
+                  secret_access_key = ${MINIO_SECRET_KEY}
+                  endpoint = ${MINIO_ENDPOINT}
+                  region = us-east-1
+                  CONF
+                  rclone mkdir minio:db-logical 2>/dev/null || true
+                  rclone copy /work minio:db-logical/erpnext/ --include '*.sql.gz' --s3-no-check-bucket
+                  rclone delete minio:db-logical/erpnext/ --min-age 7d --s3-no-check-bucket || true
+                  echo "on-site logical dumps:"; rclone ls minio:db-logical/erpnext/
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                runAsUser: 1000
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { cpu: 300m, memory: 256Mi }
