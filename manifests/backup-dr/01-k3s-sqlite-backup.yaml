@@ -49,13 +49,13 @@ spec:
                 type: Directory
           containers:
             - name: backup
-              # Self-contained image (sqlite + rclone baked in) built from
-              # alpine:3.20 — see the k3s-backup image in Harbor. The old
-              # `apk add` at runtime failed whenever DNS/CDN was unavailable
-              # (i.e. exactly mid-incident: 2026-08-19 the backup was broken
-              # for days because bind9 flapping blocked the Alpine package
-              # fetch on set-hog). A DR backup must not depend on the internet.
-              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
+              # Self-contained image (sqlite + rclone + age baked in) built from
+              # alpine:3.20 — see images/k3s-backup/. The old `apk add` at runtime
+              # failed whenever DNS/CDN was unavailable (i.e. exactly mid-incident:
+              # 2026-08-19 the backup was broken for days because bind9 flapping
+              # blocked the Alpine package fetch). A DR backup must not depend on
+              # the internet. :2.0 adds age for client-side encryption.
+              image: harbor.10.0.0.200.nip.io/library/k3s-backup:2.0
               command:
                 - /bin/sh
                 - -c
@@ -81,7 +81,11 @@ spec:
                     echo "FAIL: kine snapshot bad (integrity=${INTEG} rows=${ROWS})"; exit 1
                   fi
                   echo "snapshot verified: integrity=ok kine_rows=${ROWS}"
-                  gzip "${BACKUP_FILE}"
+                  # Encrypt client-side with age (ASYMMETRIC — we hold only the recipient PUBLIC key;
+                  # the private identity lives in Vault secret/platform/k3s-backup-age and is used ONLY
+                  # at restore, so a compromised set-hog cannot decrypt its own offsite backups).
+                  gzip -c "${BACKUP_FILE}" | age -r "${AGE_RECIPIENT}" -o "${BACKUP_FILE}.gz.age"
+                  rm -f "${BACKUP_FILE}"
 
                   # Configure rclone for MinIO
                   cat > /tmp/rclone.conf << CONF
@@ -94,7 +98,7 @@ spec:
                   CONF
 
                   rclone --config /tmp/rclone.conf mkdir minio:k3s-backup 2>/dev/null || true
-                  rclone --config /tmp/rclone.conf copy "${BACKUP_FILE}.gz" minio:k3s-backup/
+                  rclone --config /tmp/rclone.conf copy "${BACKUP_FILE}.gz.age" minio:k3s-backup/
 
                   # --- control-plane bootstrap material (rehearsal-proven 2026-09-27, DR Scenario G) ---
                   # A from-scratch set-hog rebuild needs, beyond state.db, the pieces that are NOT in the
@@ -106,11 +110,12 @@ spec:
                   #                                 unreadable ("identity transformer tried to read encrypted data").
                   # tls/ is deliberately EXCLUDED — k3s regenerates all certs from the datastore CA on
                   # restore; restoring old tls/ trips "certs newer than datastore, could cause a cluster outage".
-                  BOOT="/tmp/k3s-bootstrap-${DATE}.tar.gz"
+                  BOOT="/tmp/k3s-bootstrap-${DATE}.tar.gz.age"
                   EXTRA=""
                   [ -f /k3s-server/cred/encryption-config.json ] && EXTRA="$EXTRA cred/encryption-config.json"
                   [ -f /k3s-server/cred/encryption-state.json ] && EXTRA="$EXTRA cred/encryption-state.json"
-                  tar czf "$BOOT" -C /k3s-server token $EXTRA
+                  # This tarball holds the cluster token + secrets-encryption key — encrypt it with age too.
+                  tar czf - -C /k3s-server token $EXTRA | age -r "${AGE_RECIPIENT}" -o "$BOOT"
                   rclone --config /tmp/rclone.conf copy "$BOOT" minio:k3s-backup/
 
                   # Rotate per prefix (keep 7 each) — state DBs and bootstrap tarballs independently.
@@ -124,7 +129,7 @@ spec:
                     fi
                   done
 
-                  echo "Backup complete: k3s-state-${DATE}.db.gz + k3s-bootstrap-${DATE}.tar.gz"
+                  echo "Backup complete: k3s-state-${DATE}.db.gz.age + k3s-bootstrap-${DATE}.tar.gz.age"
               volumeMounts:
                 - name: k3s-server
                   mountPath: /k3s-server
@@ -134,6 +139,12 @@ spec:
                     secretKeyRef:
                       name: k3s-backup-minio
                       key: password
+                - name: AGE_RECIPIENT
+                  # PUBLIC key only (safe to commit) — age encrypt-only. The private identity is in
+                  # Vault secret/platform/k3s-backup-age (used at RESTORE) + a Vaultwarden break-glass
+                  # copy (so a control-plane rebuild isn't blocked on Vault being up). Rotate: regen
+                  # the keypair, update this value, re-store the identity; old backups need the old key.
+                  value: age16dpg8jgk8x6rlugfaj0grt3kw8pqfe6xq8y4luw5y5mqz4s2zv8svrctzm
               securityContext:
                 runAsUser: 0
                 capabilities:
