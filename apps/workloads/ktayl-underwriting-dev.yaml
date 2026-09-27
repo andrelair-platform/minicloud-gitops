@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ktayl-underwriting-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  # HGP golden path (GAP wrapper chart, dev): ONE Helm source. Wrapper depends on the library chart
+  # (OCI) for the FastAPI workload + Ingress; the TLS cert (ECDSA), the dedicated CNPG Postgres, the
+  # DB-namespace NetworkPolicies, and the Alembic PreSync migration Job are wrapper templates.
+  # releaseName MUST be ktayl-underwriting (else the library objects take the app name).
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/ktayl-underwriting/helm
+    helm:
+      releaseName: ktayl-underwriting
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: underwriting
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

@@ -1,0 +1,18 @@
+# dev — Harbor image, ns underwriting. Single replica; own CNPG Postgres.
+# Schema migration is self-applied by the app on startup (alembic upgrade head in the FastAPI
+# lifespan, before seed_v1) — the platform pattern (ktayl-policy-service runs m.Up() on startup).
+# No separate migration Job (a PreSync Job would deadlock against the CNPG cluster in the same sync).
+minicloud-app-deployment:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting
+    tag: b72d05f       # dev pin (Kargo will bump once wired in a later story)
+  workload:
+    replicas: 1
+  ingress:
+    host: underwriting.10.0.0.200.nip.io
+tlsCert:
+  dnsName: underwriting.10.0.0.200.nip.io
+postgres:
+  enabled: true
+  instances: 1
+  storageSize: 2Gi

@@ -1,0 +1,14 @@
+apiVersion: v2
+name: ktayl-underwriting
+description: >-
+  ktayl-underwriting wrapper chart (GAP golden path). Depends on the minicloud-app-deployment
+  library chart (OCI) for the FastAPI workload + Ingress. This chart's own templates/ carry the
+  dedicated CNPG Postgres, the DB-namespace NetworkPolicies, the TLS Certificate, and the
+  Alembic-migration PreSync-hook Job (schema must exist before the app's seed_v1 startup).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: minicloud-app-deployment
+    version: 0.4.0
+    repository: oci://ghcr.io/andrelair-platform
