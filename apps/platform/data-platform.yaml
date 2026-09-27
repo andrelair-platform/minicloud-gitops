@@ -1,6 +1,6 @@
 ---
 # Data Platform (#5) — Slice 1: analytics CNPG (medallion) + ingest/dbt CronJobs + Metabase.
-# Derived, rebuildable data. See data-platform/README.md + docs insurance-platform/capability-map.
+# Derived, rebuildable data. Code repo: github.com/andrelair-platform/ktayl-data-platform (deployed here). See its README + docs insurance-platform/capability-map.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
