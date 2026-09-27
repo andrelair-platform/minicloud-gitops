@@ -31,10 +31,18 @@ minio:
   local_setup: true
   storageClass: "longhorn"
   volumeSize: "10Gi"
-  # MED-03 (pentest 2026-08-16): pin off :latest. Digests are the exact images the
-  # chart's :latest resolved to on 2026-08-24 (server RELEASE.2025-09-07T16-13-09Z),
-  # so this is a no-op version-wise — it only removes the mutable :latest tag.
-  image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+  # MED-03 (pentest 2026-08-16): pin off :latest.
+  # 2026-09-27: MinIO paywalled its public images — docker.io/minio/minio and
+  # quay.io/minio/minio no longer resolve anonymously, so the docker.io digest below
+  # (14cea…) became NotFound → plane-ce-minio-wl-0 ImagePullBackOff for ~74d. Fix:
+  # mirror the exact same image (RELEASE.2025-09-07T16-13-09Z, id 14cea…, the copy still
+  # running as the controller MinIO) into Harbor (library/minio) and pull from there.
+  # Same pattern as library/postgresql-noavx512 — an on-platform copy immune to upstream
+  # removal. Harbor re-wraps the manifest so the digest differs (0812…) but content is identical.
+  image: harbor.10.0.0.200.nip.io/library/minio:RELEASE.2025-09-07T16-13-09Z@sha256:0812f09f2a024d2e06192c911f280356c8ed9c37d8d3a9cd4c76420a75ef6862
+  # image_mc left on docker.io: it's only used by a one-time bucket-setup job that already
+  # completed (bucket "uploads" exists); no running/scheduled workload pulls it. If that job
+  # ever needs to re-run, mirror minio/mc into Harbor the same way (the controller has no mc image cached).
   image_mc: minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
 
 env:
