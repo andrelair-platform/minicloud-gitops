@@ -1,0 +1,87 @@
+# ktayl-underwriting wrapper chart — common values.
+# (1) `minicloud-app-deployment:` = the library subchart (FastAPI workload + Ingress);
+# (2) top-level keys drive THIS chart's templates/ (CNPG Postgres, DB netpols, TLS cert, migration Job).
+#
+# DATABASE_URL construction (the key decision): the app (app/config.py) reads a single DATABASE_URL and
+# SQLAlchemy needs the `postgresql+psycopg://` driver scheme (psycopg3). CNPG only publishes a bare
+# `postgresql://` `uri` in its <cluster>-app secret, so we DON'T use it. Instead we inject the five
+# individual CNPG secret keys as env vars and compose DATABASE_URL with Kubernetes' native dependent
+# env-var expansion `$(VAR)` — no extra secret, no Job-writes-secret coupling, fully declarative. The
+# SAME env block is reused by the Alembic PreSync migration Job (templates/migration-job.yaml).
+minicloud-app-deployment:
+  # New service in a fresh namespace → standard app.kubernetes.io/* selector (no migration override).
+  serviceAccount:
+    create: true
+    name: ktayl-underwriting
+    automountServiceAccountToken: false
+  # Match the image's non-root user (Dockerfile creates uid 10001). readOnlyRootFilesystem stays on
+  # (library default) — the FastAPI app writes nothing to disk (PYTHONDONTWRITEBYTECODE).
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile: { type: RuntimeDefault }
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting
+    # tag set per env (values-{dev,prod}.yaml)
+  ports:
+    - { name: http, containerPort: 8000, protocol: TCP }
+  service:
+    ports:
+      - { name: http, port: 80, targetPort: http }
+  # DATABASE_URL composed from the CNPG-generated <cluster>-app secret via $(VAR) expansion.
+  env:
+    - name: PGHOST
+      valueFrom: { secretKeyRef: { name: underwriting-postgres-app, key: host } }
+    - name: PGPORT
+      valueFrom: { secretKeyRef: { name: underwriting-postgres-app, key: port } }
+    - name: PGUSER
+      valueFrom: { secretKeyRef: { name: underwriting-postgres-app, key: username } }
+    - name: PGPASSWORD
+      valueFrom: { secretKeyRef: { name: underwriting-postgres-app, key: password } }
+    - name: PGDATABASE
+      valueFrom: { secretKeyRef: { name: underwriting-postgres-app, key: dbname } }
+    - name: DATABASE_URL
+      value: "postgresql+psycopg://$(PGUSER):$(PGPASSWORD)@$(PGHOST):$(PGPORT)/$(PGDATABASE)"
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+  readinessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 5
+    periodSeconds: 5
+  livenessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels: { app.kubernetes.io/name: ktayl-underwriting }
+            topologyKey: kubernetes.io/hostname
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    servicePort: 80
+    tls:
+      enabled: true
+      secretName: ktayl-underwriting-tls
+    # host set per env
+  certificate:
+    enabled: false   # cert is a wrapper template (name kept = ktayl-underwriting-tls, ECDSA)
+
+# ---- wrapper-local (drives templates/) ----
+tlsCert:
+  dnsName: ""        # per env
+# CNPG Postgres + its DB netpols. On in dev (dev owns its own DB); a later prod story enables it there too.
+# Schema migration is NOT a separate Job — the app self-applies it on startup (alembic upgrade head in
+# the FastAPI lifespan before seed_v1), matching ktayl-policy-service. This avoids the ArgoCD ordering
+# deadlock a PreSync Job would create against the CNPG cluster provisioned in the same sync.
+postgres:
+  enabled: true
+  instances: 1
+  storageSize: 2Gi

@@ -1,0 +1,21 @@
+# prod — ghcr SHA image, 2 replicas, prod host (ns underwriting-prod). NOT wired to an ArgoCD app yet
+# (a later story creates ktayl-underwriting-prod + Kargo). Kept here so the chart is env-complete.
+minicloud-app-deployment:
+  image:
+    repository: ghcr.io/andrelair-platform/ktayl-underwriting
+    tag: "8a0e280"     # Kargo bumps to the promoted SHA
+  imagePullSecrets: [{ name: ghcr-pull }]
+  workload:
+    replicas: 2
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  ingress:
+    host: underwriting-prod.10.0.0.200.nip.io
+tlsCert:
+  dnsName: underwriting-prod.10.0.0.200.nip.io
+postgres:
+  enabled: true
+  instances: 2
+  storageSize: 5Gi
+# No migration Job — the app self-migrates on startup (see values.yaml).

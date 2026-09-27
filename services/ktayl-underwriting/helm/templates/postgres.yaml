@@ -1,0 +1,27 @@
+# Dedicated CNPG Postgres for ktayl-underwriting. Small footprint (dev=1 instance). CNPG creates the
+# `underwriting-postgres-app` secret (host/port/username/password/dbname/uri/…) consumed by the app +
+# migration Job. Data is the underwriting workbench's system of record → bump instances in prod.
+# AVX512 note: core Postgres (no pgvector) — no noavx512 SIGILL; pin imageName only if it surfaces.
+{{- if .Values.postgres.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: underwriting-postgres
+  labels:
+    app.kubernetes.io/name: ktayl-underwriting
+spec:
+  instances: {{ .Values.postgres.instances }}
+  primaryUpdateStrategy: unsupervised
+  storage:
+    size: {{ .Values.postgres.storageSize }}
+    storageClass: longhorn
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: "1",  memory: 512Mi }
+  monitoring:
+    enablePodMonitor: true
+  bootstrap:
+    initdb:
+      database: underwriting
+      owner: underwriting
+{{- end }}
