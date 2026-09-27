@@ -25,6 +25,7 @@ All repos cloned under `~/Developer/cloudplateform/`:
 | [ktayl-international-programs](https://github.com/andrelair-platform/ktayl-international-programs) | `ktayl-international-programs/` | International programs domain (board #23) — scaffold |
 | [ktayl-dms](https://github.com/andrelair-platform/ktayl-dms)                             | `ktayl-dms/`                     | Documents/DMS transversal layer (board #24) — scaffold |
 | [ktayl-integration](https://github.com/andrelair-platform/ktayl-integration)             | `ktayl-integration/`             | Integration transversal layer (board #25) — scaffold |
+| [ktayl-data-platform](https://github.com/andrelair-platform/ktayl-data-platform)         | `ktayl-data-platform/`           | Data Platform code — dbt + ingest + Metabase provisioner (board #5; deploy in minicloud-gitops `manifests/data-platform/`) |
 
 > The full **ktayl-\* domain repo ↔ product board** mapping (Claims/#11, Underwriting/#12,
 > Distribution/#13, Finance/#14, Compliance/#15, ITSM/#16, IAM/#17, MDM/#20, + the 5 above, etc.)

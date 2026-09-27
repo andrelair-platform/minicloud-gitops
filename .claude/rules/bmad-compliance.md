@@ -381,3 +381,4 @@ In addition to the conventions.md repo standardization checklist, every new cust
 | platform-demo | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | minicloud-agent | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | minicloud-crew-agent | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| ktayl-data-platform | ⬜ (backfill) | ✅ AGENTS.md | ✅ docs/prd.md | ✅ docs/architecture.md | ✅ SPRINT-OVERVIEW.md | ⚠️ built-then-backfilled (Path-C gate miss, corrected) |

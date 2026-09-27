@@ -1,5 +1,25 @@
 # Project Conventions
 
+## Deployment repo vs code repo — strict separation (MANDATORY)
+
+**`minicloud-gitops` is the DEPLOYMENT repo, never a code repo.** It holds only *deployment config*:
+`apps/` (ArgoCD Applications), `manifests/`, `helm-values/`, `services/*/helm` (GAP wrapper charts),
+`bmad/stories/`, `docs/` (ADRs), `.claude/`, repo-ops `scripts/`. **Application / source code lives in
+its own per-product repo** (`ktayl-policy-service`, `retrieva`, `ktayl-data-platform`, …), which CI
+builds and Kargo/ArgoCD deploy.
+
+**Concretely — these go in the product's OWN repo, NOT `minicloud-gitops/<dir>/`:**
+- dbt projects, ingestion/ETL scripts, app source, provisioning/config scripts, notebooks, tests.
+- A workload that needs code at runtime (a CronJob running dbt, a Job running a provisioner) **git-clones
+  the code repo** (or runs a CI-built image) — it does **not** clone `minicloud-gitops`.
+
+**Litmus test:** *if it would run in a container or be unit-tested, it's code → its own repo.* If it only
+tells the cluster what to run, it's deployment → `minicloud-gitops`.
+
+**Reference (the mistake that prompted this rule, 2026-09-27):** the Data Platform (#5) dbt/ingest/
+Metabase-provisioner code was first wrongly placed in `minicloud-gitops/data-platform/`; it was moved to
+the **`ktayl-data-platform`** repo and the ingest/dbt CronJobs repointed to clone it. Repo↔product map: `repos.md`.
+
 ## Container image file naming
 
 Always name the container build file **`Dockerfile`** — never `Containerfile`.
