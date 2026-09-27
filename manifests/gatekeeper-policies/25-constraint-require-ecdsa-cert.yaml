@@ -1,0 +1,18 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequireEcdsaCert
+metadata:
+  name: require-ecdsa-cert
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # DENY (enforcing) from the start: an audit of all 53 live Certificates found every
+  # minicloud-ca (Vault) cert already ECDSA — the only non-ECDSA certs use component
+  # self-signed issuers (chaos-mesh/kargo/trust-manager), which this policy does not match.
+  # So there are 0 violations to remediate and admission can block new RSA certs immediately.
+  # Structural backstop for the metabase-tls / scaffolder ECDSA fixes (2026-09-27).
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["cert-manager.io"]
+        kinds: ["Certificate"]

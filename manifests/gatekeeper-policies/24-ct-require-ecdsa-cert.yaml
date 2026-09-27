@@ -1,0 +1,47 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequireecdsacert
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    metadata.gatekeeper.sh/title: "Certificates on the Vault issuer must use ECDSA keys"
+    metadata.gatekeeper.sh/description: >-
+      A cert-manager Certificate whose issuerRef is the Vault-backed ClusterIssuer
+      minicloud-ca MUST set spec.privateKey.algorithm: ECDSA. The Vault PKI role
+      cert-manager is EC-only, so an RSA key (cert-manager's default when
+      privateKey.algorithm is omitted) is rejected at signing time with
+      "400: role requires keys of type ec" — the cert never issues and the owning
+      app goes Degraded (see the 2026-09-27 metabase-tls incident). Component
+      self-signed issuers (chaos-mesh, kargo, trust-manager) legitimately use RSA
+      and are out of scope — this only guards the minicloud-ca issuer.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequireEcdsaCert
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequireecdsacert
+
+        # Scope: only Certificates issued by the Vault-backed ClusterIssuer `minicloud-ca`.
+        # Its Vault PKI role `cert-manager` is EC-only; other (component self-signed) issuers
+        # legitimately use RSA and must not be flagged.
+        vault_issuer {
+          input.review.object.spec.issuerRef.name == "minicloud-ca"
+        }
+
+        # 1) privateKey.algorithm omitted → cert-manager defaults to RSA → will fail to sign.
+        violation[{"msg": msg}] {
+          vault_issuer
+          not input.review.object.spec.privateKey.algorithm
+          msg := sprintf("Certificate %v/%v (issuer minicloud-ca) has no spec.privateKey.algorithm — cert-manager defaults to RSA, which the Vault PKI role rejects (400 'role requires keys of type ec'). Set spec.privateKey.algorithm: ECDSA (size 256).", [object.get(input.review.object.metadata, "namespace", "<cluster>"), input.review.object.metadata.name])
+        }
+
+        # 2) explicit non-ECDSA algorithm.
+        violation[{"msg": msg}] {
+          vault_issuer
+          algo := input.review.object.spec.privateKey.algorithm
+          algo != "ECDSA"
+          msg := sprintf("Certificate %v/%v (issuer minicloud-ca) uses privateKey.algorithm=%v — the Vault PKI issuer requires ECDSA. Set spec.privateKey.algorithm: ECDSA.", [object.get(input.review.object.metadata, "namespace", "<cluster>"), input.review.object.metadata.name, algo])
+        }
