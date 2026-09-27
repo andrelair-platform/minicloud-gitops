@@ -51,16 +51,20 @@ spec:
     - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } } }]
       ports: [{ protocol: TCP, port: 3000 }]
 ---
-# egress: DNS + the analytics DB (same ns handled above) + the live policy DB (ingestion source)
+# egress: DNS + k8s API (CNPG needs it) + external HTTPS (CronJob git-clone) + the live policy DB
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: { name: allow-egress-dns-and-policy-db, namespace: data-platform }
+metadata: { name: allow-egress, namespace: data-platform }
 spec:
   podSelector: {}
   policyTypes: [Egress]
   egress:
     - to: [{ namespaceSelector: {} }]
       ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    # k8s API server (CNPG initdb/instance manager get the Cluster CR) + external HTTPS
+    # (the ingest/dbt CronJobs git-clone the repo from github). 0.0.0.0/0:443 covers both.
+    - to: [{ ipBlock: { cidr: 0.0.0.0/0 } }]
+      ports: [{ protocol: TCP, port: 443 }]
     # the policy DB lives in the ktayl / ktayl-prod namespace (Postgres :5432)
     - to:
         - { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ktayl } } }
