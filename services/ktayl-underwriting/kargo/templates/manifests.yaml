@@ -1,0 +1,13 @@
+{{- /*
+  Emit every raw Kargo CR under files/ verbatim.
+
+  .Files.Get returns file contents WITHOUT running them through the template engine, so the
+  Kargo promotion expressions (${{ imageFrom(...).Tag }}, ${{ outputs... }}) and the ESO output
+  templates ({{ .username }}) pass through untouched — no backtick-escaping needed. This chart
+  carries no values and no logic; it is only a packaging shim so ArgoCD renders these CRs as a
+  Helm source instead of kustomize.
+*/ -}}
+{{- range $path, $_ := .Files.Glob "files/*.yaml" }}
+---
+{{ $.Files.Get $path }}
+{{- end }}

@@ -5,7 +5,8 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting
-    tag: 9248482       # dev pin (Kargo will bump once wired in a later story)
+    tag: "9248482"     # dev pin — QUOTE the tag: an all-digit short SHA is otherwise parsed as a YAML
+                       # number (9.248482e+06 → InvalidImageName). Kargo will bump in a later story.
   workload:
     replicas: 1
   ingress:
