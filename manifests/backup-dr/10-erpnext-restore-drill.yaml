@@ -1,0 +1,126 @@
+---
+# App-consistent restore drill for the ERPNext MariaDB dump (audit P3 — proves the
+# erpnext-logical-backup dump ACTUALLY restores). MariaDB variant of the synapse Postgres
+# drill: initContainer rclone-fetches the latest db-logical/erpnext dump; main container
+# stands up a THROWAWAY mariadbd in an emptyDir (unix socket, --skip-networking,
+# --skip-grant-tables so the --all-databases dump can rewrite the mysql system DB freely),
+# restores the dump, then asserts a minimum table count. The frappe site has ~896 tables,
+# so MIN_TABLES=100 is a strong "the schema restored" proof. Fully ephemeral; reuses the
+# velero-ns restore-drill-minio-creds. Exits non-zero on failure -> ErpnextRestoreDrillStale
+# alert (08). Runs 02:55 UTC — after the 02:25 dump.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: erpnext-restore-drill
+  namespace: velero
+  annotations:
+    checkov.io/skip1: CKV_K8S_22=mariadb server requires writable rootfs (ephemeral drill)
+spec:
+  schedule: "55 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - name: work
+              emptyDir: {}
+          initContainers:
+            - name: fetch
+              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
+              env:
+                - { name: HOME, value: /work }
+                - { name: TMPDIR, value: /work }
+                - { name: RCLONE_CONFIG, value: /work/rclone.conf }
+                - name: MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: restore-drill-minio-creds, key: MINIO_ACCESS_KEY } }
+                - name: MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: restore-drill-minio-creds, key: MINIO_SECRET_KEY } }
+                - name: MINIO_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: restore-drill-minio-creds, key: MINIO_ENDPOINT } }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  umask 077
+                  cat > /work/rclone.conf <<CONF
+                  [minio]
+                  type = s3
+                  provider = Minio
+                  access_key_id = ${MINIO_ACCESS_KEY}
+                  secret_access_key = ${MINIO_SECRET_KEY}
+                  endpoint = ${MINIO_ENDPOINT}
+                  region = us-east-1
+                  CONF
+                  LATEST=$(rclone lsf minio:db-logical/erpnext/ --include '*.sql.gz' | sort | tail -1)
+                  if [ -z "${LATEST}" ]; then echo "FAIL: no erpnext dump in MinIO"; exit 1; fi
+                  echo "fetching latest dump: ${LATEST}"
+                  rclone copyto "minio:db-logical/erpnext/${LATEST}" /work/dump.sql.gz --s3-no-check-bucket
+                  chmod 0644 /work/dump.sql.gz
+                  ls -la /work/dump.sql.gz
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                runAsUser: 1000
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { cpu: 300m, memory: 256Mi }
+          containers:
+            - name: restore-assert
+              image: docker.io/library/mariadb:10.6.27
+              env:
+                - { name: HOME, value: /work }
+                - { name: MIN_TABLES, value: "100" }   # frappe site has ~896 tables; >=100 proves the schema restored
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  DATADIR=/work/data
+                  SOCK=/work/mysql.sock
+                  mkdir -p "$DATADIR"
+                  echo "== install throwaway mariadb datadir =="
+                  mariadb-install-db --datadir="$DATADIR" --auth-root-authentication-method=normal --skip-test-db >/work/install.log 2>&1
+                  echo "== start throwaway mariadbd (socket only, skip-grant) =="
+                  mariadbd --datadir="$DATADIR" --socket="$SOCK" --skip-networking --skip-grant-tables \
+                    --pid-file=/work/mysqld.pid --innodb-buffer-pool-size=128M --innodb-flush-log-at-trx-commit=0 \
+                    >/work/mysqld.log 2>&1 &
+                  for i in $(seq 1 60); do
+                    [ -S "$SOCK" ] && mariadb --socket="$SOCK" -u root -e "SELECT 1" >/dev/null 2>&1 && break
+                    sleep 1
+                  done
+                  if ! mariadb --socket="$SOCK" -u root -e "SELECT 1" >/dev/null 2>&1; then
+                    echo "FAIL: throwaway mariadb did not start"; tail -20 /work/mysqld.log; exit 1
+                  fi
+                  echo "== restore dump =="
+                  if ! gunzip -c /work/dump.sql.gz | mariadb --socket="$SOCK" -u root; then
+                    echo "FAIL: restore returned an error"; mariadb --socket="$SOCK" -u root -e "SHUTDOWN" 2>/dev/null || true; exit 1
+                  fi
+                  TABLES=$(mariadb --socket="$SOCK" -u root -N -e "SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN ('mysql','information_schema','performance_schema','sys')")
+                  mariadb --socket="$SOCK" -u root -e "SHUTDOWN" >/dev/null 2>&1 || kill "$(cat /work/mysqld.pid)" 2>/dev/null || true
+                  echo "== RESULT: restored tables=${TABLES} (min=${MIN_TABLES}) =="
+                  [ "${TABLES}" -ge "${MIN_TABLES}" ] || { echo "FAIL: only ${TABLES} tables restored (< ${MIN_TABLES})"; exit 1; }
+                  echo "RESTORE DRILL PASS ✅ — erpnext dump restores app-consistently"
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              securityContext:
+                runAsUser: 1000
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 100m, memory: 256Mi }
+                limits: { cpu: 1000m, memory: 1Gi }
