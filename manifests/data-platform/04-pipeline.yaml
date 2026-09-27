@@ -37,13 +37,13 @@ spec:
               env:
                 - { name: GIT_USER,  valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_USER } } }
                 - { name: GIT_TOKEN, valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_TOKEN } } }
-              command: ["sh","-c","git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/minicloud-gitops.git /repo"]
+              command: ["sh","-c","git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/ktayl-data-platform.git /repo"]
               volumeMounts: [{ name: repo, mountPath: /repo }]
               securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: false }
           containers:
             - name: ingest
               image: docker.io/library/postgres:16-alpine
-              command: ["sh","/repo/data-platform/ingest/ingest_policy.sh"]
+              command: ["sh","/repo/ingest/ingest_policy.sh"]
               env:
                 - { name: ANALYTICS_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
                 - { name: ANALYTICS_PG_DB,   value: "analytics" }
@@ -80,16 +80,16 @@ spec:
               env:
                 - { name: GIT_USER,  valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_USER } } }
                 - { name: GIT_TOKEN, valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_TOKEN } } }
-              command: ["sh","-c","git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/minicloud-gitops.git /repo"]
+              command: ["sh","-c","git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/ktayl-data-platform.git /repo"]
               volumeMounts: [{ name: repo, mountPath: /repo }]
               securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: false }
           containers:
             - name: dbt
               image: ghcr.io/dbt-labs/dbt-postgres:1.8.2
-              workingDir: /repo/data-platform/dbt
+              workingDir: /repo/dbt
               command: ["sh","-c","dbt build --profiles-dir . --project-dir ."]
               env:
-                - { name: DBT_PROFILES_DIR, value: "/repo/data-platform/dbt" }
+                - { name: DBT_PROFILES_DIR, value: "/repo/dbt" }
                 - { name: HOME, value: "/tmp" }
                 - { name: ANALYTICS_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
                 - { name: ANALYTICS_PG_PORT, value: "5432" }
