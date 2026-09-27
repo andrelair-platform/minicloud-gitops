@@ -1,22 +1,25 @@
 ---
+# Ingress is default-deny + explicit allows. EGRESS is intentionally unrestricted for slice 1:
+# CNPG's initdb/instance-manager must reach the kube-apiserver, and under Cilium a standard
+# NetworkPolicy `ipBlock` CIDR does NOT match the kube-apiserver identity (known Cilium gotcha —
+# authentik's CNPG namespace likewise doesn't default-deny egress). Hardening follow-up: a
+# CiliumNetworkPolicy egress with `toEntities: [kube-apiserver, world]` + DNS + the policy DB.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: { name: default-deny, namespace: data-platform }
+metadata: { name: default-deny-ingress, namespace: data-platform }
 spec:
   podSelector: {}
-  policyTypes: [Ingress, Egress]
+  policyTypes: [Ingress]
 ---
-# intra-namespace (CNPG replication, app→db, dbt/ingest→db)
+# intra-namespace ingress (CNPG replication, app→db)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: { name: allow-same-namespace, namespace: data-platform }
 spec:
   podSelector: {}
-  policyTypes: [Ingress, Egress]
+  policyTypes: [Ingress]
   ingress:
     - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: data-platform } } }]
-  egress:
-    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: data-platform } } }]
 ---
 # CNPG operator → instance status endpoint (the gotcha: without it the cluster never goes healthy)
 apiVersion: networking.k8s.io/v1
@@ -29,7 +32,7 @@ spec:
     - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: cnpg-system } } }]
       ports: [{ protocol: TCP, port: 8000 }, { protocol: TCP, port: 5432 }]
 ---
-# monitoring scrape (CNPG podmonitor :9187)
+# monitoring scrape (CNPG podmonitor :9187, metabase :3000)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: { name: allow-monitoring-scrape, namespace: data-platform }
@@ -50,23 +53,3 @@ spec:
   ingress:
     - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } } }]
       ports: [{ protocol: TCP, port: 3000 }]
----
-# egress: DNS + k8s API (CNPG needs it) + external HTTPS (CronJob git-clone) + the live policy DB
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata: { name: allow-egress, namespace: data-platform }
-spec:
-  podSelector: {}
-  policyTypes: [Egress]
-  egress:
-    - to: [{ namespaceSelector: {} }]
-      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
-    # k8s API server (CNPG initdb/instance manager get the Cluster CR) + external HTTPS
-    # (the ingest/dbt CronJobs git-clone the repo from github). 0.0.0.0/0:443 covers both.
-    - to: [{ ipBlock: { cidr: 0.0.0.0/0 } }]
-      ports: [{ protocol: TCP, port: 443 }]
-    # the policy DB lives in the ktayl / ktayl-prod namespace (Postgres :5432)
-    - to:
-        - { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ktayl } } }
-        - { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ktayl-prod } } }
-      ports: [{ protocol: TCP, port: 5432 }]
