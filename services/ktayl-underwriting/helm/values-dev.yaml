@@ -5,7 +5,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting
-    tag: 1b2ad68       # dev pin (Kargo will bump once wired in a later story)
+    tag: 9248482       # dev pin (Kargo will bump once wired in a later story)
   workload:
     replicas: 1
   ingress:
