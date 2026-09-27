@@ -1,0 +1,42 @@
+---
+# Data Platform (#5) — Slice 1. Small footprint on the constrained cluster: one CNPG Postgres
+# (analytics + metabase DBs), two CronJobs (ingest + dbt), Metabase. Derived data (rebuildable
+# from the operational sources) → no R2 PITR, HA optional.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data-platform
+  labels:
+    kubernetes.io/metadata.name: data-platform
+    pod-security.kubernetes.io/enforce: baseline
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: data-platform-quota
+  namespace: data-platform
+spec:
+  hard:
+    requests.cpu: "1"
+    limits.cpu: "4"
+    requests.memory: 1536Mi
+    limits.memory: 4Gi
+    count/pods: "12"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: data-platform-limits
+  namespace: data-platform
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 300m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 2Gi

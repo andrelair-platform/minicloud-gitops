@@ -1,0 +1,49 @@
+---
+# Analytics Postgres (medallion: schemas raw/curated/business in db `analytics`) + Metabase's own
+# app db `metabase` on the same cluster. DERIVED, rebuildable data → 1 instance, no R2 PITR, no
+# import bootstrap (unlike authentik-cnpg). Bump instances→2 if it ever holds non-reproducible state.
+# AVX512 note: core Postgres (no pgvector) — didn't hit the noavx512 SIGILL; pin imageName only if it does.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: dp-postgres
+  namespace: data-platform
+spec:
+  instances: 1
+  primaryUpdateStrategy: unsupervised
+  storage:
+    size: 3Gi
+    storageClass: longhorn
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: "1",  memory: 512Mi }
+  monitoring:
+    enablePodMonitor: true
+  managed:
+    roles:
+      - name: analytics
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret: { name: dp-analytics-role }
+      - name: metabase
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret: { name: dp-metabase-role }
+  bootstrap:
+    initdb:
+      database: analytics
+      owner: analytics
+---
+# Metabase's metadata database on the same cluster (declarative multi-DB — CNPG Database CR).
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: dp-metabase-db
+  namespace: data-platform
+spec:
+  name: metabase
+  owner: metabase
+  cluster:
+    name: dp-postgres
