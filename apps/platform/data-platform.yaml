@@ -1,0 +1,47 @@
+---
+# Data Platform (#5) — Slice 1: analytics CNPG (medallion) + ingest/dbt CronJobs + Metabase.
+# Derived, rebuildable data. See data-platform/README.md + docs insurance-platform/capability-map.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: data-platform
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: manifests/data-platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: data-platform
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+    - group: postgresql.cnpg.io
+      kind: Cluster
+      jqPathExpressions:
+        - .spec.storage.resizeInUseVolumes
+        - .spec.monitoring.customQueriesConfigMap
+        - .spec.monitoring.disableDefaultQueries
+        - .spec.backup.target
+        - .spec.managed.roles[].connectionLimit
+        - .spec.managed.roles[].inherit
+        - .spec.bootstrap.initdb.encoding
+        - .spec.bootstrap.initdb.localeCType
+        - .spec.bootstrap.initdb.localeCollate
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

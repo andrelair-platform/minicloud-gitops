@@ -1,0 +1,101 @@
+---
+# Read token to clone the (private) gitops repo so both jobs run the in-repo code (no drift, no
+# baked image). Reuses the Kargo git creds (Vault platform/kargo git-username/git-token).
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata: { name: dp-git-token, namespace: data-platform }
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { name: vault-backend, kind: ClusterSecretStore }
+  target: { name: dp-git-token, creationPolicy: Owner, deletionPolicy: Retain }
+  data:
+    - secretKey: GIT_USER
+      remoteRef: { key: platform/kargo, property: git-username }
+    - secretKey: GIT_TOKEN
+      remoteRef: { key: platform/kargo, property: git-token }
+---
+# Ingestion — full-refresh COPY of the 3 policy tables → analytics.raw.* (daily 02:00 UTC).
+apiVersion: batch/v1
+kind: CronJob
+metadata: { name: dp-ingest-policy, namespace: data-platform }
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext: { runAsNonRoot: true, runAsUser: 65532, fsGroup: 65532, seccompProfile: { type: RuntimeDefault } }
+          volumes: [{ name: repo, emptyDir: {} }]
+          initContainers:
+            - name: clone
+              image: docker.io/alpine/git:2.45.2
+              env:
+                - { name: GIT_USER,  valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_USER } } }
+                - { name: GIT_TOKEN, valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_TOKEN } } }
+              command: ["sh","-c","git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/minicloud-gitops.git /repo"]
+              volumeMounts: [{ name: repo, mountPath: /repo }]
+              securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: false }
+          containers:
+            - name: ingest
+              image: docker.io/library/postgres:16-alpine
+              command: ["sh","/repo/data-platform/ingest/ingest_policy.sh"]
+              env:
+                - { name: ANALYTICS_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
+                - { name: ANALYTICS_PG_DB,   value: "analytics" }
+                - { name: ANALYTICS_PG_USER, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
+                - { name: ANALYTICS_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
+                - { name: POLICY_PG_HOST,     valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_HOST } } }
+                - { name: POLICY_PG_USER,     valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_USER } } }
+                - { name: POLICY_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_PASSWORD } } }
+                - { name: POLICY_PG_DB,       valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_DB } } }
+              volumeMounts: [{ name: repo, mountPath: /repo }]
+              securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: true }
+              resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 256Mi } }
+---
+# dbt transforms + tests — staging→marts on the analytics DB (daily 02:30 UTC, after ingest).
+apiVersion: batch/v1
+kind: CronJob
+metadata: { name: dp-dbt-build, namespace: data-platform }
+spec:
+  schedule: "30 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext: { runAsNonRoot: true, runAsUser: 65532, fsGroup: 65532, seccompProfile: { type: RuntimeDefault } }
+          volumes: [{ name: repo, emptyDir: {} }, { name: dbt-home, emptyDir: {} }]
+          initContainers:
+            - name: clone
+              image: docker.io/alpine/git:2.45.2
+              env:
+                - { name: GIT_USER,  valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_USER } } }
+                - { name: GIT_TOKEN, valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_TOKEN } } }
+              command: ["sh","-c","git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/minicloud-gitops.git /repo"]
+              volumeMounts: [{ name: repo, mountPath: /repo }]
+              securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: false }
+          containers:
+            - name: dbt
+              image: ghcr.io/dbt-labs/dbt-postgres:1.8.2
+              workingDir: /repo/data-platform/dbt
+              command: ["sh","-c","dbt build --profiles-dir . --project-dir ."]
+              env:
+                - { name: DBT_PROFILES_DIR, value: "/repo/data-platform/dbt" }
+                - { name: HOME, value: "/tmp" }
+                - { name: ANALYTICS_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
+                - { name: ANALYTICS_PG_PORT, value: "5432" }
+                - { name: ANALYTICS_PG_DB,   value: "analytics" }
+                - { name: ANALYTICS_PG_USER, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
+                - { name: ANALYTICS_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
+              volumeMounts: [{ name: repo, mountPath: /repo }, { name: dbt-home, mountPath: /tmp }]
+              securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: false }
+              resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: "1", memory: 512Mi } }

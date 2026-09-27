@@ -78,6 +78,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: collab-prod
       server: https://kubernetes.default.svc
+    - namespace: data-platform
+      server: https://kubernetes.default.svc
     - namespace: default
       server: https://kubernetes.default.svc
     - namespace: event-demo

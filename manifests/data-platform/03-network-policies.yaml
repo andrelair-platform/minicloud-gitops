@@ -1,0 +1,68 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny, namespace: data-platform }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# intra-namespace (CNPG replication, app→db, dbt/ingest→db)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-same-namespace, namespace: data-platform }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: data-platform } } }]
+  egress:
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: data-platform } } }]
+---
+# CNPG operator → instance status endpoint (the gotcha: without it the cluster never goes healthy)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-cnpg-operator, namespace: data-platform }
+spec:
+  podSelector: { matchLabels: { cnpg.io/cluster: dp-postgres } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: cnpg-system } } }]
+      ports: [{ protocol: TCP, port: 8000 }, { protocol: TCP, port: 5432 }]
+---
+# monitoring scrape (CNPG podmonitor :9187)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-monitoring-scrape, namespace: data-platform }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } } }]
+      ports: [{ protocol: TCP, port: 9187 }, { protocol: TCP, port: 3000 }]
+---
+# ingress-nginx → Metabase (:3000)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-ingress-metabase, namespace: data-platform }
+spec:
+  podSelector: { matchLabels: { app: metabase } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } } }]
+      ports: [{ protocol: TCP, port: 3000 }]
+---
+# egress: DNS + the analytics DB (same ns handled above) + the live policy DB (ingestion source)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-egress-dns-and-policy-db, namespace: data-platform }
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ namespaceSelector: {} }]
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    # the policy DB lives in the ktayl / ktayl-prod namespace (Postgres :5432)
+    - to:
+        - { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ktayl } } }
+        - { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ktayl-prod } } }
+      ports: [{ protocol: TCP, port: 5432 }]

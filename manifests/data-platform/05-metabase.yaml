@@ -1,0 +1,59 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: metabase, namespace: data-platform, labels: { app: metabase } }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: metabase } }
+  template:
+    metadata: { labels: { app: metabase } }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 2000, fsGroup: 2000, seccompProfile: { type: RuntimeDefault } }
+      volumes: [{ name: tmp, emptyDir: {} }, { name: plugins, emptyDir: {} }]
+      containers:
+        - name: metabase
+          image: docker.io/metabase/metabase:v0.50.26
+          ports: [{ containerPort: 3000, name: http }]
+          envFrom: [{ secretRef: { name: dp-metabase-app } }]
+          env:
+            - { name: MB_PLUGINS_DIR, value: "/plugins" }
+            - { name: JAVA_TOOL_OPTIONS, value: "-Xmx512m" }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }, { name: plugins, mountPath: /plugins }]
+          readinessProbe: { httpGet: { path: /api/health, port: 3000 }, initialDelaySeconds: 60, periodSeconds: 15, failureThreshold: 12 }
+          livenessProbe:  { httpGet: { path: /api/health, port: 3000 }, initialDelaySeconds: 180, periodSeconds: 30, failureThreshold: 6 }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: false }
+          resources: { requests: { cpu: 200m, memory: 768Mi }, limits: { cpu: "1", memory: 1536Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: metabase, namespace: data-platform, labels: { app: metabase } }
+spec:
+  selector: { app: metabase }
+  ports: [{ name: http, port: 3000, targetPort: 3000 }]
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: { name: metabase-tls, namespace: data-platform }
+spec:
+  secretName: metabase-tls
+  issuerRef: { name: minicloud-ca, kind: ClusterIssuer }
+  dnsNames: ["metabase.10.0.0.200.nip.io"]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: metabase
+  namespace: data-platform
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+spec:
+  ingressClassName: nginx
+  tls: [{ hosts: ["metabase.10.0.0.200.nip.io"], secretName: metabase-tls }]
+  rules:
+    - host: metabase.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: metabase, port: { number: 3000 } } }
