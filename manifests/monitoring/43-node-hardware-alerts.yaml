@@ -1,0 +1,70 @@
+---
+# Node hardware-health alerts (audit P5 — thermal + SMART). Thermal uses node-exporter's
+# built-in hwmon metrics (already scraped); SMART uses the smartctl-exporter DaemonSet
+# (42-smartctl-exporter.yaml). Laptops with no ECC / no redundant cooling → an overheating
+# or wearing disk is a real early-failure signal on this fleet.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: node-hardware
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  groups:
+    - name: node-thermal
+      rules:
+        - alert: NodeCPUTemperatureHigh
+          expr: max by (instance) (node_hwmon_temp_celsius{chip=~".*coretemp.*"}) > 90
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CPU running hot on {{ $labels.instance }} ({{ $value | printf \"%.0f\" }}°C)"
+            description: >-
+              A CPU core on {{ $labels.instance }} has been above 90°C for 10m — thermal
+              throttling (or worse on old ThinkPads) is likely. Check cooling / sustained load.
+        - alert: NodeCPUTemperatureCritical
+          expr: max by (instance) (node_hwmon_temp_celsius{chip=~".*coretemp.*"}) > 95
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "CPU critically hot on {{ $labels.instance }} ({{ $value | printf \"%.0f\" }}°C)"
+            description: >-
+              A CPU core on {{ $labels.instance }} has exceeded 95°C — imminent thermal shutdown
+              risk. Reduce load / check the fan on this laptop now.
+        - alert: NodeDiskTemperatureHigh
+          expr: max by (instance) (node_hwmon_temp_celsius{chip=~"nvme.*"}) > 72
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "NVMe SSD hot on {{ $labels.instance }} ({{ $value | printf \"%.0f\" }}°C)"
+            description: >-
+              The NVMe SSD on {{ $labels.instance }} has been above 72°C for 10m. Sustained heat
+              shortens SSD life and is an early failure signal — check airflow.
+    - name: node-smart
+      rules:
+        - alert: NodeDiskSmartFailing
+          expr: smartctl_device_smart_status == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "SMART health FAILING on {{ $labels.instance }} device {{ $labels.device }}"
+            description: >-
+              smartctl reports the overall-health self-assessment as FAILED for
+              {{ $labels.device }} on {{ $labels.instance }}. The disk may fail soon — evacuate
+              Longhorn replicas off this node and plan a disk/node replacement.
+        - alert: NodeDiskWearHigh
+          expr: smartctl_device_percentage_used > 90
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "SSD wear >90% on {{ $labels.instance }} device {{ $labels.device }}"
+            description: >-
+              The NVMe on {{ $labels.instance }} ({{ $labels.device }}) reports
+              {{ $value | printf \"%.0f\" }}% of its rated write endurance used. Plan replacement
+              before it hits 100% (read-only / failure territory).

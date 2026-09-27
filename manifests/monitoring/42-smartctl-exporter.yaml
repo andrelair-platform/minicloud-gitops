@@ -1,0 +1,75 @@
+---
+# SMART disk-health exporter (audit P5 — per-node disk SMART monitoring). A per-node
+# DaemonSet reading smartctl attributes from the raw devices and exposing them for Prometheus.
+# Needs privileged + hostPath /dev (raw disk access) — allowed here because the `monitoring`
+# namespace is exempted from the k8snoprivilegedcontainers + k8snohostpath Gatekeeper policies
+# (same exemption node-exporter uses). Complements node-exporter's built-in hwmon TEMPERATURE
+# metrics (already scraped) — this adds the health/wear signals node-exporter doesn't cover.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: smartctl-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: smartctl-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smartctl-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smartctl-exporter
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists   # run on every node incl. control-plane
+      containers:
+        - name: smartctl-exporter
+          image: quay.io/prometheuscommunity/smartctl-exporter:v0.13.0
+          args:
+            - --web.listen-address=:9633
+            - --smartctl.interval=5m
+          ports:
+            - { name: metrics, containerPort: 9633 }
+          securityContext:
+            # raw device access needs privileged; monitoring ns is Gatekeeper-exempt.
+            privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - { name: dev, mountPath: /dev, readOnly: true }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 128Mi }
+      volumes:
+        - name: dev
+          hostPath: { path: /dev }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartctl-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: smartctl-exporter
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: smartctl-exporter
+  ports:
+    - { name: metrics, port: 9633, targetPort: metrics }
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: smartctl-exporter
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smartctl-exporter
+  endpoints:
+    - port: metrics
+      interval: 60s
