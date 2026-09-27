@@ -1,0 +1,65 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: dev
+  namespace: ktayl-underwriting
+spec:
+  requestedFreight:
+    - origin:
+        kind: Warehouse
+        name: ktayl-underwriting
+      sources:
+        direct: true
+  # After promoting to dev, run the smoke AnalysisRun. A Freight is "Verified in dev" only if
+  # it passes → the prod Stage (sources.stages: [dev]) accepts only verified Freight = the
+  # dev→prod gate, owned by Kargo (Option 2). Variant B smoke (via ingress-nginx).
+  verification:
+    analysisTemplates:
+      - name: ktayl-underwriting-dev-verify
+  promotionTemplate:
+    spec:
+      vars:
+        - name: gitopsRepo
+          value: https://github.com/andrelair-platform/minicloud-gitops.git
+      steps:
+        - uses: git-clone
+          as: clone
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            checkout:
+              - branch: main
+                path: ./repo
+        - uses: yaml-update
+          as: set-image
+          config:
+            path: ./repo/services/ktayl-underwriting/helm/values-dev.yaml
+            updates:
+              - key: minicloud-app-deployment.image.tag
+                value: '${{ quote(imageFrom("ghcr.io/andrelair-platform/ktayl-underwriting").Tag) }}'
+        - uses: git-commit
+          as: commit
+          config:
+            path: ./repo
+            message: 'kargo(ktayl-underwriting): promote image ${{ imageFrom("ghcr.io/andrelair-platform/ktayl-underwriting").Tag }} to dev'
+        - uses: git-push
+          as: push
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            path: ./repo
+            generateTargetBranch: true
+        - uses: git-open-pr
+          as: open-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            sourceBranch: ${{ outputs.push.branch }}
+            targetBranch: main
+            provider: github
+            title: 'kargo(ktayl-underwriting): promote to dev — ${{ imageFrom("ghcr.io/andrelair-platform/ktayl-underwriting").Tag }}'
+            labels: [kargo, env-dev, automerge]
+        - uses: git-wait-for-pr
+          as: wait-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            prNumber: ${{ outputs['open-pr'].pr.id }}

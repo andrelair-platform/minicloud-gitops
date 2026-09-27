@@ -50,6 +50,19 @@ Reference apps: `platform-demo` (pilot, PR #813), `minicloud-plane-prod`, `minic
 
 ### Multi-stage promotion — Kargo (the standard since 2026-08-30)
 
+> **MANDATORY — never hand-edit an image tag; wire Kargo (2026-09-27).** For **every custom-built
+> service** that meets the four criteria below (you build the image · dev+prod · env-agnostic ·
+> immutable SHA tag), a `services/<svc>/kargo/` dir is **part of onboarding**, created the same day the
+> service gets a dev deployment — not "a later story". **A human editing `image.tag`/`newTag` in a
+> values file or overlay is the anti-pattern this replaces:** it's toil, it drifts, and it invites
+> the all-digit-SHA YAML-number bug (a 7-hex-digit SHA like `9248482` that happens to be all decimal
+> parses as a *number* → `9.248482e+06` → `InvalidImageName`). **Kargo's `yaml-update` wraps the tag in
+> `quote(...)`**, so letting Kargo own the bump both removes the toil and structurally prevents that bug.
+> If you ever must pin a tag by hand (before Kargo is wired), **quote it** (`tag: "9248482"`). Wire it
+> from `services/ktayl-policy-service/kargo/` (the wrapper-chart reference); the `apps/platform/kargo-projects.yaml`
+> ApplicationSet auto-discovers `services/*/kargo`. Reference retrofit: `ktayl-underwriting` (2026-09-27).
+> See [[reference_kargo_promotion]] and [[feedback_kargo_prod_promotion_discipline]].
+
 Argo CD reconciles one environment from Git; it does **not** move a change between
 stages. **Kargo** fills that gap: it watches the built image, and **writes the Git
 change** (opens PRs) that Argo CD then reconciles. It never touches the cluster —
