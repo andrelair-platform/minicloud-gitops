@@ -52,6 +52,34 @@ sh ingest/ingest_policy.sh                 # land raw.*
 cd dbt && dbt deps && dbt build            # staging→marts + tests (build = run + test)
 ```
 
+## Run the pipeline in-cluster (on demand, not just the 02:00/02:30 cron)
+
+```bash
+kubectl create job -n data-platform dp-ingest-manual --from=cronjob/dp-ingest-policy   # prod → raw
+kubectl create job -n data-platform dp-dbt-manual    --from=cronjob/dp-dbt-build        # raw → staging → business.policy_portfolio
+kubectl exec -n data-platform dp-postgres-1 -- psql -U postgres -d analytics \
+  -c "SELECT * FROM business.policy_portfolio;"                                          # verify
+```
+
+## Metabase — one-time UI setup (SSO is a follow-up; internal Tailscale-gated for now)
+
+URL: **https://metabase.10.0.0.200.nip.io** (needs Tailscale + the minicloud CA trusted). The pod runs
+in `data-platform`; its own metadata DB is the `metabase` database on the `dp-postgres` CNPG cluster
+(auto-created via the `Database` CR, creds from Vault `secret/platform/data-platform`).
+
+1. **First visit** → create the admin account (Metabase's own login for now).
+2. **Add the analytics database** as a data source:
+   - Type **PostgreSQL** · Host `dp-postgres-rw.data-platform.svc.cluster.local` · Port `5432`
+   - Database `analytics` · User `analytics` · Password = Vault `secret/platform/data-platform` → `analytics-password`
+   - Schemas to expose: **`business`** (the serve layer; `curated`/`raw` are internal).
+3. **Build the Policy Portfolio dashboard** over `business.policy_portfolio` (grain = policy):
+   - GWP proxy = `sum(annualised_premium_eur)` · TIV = `sum(total_insured_amount_eur)`
+   - policy count by `status` / `product_code` / `inception_year`
+4. The seeded demo row `TEST-DP-SLICE1-001` (GWP €12,000 · TIV €1,000,000) is kept so the dashboard has data before real prod policies exist.
+
+**TODO (hardening):** put Metabase behind Authentik SSO (forward-auth or Metabase OIDC) instead of its
+local admin; re-add restricted egress via a CiliumNetworkPolicy (`toEntities: [kube-apiserver, world]`).
+
 ## Assumptions to confirm with the Policy domain (before treating metrics as authoritative)
 
 1. **Minor units** — `amount`/`insured_amount` are BIGINT; assumed **cents** (÷100 → EUR). Confirm.
