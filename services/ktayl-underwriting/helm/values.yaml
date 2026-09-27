@@ -45,6 +45,15 @@ minicloud-app-deployment:
   resources:
     requests: { cpu: 50m, memory: 128Mi }
     limits:   { cpu: 500m, memory: 256Mi }
+  # startupProbe gates liveness/readiness until the app actually serves. The app does its DB-wait +
+  # `alembic upgrade head` + seed in the FastAPI lifespan BEFORE uvicorn accepts requests, so on a
+  # first install (CNPG still bootstrapping) /healthz is unavailable for a while — without this the
+  # liveness probe kills the pod mid-startup (observed 4 restarts on first deploy). Budget must exceed
+  # the app's DB-wait (wait_for_db = 60 × 3s = 180s) + migration: 60 × 5s = 300s.
+  startupProbe:
+    httpGet: { path: /healthz, port: http }
+    periodSeconds: 5
+    failureThreshold: 60
   readinessProbe:
     httpGet: { path: /healthz, port: http }
     initialDelaySeconds: 5
