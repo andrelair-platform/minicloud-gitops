@@ -38,6 +38,8 @@ metadata: { name: metabase-tls, namespace: data-platform }
 spec:
   secretName: metabase-tls
   issuerRef: { name: minicloud-ca, kind: ClusterIssuer }
+  # Vault PKI role `cert-manager` requires EC keys (RSA → sign 400 "role requires keys of type ec")
+  privateKey: { algorithm: ECDSA, size: 256 }
   dnsNames: ["metabase.10.0.0.200.nip.io"]
 ---
 apiVersion: networking.k8s.io/v1
