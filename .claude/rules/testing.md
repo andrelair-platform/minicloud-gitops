@@ -49,6 +49,31 @@ the prod-promotion PR is blocked until it's clean. Green CI is **not** sufficien
 | **C — UI / docs** | `minicloud-backstage`, `ktayl-solution-web`, `minicloud-platform-docs` | L0, L1, L4 (Playwright) |
 | **D — Tooling / ops** | `minicloud-ops`, `minicloud-open-webui`, `minicloud-onlyoffice` | L0, L1 |
 
+### The tier's required layers are MANDATORY — "unit only" is the anti-pattern (2026-09-28)
+
+**A Tier-A service is NOT Done, and MUST NOT be promoted to prod, with only L0+L1.** The by-far most common
+failure observed (ktayl-underwriting was built with **L0+L1 only**, L1 heavily mocked) is skipping the
+middle+top of the pyramid. Each skipped layer hides a distinct, real bug class — the QA gate then has to
+catch live what a cheap pre-merge test should have:
+
+| Layer | Catches (that unit-with-mocks CANNOT) | Real miss this session |
+|---|---|---|
+| **L2 Integration** (real DB/queue, testcontainers/compose) | actual schema/migrations/constraints/transactions/ORM behaviour | the alembic startup migration disabling all loggers; real Postgres semantics |
+| **L3 Contract** (your API shape ↔ consumers; **your calls ↔ the collaborator's real contract**) | wire-format / schema drift at a service boundary | the **RFC3339 datetime** the app sent that policy-service rejected (`400`) — a contract test would have failed pre-merge |
+| **L4 E2E / Smoke** (real happy path on real infra) | wiring/config/auth/deploy runtime bugs | unauthenticated API, live auth/JWKS/netpol, self-migration |
+
+**Mock discipline (the core lesson).** A mock encodes an **assumption** about a collaborator. If the
+assumption is wrong, the mocked unit test stays **green while prod fails** (exactly the RFC3339 and
+logging bugs). Therefore: **every mocked boundary MUST be backed by an L3 contract test or an L2 real
+integration that validates the assumption against the actual collaborator.** A boundary that is only ever
+mocked is untested, not tested.
+
+**Enforcement.** The tier's full layer set is part of the **Definition of Done** (a story is not Done on
+unit alone — see `agile-execution.md`) and the **prod-promotion gate** (`gitops.md`): CI must actually run
+L2/L3/L4 for Tier-A repos, and the live **QA gate** (`qa-gate.md`) is the backstop, not the substitute.
+When building a Tier-A story, generate the **required layers**, not just unit tests. Reference backfill:
+ktayl-underwriting (L2 integration + L3 contract against the policy-service OpenAPI + L4 smoke).
+
 ## Mandatory Conventions
 
 ### Directory layout (every repo)
