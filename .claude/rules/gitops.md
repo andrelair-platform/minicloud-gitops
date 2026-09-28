@@ -40,6 +40,9 @@ Prod apps are **auto-sync** (`syncPolicy.automated: {prune: true, selfHeal: true
 
 - **Merge gate** — CODEOWNERS requires `@AndreLair` review on `services/*/minicloud-1/prod/`, **`services/*/base/`** (prod inherits base — gating it prevents a base-change bypass), **`services/*/kargo/`** + **`manifests/kargo/`** (a Stage's promotionTemplate can write to any overlay), **`apps/`** (the Application manifests that define the sync gate itself), `helm-values/` (third-party app config), plus `manifests/quotas/*-prod.yaml` and `manifests/network-policies/*-prod.yaml`. This gate is what Kargo's prod-promotion PR lands against.
 - **Immutable artifacts** — prod pins **SHA image tags**, never `:latest`.
+- **QA gate (MANDATORY, pre-prod)** — before the prod-promotion PR is opened, the service must pass an
+  adversarial **QA agent test against the LIVE dev deployment** (blockers gate promotion). Green CI is not
+  sufficient — it can't catch integration/deploy/runtime/config bugs. See `.claude/rules/qa-gate.md`.
 - **Progressive delivery** — the canary/BlueGreen Rollout + its `*-health-gate` analysis auto-aborts a bad rollout on metrics; that is the runtime safety brake (not a human clicking Sync).
 
 **selfHeal vs autoscalers (critical):** if an autoscaler owns replicas (KEDA/HPA), put `.spec.replicas` in `ignoreDifferences` + `RespectIgnoreDifferences=true` so selfHeal doesn't fight it (e.g. platform-demo's KEDA HTTP add-on). If Git owns replicas (a static `patch-replicas`, no autoscaler), leave it enforced — selfHeal keeping prod at the declared count is correct (e.g. plane/agent/crew).
