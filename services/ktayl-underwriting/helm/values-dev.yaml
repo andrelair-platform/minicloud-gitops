@@ -5,7 +5,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting
-    tag: 52b13a0
+    tag: 2f39895
                        # number (9.248482e+06 → InvalidImageName). Kargo will bump in a later story.
   workload:
     replicas: 1
