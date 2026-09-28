@@ -104,3 +104,22 @@ spec:
             matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
       ports:
         - { protocol: TCP, port: 8000 }
+---
+# ingress-nginx → the Next.js frontend (:3000). The frontend→backend BFF hop is already permitted by
+# `allow-same-namespace` (intra-namespace ingress to the app :8000), so no extra rule is needed for it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-frontend
+  labels:
+    app.kubernetes.io/name: ktayl-underwriting-frontend
+spec:
+  podSelector:
+    matchLabels: { app: ktayl-underwriting-frontend }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
+      ports:
+        - { protocol: TCP, port: 3000 }

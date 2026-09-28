@@ -9,6 +9,13 @@ type: application
 version: 0.1.0
 appVersion: "0.1.0"
 dependencies:
+  # Backend (FastAPI) — the default (unaliased) subchart, config under `minicloud-app-deployment:`.
   - name: minicloud-app-deployment
+    version: 0.4.0
+    repository: oci://ghcr.io/andrelair-platform
+  # Frontend (Next.js underwriter workbench) — the SAME library used a second time via an alias,
+  # config under `frontend:`. Dual-workload, one Helm render, one ArgoCD source (retrieva pattern).
+  - name: minicloud-app-deployment
+    alias: frontend
     version: 0.4.0
     repository: oci://ghcr.io/andrelair-platform

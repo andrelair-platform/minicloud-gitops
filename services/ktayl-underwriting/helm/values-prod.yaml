@@ -14,7 +14,7 @@
 minicloud-app-deployment:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-underwriting
-    tag: "8a0e280"     # Kargo bumps to the promoted SHA
+    tag: "8a0e280"     # Kargo bumps to the promoted SHA (both images pinned to the same commit)
   imagePullSecrets: [{ name: ghcr-pull }]
   workload:
     replicas: 2
@@ -23,8 +23,24 @@ minicloud-app-deployment:
     minAvailable: 1
   ingress:
     host: underwriting-prod.10.0.0.200.nip.io
+# Frontend (workbench) — ghcr image (Internal → needs ghcr-pull), 2 replicas. Kargo pins the tag to the
+# same source commit as the backend. API_URL is inherited from values.yaml (the in-cluster backend svc).
+frontend:
+  image:
+    repository: ghcr.io/andrelair-platform/ktayl-underwriting-frontend
+    tag: "8a0e280"     # Kargo bumps to the promoted SHA
+  imagePullSecrets: [{ name: ghcr-pull }]
+  workload:
+    replicas: 2
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  ingress:
+    host: underwriting-app-prod.10.0.0.200.nip.io
 tlsCert:
   dnsName: underwriting-prod.10.0.0.200.nip.io
+frontendTlsCert:
+  dnsName: underwriting-app-prod.10.0.0.200.nip.io
 postgres:
   enabled: true
   instances: 2

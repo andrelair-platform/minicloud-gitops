@@ -17,6 +17,8 @@ spec:
       vars:
         - name: gitopsRepo
           value: https://github.com/andrelair-platform/minicloud-gitops.git
+        - name: srcRepo
+          value: https://github.com/andrelair-platform/ktayl-underwriting.git
       steps:
         - uses: git-clone
           as: clone
@@ -28,16 +30,19 @@ spec:
         - uses: yaml-update
           as: set-image
           config:
-            # values-prod.yaml already pins image.repository=ghcr; only bump the tag.
+            # values-prod.yaml already pins image.repository=ghcr; only bump the tags. Pin BOTH images
+            # to the SAME source commit → a consistent backend+frontend pair reaches prod.
             path: ./repo/services/ktayl-underwriting/helm/values-prod.yaml
             updates:
               - key: minicloud-app-deployment.image.tag
-                value: '${{ quote(imageFrom("ghcr.io/andrelair-platform/ktayl-underwriting").Tag) }}'
+                value: '${{ quote(commitFrom(vars.srcRepo).ID[0:7]) }}'
+              - key: frontend.image.tag
+                value: '${{ quote(commitFrom(vars.srcRepo).ID[0:7]) }}'
         - uses: git-commit
           as: commit
           config:
             path: ./repo
-            message: 'kargo(ktayl-underwriting): promote image ${{ imageFrom("ghcr.io/andrelair-platform/ktayl-underwriting").Tag }} to prod'
+            message: 'kargo(ktayl-underwriting): promote ${{ commitFrom(vars.srcRepo).ID[0:7] }} to prod (backend+frontend)'
         - uses: git-push
           as: push
           if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
@@ -52,7 +57,7 @@ spec:
             sourceBranch: ${{ outputs.push.branch }}
             targetBranch: main
             provider: github
-            title: 'kargo(ktayl-underwriting): promote to PROD — ${{ imageFrom("ghcr.io/andrelair-platform/ktayl-underwriting").Tag }}'
+            title: 'kargo(ktayl-underwriting): promote to PROD — ${{ commitFrom(vars.srcRepo).ID[0:7] }}'
             description: 'Promotion opened by Kargo. Requires CODEOWNERS approval (this is the prod gate). ArgoCD auto-syncs prod once merged.'
             labels: [kargo, env-prod]
         - uses: git-wait-for-pr

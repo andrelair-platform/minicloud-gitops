@@ -19,3 +19,26 @@ spec:
   privateKey:
     algorithm: ECDSA
     size: 256
+{{- if .Values.frontendTlsCert.dnsName }}
+---
+# Frontend (workbench) TLS Certificate — same ECDSA/minicloud-CA constraints as the backend cert.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ktayl-underwriting-frontend-tls
+  labels:
+    app.kubernetes.io/name: ktayl-underwriting-frontend
+spec:
+  secretName: ktayl-underwriting-frontend-tls
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+    - {{ .Values.frontendTlsCert.dnsName | quote }}
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+{{- end }}

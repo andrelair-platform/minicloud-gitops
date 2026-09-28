@@ -1,18 +1,31 @@
-# dev — Harbor image, ns underwriting. Single replica; own CNPG Postgres.
+# dev — Harbor images, ns underwriting. Single replica each; own CNPG Postgres.
 # Schema migration is self-applied by the app on startup (alembic upgrade head in the FastAPI
 # lifespan, before seed_v1) — the platform pattern (ktayl-policy-service runs m.Up() on startup).
 # No separate migration Job (a PreSync Job would deadlock against the CNPG cluster in the same sync).
+#
+# Tags are QUOTED (a 7-hex all-decimal SHA parses as a YAML number → 9.248482e+06 → InvalidImageName).
+# Kargo's git-Warehouse owns future bumps — it pins BOTH tags to the source commit SHA (yaml-update
+# wraps them in quote()). Backend + frontend build from the same commit → the SAME tag.
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting
-    tag: d82b7d5
-                       # number (9.248482e+06 → InvalidImageName). Kargo will bump in a later story.
+    tag: "d82b7d5"
   workload:
     replicas: 1
   ingress:
     host: underwriting.10.0.0.200.nip.io
+frontend:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting-frontend
+    tag: "d82b7d5"
+  workload:
+    replicas: 1
+  ingress:
+    host: underwriting-app.10.0.0.200.nip.io
 tlsCert:
   dnsName: underwriting.10.0.0.200.nip.io
+frontendTlsCert:
+  dnsName: underwriting-app.10.0.0.200.nip.io
 postgres:
   enabled: true
   instances: 1

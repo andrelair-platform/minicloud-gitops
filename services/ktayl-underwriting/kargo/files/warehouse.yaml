@@ -4,12 +4,20 @@ metadata:
   name: ktayl-underwriting
   namespace: ktayl-underwriting
 spec:
+  # GIT-Warehouse model (MANDATORY for a MULTI-image service — gitops.md). ktayl-underwriting is a
+  # monorepo that builds TWO images (backend + frontend) from the SAME commit. Two NewestBuild image
+  # subscriptions would produce MIXED Freight when one image is a byte-identical cached rebuild (no
+  # newer timestamp → NewestBuild can't rank it) → prod could get a mismatched backend/frontend pair.
+  # The git model keys Freight on the COMMIT, so both stages pin BOTH images to commitFrom(...).ID[0:7]
+  # → always a consistent set. The source repo is PUBLIC → no git credential needed.
+  #
+  # Phantom-commit guard: the git Warehouse creates Freight for every main commit. The underwriting CI
+  # builds both images on EVERY push to main (no paths-ignore), so every commit has images → no gap →
+  # no excludePaths. If a paths-ignore is ever added to that CI, mirror it here as a SUPERSET.
   interval: 5m
   freightCreationPolicy: Automatic
   subscriptions:
-    - image:
-        repoURL: ghcr.io/andrelair-platform/ktayl-underwriting
-        imageSelectionStrategy: NewestBuild
-        allowTagsRegexes:
-          - ^[0-9a-f]{7,40}$
-        discoveryLimit: 5
+    - git:
+        repoURL: https://github.com/andrelair-platform/ktayl-underwriting.git
+        branch: main
+        commitSelectionStrategy: NewestFromBranch
