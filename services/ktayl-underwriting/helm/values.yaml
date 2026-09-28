@@ -99,9 +99,78 @@ minicloud-app-deployment:
   certificate:
     enabled: false   # cert is a wrapper template (name kept = ktayl-underwriting-tls, ECDSA)
 
+# ---- frontend (Next.js underwriter workbench) — the aliased library subchart ----
+# A BFF: the browser talks same-origin to this Next.js app; it reaches the backend SERVER-SIDE via
+# API_URL = the in-cluster backend Service (so the underwriting API is never exposed to the browser).
+# API_URL is read at RUNTIME (env-agnostic image). readOnlyRootFilesystem MUST be false — Next.js
+# writes its .next cache to disk at runtime (same as retrieva's frontend).
+frontend:
+  serviceAccount:
+    create: true
+    name: ktayl-underwriting-frontend
+    automountServiceAccountToken: false
+  nameOverride: frontend
+  fullnameOverride: ktayl-underwriting-frontend
+  selectorLabels: { app: ktayl-underwriting-frontend }
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001          # nextjs uid in the frontend Dockerfile
+    seccompProfile: { type: RuntimeDefault }
+  securityContext:
+    readOnlyRootFilesystem: false
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting-frontend
+    # tag set per env (values-{dev,prod}.yaml)
+  ports:
+    - { name: http, containerPort: 3000, protocol: TCP }
+  service:
+    ports:
+      - { name: http, port: 3000, targetPort: http }
+  env:
+    - name: NODE_ENV
+      value: "production"
+    # Server-side BFF target: the backend Service in this namespace (never the browser). Runtime env.
+    - name: API_URL
+      value: "http://ktayl-underwriting.underwriting.svc:80"
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  startupProbe:
+    httpGet: { path: /healthz, port: http }
+    periodSeconds: 5
+    failureThreshold: 30
+  readinessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  livenessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels: { app: ktayl-underwriting-frontend }
+            topologyKey: kubernetes.io/hostname
+  ingress:
+    enabled: true
+    className: nginx
+    servicePort: 3000
+    tls:
+      enabled: true
+      secretName: ktayl-underwriting-frontend-tls
+    # host set per env
+  certificate:
+    enabled: false   # cert is a wrapper template (frontendTlsCert)
+
 # ---- wrapper-local (drives templates/) ----
 tlsCert:
-  dnsName: ""        # per env
+  dnsName: ""        # per env (backend host)
+frontendTlsCert:
+  dnsName: ""        # per env (frontend / workbench host)
 # CNPG Postgres + its DB netpols. On in dev (dev owns its own DB); a later prod story enables it there too.
 # Schema migration is NOT a separate Job — the app self-applies it on startup (alembic upgrade head in
 # the FastAPI lifespan before seed_v1), matching ktayl-policy-service. This avoids the ArgoCD ordering
