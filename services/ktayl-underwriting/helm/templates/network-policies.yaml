@@ -87,7 +87,12 @@ spec:
         - { protocol: TCP, port: 9187 }
 {{- end }}
 ---
-# ingress-nginx → the FastAPI app (:8000)
+# ingress-nginx → the FastAPI app (:8000).
+# podSelector MUST match the backend pod's REAL labels = the backend Service selector. The library
+# subchart labels the pod app.kubernetes.io/name=minicloud-app-deployment (the CHART name) +
+# app.kubernetes.io/instance=<release> — NOT app.kubernetes.io/name=ktayl-underwriting. Selecting the
+# latter matched ZERO pods → ingress-nginx was default-denied → 504 (the backend was only ever
+# reachable in-cluster via allow-same-namespace; the Kargo dev-verify smoke silently failed). Fixed.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -96,7 +101,9 @@ metadata:
     app.kubernetes.io/name: ktayl-underwriting
 spec:
   podSelector:
-    matchLabels: { app.kubernetes.io/name: ktayl-underwriting }
+    matchLabels:
+      app.kubernetes.io/instance: ktayl-underwriting
+      app.kubernetes.io/name: minicloud-app-deployment
   policyTypes: [Ingress]
   ingress:
     - from:
