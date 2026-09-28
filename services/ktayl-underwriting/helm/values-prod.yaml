@@ -1,5 +1,16 @@
 # prod — ghcr SHA image, 2 replicas, prod host (ns underwriting-prod). NOT wired to an ArgoCD app yet
 # (a later story creates ktayl-underwriting-prod + Kargo). Kept here so the chart is env-complete.
+#
+# ⚠️ PROD-ONBOARDING GATE (QA B1/B2 — MANDATORY before the prod app goes live): the app enforces
+# per-endpoint JWT scope authz + records the token actor ONLY when `AUTHENTIK_JWKS_URL` is set (dev runs
+# open, like policy-service). For prod you MUST: (1) add Authentik ScopeMappings `underwriting:read` +
+# `underwriting:write` and bind them to a provider; (2) set env `AUTHENTIK_JWKS_URL` =
+# http://authentik-server.authentik.svc/application/o/ktayl-underwriting/jwks/ AND repoint
+# POLICY_SERVICE_URL→ktayl-prod / NATS as prod — which means giving THIS env its own full env list here
+# (Helm replaces the list, so copy values.yaml's env block + override), since the common env in values.yaml
+# is dev-targeted; (3) add Authentik **forward-auth** annotations on the prod ingress. Until all three are
+# in place, do not promote to prod — an unauthenticated policy-binding API is a hard blocker for a
+# regulated domain (ACPR/Solvency II auditability).
 minicloud-app-deployment:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-underwriting
