@@ -43,7 +43,8 @@ spec:
           containers:
             - name: ingest
               image: docker.io/library/postgres:16-alpine
-              command: ["sh","/repo/ingest/ingest_policy.sh"]
+              # Slice 2: run BOTH sources — policy (slice 1) then underwriting (slice 2) → analytics.raw.*
+              command: ["sh","-c","sh /repo/ingest/ingest_policy.sh && sh /repo/ingest/ingest_underwriting.sh"]
               env:
                 - { name: ANALYTICS_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
                 - { name: ANALYTICS_PG_DB,   value: "analytics" }
@@ -53,6 +54,10 @@ spec:
                 - { name: POLICY_PG_USER,     valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_USER } } }
                 - { name: POLICY_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_PASSWORD } } }
                 - { name: POLICY_PG_DB,       valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_DB } } }
+                - { name: UW_PG_HOST,         valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_HOST } } }
+                - { name: UW_PG_USER,         valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_USER } } }
+                - { name: UW_PG_PASSWORD,     valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_PASSWORD } } }
+                - { name: UW_PG_DB,           valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_DB } } }
               volumeMounts: [{ name: repo, mountPath: /repo }]
               securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: true }
               resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 256Mi } }

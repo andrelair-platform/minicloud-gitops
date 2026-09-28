@@ -49,6 +49,26 @@ spec:
         - { protocol: TCP, port: 8000 }
         - { protocol: TCP, port: 5432 }
 ---
+# Slice 2 — allow the data-platform ingest CronJob to read the underwriting DB (:5432).
+# The underwriting ns is default-deny-ingress; the data platform keeps its own decoupled copy
+# (full-refresh COPY, read-only role) so this is the only cross-namespace ingress to the DB.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-data-platform-ingest
+  labels:
+    app.kubernetes.io/name: ktayl-underwriting
+spec:
+  podSelector:
+    matchLabels: { cnpg.io/cluster: underwriting-postgres }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: data-platform }
+      ports:
+        - { protocol: TCP, port: 5432 }
+---
 # monitoring scrape (CNPG podmonitor :9187)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
