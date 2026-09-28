@@ -71,7 +71,7 @@ backend:
 frontend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-frontend
-    tag: 1d730b7
+    tag: a3078e4
   workload:
     replicas: 1
   env:
