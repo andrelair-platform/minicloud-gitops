@@ -21,6 +21,13 @@ PR → main       →  L0 + L1 + L2 + L3 + L4        (blocking; this is the prod
 
 **Fail-fast rule:** L0 before L1 before L2. Never spin up a DB if linting fails.
 
+**L5 — the QA gate (live dev acceptance), MANDATORY before prod promotion.** L0–L4 prove the code in
+isolation/mocks; they do **not** catch integration/deploy/runtime/config bugs (e.g. the alembic
+`fileConfig` that disabled all logging live, an unauthenticated API, an unlocked bound record). After a
+service is live on **dev**, a **QA agent runs an adversarial test pass against the running service**, and
+the prod-promotion PR is blocked until it's clean. Green CI is **not** sufficient to promote. See
+`.claude/rules/qa-gate.md` (scope, severities, the fix→redeploy→re-verify-live loop).
+
 ## Language Matrix
 
 | Stack | L0 | L1 | L2 | L3 | L4 |
