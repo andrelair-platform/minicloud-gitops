@@ -31,7 +31,7 @@ Product Backlog ─(Sprint Planning)→ Sprint Backlog ─(Daily / Build)→ Inc
 
 1. **Sprint Planning** — prioritized stories move from the Product Backlog into the Sprint Backlog based on velocity. Gate with `/bmad-sprint-planning` (PASS/CONCERNS/FAIL) before coding.
 2. **Execution & Daily** — build the committed stories; surface progress/blockers.
-3. **Definition of Done** — a story closes only when it meets DoD: code written, reviewed, **tested (testing.md L0–L4)**, and deployed to `dev` (promotable to prod via the Kargo/CODEOWNERS-gated PR). No story is "Done" on code alone.
+3. **Definition of Done** — a story closes only when it meets DoD: code written, reviewed, **tested with the repo tier's FULL required layer set (testing.md L0–L4, not unit-only)**, and deployed to `dev` (promotable to prod via the Kargo/CODEOWNERS-gated PR). No story is "Done" on code alone — **nor on unit tests alone**: a Tier-A story needs L2 integration + L3 contract + L4 smoke, and every mocked boundary needs a contract/integration test behind it (testing.md *unit-only is the anti-pattern*). The live QA gate (`qa-gate.md`) is the pre-prod backstop, not a substitute for the layers.
 4. **Sprint Review (demo)** — demonstrate the working increment.
 5. **Retrospective** — reflect on what to improve. Use `/bmad-review`.
 
