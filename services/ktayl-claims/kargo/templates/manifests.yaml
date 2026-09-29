@@ -1,0 +1,9 @@
+{{- /*
+  Emit every raw Kargo CR under files/ verbatim. .Files.Get does NOT run content through the
+  template engine, so Kargo promotion expressions (${{ imageFrom(...).Tag }}) and ESO output
+  templates ({{ .username }}) pass through untouched — no backtick-escaping needed. Packaging shim only.
+*/ -}}
+{{- range $path, $_ := .Files.Glob "files/*.yaml" }}
+---
+{{ $.Files.Get $path }}
+{{- end }}

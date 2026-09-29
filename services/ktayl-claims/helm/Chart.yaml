@@ -1,0 +1,15 @@
+apiVersion: v2
+name: ktayl-claims
+description: >-
+  ktayl-claims wrapper chart (GAP golden path). Depends on the minicloud-app-deployment library chart
+  (OCI) for the Spring Boot ACL workload + Ingress. This chart's own templates/ carry the TLS
+  Certificate (ECDSA) and the ingress/monitoring NetworkPolicies. The service is STATELESS in v1
+  (in-memory idempotency + a stub GlobalCore adapter) — no CNPG; the CQRS-lite Postgres read-model
+  (ADR-004) arrives with the real legacy core + CDC (a later story).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: minicloud-app-deployment
+    version: 0.4.0
+    repository: oci://ghcr.io/andrelair-platform

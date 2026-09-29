@@ -201,6 +201,12 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: ktayl-policy-service
       server: https://kubernetes.default.svc
+    - namespace: claims
+      server: https://kubernetes.default.svc
+    - namespace: claims-prod
+      server: https://kubernetes.default.svc
+    - namespace: ktayl-claims
+      server: https://kubernetes.default.svc
     - namespace: underwriting
       server: https://kubernetes.default.svc
     - namespace: underwriting-prod

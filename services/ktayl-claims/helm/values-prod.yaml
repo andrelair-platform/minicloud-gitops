@@ -1,0 +1,16 @@
+# prod — ghcr SHA image, 2 replicas, prod host (ns claims-prod). NOT wired to an ArgoCD app yet
+# (a later story creates ktayl-claims-prod). Kept here so the chart is env-complete + Kargo can bump it.
+minicloud-app-deployment:
+  image:
+    repository: ghcr.io/andrelair-platform/ktayl-claims
+    tag: "9f032b8"     # Kargo bumps to the promoted SHA
+  imagePullSecrets: [{ name: ghcr-pull }]
+  workload:
+    replicas: 2
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  ingress:
+    host: claims-prod.10.0.0.200.nip.io
+tlsCert:
+  dnsName: claims-prod.10.0.0.200.nip.io
