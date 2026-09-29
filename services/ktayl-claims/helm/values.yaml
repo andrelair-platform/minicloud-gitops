@@ -14,6 +14,11 @@ minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-claims
     # tag set per env (values-{dev,prod}.yaml)
+  # Tomcat creates its work/temp dir under /tmp on startup; readOnlyRootFilesystem:true (library
+  # default) makes /tmp read-only → "Unable to create tempDir … Read-only file system" crash. Give it
+  # a writable emptyDir /tmp (the secure fix — keeps the root FS read-only). [[readOnlyRootFilesystem]]
+  writableDirs:
+    - { name: tmp, mountPath: /tmp }
   ports:
     - { name: http, containerPort: 8080, protocol: TCP }
   service:
