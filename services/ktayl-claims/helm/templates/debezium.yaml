@@ -23,6 +23,12 @@ data:
     debezium.source.database.include.list=globalcore
     debezium.source.table.include.list=globalcore.gc_claim,globalcore.gc_policy,globalcore.gc_policy_peril
     debezium.source.snapshot.mode=initial
+    # Do NOT publish DDL/schema-change events to the bus. Debezium emits those to the BARE topic
+    # `claims-cdc` (topic.prefix, no table suffix), which the stream's `claims-cdc.>` filter does NOT
+    # match (a wildcard `>` needs ≥1 token after the dot) → JetStream returns 503 No Responders and the
+    # snapshot aborts. The read-model consumes row changes only; Debezium keeps its OWN schema history
+    # on the PVC (schema.history.internal below) regardless of this flag.
+    debezium.source.include.schema.changes=false
     # file-based offset + schema history on the PVC (standalone Server, no Kafka)
     debezium.source.offset.storage=org.apache.kafka.connect.storage.FileOffsetBackingStore
     debezium.source.offset.storage.file.filename=/debezium/data/offsets.dat
