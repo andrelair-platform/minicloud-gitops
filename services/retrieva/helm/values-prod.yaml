@@ -82,7 +82,7 @@ backend:
 frontend:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-frontend
-    tag: 96d3a40
+    tag: aa01ddf
   workload:
     replicas: 2
   env:
