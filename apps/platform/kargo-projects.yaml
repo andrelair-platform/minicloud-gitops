@@ -67,3 +67,5 @@ spec:
             - .spec.subscriptions[].image.discoveryLimit
             - .spec.subscriptions[].git.strictSemvers
             - .spec.subscriptions[].git.discoveryLimit
+            # the webhook also defaults commitSelectionStrategy on a git subscription (ktayl-claims)
+            - .spec.subscriptions[].git.commitSelectionStrategy
