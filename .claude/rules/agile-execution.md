@@ -23,7 +23,7 @@ All work on the platform follows one nested work hierarchy delivered through fix
 
 ## 2. The execution loop (the Sprint)
 
-Sprints are **fixed 2-week iterations** (the `Sprint` field on project #1).
+Sprints are **fixed 2-week iterations** (the `Sprint` field on each product board).
 
 ```
 Product Backlog ─(Sprint Planning)→ Sprint Backlog ─(Daily / Build)→ Increment ─(Review + Retrospective)
@@ -37,20 +37,21 @@ Product Backlog ─(Sprint Planning)→ Sprint Backlog ─(Daily / Build)→ Inc
 
 ## 3. Mapping onto the GitHub Projects (portfolio of products)
 
-The hierarchy maps onto the **product boards** — one Project per product — with **#1 as the
-cross-product roll-up** (see `github-projects.md`). Use these fields; don't invent parallel tracking.
-The **Initiative** (Insurance LOB · Certification · IS Foundations) is a **grouping field on the
-roll-up**, not a board.
+The hierarchy maps onto the **product boards** — one Project per product; there is **no roll-up
+board** (the old aggregator Project #1 was deleted 2026-09-10 — see `github-projects.md`). Use these
+fields; don't invent parallel tracking. The **Initiative** (Insurance LOB · Certification · IS
+Foundations) is a **grouping label / per-board field**, not a board. For a cross-product glance use
+org-level issue search or the Grafana *Delivery Portfolio* dashboard, not a roll-up board.
 
 | Scrum layer | Where it lives | Field / view |
 |---|---|---|
-| Initiative / Theme | Insurance LOB · Certification · IS Foundations | a **grouping field** on the #1 roll-up (Initiative → Product); never a board |
+| Initiative / Theme | Insurance LOB · Certification · IS Foundations | a **grouping label / per-board field**; never a board (no roll-up) |
 | **Product** | one **GitHub Project (v2) per product** (1..N repos, own backlog) | the product board itself |
 | **Epic** | GitHub issue with **`Kind=Epic`** + its **Milestone**, on the product board | Milestone ≈ the epic's home / time-span |
 | **User Story** | `S###` / `RTV-##` issue, **`Kind=Story`**, body in user-voice, on the product board | authored via per-product BMAD (`bmad.md`) |
 | **Task** | checklist item / sub-issue inside a story | sized by **`Effort`** (XS→XL) |
 | **Sprint** | 2-week iteration | **`Sprint`** field (per product board) |
-| **Product Backlog** | each product board's open list | the board's `Backlog` view (#1 = union / PMO view only) |
+| **Product Backlog** | each product board's open list | the board's `Backlog` view (no roll-up; cross-product glance via org search / Grafana) |
 
 **Status flow** mirrors Scrum exactly: `Backlog → This Sprint → In Progress → Blocked → In Review → Done`.
 

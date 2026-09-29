@@ -88,7 +88,7 @@ bash scripts/bmad-to-github.sh bmad/stories/<project>/<milestone> \
   --milestone "Milestone title matching GitHub exactly"
 ```
 
-Defaults: `--repo andrelair-platform/platform-backlog` · `--project 1` (minicloud platform roadmap)
+Defaults: `--repo andrelair-platform/platform-backlog` · `--project 1`. **⚠️ RETIRED — do not rely on these defaults.** Project **#1 was deleted 2026-09-10** and the central platform-backlog flow is retired (see the legacy note above); `--project 1` will fail. Under the per-product model, always set `repo:` / `project:` in each story's frontmatter (see *Per-product BMAD* + `github-projects.md`).
 
 The script is **idempotent** — it skips stories whose `[S001-slug]` is already in an issue title. Safe to re-run after adding new stories to an existing sprint.
 
@@ -137,11 +137,13 @@ It's **non-fatal**: if the board has no Priority field, or the value can't be ma
 skips it with a warning. Field metadata is cached per project (resolved once per run). Prefer an
 explicit P-token when you want a precise board lane (MoSCoW is coarser — every `Must` → P1).
 
-**2-tier routing (`repo:` / `project:`) — since 2026-09-06.** By default the bridge creates issues
-in `platform-backlog` on project 1 (Platform Portfolio). A **service story** should set `repo:` to
-its own repo (issues live next to the code) and `project:` to the right board — e.g. a retrieva
+**2-tier routing (`repo:` / `project:`) — since 2026-09-06; the old project-1 default is RETIRED.**
+Every story should set `repo:` **and** `project:` explicitly. A **service story** sets `repo:` to
+its own repo (issues live next to the code) and `project:` to the right product board — e.g. a retrieva
 certification story → `repo: andrelair-platform/retrieva`, `project: 2`. Programme-level stories
-(cross-cutting, no single repo) omit both → platform-backlog + project 1. See
+(cross-cutting, no single repo) go to the **initiative's home product** — e.g. platform-wide governance
+→ `repo: andrelair-platform/minicloud-gitops`, `project: 3` (*GitOps — Platform Engineering*). Do **not**
+fall back to platform-backlog / project 1 (deleted 2026-09-10; there is no roll-up board). See
 `.claude/rules/github-projects.md` for the where-does-an-issue-go decision rule.
 
 ## Label conventions
