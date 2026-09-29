@@ -3,7 +3,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-claims
-    tag: c2a607a
+    tag: f30f58d
   workload:
     replicas: 1
   ingress:
