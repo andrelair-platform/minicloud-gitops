@@ -34,8 +34,19 @@ minicloud-app-deployment:
     - { name: NATS_URL, value: "nats://nats.messaging.svc:4222" }   # CDC projector source
   ingress:
     host: claims.10.0.0.200.nip.io
+# Frontend (Angular adjuster workbench) — same commit SHA as the backend (git-Warehouse pins both).
+frontend:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-claims-frontend
+    tag: "5243b5c"
+  workload:
+    replicas: 1
+  ingress:
+    host: claims-app.10.0.0.200.nip.io
 tlsCert:
   dnsName: claims.10.0.0.200.nip.io
+frontendTlsCert:
+  dnsName: claims-app.10.0.0.200.nip.io
 # Slice C — CDC on: Debezium tails the legacy MySQL binlog → NATS JetStream (subject claims-cdc.*).
 debezium:
   enabled: true

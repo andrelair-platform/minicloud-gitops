@@ -47,8 +47,22 @@ minicloud-app-deployment:
     - { name: CDC_DURABLE, value: "claims-projector-prod" }
   ingress:
     host: claims-prod.10.0.0.200.nip.io
+# Frontend (Angular workbench) — ghcr image, 2 replicas, prod host. Kargo pins the tag (prod stage).
+frontend:
+  image:
+    repository: ghcr.io/andrelair-platform/ktayl-claims-frontend
+    tag: "5243b5c"   # seeded; Kargo (git-Warehouse prod stage) owns future bumps via the CODEOWNERS PR
+  workload:
+    replicas: 2
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  ingress:
+    host: claims-app-prod.10.0.0.200.nip.io
 tlsCert:
   dnsName: claims-prod.10.0.0.200.nip.io
+frontendTlsCert:
+  dnsName: claims-app-prod.10.0.0.200.nip.io
 # prod read-model DB (derived/rebuildable projection → single instance is fine).
 postgres:
   enabled: true

@@ -10,6 +10,13 @@ type: application
 version: 0.1.0
 appVersion: "0.1.0"
 dependencies:
+  # Backend (Spring ACL) — the default (unaliased) subchart, config under `minicloud-app-deployment:`.
   - name: minicloud-app-deployment
+    version: 0.4.0
+    repository: oci://ghcr.io/andrelair-platform
+  # Frontend (Angular adjuster workbench, ADR-009) — the SAME library used a 2nd time via an alias,
+  # config under `frontend:`. Dual-workload, one Helm render, one ArgoCD source (underwriting pattern).
+  - name: minicloud-app-deployment
+    alias: frontend
     version: 0.4.0
     repository: oci://ghcr.io/andrelair-platform
