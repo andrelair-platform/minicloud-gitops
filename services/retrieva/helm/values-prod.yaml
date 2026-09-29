@@ -59,7 +59,10 @@ backend:
     - { name: AZURE_OPENAI_API_VERSION, value: "2024-02-15-preview" }
     - { name: LLM_MODEL, value: "tier-premium" }
     - { name: EMBEDDING_MODEL, value: "embeddings" }
-    - { name: JUDGE_LLM_MODEL, value: "tier-standard" }
+    # tier-standard 403s for the retrieva LiteLLM team (not in the allow-list) — the judge would have
+    # failed EVERY call → insufficient_evidence for everything. tier-premium is the reachable,
+    # benchmarked-best judge (synthetic gold 1.000, over-pass 0). See judge-model benchmark #618.
+    - { name: JUDGE_LLM_MODEL, value: "tier-premium" }
     - { name: LANGFUSE_BASE_URL, value: "http://langfuse-web.langfuse.svc.cluster.local:3000" }
     - { name: LANGFUSE_TRACING_ENVIRONMENT, value: "production" }
     - { name: LANGFUSE_PROMPT_LABEL, value: "production" }
