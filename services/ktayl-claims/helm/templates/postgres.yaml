@@ -1,0 +1,28 @@
+# Slice D (ADR-008) — dedicated CNPG Postgres for the claims CQRS read-model. Small footprint
+# (dev=1 instance). CNPG creates the `claims-postgres-app` secret (host/port/username/password/dbname)
+# consumed by the ACL's datasource env. This is a DERIVED projection (rebuildable by replaying the CDC
+# stream), so it's disposable — bump instances only if read availability matters. Core Postgres (no
+# pgvector) → no AVX512 SIGILL concern.
+{{- if .Values.postgres.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: claims-postgres
+  labels:
+    app.kubernetes.io/name: ktayl-claims
+spec:
+  instances: {{ .Values.postgres.instances }}
+  primaryUpdateStrategy: unsupervised
+  storage:
+    size: {{ .Values.postgres.storageSize }}
+    storageClass: longhorn
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: "1",  memory: 512Mi }
+  monitoring:
+    enablePodMonitor: true
+  bootstrap:
+    initdb:
+      database: claims
+      owner: claims
+{{- end }}
