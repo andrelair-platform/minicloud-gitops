@@ -1,0 +1,21 @@
+# TLS Certificate. privateKey ECDSA/256 is MANDATORY — Vault PKI is EC-only and a Gatekeeper policy
+# DENIES RSA certs. dnsName per env.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ktayl-claims-tls
+  labels:
+    app.kubernetes.io/name: ktayl-claims
+spec:
+  secretName: ktayl-claims-tls
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+    - {{ .Values.tlsCert.dnsName | quote }}
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256

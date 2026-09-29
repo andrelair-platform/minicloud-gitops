@@ -1,0 +1,60 @@
+# ktayl-claims wrapper chart — common values.
+# (1) `minicloud-app-deployment:` = the library subchart (Spring Boot ACL workload + Ingress);
+# (2) top-level keys drive THIS chart's templates/ (TLS cert). STATELESS v1 — no DB, no ESO.
+minicloud-app-deployment:
+  serviceAccount:
+    create: true
+    name: ktayl-claims
+    automountServiceAccountToken: false
+  # Match the image's non-root user (Dockerfile creates uid 10001). Spring writes nothing to disk.
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile: { type: RuntimeDefault }
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-claims
+    # tag set per env (values-{dev,prod}.yaml)
+  ports:
+    - { name: http, containerPort: 8080, protocol: TCP }
+  service:
+    ports:
+      - { name: http, port: 80, targetPort: http }
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }   # JVM footprint
+    limits:   { cpu: "1", memory: 768Mi }
+  # Spring Boot Actuator k8s probes (application.yml enables health.probes). The JVM + Spring context
+  # take a while to start, so startupProbe gates liveness/readiness until the context is up.
+  startupProbe:
+    httpGet: { path: /actuator/health/liveness, port: http }
+    periodSeconds: 5
+    failureThreshold: 40
+  readinessProbe:
+    httpGet: { path: /actuator/health/readiness, port: http }
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  livenessProbe:
+    httpGet: { path: /actuator/health/liveness, port: http }
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels: { app.kubernetes.io/name: minicloud-app-deployment, app.kubernetes.io/instance: ktayl-claims }
+            topologyKey: kubernetes.io/hostname
+  ingress:
+    enabled: true
+    className: nginx
+    servicePort: 80
+    tls:
+      enabled: true
+      secretName: ktayl-claims-tls
+    # host set per env
+  certificate:
+    enabled: false   # cert is a wrapper template (ktayl-claims-tls, ECDSA)
+
+# ---- wrapper-local (drives templates/) ----
+tlsCert:
+  dnsName: ""        # per env

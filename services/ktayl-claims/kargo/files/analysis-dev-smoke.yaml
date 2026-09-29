@@ -1,0 +1,56 @@
+# Kargo dev-Stage verification (smoke VARIANT B — always-on + no SSO). Reaches the dev app the real
+# way, via ingress-nginx: --connect-to keeps SNI+Host = the real dev host while dialing the in-cluster
+# nginx service; -k trusts the minicloud CA. Claims uses Spring Actuator, so probe /actuator/health/liveness.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: ktayl-claims-dev-verify
+  namespace: ktayl-claims
+spec:
+  metrics:
+    - name: dev-smoke
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 3
+            activeDeadlineSeconds: 120
+            ttlSecondsAfterFinished: 300
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/part-of: ktayl-claims
+                  kargo.akuity.io/verify: dev-smoke
+              spec:
+                restartPolicy: Never
+                # Gatekeeper: require-non-root + no-privilege-escalation + require-resource-limits
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: smoke
+                    # Fully-qualified: the allowed-registries policy denies a bare image name.
+                    image: docker.io/curlimages/curl:8.11.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests: {cpu: 25m, memory: 32Mi}
+                      limits: {cpu: 100m, memory: 64Mi}
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        H=claims.10.0.0.200.nip.io
+                        NGINX=nginx-ingress-ingress-nginx-controller.ingress-nginx.svc.cluster.local
+                        echo "smoke: GET https://$H/actuator/health/liveness via ingress-nginx"
+                        code=$(curl -sSk -o /dev/null -w '%{http_code}' --max-time 20 \
+                          --retry 8 --retry-delay 5 --retry-all-errors \
+                          --connect-to "$H:443:$NGINX:443" "https://$H/actuator/health/liveness")
+                        echo "liveness http_code=$code"
+                        test "$code" = 200
+                        echo "dev smoke passed"

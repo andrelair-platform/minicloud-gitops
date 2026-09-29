@@ -1,0 +1,71 @@
+# Ingress default-deny + explicit allows. EGRESS is intentionally UNRESTRICTED (Cilium apiserver-identity
+# gotcha — a standard ipBlock CIDR doesn't match kube-apiserver; a default-deny-egress pod hangs on
+# 10.43.0.1:443). The v1 service is stateless + self-contained (stub GlobalCore), so ingress-only is fine.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  labels:
+    app.kubernetes.io/name: ktayl-claims
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+# intra-namespace ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  labels:
+    app.kubernetes.io/name: ktayl-claims
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: {{ .Release.Namespace }} }
+---
+# ingress-nginx → the Spring Boot app (:8080).
+# podSelector MUST match the pod's REAL labels = the Service selector. The library labels the pod
+# app.kubernetes.io/name=minicloud-app-deployment (the CHART name) + app.kubernetes.io/instance=<release>,
+# NOT name=<release> — selecting name=ktayl-claims would match ZERO pods → ingress-nginx default-denied
+# → 504 (the lesson from ktayl-underwriting).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-app
+  labels:
+    app.kubernetes.io/name: ktayl-claims
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: ktayl-claims
+      app.kubernetes.io/name: minicloud-app-deployment
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+# monitoring scrape (Actuator /actuator/prometheus on :8080)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-scrape
+  labels:
+    app.kubernetes.io/name: ktayl-claims
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: ktayl-claims
+      app.kubernetes.io/name: minicloud-app-deployment
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
+      ports:
+        - { protocol: TCP, port: 8080 }

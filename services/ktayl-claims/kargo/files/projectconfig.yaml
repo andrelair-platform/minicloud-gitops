@@ -1,0 +1,11 @@
+# Auto-promotion: Kargo is the sole promoter of dev. New Freight from the Warehouse is auto-promoted
+# into the dev Stage (no manual click). Prod stays manual (CODEOWNERS PR). Singleton per project ns.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: ktayl-claims
+  namespace: ktayl-claims
+spec:
+  promotionPolicies:
+    - stage: dev
+      autoPromotionEnabled: true

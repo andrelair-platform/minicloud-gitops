@@ -1,0 +1,17 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: ktayl-claims
+  namespace: ktayl-claims
+spec:
+  # Single-image service → the image model (NewestBuild) is correct + safe (the mixed-Freight bug
+  # only affects a ≥2-image monorepo — see ktayl-underwriting's git-Warehouse).
+  interval: 5m
+  freightCreationPolicy: Automatic
+  subscriptions:
+    - image:
+        repoURL: ghcr.io/andrelair-platform/ktayl-claims
+        imageSelectionStrategy: NewestBuild
+        allowTagsRegexes:
+          - ^[0-9a-f]{7,40}$
+        discoveryLimit: 5

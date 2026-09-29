@@ -1,0 +1,12 @@
+# dev — Harbor image, ns claims. Single replica; stateless (stub GlobalCore, in-memory idempotency).
+# Tag QUOTED (a 7-hex all-decimal SHA parses as a YAML number → InvalidImageName). Kargo owns bumps.
+minicloud-app-deployment:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-claims
+    tag: "9f032b8"
+  workload:
+    replicas: 1
+  ingress:
+    host: claims.10.0.0.200.nip.io
+tlsCert:
+  dnsName: claims.10.0.0.200.nip.io

@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ktayl-claims-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  # HGP golden path (GAP wrapper chart, dev): ONE Helm source. Wrapper depends on the library chart
+  # (OCI) for the Spring Boot ACL workload + Ingress; the TLS cert (ECDSA) + ingress/monitoring
+  # NetworkPolicies are wrapper templates. Stateless v1 (stub GlobalCore) — no CNPG.
+  # releaseName MUST be ktayl-claims (else the library objects take the app name).
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/ktayl-claims/helm
+    helm:
+      releaseName: ktayl-claims
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: claims
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
