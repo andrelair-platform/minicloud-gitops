@@ -69,3 +69,44 @@ spec:
             matchLabels: { kubernetes.io/metadata.name: monitoring }
       ports:
         - { protocol: TCP, port: 8080 }
+{{- if .Values.postgres.enabled }}
+---
+# Slice D — CNPG operator → the read-model DB instance status endpoint (:8000) + Postgres (:5432).
+# Without :8000 the cluster never reports healthy (the CNPG onboarding gotcha). The app→db + CDC
+# projector→db hops are intra-namespace, already permitted by allow-same-namespace above.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator
+  labels:
+    app.kubernetes.io/name: ktayl-claims
+spec:
+  podSelector:
+    matchLabels: { cnpg.io/cluster: claims-postgres }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: cnpg-system }
+      ports:
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 5432 }
+---
+# Slice D — monitoring scrape of the CNPG podmonitor (:9187).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-monitoring
+  labels:
+    app.kubernetes.io/name: ktayl-claims
+spec:
+  podSelector:
+    matchLabels: { cnpg.io/cluster: claims-postgres }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
+      ports:
+        - { protocol: TCP, port: 9187 }
+{{- end }}

@@ -68,3 +68,9 @@ debezium:
   enabled: false
   image: quay.io/debezium/server:3.0.0.Final
   mysqlHost: "10.0.0.1"   # the off-cluster legacy MySQL (controller, LAN)
+# Slice D (ADR-008) — CNPG Postgres for the CQRS read-model. Off by default; dev enables it. A derived
+# projection (rebuildable from the CDC stream), so a single small instance is fine.
+postgres:
+  enabled: false
+  instances: 1
+  storageSize: 1Gi

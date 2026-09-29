@@ -22,3 +22,7 @@ tlsCert:
 # Slice C — CDC on: Debezium tails the legacy MySQL binlog → NATS JetStream (subject claims-cdc.*).
 debezium:
   enabled: true
+# Slice D — CQRS read-model DB on. The CNPG cluster + netpols come up first; the app is flipped to the
+# `readmodel` profile (+ datasource env) in a follow-up once the DB + the Slice-D image are live.
+postgres:
+  enabled: true
