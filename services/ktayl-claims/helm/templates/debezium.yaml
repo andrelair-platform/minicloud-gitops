@@ -84,6 +84,10 @@ spec:
       containers:
         - name: stream-init
           image: docker.io/natsio/nats-box:0.14.5   # fully-qualified: Gatekeeper denies a bare image name
+          workingDir: /tmp                            # writable cwd (readOnly rootfs → nats CLI `stat .` fails otherwise)
+          env:
+            - { name: HOME, value: /tmp }             # nats CLI writes its context/config under $HOME
+            - { name: XDG_CONFIG_HOME, value: /tmp }
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -91,19 +95,24 @@ spec:
           resources:
             requests: { cpu: 25m, memory: 32Mi }
             limits:   { cpu: 100m, memory: 64Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
           command: [/bin/sh, -c]
           args:
             - |
               set -eu
               S=nats://nats.messaging.svc:4222
-              # Idempotent + minimal: if the stream is absent, create it with defaults + our subjects
-              # (--defaults accepts sensible defaults for everything else: file storage, limits retention).
-              if nats -s "$S" stream info CLAIMS_CDC >/dev/null 2>&1; then
+              # Idempotent: create the stream if absent (--defaults + our subjects). --no-context avoids
+              # touching a context file; HOME=/tmp (emptyDir) gives the CLI a writable home.
+              if nats --no-context -s "$S" stream info CLAIMS_CDC >/dev/null 2>&1; then
                 echo "CLAIMS_CDC already exists"
               else
-                nats -s "$S" stream add CLAIMS_CDC --subjects='claims-cdc.>' --defaults
+                nats --no-context -s "$S" stream add CLAIMS_CDC --subjects "claims-cdc.>" --defaults
               fi
-              nats -s "$S" stream info CLAIMS_CDC
+              nats --no-context -s "$S" stream info CLAIMS_CDC
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: apps/v1
 kind: Deployment
