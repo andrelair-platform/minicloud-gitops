@@ -79,7 +79,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: stream-init
-          image: natsio/nats-box:0.14.5
+          image: docker.io/natsio/nats-box:0.14.5   # fully-qualified: Gatekeeper denies a bare image name
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -93,12 +93,11 @@ spec:
               set -eu
               S=nats://nats.messaging.svc:4222
               # idempotent: add if absent, else update the subjects
-              nats -s "$S" stream add CLAIMS_CDC \
+              nats -s "$S" stream add CLAIMS_CDC --defaults \
                 --subjects 'claims-cdc.>' --storage file --replicas 1 \
                 --retention limits --discard old --max-age 168h \
-                --max-msgs=-1 --max-bytes=-1 --max-msg-size=-1 --dupe-window 2m \
-                --no-allow-rollup --deny-delete --deny-purge 2>/dev/null \
-              || nats -s "$S" stream update CLAIMS_CDC --subjects 'claims-cdc.>'
+                --max-msgs=-1 --max-bytes=-1 --max-msg-size=-1 --dupe-window 2m 2>/dev/null \
+              || nats -s "$S" stream update CLAIMS_CDC --subjects 'claims-cdc.>' --defaults
               echo "CLAIMS_CDC stream ready"; nats -s "$S" stream info CLAIMS_CDC || true
 ---
 apiVersion: apps/v1
