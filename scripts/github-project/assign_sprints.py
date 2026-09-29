@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
 """Assign Sprint iterations to all project items based on milestone and status.
 
-Usage: python3 assign_sprints.py
+⚠️ RETIRED (2026-09-10) — DO NOT RUN. This script is hardcoded to the aggregator
+Project #1 (PROJECT_NUM=1 / PROJECT_ID/SPRINT_FIELD_ID/iteration IDs below), which
+was DELETED on 2026-09-10 (see .claude/rules/github-projects.md). All those IDs are
+now invalid, so this will fail against a non-existent board. There is intentionally
+NO drop-in replacement: under the per-product model, Sprint is a per-board iteration
+field set in each product board's UI (not centrally scriptable — see the "hard
+automation line" in github-projects.md). Kept only as a reference for the
+project-items GraphQL pagination pattern.
+
+Usage: python3 assign_sprints.py   # (retired — will error against deleted Project #1)
 Requires: gh CLI authenticated as org owner
 
 Sprint mapping (update SPRINTS dict if iterations are regenerated):
