@@ -92,13 +92,14 @@ spec:
             - |
               set -eu
               S=nats://nats.messaging.svc:4222
-              # idempotent: add if absent, else update the subjects
-              nats -s "$S" stream add CLAIMS_CDC --defaults \
-                --subjects 'claims-cdc.>' --storage file --replicas 1 \
-                --retention limits --discard old --max-age 168h \
-                --max-msgs=-1 --max-bytes=-1 --max-msg-size=-1 --dupe-window 2m 2>/dev/null \
-              || nats -s "$S" stream update CLAIMS_CDC --subjects 'claims-cdc.>' --defaults
-              echo "CLAIMS_CDC stream ready"; nats -s "$S" stream info CLAIMS_CDC || true
+              # Idempotent + minimal: if the stream is absent, create it with defaults + our subjects
+              # (--defaults accepts sensible defaults for everything else: file storage, limits retention).
+              if nats -s "$S" stream info CLAIMS_CDC >/dev/null 2>&1; then
+                echo "CLAIMS_CDC already exists"
+              else
+                nats -s "$S" stream add CLAIMS_CDC --subjects='claims-cdc.>' --defaults
+              fi
+              nats -s "$S" stream info CLAIMS_CDC
 ---
 apiVersion: apps/v1
 kind: Deployment
