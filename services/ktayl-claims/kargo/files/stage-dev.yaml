@@ -33,13 +33,14 @@ spec:
           config:
             path: ./repo/services/ktayl-claims/helm/values-dev.yaml
             updates:
+              # git-Warehouse: pin the tag to the Freight's commit short-SHA (== the CI image tag).
               - key: minicloud-app-deployment.image.tag
-                value: '${{ quote(imageFrom("ghcr.io/andrelair-platform/ktayl-claims").Tag) }}'
+                value: '${{ quote(commitFrom("https://github.com/andrelair-platform/ktayl-claims.git").ID[0:7]) }}'
         - uses: git-commit
           as: commit
           config:
             path: ./repo
-            message: 'kargo(ktayl-claims): promote image ${{ imageFrom("ghcr.io/andrelair-platform/ktayl-claims").Tag }} to dev'
+            message: 'kargo(ktayl-claims): promote ${{ commitFrom("https://github.com/andrelair-platform/ktayl-claims.git").ID[0:7] }} to dev'
         - uses: git-push
           as: push
           if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
@@ -54,7 +55,7 @@ spec:
             sourceBranch: ${{ outputs.push.branch }}
             targetBranch: main
             provider: github
-            title: 'kargo(ktayl-claims): promote to dev — ${{ imageFrom("ghcr.io/andrelair-platform/ktayl-claims").Tag }}'
+            title: 'kargo(ktayl-claims): promote to dev — ${{ commitFrom("https://github.com/andrelair-platform/ktayl-claims.git").ID[0:7] }}'
             labels: [kargo, env-dev, automerge]
         - uses: git-wait-for-pr
           as: wait-pr

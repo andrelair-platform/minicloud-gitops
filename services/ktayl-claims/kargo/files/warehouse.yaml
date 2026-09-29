@@ -4,14 +4,25 @@ metadata:
   name: ktayl-claims
   namespace: ktayl-claims
 spec:
-  # Single-image service → the image model (NewestBuild) is correct + safe (the mixed-Freight bug
-  # only affects a ≥2-image monorepo — see ktayl-underwriting's git-Warehouse).
+  # GIT-Warehouse model (Freight = a commit), NOT image/NewestBuild. Why, for a single-image service:
+  # NewestBuild ranks tags by build time, but the ktayl-claims image is `FROM eclipse-temurin:21-jre`
+  # whose base layer carries a FIXED date (2026-09-12); Kargo latches onto that base-layer date for
+  # EVERY tag (not the real config.created), so all builds tie → auto-promotion stalls forever
+  # ("Freight composed of the newest artifacts already exists"). platform-demo (scratch base, epoch
+  # layer) doesn't hit this. Keying Freight on the git COMMIT is timestamp-independent → immune. The
+  # dev/prod Stages pin image.tag = commitFrom(...).ID[0:7] (== the CI 7-char short-SHA tag). Public
+  # repo → no git credential needed for the subscription (the git-credentials secret is only for the
+  # promotion PRs). See gitops.md (two Warehouse models) + [[reference_kargo_promotion]].
   interval: 5m
   freightCreationPolicy: Automatic
   subscriptions:
-    - image:
-        repoURL: ghcr.io/andrelair-platform/ktayl-claims
-        imageSelectionStrategy: NewestBuild
-        allowTagsRegexes:
-          - ^[0-9a-f]{7,40}$
-        discoveryLimit: 5
+    - git:
+        repoURL: https://github.com/andrelair-platform/ktayl-claims.git
+        branch: main
+        # Phantom-commit guard: only make Freight for commits whose image CI actually builds. Claims CI
+        # has NO paths-ignore (every main commit builds an image), so this is belt-and-braces — it just
+        # avoids churning a promotion for a pure docs/markdown commit (whose image is identical anyway).
+        # If CI ever gains a paths-ignore, keep excludePaths a SUPERSET of it.
+        excludePaths:
+          - docs
+          - "regex:.*\\.md$"
