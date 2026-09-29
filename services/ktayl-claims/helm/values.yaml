@@ -64,10 +64,17 @@ minicloud-app-deployment:
 tlsCert:
   dnsName: ""        # per env
 # Slice C — Debezium Server (MySQL binlog → NATS JetStream). Off by default; dev enables it.
+# The CDC lane is PER-ENV (serverId/topicPrefix/streamName/streamSubjects) so dev and prod each tail the
+# shared legacy binlog as a distinct replica and publish to distinct subjects/streams — no cross-env bleed
+# (the app's cdc.stream/subject/durable env must match the same env's values). Defaults = the dev lane.
 debezium:
   enabled: false
   image: quay.io/debezium/server:3.0.0.Final
   mysqlHost: "10.0.0.1"   # the off-cluster legacy MySQL (controller, LAN)
+  serverId: "184099"      # MySQL replica id — MUST be unique per env tailing the same binlog
+  topicPrefix: claims-cdc # → subjects claims-cdc.globalcore.<table>
+  streamName: CLAIMS_CDC
+  streamSubjects: "claims-cdc.>"
 # Slice D (ADR-008) — CNPG Postgres for the CQRS read-model. Off by default; dev enables it. A derived
 # projection (rebuildable from the CDC stream), so a single small instance is fine.
 postgres:
