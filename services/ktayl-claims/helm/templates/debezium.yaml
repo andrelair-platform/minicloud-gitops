@@ -147,7 +147,7 @@ spec:
             requests: { cpu: 100m, memory: 256Mi }
             limits:   { cpu: 500m, memory: 512Mi }
           volumeMounts:
-            - { name: config, mountPath: /debezium/conf/application.properties, subPath: application.properties }
+            - { name: config, mountPath: /debezium/config/application.properties, subPath: application.properties }
             - { name: data, mountPath: /debezium/data }
       volumes:
         - name: config
