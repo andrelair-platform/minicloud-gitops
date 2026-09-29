@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ktayl-claims-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  # Prod (GAP wrapper chart): ONE Helm source, values-prod.yaml. Full Slice-A..D stack — the Spring ACL
+  # (soap,readmodel), its OWN CNPG read-model + its OWN Debezium/CDC lane (CLAIMS_CDC_PROD). Wraps the
+  # SAME simulated legacy as dev (accepted boundary). Kargo (git-Warehouse) bumps image.tag in
+  # values-prod via the CODEOWNERS-gated prod PR; ArgoCD auto-syncs. releaseName MUST be ktayl-claims.
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/ktayl-claims/helm
+    helm:
+      releaseName: ktayl-claims
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: claims-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

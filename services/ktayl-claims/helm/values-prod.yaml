@@ -1,16 +1,63 @@
-# prod — ghcr SHA image, 2 replicas, prod host (ns claims-prod). NOT wired to an ArgoCD app yet
-# (a later story creates ktayl-claims-prod). Kept here so the chart is env-complete + Kargo can bump it.
+# prod — ghcr SHA image, ns claims-prod. Wired to the ktayl-claims-prod ArgoCD app.
+#
+# Same simulated legacy as dev (GlobalCore is a single instance on the controller — an accepted,
+# documented env boundary; there is no separate prod legacy). Isolation is at the CDC lane: prod runs
+# its OWN Debezium (distinct server.id) → its OWN stream CLAIMS_CDC_PROD (subjects claims-cdc-prod.*) →
+# its OWN CNPG read-model, so dev and prod read-models never cross-feed. The app is 2 replicas (safe:
+# the CDC projector self-elects on the singleton durable — one binds, the rest stand by).
 minicloud-app-deployment:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-claims
-    tag: "9f032b8"     # Kargo bumps to the promoted SHA
-  imagePullSecrets: [{ name: ghcr-pull }]
+    # Seeded to the current dev-VERIFIED freight for the initial prod bring-up (== what Kargo's prod
+    # stage would promote). Kargo (git-Warehouse) owns all FUTURE prod bumps via the CODEOWNERS PR.
+    tag: "b567ab0"
+  # ghcr package is PUBLIC → k3s pulls anonymously; no imagePullSecret needed.
   workload:
     replicas: 2
   podDisruptionBudget:
     enabled: true
     minAvailable: 1
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile: { type: RuntimeDefault }
+  writableDirs:
+    - { name: tmp, mountPath: /tmp }
+  env:
+    - { name: SPRING_PROFILES_ACTIVE, value: "soap,readmodel" }
+    - { name: GLOBALCORE_SOAP_URL, value: "http://10.0.0.1:8080/ws" }   # the shared off-cluster legacy
+    # Datasource from the prod CNPG (claims-postgres-app secret in claims-prod), via $(VAR) expansion.
+    - name: PGHOST
+      valueFrom: { secretKeyRef: { name: claims-postgres-app, key: host } }
+    - name: PGPORT
+      valueFrom: { secretKeyRef: { name: claims-postgres-app, key: port } }
+    - name: PGUSER
+      valueFrom: { secretKeyRef: { name: claims-postgres-app, key: username } }
+    - name: PGPASSWORD
+      valueFrom: { secretKeyRef: { name: claims-postgres-app, key: password } }
+    - name: PGDATABASE
+      valueFrom: { secretKeyRef: { name: claims-postgres-app, key: dbname } }
+    - { name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://$(PGHOST):$(PGPORT)/$(PGDATABASE)" }
+    - { name: SPRING_DATASOURCE_USERNAME, value: "$(PGUSER)" }
+    - { name: SPRING_DATASOURCE_PASSWORD, value: "$(PGPASSWORD)" }
+    - { name: NATS_URL, value: "nats://nats.messaging.svc:4222" }
+    # prod CDC lane — MUST match the prod debezium block below.
+    - { name: CDC_STREAM, value: "CLAIMS_CDC_PROD" }
+    - { name: CDC_SUBJECT, value: "claims-cdc-prod.globalcore.gc_claim" }
+    - { name: CDC_DURABLE, value: "claims-projector-prod" }
   ingress:
     host: claims-prod.10.0.0.200.nip.io
 tlsCert:
   dnsName: claims-prod.10.0.0.200.nip.io
+# prod read-model DB (derived/rebuildable projection → single instance is fine).
+postgres:
+  enabled: true
+  instances: 1
+  storageSize: 1Gi
+# prod CDC lane — distinct replica id + stream so it never collides with dev's.
+debezium:
+  enabled: true
+  serverId: "184100"
+  topicPrefix: claims-cdc-prod
+  streamName: CLAIMS_CDC_PROD
+  streamSubjects: "claims-cdc-prod.>"
