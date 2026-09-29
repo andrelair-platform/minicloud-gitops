@@ -55,7 +55,10 @@ spec:
       storage: 1Gi
 ---
 # Create the JetStream stream that captures the CDC subjects (the nats-jetstream sink publishes to
-# claims-cdc.* but does NOT create the stream). Idempotent: `nats stream add` with --config, or update.
+# claims-cdc.* but does NOT create the stream). Idempotent.
+# NOT a PreSync hook (a failing hook wedges the whole app's sync operation indefinitely — learned the
+# hard way). A plain Job with Replace=true (Jobs are immutable → recreate on change) + a slightly
+# earlier sync-wave so it runs ahead of Debezium; if it fails, the sync degrades but never wedges.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -63,10 +66,11 @@ metadata:
   labels:
     app.kubernetes.io/name: claims-debezium
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
-  backoffLimit: 6
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 600
   template:
     metadata:
       labels:
