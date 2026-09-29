@@ -59,7 +59,7 @@ backend:
     - { name: JUDGE_LLM_MODEL, value: "ollama-cloud" }
     # #618 — LLM reranker isolates the on-topic clause before the judge (dev: 0.500 -> 0.583, free).
     # Off in prod until validated there; fail-open so it can never make an assessment worse.
-    - { name: ASSESSMENT_RERANK_ENABLED, value: "true" }
+    - { name: ASSESSMENT_RERANK_ENABLED, value: "false" }  # off: full-doc A/B showed the weak-model LLM reranker net-NEGATIVE (0.556->0.444), drops the relevant chunk
     - { name: LANGFUSE_BASE_URL, value: "http://langfuse-web.langfuse.svc.cluster.local:3000" }
     - { name: LANGFUSE_TRACING_ENVIRONMENT, value: "development" }      # dev env in the shared project
     - { name: LANGFUSE_PROMPT_LABEL, value: "latest" }                 # dev iterates on latest
