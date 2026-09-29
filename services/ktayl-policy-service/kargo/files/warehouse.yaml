@@ -4,12 +4,23 @@ metadata:
   name: ktayl-policy-service
   namespace: ktayl-policy-service
 spec:
+  # GIT-Warehouse model (Freight = a commit), NOT image/NewestBuild. NewestBuild ranks tags by build
+  # time, but this image has a FIXED config.created (2026-08-31T20:53:45.133048273Z — identical to the
+  # nanosecond across different commits = a reproducible-build timestamp), so every build ties → Kargo
+  # can't rank → auto-promotion stalls ("newest already exists"). Same failure class as ktayl-claims
+  # (there it was the temurin base-layer date). Keying Freight on the git COMMIT is timestamp-
+  # independent → immune. Stages pin image.tag = commitFrom(...).ID[0:7] (== the CI 7-char short-SHA
+  # tag). Public repo → no git credential for the subscription. See gitops.md (Warehouse selection) +
+  # [[reference_kargo_promotion]].
   interval: 5m
   freightCreationPolicy: Automatic
   subscriptions:
-    - image:
-        repoURL: ghcr.io/andrelair-platform/ktayl-policy-service
-        imageSelectionStrategy: NewestBuild
-        allowTagsRegexes:
-          - ^[0-9a-f]{7,40}$
-        discoveryLimit: 5
+    - git:
+        repoURL: https://github.com/andrelair-platform/ktayl-policy-service.git
+        branch: main
+        # Phantom-commit guard: only Freight for commits whose image CI builds. Policy CI has no
+        # paths-ignore (every main commit builds), so this just skips pure docs/md commits. Keep
+        # excludePaths a SUPERSET of any future CI paths-ignore.
+        excludePaths:
+          - docs
+          - "regex:.*\\.md$"
