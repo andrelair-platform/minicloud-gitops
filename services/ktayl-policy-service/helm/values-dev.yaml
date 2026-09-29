@@ -4,7 +4,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-policy-service
-    tag: e8d7092        # Kargo bumps
+    tag: e8d7092
   podLabels:
     app: ktayl-policy-service
   workload:
