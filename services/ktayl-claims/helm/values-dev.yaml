@@ -1,11 +1,20 @@
-# dev — Harbor image, ns claims. Single replica; stateless (stub GlobalCore, in-memory idempotency).
-# Tag QUOTED (a 7-hex all-decimal SHA parses as a YAML number → InvalidImageName). Kargo owns bumps.
+# dev — Harbor image, ns claims. Single replica. Slice B: the ACL now talks to the LIVE GlobalCore
+# legacy (SOAP) instead of the in-memory stub.
+#
+# ATOMIC image+config: the `soap` profile activates SoapGlobalCoreAdapter, which only exists in the
+# a578654+ image — so the tag and the SPRING_PROFILES_ACTIVE=soap env MUST change together (an older
+# image under the soap profile would have no GlobalCorePort bean → fail to start). This is the one
+# deliberate hand-set tag (coupled to a required env); Kargo converges on the same newest SHA.
+# Tag QUOTED (a 7-hex all-decimal SHA parses as a YAML number → InvalidImageName).
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-claims
-    tag: f30f58d
+    tag: "a578654"
   workload:
     replicas: 1
+  env:
+    - { name: SPRING_PROFILES_ACTIVE, value: "soap" }          # use SoapGlobalCoreAdapter, not the stub
+    - { name: GLOBALCORE_SOAP_URL, value: "http://10.0.0.1:8080/ws" }  # the off-cluster legacy (ADR-002)
   ingress:
     host: claims.10.0.0.200.nip.io
 tlsCert:
