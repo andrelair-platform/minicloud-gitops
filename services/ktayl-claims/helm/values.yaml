@@ -63,3 +63,8 @@ minicloud-app-deployment:
 # ---- wrapper-local (drives templates/) ----
 tlsCert:
   dnsName: ""        # per env
+# Slice C — Debezium Server (MySQL binlog → NATS JetStream). Off by default; dev enables it.
+debezium:
+  enabled: false
+  image: quay.io/debezium/server:3.0.0.Final
+  mysqlHost: "10.0.0.1"   # the off-cluster legacy MySQL (controller, LAN)

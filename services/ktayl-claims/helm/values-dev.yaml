@@ -19,3 +19,6 @@ minicloud-app-deployment:
     host: claims.10.0.0.200.nip.io
 tlsCert:
   dnsName: claims.10.0.0.200.nip.io
+# Slice C — CDC on: Debezium tails the legacy MySQL binlog → NATS JetStream (subject claims-cdc.*).
+debezium:
+  enabled: true
