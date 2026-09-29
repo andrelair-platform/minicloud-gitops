@@ -1,0 +1,59 @@
+# Data Platform (#5) capacity flag — the MEASURABLE trigger for the ADR-006 evolution ladder.
+# Instead of "evolve when Postgres feels big", the platform announces it: this watches the analytics
+# CNPG PVC fill and fires so a human decides the next step. The runbook is a LADDER, not a jump:
+#   (1) quick win — online-resize the Longhorn PVC (CNPG cluster .spec.storage.size, e.g. 3Gi→5Gi;
+#       longhorn allowVolumeExpansion=true) — buys headroom in minutes, no re-architecture.
+#   (2) only when query concurrency / data variety / unstructured volume outgrow Postgres itself,
+#       promote bronze/silver to Iceberg-on-MinIO + DuckDB per ADR-006 P6.
+# PrometheusRule lives in ns=monitoring with release=kps so kube-prometheus-stack discovers it
+# (matches the other alert rules here); the metrics are data-platform's PVC via kubelet volume stats.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: data-platform-capacity-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: data-platform.capacity
+      rules:
+        - alert: DataPlatformStorageWarning
+          expr: |
+            max(
+              kubelet_volume_stats_used_bytes{namespace="data-platform", persistentvolumeclaim=~"dp-postgres.*"}
+              /
+              kubelet_volume_stats_capacity_bytes{namespace="data-platform", persistentvolumeclaim=~"dp-postgres.*"}
+            ) > 0.70
+          for: 6h
+          labels:
+            severity: warning
+            team: data-platform
+          annotations:
+            summary: "Data Platform analytics PVC at {{ $value | humanizePercentage }} of capacity — plan the evolution."
+            description: >
+              The CNPG analytics PVC (currently 3Gi) is over 70% full for 6h. This is the ADR-006 trigger
+              to DECIDE the next step (not to panic): step 1 = online-resize the Longhorn PVC
+              (edit the CNPG cluster .spec.storage.size, e.g. 3Gi→5Gi — expansion is supported); revisit
+              step 2 (Iceberg-on-MinIO + DuckDB lakehouse) only if variety/concurrency — not just disk —
+              is the real constraint.
+            runbook_url: "https://github.com/andrelair-platform/ktayl-data-platform/blob/main/docs/architecture/adr/ADR-006-ai-ready-governed-lakehouse.md"
+        - alert: DataPlatformStorageCritical
+          expr: |
+            max(
+              kubelet_volume_stats_used_bytes{namespace="data-platform", persistentvolumeclaim=~"dp-postgres.*"}
+              /
+              kubelet_volume_stats_capacity_bytes{namespace="data-platform", persistentvolumeclaim=~"dp-postgres.*"}
+            ) > 0.85
+          for: 1h
+          labels:
+            severity: critical
+            team: data-platform
+          annotations:
+            summary: "Data Platform analytics PVC at {{ $value | humanizePercentage }} — resize NOW."
+            description: >
+              The CNPG analytics PVC is over 85% full. Postgres can degrade / stop accepting writes when a
+              volume fills. Immediate action: online-resize the Longhorn PVC (bump the CNPG cluster
+              .spec.storage.size). Then decide on the ADR-006 P6 lakehouse move if this recurs.
+            runbook_url: "https://github.com/andrelair-platform/ktayl-data-platform/blob/main/docs/architecture/adr/ADR-006-ai-ready-governed-lakehouse.md"
