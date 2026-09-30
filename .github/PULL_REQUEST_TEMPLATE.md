@@ -37,8 +37,8 @@
 ## Test Plan
 
 <!-- What did you verify before opening this PR? -->
-- [ ] `kustomize build` / Helm template renders without error
-- [ ] Tested in dev overlay before promoting to staging/prod
+- [ ] Helm chart renders without error (`helm template` / `helm dependency build`)
+- [ ] Tested in dev before promoting to prod (Kargo dev→prod, CODEOWNERS-gated)
 - [ ] Regression check passes (or scoped check for affected components)
 
 ---
