@@ -46,3 +46,4 @@ manifests/rbac/               @AndreLair
 .claude/settings.json         @AndreLair
 .claude/hooks/                @AndreLair
 .claude/rules/                @AndreLair
+.claude/skills/               @AndreLair
