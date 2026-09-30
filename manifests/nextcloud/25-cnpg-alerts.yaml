@@ -1,0 +1,44 @@
+# Alert on stale CNPG backups / unhealthy cluster for nextcloud-postgres. CNPG exports
+# cnpg_collector_last_available_backup_timestamp + cnpg_collector_up per cluster via the
+# PodMonitor enabled on the Cluster. Placed in the monitoring namespace (kps rule selector);
+# applied there by the nextcloud app (monitoring is an allowed AppProject destination, same as
+# the cnpg-authentik app which applies its rule here).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cnpg-nextcloud
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: cnpg-nextcloud
+      rules:
+        - alert: CNPGNextcloudBackupStale
+          expr: |
+            (time() - max(cnpg_collector_last_available_backup_timestamp{namespace="nextcloud"})) / 3600 > 26
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Nextcloud CNPG has no fresh R2 backup in 26+ hours"
+            description: |
+              The nextcloud-postgres cluster's last available Barman/R2 backup is
+              {{ $value | printf "%.1f" }} hours old (or the metric is absent → no backup yet).
+              Check: kubectl -n nextcloud get cluster nextcloud-postgres
+                     kubectl -n nextcloud get backup,scheduledbackup
+              Logs:  kubectl -n nextcloud logs -l cnpg.io/cluster=nextcloud-postgres -c postgres --tail=100
+
+        - alert: CNPGNextcloudNotHealthy
+          expr: |
+            max(cnpg_collector_up{namespace="nextcloud"}) < 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Nextcloud CNPG cluster reporting unhealthy"
+            description: |
+              The nextcloud-postgres CloudNativePG cluster is not reporting healthy instances.
+              Nextcloud's DB is backed by this cluster → the workplace file/metadata store is at risk.
+              Check: kubectl -n nextcloud get cluster nextcloud-postgres -o wide
