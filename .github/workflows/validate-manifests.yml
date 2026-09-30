@@ -61,7 +61,7 @@ jobs:
           sudo mv kubeconform /usr/local/bin/
 
       - name: Install helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
         with:
           version: v3.19.0
 
