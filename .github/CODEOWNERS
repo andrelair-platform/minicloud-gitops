@@ -47,3 +47,5 @@ manifests/rbac/               @AndreLair
 .claude/hooks/                @AndreLair
 .claude/rules/                @AndreLair
 .claude/skills/               @AndreLair
+.claude/commands/             @AndreLair
+REVIEW.md                     @AndreLair
