@@ -10,7 +10,16 @@ platform infra, not the AI/data products, which are governed separately.)
 - A **new insurance business domain** (distribution, finance, compliance, dms, itsm, reinsurance,
   risk-engineering, international-programs, mdm, billing, …) is built as a **module inside
   `ktayl-core`** — `src/<domain>/` with its own API/interface + its own logical data boundary
-  (schema-per-domain in one Postgres) — **NOT** a new repo / service / board / Kargo pipeline.
+  (schema-per-module in one Postgres) — **NOT** a new repo / service / board / Kargo pipeline.
+- **`ktayl-core` is NEED-FIRST — do NOT scaffold it empty.** It does not exist yet (verified
+  2026-09-30). Create it the day the **first genuinely-custom greenfield domain** is actively built
+  (likely **Distribution/CRM**), **born WITH that module** — never ahead of a domain (that is the
+  structure-ahead-of-need anti-pattern). Stack = **Java/Spring Boot + Spring Modulith + Postgres**
+  (Modulith `verify()` enforces the module discipline below at build time).
+- **Adopt-vs-build first.** Much of a "domain" is already an **adopted tool** — ERPNext (GL/finance
+  close/HR), GLPI (ITSM), data-platform/Metabase (reporting), Paperless/DMS (documents), `ktayl-iam`
+  (identity). `ktayl-core` **integrates** with these; it hosts only the **custom insurance LOB no
+  tool does** (Distribution/CRM, the finance-LOB layer, compliance-workflow, MDM). Don't rebuild ERPNext.
 - **Do NOT create a new service, repo, or board for a business domain** without running the
   **extraction decision test** (ADR) and getting **several "yes"**: independent deployment · other
   team owns it · very different scaling · **different tech stack (e.g. Python/ML)** · strong data
