@@ -31,8 +31,10 @@ spec:
             # values-prod.yaml already pins image.repository=ghcr; only bump the tag.
             path: ./repo/services/ktayl-claims/helm/values-prod.yaml
             updates:
-              # git-Warehouse: pin the tag to the Freight's commit short-SHA (== the CI image tag).
+              # git-Warehouse: pin BOTH images (backend + Angular workbench) to the Freight's commit short-SHA.
               - key: minicloud-app-deployment.image.tag
+                value: '${{ quote(commitFrom("https://github.com/andrelair-platform/ktayl-claims.git").ID[0:7]) }}'
+              - key: frontend.image.tag
                 value: '${{ quote(commitFrom("https://github.com/andrelair-platform/ktayl-claims.git").ID[0:7]) }}'
         - uses: git-commit
           as: commit

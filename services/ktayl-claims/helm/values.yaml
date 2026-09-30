@@ -60,9 +60,73 @@ minicloud-app-deployment:
   certificate:
     enabled: false   # cert is a wrapper template (ktayl-claims-tls, ECDSA)
 
+# Frontend (Angular adjuster workbench, ADR-009) — the aliased 2nd library workload. nginx serves the
+# SPA + reverse-proxies /api → the backend ACL Service in THIS namespace (BFF shim; API_URL is the
+# in-cluster svc, never the browser). Its own ingress/host/cert; uses the library certificate directly.
+frontend:
+  serviceAccount:
+    create: true
+    name: ktayl-claims-frontend
+    automountServiceAccountToken: false
+  nameOverride: frontend
+  fullnameOverride: ktayl-claims-frontend
+  selectorLabels: { app: ktayl-claims-frontend }
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 101           # nginx-unprivileged uid
+    seccompProfile: { type: RuntimeDefault }
+  securityContext:
+    readOnlyRootFilesystem: false   # nginx writes its temp/pid dirs
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-claims-frontend
+    # tag set per env (values-{dev,prod}.yaml)
+  ports:
+    - { name: http, containerPort: 8080, protocol: TCP }
+  service:
+    ports:
+      - { name: http, port: 8080, targetPort: http }
+  env:
+    # BFF target: the backend ACL Service in this namespace (same name dev+prod → env-agnostic).
+    - { name: API_URL, value: "http://ktayl-claims" }
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits:   { cpu: 200m, memory: 128Mi }
+  startupProbe:
+    httpGet: { path: /healthz, port: http }
+    periodSeconds: 5
+    failureThreshold: 30
+  readinessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 3
+    periodSeconds: 10
+  livenessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 5
+    periodSeconds: 15
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels: { app: ktayl-claims-frontend }
+            topologyKey: kubernetes.io/hostname
+  ingress:
+    enabled: true
+    className: nginx
+    servicePort: 8080
+    tls:
+      enabled: true
+      secretName: ktayl-claims-frontend-tls
+    # host set per env
+  certificate:
+    enabled: false   # cert is a wrapper template (ktayl-claims-frontend-tls, ECDSA)
+
 # ---- wrapper-local (drives templates/) ----
 tlsCert:
-  dnsName: ""        # per env
+  dnsName: ""        # per env (backend host)
+frontendTlsCert:
+  dnsName: ""        # per env (frontend/workbench host)
 # Slice C — Debezium Server (MySQL binlog → NATS JetStream). Off by default; dev enables it.
 # The CDC lane is PER-ENV (serverId/topicPrefix/streamName/streamSubjects) so dev and prod each tail the
 # shared legacy binlog as a distinct replica and publish to distinct subjects/streams — no cross-env bleed
