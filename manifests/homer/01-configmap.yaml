@@ -125,9 +125,9 @@ data:
       - name: Claims Workbench
         icon: fas fa-clipboard-check
         subtitle: "Adjuster workbench — FNOL, reserve & settle over the GlobalCore legacy (ACL)"
-        tag: Tailscale
-        tagstyle: is-warning
-        url: https://claims-app-prod.10.0.0.200.nip.io
+        tag: Public
+        tagstyle: is-success
+        url: https://claims.devandre.sbs
         target: _blank
   # Force the access-tier tag badge ALWAYS visible. Homer's theme collapses the
   # tag to a sliver and hides its text until card hover; override to the hovered
