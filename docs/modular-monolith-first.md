@@ -86,10 +86,18 @@ separate services from the beginning.* Concretely:
    "yes".** Extraction is a later, justified step (the thesis's Phase 3), recorded in an ADR.
 3. **The 4 existing services stay** — they are treated as *deliberate, justified extractions*, not
    the default (see the test applied below). Do not tear down working, live services to prove a point.
-4. **`ktayl-core` stack** (confirm at scaffold time, tech-stack-selection.md): a heavy
-   transactional/auditable domain → **Java/Spring Boot** (matches `ktayl-claims`) or **NestJS**
-   (matches `ktayl-iam`, one language front+back). Recommendation: NestJS + Postgres unless the
-   transactional weight argues for Spring.
+4. **`ktayl-core` stack (decided 2026-09-30): Java / Spring Boot + Spring Modulith + Postgres.**
+   Fit-for-purpose (`tech-stack-selection.md` mindset — right stack for the task, not breadth for
+   its own sake): it is the *heaviest transactional/auditable* domain on the platform → Spring's
+   home turf; **Spring Modulith machine-*verifies* the module boundaries + in-process events +
+   per-module test slices at build time** — it *enforces* the discipline above, not just documents
+   it; consistent with `ktayl-claims` (already Java); **zero new ecosystem** to maintain solo.
+   (.NET/ASP.NET Core was the close alternative — parked; it would add a whole toolchain for no
+   current need. NestJS/Go were rejected for this role — transactional weight + the modular-monolith
+   tooling favour Spring.)
+5. **`ktayl-core` is created NEED-FIRST — NOT scaffolded ahead of a domain (decided 2026-09-30).**
+   See *When `ktayl-core` is created* below. An empty modular monolith is not a reference; it is
+   structure-ahead-of-need — the same anti-pattern this ADR warns against.
 
 ### The extraction decision test (extract when several become true)
 
@@ -114,6 +122,41 @@ separate services from the beginning.* Concretely:
 - **`ktayl-policy-service`** — the *core transactional* domain, synchronously called 3× by
   underwriting. This is the one a modular-monolith purist folds in; kept (live, demonstrates
   Go/gRPC) but it is **the coupling seam to watch.** ⚠️
+
+## When `ktayl-core` is created — need-first (decided 2026-09-30)
+
+`ktayl-core` **does not exist and is not scaffolded empty.** Verified 2026-09-30: no `ktayl-core`
+among the 45 org repos; the candidate domains (`ktayl-finance`, `ktayl-distribution`,
+`ktayl-compliance`, …) are **designed but not built** — a README + a full BMAD backlog (boundaries +
+scope already worked out), **0 code**. So the boundaries the modular monolith needs are already
+designed; only the code is absent, and no active sprint is demanding it.
+
+**Decision: create `ktayl-core` the day the FIRST genuinely-custom, greenfield insurance domain is
+actively prioritized for build — born WITH that first module (Spring Modulith `verify()` enforcing
+boundaries from commit one) — never before.** Realistic first trigger: **Distribution / CRM** (broker
+portal, CRM, commissions, co-insurance) — genuinely custom insurance LOB with **no off-the-shelf
+substitute**. Rationale: an empty reference monolith rots and is a liability; a monolith is a
+reference only when it carries a real domain. Choosing *not* to build ahead of need is the senior
+call and costs nothing — the strategy + boundaries + stack are recorded here, so first-module
+bring-up is ~an afternoon.
+
+### Adopt-vs-build — `ktayl-core` hosts only the genuinely-custom LOB
+Not every "domain" is a module to build. Much is already covered by **adopted tools**; `ktayl-core`
+**integrates with** them rather than rebuilding them:
+
+| Capability | Already provided by | `ktayl-core`'s part |
+|---|---|---|
+| GL / financial close / HR | **ERPNext** (live) | the insurance-finance **LOB** only (premium billing, IFRS 17, reserving, bordereaux) → integrates to ERPNext GL |
+| ITSM / helpdesk / CMDB | **GLPI** (`ktayl-itsm`) | — (adopt) |
+| Reporting / BI | **data-platform / Metabase** (live) | — (adopt; emit data/events) |
+| Documents / GED / OCR | **Paperless / DMS** | — (adopt) |
+| Identity | **`ktayl-iam`** (service) | consume it |
+| Policy · Claims · Underwriting (core value chain) | **already live as 3 services** | integrate at the boundary (the UW→policy seam) |
+
+The genuinely-custom, `ktayl-core`-bound surface is the **insurance LOB logic no tool does**:
+Distribution/CRM, the finance-LOB layer, compliance-workflow, MDM. The platform is therefore a
+deliberate **hybrid** — adopted tools + a few justified services + one `ktayl-core` modular monolith
+for the custom LOB — not "everything in one monolith," not "everything a microservice."
 
 ## Consequences
 
