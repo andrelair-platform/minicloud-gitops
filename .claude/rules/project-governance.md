@@ -94,6 +94,10 @@ These are **explicit, justified scope decisions** for the ktayl-solution IS — 
 auditor/interviewer sees intent, not incompleteness.
 
 ### BYOD — no managed physical endpoints (since 2026-09-15)
+> This is the **scope decision** (what's out of scope). The **positive build principle** it forces —
+> how every app must therefore be built (browser-first, data-server-side, identity-enforced) — is
+> `workplace-architecture.md`. Read them together.
+
 **Decision:** ktayl manages **no company computers, phones, or desk telephony**. Employees use their own
 laptop/phone; access is **browser-first**. Device fleet / MDM-UEM (Intune-equivalent), endpoint
 hardening, and hardware asset lifecycle are **OUT of scope for now**.
