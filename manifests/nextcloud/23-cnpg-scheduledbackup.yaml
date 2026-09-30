@@ -1,0 +1,14 @@
+---
+# Daily base backup of the Nextcloud CNPG cluster to R2 (WAL is archived continuously by the
+# Cluster's barmanObjectStore). CNPG cron is 6-field (seconds first): 04:15:00 UTC (staggered
+# 15 min after authentik-cnpg-daily at 04:00 to avoid a simultaneous R2 burst).
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: nextcloud-cnpg-daily
+  namespace: nextcloud
+spec:
+  schedule: "0 15 4 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: nextcloud-postgres

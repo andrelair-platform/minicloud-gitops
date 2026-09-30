@@ -1,0 +1,78 @@
+---
+# Nextcloud CloudNativePG cluster — REPLACES the bitnami `nextcloud-postgresql` subchart and
+# migrates Nextcloud off SQLite (which was the live backend: OIDC-login concurrency hit
+# "SQLSTATE[HY000] general error 5 database is locked" → HTTP 500, gitops#nextcloud-cnpg).
+#
+# Standardises Nextcloud onto CNPG like every other stateful app (authentik/claims/underwriting/
+# data-platform) and off the bitnami-image liability. Bootstrap = an EMPTY db `nextcloud` owned
+# by role `nextcloud`; the data move is done by `occ db:convert-type` (SQLite → this cluster),
+# NOT a Postgres import (there is no source Postgres — SQLite can't be a CNPG externalCluster).
+#
+# CUTOVER (supervised): 1) this cluster goes Healthy (still on SQLite, zero impact); 2) NC
+# maintenance:mode on → occ db:convert-type pgsql nextcloud nextcloud-postgres-rw nextcloud →
+# verify → maintenance:mode off (writes config.php on the data PVC → authoritative); 3) a
+# follow-up helm-values PR sets postgresql.enabled=false + externalDatabase→CNPG and retires
+# the bitnami STS.
+#
+# No pgvector → no AVX512 SIGILL risk (the reason the DB image was rebuilt noavx512 elsewhere);
+# the operator-default ghcr.io/cloudnative-pg/postgresql image is fine.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: nextcloud-postgres
+  namespace: nextcloud
+spec:
+  instances: 1
+  primaryUpdateStrategy: unsupervised
+
+  storage:
+    size: 2Gi
+    storageClass: longhorn
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  monitoring:
+    enablePodMonitor: true
+
+  # Manage the `nextcloud` role's password so it equals the value Nextcloud already uses
+  # (Vault platform/nextcloud-secrets → nextcloud-db-password, via the 20- ESO). Drop-in:
+  # at cutover only the DB host changes; Nextcloud's credentials stay valid.
+  managed:
+    roles:
+      - name: nextcloud
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: nextcloud-cnpg-role
+
+  # Empty database `nextcloud` owned by role `nextcloud` (NOT the CNPG default app/app) — so
+  # occ db:convert-type writes the migrated schema+rows into a DB the nextcloud role owns.
+  bootstrap:
+    initdb:
+      database: nextcloud
+      owner: nextcloud
+
+  # Off-site PITR to R2 — same dedicated bucket as authentik's CNPG (minicloud-cnpg-offsite).
+  backup:
+    retentionPolicy: "14d"
+    barmanObjectStore:
+      destinationPath: s3://minicloud-cnpg-offsite/nextcloud
+      endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
+      s3Credentials:
+        accessKeyId:
+          name: nextcloud-cnpg-r2
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: nextcloud-cnpg-r2
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
