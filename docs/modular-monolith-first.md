@@ -86,15 +86,18 @@ separate services from the beginning.* Concretely:
    "yes".** Extraction is a later, justified step (the thesis's Phase 3), recorded in an ADR.
 3. **The 4 existing services stay** — they are treated as *deliberate, justified extractions*, not
    the default (see the test applied below). Do not tear down working, live services to prove a point.
-4. **`ktayl-core` stack (decided 2026-09-30): Java / Spring Boot + Spring Modulith + Postgres.**
-   Fit-for-purpose (`tech-stack-selection.md` mindset — right stack for the task, not breadth for
-   its own sake): it is the *heaviest transactional/auditable* domain on the platform → Spring's
-   home turf; **Spring Modulith machine-*verifies* the module boundaries + in-process events +
-   per-module test slices at build time** — it *enforces* the discipline above, not just documents
-   it; consistent with `ktayl-claims` (already Java); **zero new ecosystem** to maintain solo.
-   (.NET/ASP.NET Core was the close alternative — parked; it would add a whole toolchain for no
-   current need. NestJS/Go were rejected for this role — transactional weight + the modular-monolith
-   tooling favour Spring.)
+4. **`ktayl-core`'s stack is NOT pre-locked here — it is chosen fit-for-purpose WHEN the first
+   domain is built.** The modular-monolith *pattern* + the module discipline above are
+   **framework-agnostic**; the only hard requirement is a framework that supports **clean module
+   boundaries + DI + in-process domain events** (ideally one that *verifies* boundaries). Decide
+   against the **actual solution's** needs at build time (transactional weight · team/skills ·
+   performance/footprint · existing integrations) — the `tech-stack-selection.md` mindset, not a
+   default. Strong candidates, by fit — **not a ranking, a shortlist to evaluate then**:
+   - **NestJS** — the `@Module` system is modular-monolith-native; matches `ktayl-iam`; fast solo velocity.
+   - **Java / Spring Boot + Spring Modulith** — heaviest-transactional home turf; Modulith
+     *machine-verifies* boundaries + gives per-module test slices; matches `ktayl-claims`.
+   - **.NET / ASP.NET Core** — strong modular DI (adds a new ecosystem to run solo, though).
+   - Express / others — possible, but need discipline (no built-in boundary enforcement).
 5. **`ktayl-core` is created NEED-FIRST — NOT scaffolded ahead of a domain (decided 2026-09-30).**
    See *When `ktayl-core` is created* below. An empty modular monolith is not a reference; it is
    structure-ahead-of-need — the same anti-pattern this ADR warns against.
@@ -132,8 +135,8 @@ scope already worked out), **0 code**. So the boundaries the modular monolith ne
 designed; only the code is absent, and no active sprint is demanding it.
 
 **Decision: create `ktayl-core` the day the FIRST genuinely-custom, greenfield insurance domain is
-actively prioritized for build — born WITH that first module (Spring Modulith `verify()` enforcing
-boundaries from commit one) — never before.** Realistic first trigger: **Distribution / CRM** (broker
+actively prioritized for build — born WITH that first module (boundaries enforced from commit one by
+the fit-for-purpose framework chosen then) — never before.** Realistic first trigger: **Distribution / CRM** (broker
 portal, CRM, commissions, co-insurance) — genuinely custom insurance LOB with **no off-the-shelf
 substitute**. Rationale: an empty reference monolith rots and is a liability; a monolith is a
 reference only when it carries a real domain. Choosing *not* to build ahead of need is the senior

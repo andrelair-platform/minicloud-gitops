@@ -14,8 +14,10 @@ platform infra, not the AI/data products, which are governed separately.)
 - **`ktayl-core` is NEED-FIRST — do NOT scaffold it empty.** It does not exist yet (verified
   2026-09-30). Create it the day the **first genuinely-custom greenfield domain** is actively built
   (likely **Distribution/CRM**), **born WITH that module** — never ahead of a domain (that is the
-  structure-ahead-of-need anti-pattern). Stack = **Java/Spring Boot + Spring Modulith + Postgres**
-  (Modulith `verify()` enforces the module discipline below at build time).
+  structure-ahead-of-need anti-pattern). Its **stack is chosen fit-for-purpose THEN, NOT pre-locked**
+  — the modular-monolith pattern is framework-agnostic; pick one that supports module boundaries +
+  DI + in-process events, against the actual solution (candidates to evaluate: **NestJS** ·
+  **Spring Boot + Spring Modulith** · **.NET** · …). The `tech-stack-selection.md` mindset applies.
 - **Adopt-vs-build first.** Much of a "domain" is already an **adopted tool** — ERPNext (GL/finance
   close/HR), GLPI (ITSM), data-platform/Metabase (reporting), Paperless/DMS (documents), `ktayl-iam`
   (identity). `ktayl-core` **integrates** with these; it hosts only the **custom insurance LOB no
