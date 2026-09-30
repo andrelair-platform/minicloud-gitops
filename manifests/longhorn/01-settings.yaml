@@ -49,3 +49,17 @@ metadata:
   name: node-down-pod-deletion-policy
   namespace: longhorn-system
 value: "delete-both-statefulset-and-deployment-pod"
+---
+# Cap concurrent replica rebuilds per node at 1 (default 5). On this resource-constrained,
+# aging-hardware cluster (ThinkPads + a 2012 MacBook), 5 parallel rebuilds SATURATE node
+# CPU/I-O — kubelet/instance-manager miss heartbeats, replicas flap to `stopped`, and the
+# cluster thrashes (repeated degraded spikes) instead of converging. Observed live
+# 2026-09-30: every clean heal happened at 1, every thrash at 5 (fast-skunk CPU hit 98% at
+# 5, dropped to ~31% at 1). Slower rebuilds, but stable — the right trade for this hardware.
+# See memory [[feedback_longhorn_stale_rofs_after_churn]].
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: concurrent-replica-rebuild-per-node-limit
+  namespace: longhorn-system
+value: "1"
