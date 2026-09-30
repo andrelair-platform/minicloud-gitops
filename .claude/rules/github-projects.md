@@ -72,6 +72,7 @@ down a level. The structure is a **portfolio of products**:
 | Insurance LOB | **ktayl Public Web** (#7) | `ktayl-solution-web` | `ktayl-solution-web` |
 | Insurance LOB | **ERPNext (HR/Finance)** (#8) | `minicloud-erpnext` | `minicloud-erpnext` |
 | Insurance LOB | **ktayl Claims** (#11) | `ktayl-claims` | `ktayl-claims` (FNOL/lifecycle, adjusters, subrogation, fraud/SIU, litigation) |
+| Insurance LOB | **ktayl Submission Hub** (#27) | `ktayl-submission` *(repo to create)* | broker submission intake, exposure dossier (sites/values/loss-history/geo-CAT/RE-reports), triage → feeds Underwriting #12 (domain 02, the corporate front door) |
 | Insurance LOB | **ktayl Underwriting & Pricing** (#12) | `ktayl-underwriting` | `ktayl-underwriting` (workbench, guidelines, committee, rating, cat) |
 | Insurance LOB | **ktayl Distribution & CRM** (#13) | `ktayl-distribution` | `ktayl-distribution` (broker portal, CRM, DUA/binders, co-insurance, commissions) |
 | Insurance LOB | **ktayl Insurance Finance & Billing** (#14) | `ktayl-finance` | `ktayl-finance` (billing, IFRS 17, reserving, reinsurance) |
