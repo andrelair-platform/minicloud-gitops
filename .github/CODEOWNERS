@@ -39,3 +39,10 @@ bootstrap/                    @AndreLair
 
 # RBAC — security-sensitive
 manifests/rbac/               @AndreLair
+
+# Agent operating config — the Claude Code hooks (deterministic guardrails / approval
+# gates) and the auto-loaded rules constitution. A change here alters what the agent is
+# allowed to do, so it is security-relevant and requires review (agentic-guardrails.md).
+.claude/settings.json         @AndreLair
+.claude/hooks/                @AndreLair
+.claude/rules/                @AndreLair
