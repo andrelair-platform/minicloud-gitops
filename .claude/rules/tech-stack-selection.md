@@ -55,7 +55,7 @@ the *hard part* of the domain lives (put the service in that ecosystem's home la
 | ktayl Underwriting & Pricing (#12) | **Python 3.12 + FastAPI + Pydantic** (SQLAlchemy/Alembic; numpy/pandas rating; Python extraction worker) | Next.js + React | `ktayl-underwriting/docs/architecture/adr` ADR-007 |
 | Retrieva | Express 5 / Node 20 (TypeScript) | Next.js 16 / React 19 | (retrieva docs) |
 | platform-demo · minicloud-plane · minicloud-agent/crew | Go / Python | — | — |
-| **ktayl-core** (insurance-LOB modular monolith — **not yet created; need-first**) | **Java / Spring Boot + Spring Modulith + Postgres** (heaviest transactional/auditable domain; Modulith verifies module boundaries) | Next.js (later) | `docs/modular-monolith-first.md` |
+| **ktayl-core** (insurance-LOB modular monolith — **not yet created; need-first**) | **fit-for-purpose at build time — NOT pre-locked** (candidates: NestJS · Spring Boot + Spring Modulith · .NET — decide against the actual first domain) | Next.js (likely) | `docs/modular-monolith-first.md` |
 
 > Keep this table current when a new product picks its stack, so the palette stays a live portfolio view
 > rather than a static list.
