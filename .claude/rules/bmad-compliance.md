@@ -48,10 +48,13 @@ Each artefact removes a **different kind of ambiguity**, in order: Brief = *busi
 | 7 | **Readiness gate** verdict (PASS/CONCERNS/FAIL) | 🔴 mandatory | 🔴 mandatory | TL | `/bmad-sprint-planning` |
 | 8 | **`sprint-status.yaml`** (engineering status) | 🔴 mandatory | 🔴 mandatory | Eng | `/bmad-sprint-planning` |
 
-Planning artefacts live in `_bmad-output/planning-artifacts/` (specs under `specs/`); stories land in
-the product **home repo** `bmad/stories/` and sync to issues (see `bmad.md`). Owners map to the 15
-roles in `project-governance.md`; the RACI records who approved each. **BMAD drafts, the owner
-approves** — an artefact isn't "done" until its human owner signs off (the governance + readiness gates).
+Planning artefacts are **drafted** in `_bmad-output/planning-artifacts/` (git-ignored working
+area; specs under `specs/`); stories land in the product **home repo** `bmad/stories/` and sync to
+issues (see `bmad.md`). **On sign-off the validated SPEC + `sprint-status.yaml` (+ PRD/architecture/
+gate verdicts) are promoted into the tracked `<repo>/docs/`** as the committed audit trail — see
+*Where the audit trail lives* below. Owners map to the 15 roles in `project-governance.md`; the RACI
+records who approved each. **BMAD drafts, the owner approves** — an artefact isn't "done" until its
+human owner signs off (the governance + readiness gates).
 
 **The SPEC layer (the key scalability move).** The **PRD is product-level** ("what we're building and
 why", owned by Product); a **SPEC is a compact per-epic implementation contract** derived from the PRD
@@ -105,6 +108,25 @@ already exist (retrieva, ktayl-*, the agents). Don't replace the planning you ru
 | **Retrospective verdict** (`/bmad-review`) | did the epic meet its own acceptance criteria? | starting the next epic |
 
 In regulated/cert settings these written results **are the audit trail** (map to the RNCP blocs / DORA).
+
+**Where the audit trail lives — committed vs archived (resolved 2026-09-30, minicloud-gitops#1497).**
+The audit trail must be *committed evidence*, not a git-ignored working file. So on **sign-off**,
+the **validated** artefact is promoted from the ephemeral `_bmad-output/` into the product's
+**tracked `docs/`** (versioned, CODEOWNERS-adjacent, discoverable). The split:
+
+| Artefact | On approval → | Why |
+|---|---|---|
+| **PRD** (`prd.md`) + **Architecture spine** (`architecture.md`) | **committed** `<repo>/docs/` (already the convention) | product contract + technical spine = BC02/BC03 evidence |
+| **SPEC per epic** (`SPEC.md`) | **committed** `<repo>/docs/specs/spec-<x>/SPEC.md` | the implementation contract that was built against |
+| **Readiness-gate verdict + `sprint-status.yaml`** | **committed** `<repo>/docs/` (e.g. `docs/sprint-status.yaml`) | the PASS decision that authorised the sprint |
+| **Governance/security-gate + retro verdicts** | **committed** (ADR / the epic issue + RACI) | who approved the boundary / did it meet its ACs |
+| **Bulky greenfield planning context** (brief drafts, PRD rationale, rejected approaches, working notes) | **archived / stays git-ignored** in `_bmad-output/` | the Build-cost + staleness concern below (§ *Existing-codebase context*) — a small Build must not stumble on it |
+
+So `_bmad-output/` remains the **working/draft** area (git-ignored per the New-Repo checklist);
+the **validated copy** of the SPEC + sprint-status (+ the gate verdicts) is **committed** to
+`docs/` as the immutable, reviewable audit trail. This resolves the apparent tension with
+*"planning context kept out of reach"* below: only the **bulky ephemeral drafts** are archived —
+the **validated implementation contract + gate decisions are committed evidence**.
 
 **5. Mid-flight requirement change — same path as the original, from the source out.**
 `/bmad-prd` **Update** (surfaces conflicts with earlier decisions before applying) → if it touches a
