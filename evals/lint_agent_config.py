@@ -56,6 +56,18 @@ def main() -> int:
             problems.append(f"{rel}: frontmatter parse error: {exc}")
     print(f"commands: {len(cmds)} found")
 
+    # subagents
+    agents = glob.glob(os.path.join(CLAUDE, "agents", "*.md"))
+    for a in agents:
+        fm = frontmatter(a)
+        rel = os.path.relpath(a, ROOT)
+        if fm is None:
+            problems.append(f"{rel}: no frontmatter")
+        elif not (isinstance(fm, dict) and fm.get("name") and fm.get("description")
+                  and fm.get("tools")):
+            problems.append(f"{rel}: frontmatter missing name/description/tools")
+    print(f"agents: {len(agents)} found")
+
     # settings.json + hook references
     settings_path = os.path.join(CLAUDE, "settings.json")
     if os.path.exists(settings_path):
