@@ -49,3 +49,5 @@ manifests/rbac/               @AndreLair
 .claude/skills/               @AndreLair
 .claude/commands/             @AndreLair
 REVIEW.md                     @AndreLair
+evals/                        @AndreLair
+.github/workflows/agent-config-evals.yml @AndreLair

@@ -1,0 +1,34 @@
+name: Agent config evals
+# Play 9 (AI-native SDLC) — DETERMINISTIC regression gate for the agent operating config.
+# Runs on every change to the hooks / rules / skills / commands / settings, or the evals
+# themselves. NO model calls → zero cost, safe in CI. The model-based evals are run locally
+# on-plan (see evals/README.md), never here.
+on:
+  pull_request:
+    paths:
+      - '.claude/**'
+      - 'evals/**'
+  push:
+    branches: [main]
+    paths:
+      - '.claude/**'
+      - 'evals/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps (PyYAML for frontmatter)
+        run: pip install --quiet pyyaml
+      - name: Hook regression matrix
+        run: python3 evals/test_hooks.py
+      - name: Agent config lint
+        run: python3 evals/lint_agent_config.py
