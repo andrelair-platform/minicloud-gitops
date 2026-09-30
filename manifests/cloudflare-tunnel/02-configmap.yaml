@@ -87,6 +87,15 @@ data:
           noTLSVerify: true
           originServerName: n8n.10.0.0.200.nip.io
 
+      # Claims adjuster workbench — SSO-gated at the Ingress by the embedded outpost
+      # (proxy provider claims-workbench, forward_single). The SPA + its /api BFF path
+      # both sit behind forward-auth, so the ACL API is never public un-authenticated.
+      - hostname: claims.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: claims-app-prod.10.0.0.200.nip.io
+
       - hostname: onlyoffice.devandre.sbs
         service: https://10.0.0.200
         originRequest:
