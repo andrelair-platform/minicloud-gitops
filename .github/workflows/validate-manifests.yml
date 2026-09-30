@@ -54,11 +54,6 @@ jobs:
           print("All YAML files parse cleanly.")
           PY
 
-      - name: Install kustomize
-        uses: imranismail/setup-kustomize@v3
-        with:
-          kustomize-version: "5.6.0"
-
       - name: Install kubeconform
         run: |
           curl -sL "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
@@ -70,48 +65,16 @@ jobs:
         with:
           version: v3.19.0
 
-      # Validate any Kustomize overlay. Custom resources (Rollout, ScaledObject,
-      # ExternalSecret, Certificate, ServiceMonitor, etc.) are skipped with
-      # -ignore-missing-schemas — only core k8s objects are validated strictly.
-      # All custom services are now wrapper Helm charts (services/<svc>/helm/,
-      # validated by `helm template`), so there may be NO kustomize overlays left —
-      # nullglob makes this a clean no-op in that case instead of failing on the
-      # unexpanded glob, while still validating any overlay that reappears.
-      - name: Validate service overlays
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          overlays=(services/*/minicloud-1/*/)
-          if [ ${#overlays[@]} -eq 0 ]; then
-            echo "No kustomize overlays (all services on wrapper Helm charts) — skipping."
-            exit 0
-          fi
-          FAILED=0
-          for overlay in "${overlays[@]}"; do
-            echo "── $overlay"
-            if ! kustomize build "$overlay" \
-              | kubeconform \
-                  -strict \
-                  -kubernetes-version "$K8S_VERSION" \
-                  -ignore-missing-schemas \
-                  -summary \
-                  -; then
-              echo "FAIL: $overlay"
-              FAILED=1
-            fi
-          done
-          exit $FAILED
-
-      # Validate raw manifests/ YAML files. Excluded: kustomization.yaml (none left),
-      # gatekeeper-policies (schemas, not instances), and Helm chart internals
-      # (Chart.yaml + */templates/** — the latter are Go templates, validated by the
-      # "Validate Helm charts render" step; the chart's files/*.yaml raw CRs ARE validated here).
-      # xargs passes file paths as arguments (not stdin) so kubeconform reads file contents.
+      # Validate raw manifests/ YAML files. The repo is Helm-only (kustomize fully retired,
+      # zero kustomization.yaml since 2026-09-24). Excluded: gatekeeper-policies (schemas,
+      # not instances), and Helm chart internals (Chart.yaml + */templates/** — the latter
+      # are Go templates, validated by the "Validate Helm charts render" step; the chart's
+      # files/*.yaml raw CRs ARE validated here). xargs passes file paths as arguments (not
+      # stdin) so kubeconform reads file contents.
       - name: Validate manifests/
         run: |
           set -euo pipefail
           find manifests/ -name "*.yaml" \
-            ! -name "kustomization.yaml" \
             ! -name "Chart.yaml" \
             ! -path "*/templates/*" \
             ! -path "*/gatekeeper-policies/*" \
