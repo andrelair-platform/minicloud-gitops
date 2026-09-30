@@ -60,8 +60,12 @@ We hold four provider accounts. **One has no credit shield** — mixing them up 
 |---|---|---|---|---|
 | **Azure PAYG** (acct 1, sub `<payg>`) | **none — bills day 1** | **always-free services ONLY** | permanent Azure always-free (Functions/Cosmos/Static Web Apps/Container Apps/Arc) | €15 sub budget (`budgets.tf`); never a standing paid resource; **verify its 12-month-free window isn't already spent** (it runs Azure OpenAI since 2026-08, so likely gone → treat 12-month tiers on it as **paid**) |
 | **AWS** (acct 2) | credit → then always-free | permanent serverless anchor | Anchor 1 heartbeat (Lambda + DynamoDB + CloudFront) — all always-free | €15 budget (`budgets.tf`) |
-| **Azure Education** (acct 3, tenant `ynov.com` = `38e72bba…`, exp **2027-09-23**) | $100 (~$8/mo) | **burst fuel only** | ephemeral DR game-days, AI experiments (Document Intelligence / Vision) — `apply → evidence → destroy` | budget **live** as `minicloud-education-monthly` ($10/mo, 80%/100% alerts), created **manually via `az`** — the ynov student tenant **blocks service principals**, so `azure-education-budget.tf` is an **inert `tofu import` target**, not live IaC; pin any burst to `TF_VAR_azure_education_subscription_id` |
+| **Azure Education** (acct 3, `ynov.com` student tenant `<education-tenant>` — GUID in the private IaC repo, exp **2027-09-23**) | $100 (~$8/mo) | **burst fuel only** | ephemeral DR game-days, AI experiments (Document Intelligence / Vision) — `apply → evidence → destroy` | budget **live** as `minicloud-education-monthly` ($10/mo, 80%/100% alerts), created **manually via `az`** — the ynov student tenant **blocks service principals**, so `azure-education-budget.tf` is an **inert `tofu import` target**, not live IaC; pin any burst to `TF_VAR_azure_education_subscription_id` |
 | **OCI** (acct 4, ADR-0001) | always-free | always-on free compute | DR node / restore target | €1 tripwire (`oci-budget.tf`) |
+
+> Concrete account numbers, tenant/subscription GUIDs and the `TF_VAR_*` values live **only** in the
+> private IaC repo (`minicloud-cloud`, controller-only) + Vault — never in this public rules file. This
+> table stays account-identifier-free on purpose (`minicloud-gitops` is a public repo).
 
 **Two hard rules from this map:**
 1. **PAYG = always-free only.** The no-credit account is the one where a mistake costs euros immediately.
