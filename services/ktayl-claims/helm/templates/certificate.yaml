@@ -35,7 +35,10 @@ spec:
     kind: ClusterIssuer
     group: cert-manager.io
   dnsNames:
-    - {{ .Values.frontendTlsCert.dnsName | quote }}
+    {{- /* prefer the multi-host `dnsNames` list (Tailscale + public); fall back to single `dnsName` */}}
+    {{- range (.Values.frontendTlsCert.dnsNames | default (list .Values.frontendTlsCert.dnsName)) }}
+    - {{ . | quote }}
+    {{- end }}
   duration: 2160h
   renewBefore: 720h
   privateKey:
