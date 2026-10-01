@@ -52,15 +52,24 @@ replicas sit in **independent failure domains**, verified after the change:
 
 - **P0 — eliminate unnecessary replicated bytes.** Inventory every PVC → classify → set
   appropriate replication. Batches, one workload-family at a time, verify after each.
-- **P1 — observability.** disk latency/util/iowait, net retransmits, Longhorn replica state,
-  rebuild duration, volume robustness, node pressure, read-only-filesystem events. Node
-  **storage qualification** (SMART/NVMe, dmesg, iSCSI) for fast-skunk + swift-mac.
+- **P1 — observability + node qualification.** disk latency/util/iowait, net retransmits, Longhorn
+  replica state, rebuild duration, volume robustness, node pressure, read-only-filesystem events.
+  Node **storage qualification** (SMART/NVMe, dmesg, iSCSI) for fast-skunk + swift-mac — **done**
+  (both disks SMART-PASSED; instability was iSCSI/churn, not hardware). Gap: SMART only readable via
+  the smartctl-exporter pod (CLI absent on nodes); add a `loving-gannet` SSH alias.
+- **P1.6 — rebuild-throughput (MOVED UP — the real MTTR lever; see §8).** Measured ~0.9 GiB/min,
+  target-disk- and LAN-independent → the bottleneck is the Longhorn V1 rebuild path + source-side
+  processing. This gates how fast a failed node recovers, so it outranks cosmetic placement.
 - **P2 — storage topology.** Dedicated storage nodes + dedicated disk (OS vs Longhorn) via
-  Longhorn node/disk tags. Fix the loving-gannet(327)/swift-mac(24) imbalance (replica-auto-balance
-  evaluated here, not in P0 — balancing itself creates traffic).
-- **P3 — Longhorn modernization.** Staged supported upgrade from **1.6.0** toward the current
-  release (**1.13.0**, 2026-09-29), validating the compat matrix at every hop (1.11 added
-  multi-replica rebuild improvements relevant to our stalls). Not a direct 1.6→1.13 jump.
+  Longhorn node/disk tags. Fix the loving-gannet/swift-mac imbalance (replica-auto-balance
+  evaluated here, not in P0 — balancing itself creates traffic). **Large-volume migration is
+  throughput-bound (~0.9 GiB/min) → do it as slow background work; prioritise small volumes + P1.6.**
+- **P3 — Longhorn modernization (priority raised by P1.6).** Staged supported upgrade from **1.6.0**
+  toward the current release (**1.13.0**, 2026-09-29), validating the compat matrix at every hop.
+  Not a direct jump. **Benchmark empirically (don't assume linear gains):** `replica-rebuild-concurrent-
+  sync-limit` = 1/2/3 (scale/multi-source rebuild, v1.11+) tested on a **disposable 3r volume**
+  (remove 1 replica, 2 healthy sources) — NOT a 1r→2r migration; and `fast-replica-rebuild-enabled`
+  + snapshot checksums weighed against their CPU/IO cost. (No V1 bandwidth QoS knob — that's V2/SPDK.)
 - **P4 — safe auto-remediation.** A `minicloud-reliability-operator`:
   `observe → diagnose → validate (healthy replica + backup RPO + node/disk cond) → remediate →
   verify → escalate`. **Never** blind `kubectl delete`. Builds on `minicloud-ops`/`sdlc_loop`.
@@ -136,3 +145,52 @@ Lessons:   (1) stateful+RWO on fragile Longhorn IS the heal-time problem (statel
 - **B5 Rebuildable** — Prometheus/Loki/Tempo/Harbor-dev/qdrant/dev DBs/caches (biggest byte win).
 - **B6 CNPG** — last, per-DB scrutiny; authentik-cnpg (2 instances) evaluated separately
   (streaming repl ≠ 3-member quorum).
+
+**P0 outcome (closed):** total running replicas ~158→130, total replicated state ~1160→984 Gi
+(~−15%), 0 data loss, 0 unhealthy. B1 (bitnami retired) + B2 (Vault 9→5) + B3 (NATS **audited→deferred**:
+R=1 streams incl. CLAIMS_CDC_PROD → RF-002) + B5.1 caches + B5.2 observability (Prom/Loki→2r, others→1r)
++ B4 ZooKeeper + B5.3 Qdrant + B5.4 dev DBs, all →1r. **Finding:** P0 cut *total* state ~15% but the
+worst-case single-node exposure barely moved (301→286 Gi) — it's dominated by *critical* data on an
+*overloaded* loving-gannet → **worst-case is a P2 placement problem, not a P0 count problem.**
+
+## 8. P1.6 — rebuild-throughput investigation (the real MTTR lever)
+
+**RF/P1.6 — replica rebuild throughput bottleneck.** Measured on a live rebuild (loving-gannet source
+→ star-kitten target, 1 GbE):
+
+| Signal | Value | Reading |
+|---|---|---|
+| steady rebuild throughput | **~15 MB/s ≈ 0.9 GiB/min** | (earlier 0.45 was ramp-up; steady ~2×) |
+| network RX | ~15.7 MB/s | **~13% of 1 GbE** → not network-bound |
+| target disk write / iowait | ~13.5 MB/s / **0%** | target disk not the limit |
+| SATA (swift-mac) vs NVMe (fast-skunk) | ~equal | **disk type was never the constraint** |
+
+**Leading (observed) constraint:** the Longhorn **V1 rebuild path + source-side** replica/snapshot
+processing. (Source-side disk-read / instance-manager CPU / snapshot+checksum profiling still pending —
+hence "dominant observed", not "definitive".) Destination network bandwidth + destination SSD + SATA-vs-
+NVMe are **ruled out** as the primary constraint.
+
+### The reliability KPI this produced: recovery-pressure
+```
+recovery_pressure ≈ worst-case exposure ÷ rebuild throughput     (multiplicative levers)
+  today:                286 Gi ÷ 0.9 GiB/min ≈ 5.3 h   (revised down from a ~9.5 h over-estimate)
+  after P2 (→145 Gi):   145 ÷ 0.9           ≈ 2.7 h
+  after P2 + upgrade:   145 ÷ 2.0           ≈ 73 min
+```
+P2 shrinks the numerator; P1.6/upgrade grows the denominator. Both are needed; neither alone suffices.
+
+### P1.6 next controls (empirical)
+1. **Longhorn 1.6→1.13 staged upgrade** (priority raised — biggest denominator lever).
+2. Benchmark **scale rebuild** `replica-rebuild-concurrent-sync-limit`=1/2/3 on a **disposable 3r volume**
+   (remove 1 replica, 2 healthy sources) — the node-loss-recovery case; NOT a 1r→2r migration.
+3. Benchmark **fast rebuild** (`fast-replica-rebuild-enabled` + snapshot checksums) vs its CPU/IO cost.
+4. Profile the **source** during a rebuild (disk read MB/s, IM CPU, snapshot layout) to confirm the hypothesis.
+5. Continue P2 (reduce exposure) — a lighter source *also* rebuilds faster.
+
+## 9. P2 log
+- **P2.1 (ClickHouse 30 Gi relocate off loving-gannet)** — mechanism proof. Migrated via controlled
+  1r→2r(create-before-remove)→1r. **Process lesson:** scheduling changes mid-rebuild caused restarts
+  (swift-mac→fast-skunk→star-kitten); *don't touch scheduling during an in-flight rebuild.* Landed on
+  star-kitten (target is immaterial — throughput is target-independent). loving-gannet exposure 286→~256 Gi.
+  **Decision: pause large-volume P2 at 0.9 GiB/min; do P1.6 (upgrade + benchmark) first — higher value
+  than hand-moving ~100 Gi at current speed.**
