@@ -83,6 +83,41 @@ mandatory for LH-BENCHMARK**; 1.12 = latest stable + V2 GA — **keep V1**; 1.13
 ```
 > Longhorn explicitly: **do not upgrade with faulted volumes**, and take a backup first.
 
+## Backup/restore readiness — drill evidence (2026-10-01, the #1521 precondition)
+
+**Mechanism PROVEN** via a non-destructive restore drill: recovered `authentik-cnpg` into a throwaway
+`restore-drill` namespace **purely from Cloudflare R2** (`s3://minicloud-cnpg-offsite/authentik`, read-only
+against the source) — base backup downloaded + **WAL replayed from archive** → cluster healthy.
+- **RTO:** ~9 min (543s) for a 167 MB DB · **RPO:** continuous WAL (last successful base backup 04:01 UTC
+  that day; recoverability back to 2026-09-26) → point-in-time recovery to within minutes.
+- **Data integrity:** restored `authentik_core_user` = **23 rows = source exactly**; DB size 167 MB = source.
+- Source untouched; drill namespace deleted after.
+
+**But the FLEET is not restore-ready — the real blocker (fix before the climb):**
+| CNPG cluster | State | Action |
+|---|---|---|
+| authentik | ✅ proven restorable (drill) | none |
+| nextcloud | ✅ **FIXED 2026-10-01** — recoverability point 11:23:53Z | none (see gotcha below) |
+| **claims · claims-prod · underwriting · data-platform** | ❌ **no backup configured at all** | **add** barmanObjectStore + ScheduledBackup (mirror authentik) |
+
+**nextcloud fix (gotcha — CNPG "Expected empty archive"):** WAL archiving failed with
+`barman-cloud-check-wal-archive … Expected empty archive`. **Cause:** the CNPG migration re-created the
+cluster, leaving **2 orphan WAL files** (`…000001.gz`, `…000002.gz`) under `s3://minicloud-cnpg-offsite/
+nextcloud/nextcloud-postgres/wals/` with **no base backup**; CNPG's first-WAL safety guard (destination
+must be empty for a fresh server) then tripped forever. **Not** a credential/path error — the connection
+worked. **Fix:** `aws s3 rm … --recursive` the stale server prefix (verified: only orphan WALs, 0 base
+backups, `firstRecoverabilityPoint=none` → nothing restorable lost) → `pg_switch_wal()` → archiving went
+`True/ContinuousArchivingSuccess` → on-demand base backup → recoverability established. **R2 note:** aws
+cli needs `AWS_DEFAULT_REGION=auto` (R2 rejects `eu-west-1`). The cluster's barmanObjectStore config was
+already correct → runtime cleanup only, no GitOps change.
+
+Longhorn block: 16/58 in the backup group; non-CNPG criticals **qdrant** (retrieva RAG vectors) + **n8n**
+(workflows) are unprotected at both layers → add to the backup group. Vault = own raft snapshot (ok);
+observability (loki/tempo/langfuse) = accepted loss.
+
+> **Gate:** the per-hop rollback (restore from the pre-hop backup) is only real for clusters that have a
+> verified backup. Until the five above are fixed + spot-drilled, the climb's safety net is incomplete.
+
 ## Rollback gates
 - **Per hop:** if the health gate fails, do **not** proceed; investigate. A Longhorn minor upgrade is not
   cleanly reversible (CRD schema moves forward), so rollback = restore from the pre-hop system backup +
