@@ -118,6 +118,32 @@ observability (loki/tempo/langfuse) = accepted loss.
 > **Gate:** the per-hop rollback (restore from the pre-hop backup) is only real for clusters that have a
 > verified backup. Until the five above are fixed + spot-drilled, the climb's safety net is incomplete.
 
+### Remediation design (owner-approved 2026-10-01) — per-cluster R2 isolation
+- **Per-cluster bucket + per-cluster token** (real Cloudflare-enforced isolation; bucket-level is the only
+  scope R2 Object-R&W tokens enforce). Buckets created: `cnpg-underwriting-prod`, `cnpg-claims-prod`,
+  `cnpg-claims`, `cnpg-data-platform`. Supersedes the current shared-key-on-one-bucket posture
+  (authentik+nextcloud share the account R2 key via prefixes).
+- **Token:** Account API token, **Object Read & Write, scoped to exactly one bucket.** Long-lived is
+  acceptable operationally **but not "no expiry" forever** — **rotation policy: every 90–180 days**
+  (scheduled), revocable per-incident. Minting requires the Cloudflare dashboard / an API-Tokens:Edit
+  token (not automatable with our ops creds — owner mints the 4).
+- **Flow:** R2 token → **Vault** `secret/platform/cnpg-r2-<db>` (write via `read -s`, never on the command
+  line; operator identity over root) → **ESO** ExternalSecret → namespace Secret → CNPG `barmanObjectStore`.
+- **Future (security backlog, NOT now):** Cloudflare **temporary R2 credentials** (bucket/prefix-scoped,
+  ≤7-day TTL) via a credential-broker/rotation controller — replaces permanently-held S3 secrets once such
+  a broker exists. Don't add that complexity to CNPG yet.
+
+### Per-cluster verification gate (ALL required before moving to the next DB — not "secret exists")
+```
+[ ] ExternalSecret Ready            [ ] ScheduledBackup succeeds
+[ ] CNPG sees credentials           [ ] base backup visible remotely (correct bucket)
+[ ] WAL archiving = healthy         [ ] recoverability point established
+[ ] first WAL object in the bucket  [ ] no archive-command failures
+```
+Rollout order: **underwriting → claims-prod → claims → data-platform**, then the **underwriting isolated
+restore drill** (proves the mechanism against the business-critical config, as authentik proved the
+mechanism generally). **U0 Recovery Gate = PASS only after all four + the underwriting drill are green.**
+
 ## Rollback gates
 - **Per hop:** if the health gate fails, do **not** proceed; investigate. A Longhorn minor upgrade is not
   cleanly reversible (CRD schema moves forward), so rollback = restore from the pre-hop system backup +
