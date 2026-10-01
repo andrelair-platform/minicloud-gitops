@@ -69,6 +69,22 @@ frontend:
     repository: ghcr.io/andrelair-platform/ktayl-underwriting-frontend
     tag: "8a0e280"     # Kargo bumps to the promoted SHA
   imagePullSecrets: [{ name: ghcr-pull }]
+  # FULL env list (Helm REPLACES lists). Prod overrides: API_URL → the PROD backend svc, + the OIDC
+  # client-credentials the BFF uses to mint a scoped bearer (underwriting:read/write) for the JWKS-
+  # protected backend (frontend/src/lib/auth-token.ts). Same ktayl-underwriting OIDC client as the backend.
+  env:
+    - name: NODE_ENV
+      value: "production"
+    - name: API_URL
+      value: "http://ktayl-underwriting.underwriting-prod.svc:80"   # PROD backend (dev = ns underwriting)
+    - name: OIDC_TOKEN_URL
+      value: "http://authentik-server.authentik.svc:80/application/o/token/"
+    - name: OIDC_SCOPE
+      value: "underwriting:read underwriting:write"
+    - name: OIDC_CLIENT_ID
+      valueFrom: { secretKeyRef: { name: ktayl-underwriting-oidc, key: OIDC_CLIENT_ID } }
+    - name: OIDC_CLIENT_SECRET
+      valueFrom: { secretKeyRef: { name: ktayl-underwriting-oidc, key: OIDC_CLIENT_SECRET } }
   workload:
     replicas: 2
   podDisruptionBudget:
