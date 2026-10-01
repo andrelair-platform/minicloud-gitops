@@ -20,7 +20,7 @@ oidc:
 minicloud-app-deployment:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-underwriting
-    tag: "8a0e280"     # Kargo bumps to the promoted SHA (both images pinned to the same commit)
+    tag: "c86d277"     # Kargo bumps to the promoted SHA (both images pinned to the same commit)
   imagePullSecrets: [{ name: ghcr-pull }]
   workload:
     replicas: 2
@@ -67,7 +67,7 @@ minicloud-app-deployment:
 frontend:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-underwriting-frontend
-    tag: "8a0e280"     # Kargo bumps to the promoted SHA
+    tag: "c86d277"     # Kargo bumps to the promoted SHA
   imagePullSecrets: [{ name: ghcr-pull }]
   # FULL env list (Helm REPLACES lists). Prod overrides: API_URL → the PROD backend svc, + the OIDC
   # client-credentials the BFF uses to mint a scoped bearer (underwriting:read/write) for the JWKS-
