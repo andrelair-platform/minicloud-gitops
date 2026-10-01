@@ -24,7 +24,8 @@ installed/upgraded by manual `kubectl apply`, not Helm/ArgoCD/Ansible).
 |---|---|---|
 | v1.7.3 | 2026-10-01 (hop 1) | from v1.6.0 |
 | v1.8.2 | 2026-10-01 (hop 2) | |
-| v1.9.2 | 2026-10-01 (hop 3) | |
+| v1.9.2 | 2026-10-01 (hop 3) | 1.9 bumps instance-manager image |
+| v1.10.2 | 2026-10-01 (hop 4) | |
 
 ## The proper end state (tracked follow-up, post-climb)
 Migrate the Longhorn **core** to the official **Helm chart managed by ArgoCD** (upgrade = a `targetRevision`
