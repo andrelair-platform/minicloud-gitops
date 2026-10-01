@@ -124,6 +124,15 @@ spec:
               # AI / platform services
               labelVol ai           data-postgresql-ai-0
               labelVol ai           open-webui
+              # qdrant: retrieva RAG vector store. Kept in the backup group even though
+              # vectors are re-indexable from the authoritative corpus — the deterministic
+              # re-index procedure isn't proven yet, so back it up until it is (owner call
+              # 2026-10-01). Small (2Gi).
+              labelVol ai           qdrant-storage-qdrant-0
+
+              # Automation — n8n workflows (mandatory: workflows are authored state, not
+              # reconstructable). 5Gi.
+              labelVol automation   n8n-data
               labelVol backstage    data-backstage-postgresql-0
               labelVol harbor       database-data-harbor-database-0
               # harbor-registry (20Gi) excluded: images are re-pullable via proxy cache.
