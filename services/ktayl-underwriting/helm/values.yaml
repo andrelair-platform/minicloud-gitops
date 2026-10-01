@@ -179,15 +179,18 @@ postgres:
   enabled: true
   instances: 1
   storageSize: 2Gi
-  # CNPG Barman backup to a dedicated per-cluster R2 bucket (least-privilege scoped token).
-  # Rotation: the R2 token is long-lived; rotate every 90–180 days (see reliability-longhorn-upgrade.md).
+  # CNPG Barman backup to a DEDICATED per-cluster R2 bucket (data isolation preserved).
+  # Credential: the SHARED account R2 key at Vault platform/cloudflare (same as authentik/nextcloud) —
+  # owner chose reuse-existing-token over minting per-cluster tokens. Trade-off: no per-credential
+  # blast-radius isolation. Upgrade path = mint a bucket-scoped token → point vaultPath at its own
+  # Vault path (buckets already per-cluster, so it's a one-line change). Rotate the shared key 90–180d.
   backup:
     enabled: true
     bucket: cnpg-underwriting-prod
     endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
     retentionPolicy: 14d
     schedule: "0 0 4 * * *"   # CNPG 6-field cron (seconds first) = 04:00:00 UTC daily
-    vaultPath: platform/cnpg-r2-underwriting
+    vaultPath: platform/cloudflare
 # OIDC client-credentials ExternalSecret (bind handoff, ADR-006). Vault path must be populated first.
 oidc:
   enabled: true
