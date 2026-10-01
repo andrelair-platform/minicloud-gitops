@@ -25,4 +25,56 @@ spec:
     initdb:
       database: claims
       owner: claims
+{{- if .Values.postgres.backup.enabled }}
+  # Continuous WAL archiving + base backups to a DEDICATED per-cluster R2 bucket. The read-model is a
+  # derived CQRS projection (rebuildable by CDC replay) → this backup is the FAST recovery path (replay
+  # is the fallback). Credential: shared platform/cloudflare key (owner call); bucket is per-env.
+  backup:
+    retentionPolicy: {{ .Values.postgres.backup.retentionPolicy | quote }}
+    barmanObjectStore:
+      destinationPath: s3://{{ .Values.postgres.backup.bucket }}
+      endpointURL: {{ .Values.postgres.backup.endpointURL }}
+      s3Credentials:
+        accessKeyId:
+          name: cnpg-claims-r2
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: cnpg-claims-r2
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+{{- end }}
+{{- end }}
+{{- if and .Values.postgres.enabled .Values.postgres.backup.enabled }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: cnpg-claims-r2
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: cnpg-claims-r2
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: ACCESS_KEY_ID
+      remoteRef: { key: {{ .Values.postgres.backup.vaultPath }}, property: r2-access-key-id }
+    - secretKey: SECRET_ACCESS_KEY
+      remoteRef: { key: {{ .Values.postgres.backup.vaultPath }}, property: r2-secret-access-key }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: claims-postgres-daily
+spec:
+  schedule: {{ .Values.postgres.backup.schedule | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: claims-postgres
 {{- end }}
