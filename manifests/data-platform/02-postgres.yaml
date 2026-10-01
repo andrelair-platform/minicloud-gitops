@@ -35,6 +35,55 @@ spec:
     initdb:
       database: analytics
       owner: analytics
+  # Backup to a dedicated per-cluster R2 bucket. Data is DERIVED/rebuildable (dbt re-run) → this is the
+  # FAST recovery path, not the only one. Credential: shared platform/cloudflare R2 key (owner call).
+  backup:
+    retentionPolicy: "14d"
+    barmanObjectStore:
+      destinationPath: s3://cnpg-data-platform
+      endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
+      s3Credentials:
+        accessKeyId:
+          name: cnpg-data-platform-r2
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: cnpg-data-platform-r2
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+---
+# R2 credentials for the Barman backup (shared platform/cloudflare key, bucket-isolated).
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: cnpg-data-platform-r2
+  namespace: data-platform
+spec:
+  refreshInterval: 24h
+  secretStoreRef: { name: vault-backend, kind: ClusterSecretStore }
+  target:
+    name: cnpg-data-platform-r2
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: ACCESS_KEY_ID
+      remoteRef: { key: platform/cloudflare, property: r2-access-key-id }
+    - secretKey: SECRET_ACCESS_KEY
+      remoteRef: { key: platform/cloudflare, property: r2-secret-access-key }
+---
+# Daily base backup (WAL archived continuously by the Cluster's barmanObjectStore).
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: dp-postgres-daily
+  namespace: data-platform
+spec:
+  schedule: "0 0 4 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: dp-postgres
 ---
 # Metabase's metadata database on the same cluster (declarative multi-DB — CNPG Database CR).
 apiVersion: postgresql.cnpg.io/v1
