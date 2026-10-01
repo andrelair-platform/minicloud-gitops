@@ -211,3 +211,11 @@ mechanism generally). **U0 Recovery Gate = PASS only after all four + the underw
   prometheus-kps-prometheus-0 6-day CrashLoop.)
 - **Next:** DWELL, then hop 2 (1.7.3 → latest 1.8.x). Same procedure. Engine upgrade was clean + fast here,
   which is a good sign for the remaining hops.
+
+### Hop 2 — v1.7.3 → v1.8.2 ✅ (2026-10-01)
+- **Pre-hop gate:** 60/60 healthy, all engines v1.7.3, 0 rebuilds, 0 notReady. Target v1.8.2 (latest 1.8; 1.8.3 doesn't exist). Manifest inspected (v1.8.2 images + newer CSI sidecars csi-provisioner v5.3.0 / snapshotter v8.2.0 — fine on k8s 1.36; same benign default-settings).
+- **Apply:** `kubectl apply` (39 configured, 1 created, 0 errors). Manager DS rolls all pods at once (maxUnavailable 100%) → brief all-managers-pulling window, but **data plane (instance-managers) kept volumes serving → 0 faulted**. swift-mac slowest to pull again.
+- **Engine upgrade:** auto-upgrade=1/node → all 60 engines v1.7.3 → v1.8.2 **live, 60/60 healthy, 0 faults**; reverted to 0.
+- **Result:** manager + all 60 engines on v1.8.2. Zero data loss, zero app outage. Smoke: Vault unsealed, 7/7 CNPG ready.
+- **Note (NOT storage/climb-related):** the hop-2 node churn restarted `chaos-mesh/chaos-controller-manager` (stateless, no volume) which then CrashLooped on a **webhook/fx startup wiring error** (known chaos-mesh-on-k3s gotcha, restart-exposed) → follow-up, separate from the climb. Pre-existing unrelated: prometheus-kps-prometheus-0 (6-day CrashLoop).
+- **Next:** DWELL, then hop 3 (1.8.2 → latest 1.9.x). 1.9 is also the version to re-confirm the k8s-1.36 CSI-sidecar compatibility trend before 1.11/1.12.
