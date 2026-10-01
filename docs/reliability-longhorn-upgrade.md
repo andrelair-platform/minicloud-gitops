@@ -30,11 +30,32 @@ Two **separate** workstreams (do not conflate — one variable at a time):
    the applied version. Consider migrating core to the **helm chart** *after* reaching current (separate
    change — not during the version climb).
 
+### Version → k8s-1.36 support matrix (grounded 2026-10-01, resolves risk #1 with real numbers)
+| Longhorn | k8s tested range | GA/EOL (Oct 2026) | Relevance |
+|---|---|---:|---|
+| 1.6.x | ~1.25–~1.28 | **EOL** | ← we are here; overshoots k8s by ~8 minors (works, unsupported) |
+| 1.7.x / 1.8.x | ~1.28–~1.32 | **EOL** | transit hops — run briefly on 1.36 (overshoot) |
+| 1.9.x | ~1.32–~1.33 | EOL 2026-11 | transit hop — overshoot |
+| 1.10.x | ~1.33–~1.34 | EOL 2027-03 | transit hop — overshoot |
+| **1.11.3** | **1.34–1.36** | EOL 2027-07 | **first to officially support k8s 1.36**; **floor** for multi-source rebuild (the throughput lever) |
+| **1.12.1** | **1.33–1.36** | EOL 2027-08 | **latest stable** that lists k8s 1.36 |
+| 1.13.0 | **≥1.34** (CSI external-provisioner v6.3.0) | GA, EOL 2027-11 | newest GA; also valid on 1.36 |
+
+**No-skip-minor is enforced** (confirmed in the 1.12 upgrade docs): "if you … skip a minor version, the
+operation will fail automatically." So the climb is strictly sequential; intermediate ceilings 1.7–1.10
+are approximate (re-verify each hop's own matrix at execution) but the **shape is certain** — every hop
+1.7→1.10 transits a k8s newer than it was tested on, the same overshoot we already run stably on 1.6.
+
+**Target recommendation:** **1.12.1** (latest *stable* that lists k8s 1.36) = **6 hops**. 1.11.3 is the
+*floor* (first with the throughput lever + first to support 1.36); 1.13.0 (a 7th hop) is valid but newer/
+less-proven — defer it. Owner decision (target + in-place-climb vs reinstall-at-1.12.1) stays open.
+
 ## Staged version path (one minor per hop — Longhorn rule since 1.5)
 ```
-1.6.0 → 1.7.x → 1.8.x → 1.9.x → 1.10.x → 1.11.x → 1.12.x → 1.13.x
+1.6.0 → 1.7.x → 1.8.x → 1.9.x → 1.10.x → 1.11.x → 1.12.x  [recommended target]  (→ 1.13.x optional)
 ```
-(Pick the latest patch of each minor. 1.11 = scale/multi-source rebuild; 1.12 = V2 GA — **keep V1**; 1.13 = target.)
+(Pick the latest patch of each minor. **1.11 = multi-source rebuild — the throughput lever, so ≥1.11 is
+mandatory for LH-BENCHMARK**; 1.12 = latest stable + V2 GA — **keep V1**; 1.13 = optional newest GA.)
 
 ### Per-hop health gate (ALL must pass before the next minor)
 ```
@@ -70,7 +91,7 @@ Two **separate** workstreams (do not conflate — one variable at a time):
 - **Data safety:** volumes stay V1 + replicated; a failed *manager* upgrade doesn't destroy replica data.
   The risk is control-plane/CSI disruption, not block data — but verify attach/detach after each hop.
 
-## LH-BENCHMARK protocol (run only AFTER reaching 1.13, V1 kept constant)
+## LH-BENCHMARK protocol (run only AFTER reaching ≥1.11 — where multi-source rebuild lives; V1 kept constant)
 **Baseline (already measured on 1.6):** ~0.9 GiB/min, 30 GiB ≈ 33 min, single-source, RX ~15.7 MB/s, target iowait 0%.
 
 **Controlled variable = Longhorn version, then the rebuild setting. Constants: V1 engine, hardware, test volume, node pairings.**
@@ -83,9 +104,9 @@ Two **separate** workstreams (do not conflate — one variable at a time):
 | Test | `replica-rebuild-concurrent-sync-limit` | Throughput | 30 Gi est | net MB/s | src CPU | src disk | dst disk |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 1.6 baseline (single-source, from P1.6) | 1 | ~0.9 GiB/min | ~33 min | 15.7 | TBD | TBD | 13.5 |
-| 1.13 A | 1 | TBD | TBD | TBD | TBD | TBD | TBD |
-| 1.13 B | 2 | TBD | TBD | TBD | TBD | TBD | TBD |
-| 1.13 C | 3 | TBD | TBD | TBD | TBD | TBD | TBD |
+| target (≥1.11) A | 1 | TBD | TBD | TBD | TBD | TBD | TBD |
+| target (≥1.11) B | 2 | TBD | TBD | TBD | TBD | TBD | TBD |
+| target (≥1.11) C | 3 | TBD | TBD | TBD | TBD | TBD | TBD |
 
 3. **Separately** benchmark fast-rebuild: `fast-replica-rebuild-enabled` + snapshot checksums
    (`snapshot-data-integrity`) — measure rebuild gain **vs** the CPU/IO cost of checksumming (it runs at

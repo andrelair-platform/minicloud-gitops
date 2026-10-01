@@ -191,6 +191,40 @@ P2 shrinks the numerator; P1.6/upgrade grows the denominator. Both are needed; n
 - **P2.1 (ClickHouse 30 Gi relocate off loving-gannet)** — mechanism proof. Migrated via controlled
   1r→2r(create-before-remove)→1r. **Process lesson:** scheduling changes mid-rebuild caused restarts
   (swift-mac→fast-skunk→star-kitten); *don't touch scheduling during an in-flight rebuild.* Landed on
-  star-kitten (target is immaterial — throughput is target-independent). loving-gannet exposure 286→~256 Gi.
-  **Decision: pause large-volume P2 at 0.9 GiB/min; do P1.6 (upgrade + benchmark) first — higher value
-  than hand-moving ~100 Gi at current speed.**
+  star-kitten (target is immaterial — throughput is target-independent).
+  **Decision: pause large-volume P2 at 0.9 GiB/min; do the upgrade + benchmark (#1521) first — higher
+  value than hand-moving ~100 Gi at current speed.**
+
+  ### P2.1 — CLOSEOUT RECORD (2026-10-01, verified live)
+  | Field | Value |
+  |---|---|
+  | Volume | `pvc-64d5aba1…` (langfuse `data-langfuse-clickhouse-shard0-0`), 30 Gi prov / ~30.7 GiB actual |
+  | Source → Destination | loving-gannet → **star-kitten** |
+  | Topology | 1r loving-gannet → temp 2r → **1r star-kitten** (Stage-3 drop via unschedulable-source pattern) |
+  | Measured rebuild throughput | ~0.9 GiB/min ceiling; **this run ran slower under contention** (~20 min for the 2r rebuild) — variance *below* the ceiling, reinforcing that throughput, not placement, is the bound |
+  | Data loss | **0** (RW loving-gannet source intact throughout) |
+  | Application outage | **0** — `langfuse-clickhouse-shard0-0` stayed `1/1 Running` (the closeout script's `clickhouse ready=` blank was a false negative: it probed the PVC name, not the pod name) |
+  | Cluster health after | **0 unhealthy volumes**, robustness=healthy, desired=1 on star-kitten |
+
+  **Exposure recompute — two bases (be explicit, they tell different stories):**
+
+  | Node | provisioned (`spec.size`) | **actual (`actualSize` → the MTTR basis)** | replicas |
+  |---|---:|---:|---:|
+  | **star-kitten** | **265.5 Gi** | **106.3 GiB** | 25 |
+  | loving-gannet | 256.5 Gi | 53.7 GiB | 36 |
+  | set-hog | 218.5 Gi | 46.8 GiB | 31 |
+  | fast-heron | 126.5 Gi | 47.9 GiB | 24 |
+  | fast-skunk | 93.0 Gi | 63.5 GiB | 8 |
+  | swift-mac | 24.0 Gi | 2.2 GiB | 6 |
+
+  - **loving-gannet 286 → 256.5 Gi provisioned** — confirmed (−30 Gi = the ClickHouse volume). The prior
+    "286 Gi" figure is **provisioned-basis**; an earlier recompute used actual-basis, hence an apparent mismatch.
+  - **Honest finding (strengthens the thesis):** on the **actual-data basis that actually governs rebuild
+    time**, ClickHouse is ~30.7 GiB *consumed* (near-full), so the move **shifted** that load — **star-kitten
+    is now the cluster worst-case node** (265.5 Gi prov / 106.3 GiB actual). P2.1 reduced *loving-gannet's*
+    exposure but **redistributed the cluster maximum rather than shrinking it**. That is the clean proof of
+    the P2 premise: **placement is a redistribution lever, not a reduction lever** — only raising rebuild
+    **throughput** (→ LH-UPGRADE/BENCHMARK #1521) shrinks real recovery pressure. Finding: *placement works
+    as a per-node exposure lever, but migration/recovery speed is bounded by Longhorn rebuild throughput.*
+  - **P2 paused here as planned** → next experiment is #1521 (can a newer Longhorn raise the throughput
+    denominator while preserving reliability?). See `reliability-longhorn-upgrade.md`.
