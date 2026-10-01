@@ -65,9 +65,26 @@ persistence:
   accessMode: ReadWriteOnce
   size: 50Gi
 
-# PostgreSQL (Bitnami sub-chart)
-postgresql:
+# Database = the CNPG cluster `nextcloud-postgres` (manifests/nextcloud/22-cnpg-cluster.yaml).
+# Nextcloud migrated SQLite→CNPG 2026-09-30; the bitnami subchart below is RETIRED.
+internalDatabase:
+  enabled: false
+externalDatabase:
   enabled: true
+  type: postgresql
+  host: nextcloud-postgres-rw
+  database: nextcloud
+  existingSecret:
+    enabled: true
+    secretName: nextcloud-cnpg-role
+    usernameKey: username
+    passwordKey: password
+
+# PostgreSQL (Bitnami sub-chart) — RETIRED 2026-10-01. Nextcloud no longer uses it
+# (active dbtype=pgsql → CNPG nextcloud-postgres-rw). Disabled so ArgoCD removes the
+# StatefulSet + its PVC (data-nextcloud-postgresql-0, ~30 Gi of unused replicated state).
+postgresql:
+  enabled: false
   global:
     postgresql:
       auth:
