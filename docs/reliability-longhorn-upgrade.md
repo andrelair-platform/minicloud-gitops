@@ -192,3 +192,22 @@ mechanism generally). **U0 Recovery Gate = PASS only after all four + the underw
 - Multi-source helps **node-loss recovery of 3r criticals** (where ≥2 healthy sources exist) — exactly the
   286 Gi concern; it does *not* speed 1r→2r migrations (one source), so it won't change P2 migration time.
 - Combine with P2 (lower exposure) for the multiplicative win.
+
+## Climb log
+
+### Hop 1 — v1.6.0 → v1.7.3 ✅ (2026-10-01)
+- **Pre-hop gate:** 60/60 volumes healthy, 0 rebuilds, 0 faulted. U0 (backups restorable) PASS.
+- **Target:** v1.7.3 (latest 1.7 patch; v1.7.4 doesn't exist). Manifest downloaded + inspected before apply
+  (images all v1.7.3 + current CSI sidecars; `longhorn-default-setting` only sets priority-class +
+  disable-revision-counter → doesn't touch our tuned settings; core is NOT ArgoCD-managed so no fight).
+- **Mechanism:** `kubectl apply -f /tmp/longhorn-1.7.3.yaml` (39 configured, 0 errors, no CRD-size issue).
+- **Manager/CSI rollout:** all 6 nodes → v1.7.3; `current-longhorn-version` → v1.7.3; only slow part was
+  **swift-mac** (the old MacBook) pulling images (~5 min). 0 faulted throughout.
+- **Engine upgrade:** set `concurrent-automatic-engine-upgrade-per-node-limit=1` (live, not in gitops) →
+  all 60 volume engines migrated v1.6.0 → v1.7.3 **live in ~3 min, 60/60 stayed healthy, 0 rebuilds/faults**.
+  Reverted the setting to 0 after.
+- **Result:** manager + CSI + instance-manager + all 60 engines on v1.7.3. **Zero data loss, zero app
+  outage.** App smoke green (Vault unsealed, 7/7 CNPG clusters ready, NATS JS up). (Pre-existing unrelated:
+  prometheus-kps-prometheus-0 6-day CrashLoop.)
+- **Next:** DWELL, then hop 2 (1.7.3 → latest 1.8.x). Same procedure. Engine upgrade was clean + fast here,
+  which is a good sign for the remaining hops.
