@@ -24,4 +24,57 @@ spec:
     initdb:
       database: underwriting
       owner: underwriting
+{{- if .Values.postgres.backup.enabled }}
+  # Continuous WAL archiving + base backups to a DEDICATED per-cluster R2 bucket (least-privilege:
+  # the cnpg-underwriting-r2 token is Object-R&W scoped to this bucket only). Creds: Vault →ESO below.
+  backup:
+    retentionPolicy: {{ .Values.postgres.backup.retentionPolicy | quote }}
+    barmanObjectStore:
+      destinationPath: s3://{{ .Values.postgres.backup.bucket }}
+      endpointURL: {{ .Values.postgres.backup.endpointURL }}
+      s3Credentials:
+        accessKeyId:
+          name: cnpg-underwriting-r2
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: cnpg-underwriting-r2
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+{{- end }}
+{{- end }}
+{{- if and .Values.postgres.enabled .Values.postgres.backup.enabled }}
+---
+# R2 credentials for this cluster's Barman backup — per-cluster scoped token (see Vault path).
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: cnpg-underwriting-r2
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: cnpg-underwriting-r2
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: ACCESS_KEY_ID
+      remoteRef: { key: {{ .Values.postgres.backup.vaultPath }}, property: r2-access-key-id }
+    - secretKey: SECRET_ACCESS_KEY
+      remoteRef: { key: {{ .Values.postgres.backup.vaultPath }}, property: r2-secret-access-key }
+---
+# Daily base backup (WAL is archived continuously by the Cluster's barmanObjectStore).
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: underwriting-postgres-daily
+spec:
+  schedule: {{ .Values.postgres.backup.schedule | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: underwriting-postgres
 {{- end }}
