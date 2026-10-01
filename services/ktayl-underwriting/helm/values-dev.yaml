@@ -9,7 +9,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting
-    tag: e500991
+    tag: 978f0ec
   workload:
     replicas: 1
   ingress:
@@ -17,7 +17,7 @@ minicloud-app-deployment:
 frontend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting-frontend
-    tag: e500991
+    tag: 978f0ec
   workload:
     replicas: 1
   ingress:
