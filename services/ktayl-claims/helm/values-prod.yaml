@@ -108,6 +108,7 @@ postgres:
   instances: 1
   storageSize: 1Gi
   backup:
+    enabled: true            # PROD gets backup (dev does not)
     bucket: cnpg-claims-prod
 # prod CDC lane — distinct replica id + stream so it never collides with dev's.
 debezium:

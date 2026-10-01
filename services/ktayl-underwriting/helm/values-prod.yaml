@@ -45,4 +45,6 @@ postgres:
   enabled: true
   instances: 2
   storageSize: 5Gi
+  backup:
+    enabled: true            # PROD gets backup (dev does not) → bucket cnpg-underwriting-prod (from base)
 # No migration Job — the app self-migrates on startup (see values.yaml).

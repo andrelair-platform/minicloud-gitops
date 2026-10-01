@@ -179,13 +179,12 @@ postgres:
   enabled: true
   instances: 1
   storageSize: 2Gi
-  # CNPG Barman backup to a DEDICATED per-cluster R2 bucket (data isolation preserved).
-  # Credential: the SHARED account R2 key at Vault platform/cloudflare (same as authentik/nextcloud) —
-  # owner chose reuse-existing-token over minting per-cluster tokens. Trade-off: no per-credential
-  # blast-radius isolation. Upgrade path = mint a bucket-scoped token → point vaultPath at its own
-  # Vault path (buckets already per-cluster, so it's a one-line change). Rotate the shared key 90–180d.
+  # CNPG Barman backup — PROD-ONLY (org rule: dev envs are not backed up). Disabled here (dev base);
+  # values-prod.yaml sets enabled:true. Dedicated bucket cnpg-underwriting-prod; credential = the SHARED
+  # account R2 key at Vault platform/cloudflare (owner call; rotate 90–180d; per-cluster token later =
+  # one-line vaultPath change).
   backup:
-    enabled: true
+    enabled: false            # dev: no backup (prod-only rule). values-prod overrides to true.
     bucket: cnpg-underwriting-prod
     endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
     retentionPolicy: 14d

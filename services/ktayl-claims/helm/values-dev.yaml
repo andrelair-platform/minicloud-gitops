@@ -54,5 +54,4 @@ debezium:
 # `readmodel` profile (+ datasource env) in a follow-up once the DB + the Slice-D image are live.
 postgres:
   enabled: true
-  backup:
-    bucket: cnpg-claims
+  # No backup in dev (prod-only rule) — base sets backup.enabled:false.
