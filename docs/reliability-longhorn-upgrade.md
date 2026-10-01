@@ -98,14 +98,17 @@ against the source) — base backup downloaded + **WAL replayed from archive** �
 |---|---|---|
 | authentik | ✅ proven restorable (drill) | none |
 | nextcloud | ✅ **FIXED 2026-10-01** — recoverability point 11:23:53Z | none (see gotcha below) |
-| underwriting · claims-prod · claims · data-platform | ✅ **ALL WIRED + VERIFIED 2026-10-01** — barman→dedicated R2 bucket, base backup + recoverability each | none |
+| claims-prod · data-platform | ✅ **PROD backed up + verified 2026-10-01** — barman→dedicated R2 bucket, base backup + recoverability | none |
+| underwriting-dev · claims-dev | ⬜ **not backed up — ORG RULE: back up PROD only, never dev** | n/a (dev) |
+| underwriting-prod | ⏳ wired in the chart (values-prod → cnpg-underwriting-prod); lands with the prod-env build | build prod |
 
-> **✅ U0 RECOVERY GATE = PASS (2026-10-01).** All 6 CNPG DBs restorable; qdrant + n8n in the Longhorn
-> backup group. **Mechanism proof** = authentik drill (RTO ~9 min). **Business-data proof** = underwriting
-> isolated restore drill — recovered from `cnpg-underwriting-prod` into a throwaway ns, data **exact match
-> to source (alembic=1, bindings=7, quotes=36, counterparties=47, incl. the bound policy)**, RTO ~2.5 min,
-> source untouched. Credential model: shared `platform/cloudflare` key + per-cluster buckets (owner call).
-> **The Longhorn climb is now unblocked** (pending the owner §8 decisions + a pre-hop-1 backup).
+> **✅ U0 RECOVERY GATE = PASS (2026-10-01).** **Rule: back up PROD only, never dev.** All existing prod
+> CNPG DBs restorable (claims-prod, data-platform, authentik, nextcloud); qdrant + n8n in the Longhorn
+> backup group; dev DBs intentionally not backed up. **Mechanism proof** = authentik drill (RTO ~9 min).
+> **Business-data proof** = underwriting restore drill — recovered into a throwaway ns, data **exact match
+> (alembic=1, bindings=7, quotes=36, counterparties=47, incl. the bound policy)**, RTO ~2.5 min. Credential:
+> shared `platform/cloudflare` key + per-cluster buckets (owner call). **underwriting-prod** backup lands
+> with the prod-env build. **The Longhorn climb is unblocked** (pending owner §8 decisions + pre-hop-1 backup).
 
 **nextcloud fix (gotcha — CNPG "Expected empty archive"):** WAL archiving failed with
 `barman-cloud-check-wal-archive … Expected empty archive`. **Cause:** the CNPG migration re-created the
