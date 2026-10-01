@@ -219,3 +219,12 @@ mechanism generally). **U0 Recovery Gate = PASS only after all four + the underw
 - **Result:** manager + all 60 engines on v1.8.2. Zero data loss, zero app outage. Smoke: Vault unsealed, 7/7 CNPG ready.
 - **Note (NOT storage/climb-related):** the hop-2 node churn restarted `chaos-mesh/chaos-controller-manager` (stateless, no volume) which then CrashLooped on a **webhook/fx startup wiring error** (known chaos-mesh-on-k3s gotcha, restart-exposed) → follow-up, separate from the climb. Pre-existing unrelated: prometheus-kps-prometheus-0 (6-day CrashLoop).
 - **Next:** DWELL, then hop 3 (1.8.2 → latest 1.9.x). 1.9 is also the version to re-confirm the k8s-1.36 CSI-sidecar compatibility trend before 1.11/1.12.
+
+### Hop 3 — v1.8.2 → v1.9.2 ✅ (2026-10-01)
+- Pre-hop: 60/60 healthy, engines v1.8.2, 0 rebuilds. Target v1.9.2 (latest 1.9). csi-provisioner still v5.3.0 (no k8s floor).
+- Apply clean (40 configured, 0 errors). Manager+CSI → v1.9.2. **1.9 bumps the instance-manager image → new IM pods created per node** (old IMs keep serving → 0 faulted); swift-mac slow to pull (~5min, the recurring bottleneck).
+- Engine upgrade (auto 1/node) → all 60 engines v1.8.2 → v1.9.2 live; 60/60 healthy (one brief transient non-healthy during a live upgrade, resolved); reverted auto to 0.
+- **Result:** manager + all 60 engines on v1.9.2. Zero data loss, zero app outage.
+
+### Hop 4 — v1.9.2 → v1.10.2 (in progress 2026-10-01)
+- Pre-hop: 60/60 healthy, engines v1.9.2, 0 rebuilds. Target v1.10.2 (latest 1.10; csi-provisioner still v5.3.0 — the v6.3.0/k8s≥1.34 floor only arrives at 1.13). Benign `int64` CRD-format warning on apply (harmless). Apply clean (39 configured, 2 created, 0 errors). Rollout + engine upgrade monitored (same procedure).
