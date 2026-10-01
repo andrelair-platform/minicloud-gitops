@@ -145,3 +145,12 @@ postgres:
   enabled: false
   instances: 1
   storageSize: 1Gi
+  # CNPG Barman backup to a dedicated per-cluster R2 bucket (bucket set per-env below).
+  # Credential: shared platform/cloudflare R2 key (owner call); rotate every 90–180d.
+  backup:
+    enabled: true
+    endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
+    retentionPolicy: 14d
+    schedule: "0 0 4 * * *"   # CNPG 6-field cron = 04:00:00 UTC daily
+    vaultPath: platform/cloudflare
+    bucket: ""                # MUST be set per env (values-dev / values-prod)

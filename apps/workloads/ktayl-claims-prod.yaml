@@ -22,6 +22,16 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: claims-prod
+  # ESO injects 4 defaults into the ExternalSecret spec at admission (never in git) → SSA sees drift.
+  # Ignore them so the app stays Synced (RespectIgnoreDifferences below makes ArgoCD honour these).
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
   syncPolicy:
     automated:
       prune: true
