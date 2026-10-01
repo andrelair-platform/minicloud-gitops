@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ktayl-underwriting-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  # HGP golden path (GAP wrapper chart, prod): ONE Helm source. Wrapper depends on the library chart
+  # (OCI) for the FastAPI backend + Next.js BFF workbench + Ingresses; TLS certs, the dedicated CNPG
+  # Postgres (2 instances) + its R2 backup, the OIDC + ghcr-pull ExternalSecrets, and the DB-namespace
+  # NetworkPolicies are wrapper templates. releaseName MUST be ktayl-underwriting.
+  # AUTH GATE (values-prod): backend enforces app-level JWKS bearer authz (underwriting:read/write);
+  # frontend workbench is Authentik forward-auth (browser SSO). Kargo bumps both image tags on promote.
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/ktayl-underwriting/helm
+    helm:
+      releaseName: ktayl-underwriting
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: underwriting-prod
+  # ESO injects defaults into ExternalSecret spec at admission (never in git) → SSA sees drift. Ignore them.
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+        - .spec.target.template
+  syncPolicy:
+    # Git-gated automated production (CODEOWNERS on apps/ + services/*/helm). Git owns replicas (2).
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
