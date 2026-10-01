@@ -76,7 +76,7 @@ mandatory for LH-BENCHMARK**; 1.12 = latest stable + V2 GA — **keep V1**; 1.13
 [ ] confirm install source + method (ansible role vs upstream URL)
 [ ] per-hop k8s-1.36 compatibility checked against each version's support matrix
 [ ] Longhorn system backup (settings + volume metadata) to R2/MinIO
-[ ] critical app backups verified RESTORABLE (CNPG→R2 restore drill, not just "backup exists")
+[x] critical app backups verified RESTORABLE (CNPG→R2 restore drill) — ✅ DONE 2026-10-01, U0 PASS (all 6 DBs; authentik + underwriting drills)
 [ ] free disk headroom on every node for reconciliation (watch the loving-gannet 286 Gi node)
 [ ] rebuild concurrency stays at 2 (committed) during the climb
 [ ] maintenance window (each hop briefly disrupts the CSI/attach path)
@@ -98,7 +98,14 @@ against the source) — base backup downloaded + **WAL replayed from archive** �
 |---|---|---|
 | authentik | ✅ proven restorable (drill) | none |
 | nextcloud | ✅ **FIXED 2026-10-01** — recoverability point 11:23:53Z | none (see gotcha below) |
-| **claims · claims-prod · underwriting · data-platform** | ❌ **no backup configured at all** | **add** barmanObjectStore + ScheduledBackup (mirror authentik) |
+| underwriting · claims-prod · claims · data-platform | ✅ **ALL WIRED + VERIFIED 2026-10-01** — barman→dedicated R2 bucket, base backup + recoverability each | none |
+
+> **✅ U0 RECOVERY GATE = PASS (2026-10-01).** All 6 CNPG DBs restorable; qdrant + n8n in the Longhorn
+> backup group. **Mechanism proof** = authentik drill (RTO ~9 min). **Business-data proof** = underwriting
+> isolated restore drill — recovered from `cnpg-underwriting-prod` into a throwaway ns, data **exact match
+> to source (alembic=1, bindings=7, quotes=36, counterparties=47, incl. the bound policy)**, RTO ~2.5 min,
+> source untouched. Credential model: shared `platform/cloudflare` key + per-cluster buckets (owner call).
+> **The Longhorn climb is now unblocked** (pending the owner §8 decisions + a pre-hop-1 backup).
 
 **nextcloud fix (gotcha — CNPG "Expected empty archive"):** WAL archiving failed with
 `barman-cloud-check-wal-archive … Expected empty archive`. **Cause:** the CNPG migration re-created the
