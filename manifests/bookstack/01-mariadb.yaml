@@ -19,6 +19,7 @@ spec:
       labels:
         app: bookstack-mariadb
     spec:
+      automountServiceAccountToken: false
       securityContext:
         fsGroup: 999
         runAsUser: 999
@@ -54,16 +55,26 @@ spec:
               memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
           volumeMounts:
             - name: data
               mountPath: /var/lib/mysql
+            - name: run-mysqld
+              mountPath: /run/mysqld
+            - name: tmp
+              mountPath: /tmp
           readinessProbe:
             exec:
               command: [healthcheck.sh, --connect, --innodb_initialized]
             initialDelaySeconds: 15
             periodSeconds: 10
+      volumes:
+        - name: run-mysqld
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
   updateStrategy:
     type: RollingUpdate
   volumeClaimTemplates:
