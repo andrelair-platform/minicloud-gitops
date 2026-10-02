@@ -282,7 +282,16 @@ Benchmark it only if replica re-attach (not full rebuild) becomes a measured pai
    hurt when the slow node (swift-mac) was a source. Decision: keep sync-limit = 1; keep critical replicas
    off swift-mac. Full table + findings above (*Outcome / findings*).
 2. **Migrate Longhorn core to Helm-via-ArgoCD** — the proper end state for Finding A. Dedicated change on a settled cluster; never mix a management-method migration with a version migration.
-3. **(Follow-on, from the benchmark)** soft anti-affinity / node-tag critical 3r replicas **off swift-mac** so a rebuild never sources from the weakest node — a better MTTR lever than the sync-limit. Pairs with P2 (lower per-node exposure).
+3. ✅ **(Follow-on, from the benchmark) DONE (2026-10-02) — swift-mac made Longhorn storage-passive.**
+   Set the swift-mac Longhorn node `spec.allowScheduling=false` so it never hosts a replica again (never a
+   slow source/target for a rebuild — directly removes the limit-3 collapse cause). **Zero-disruption:**
+   swift-mac held **0 of 136 replicas** at the time (schedulable but unused), so nothing moved; it stays a
+   compute node. Chose the global exclude over node-tags+SC (owner call) — swift-mac's small/slow disk isn't
+   worth keeping as a storage target. **Resulting topology: 4 active storage nodes** (fast-heron, fast-skunk,
+   loving-gannet, star-kitten); set-hog was already storage-passive (control-plane, 31 legacy replicas kept).
+   4 ≥ 3 → 3r volumes still place + re-spread on a single node loss. **Live-cluster change (Longhorn node CR,
+   out-of-GitOps per Finding A), reversible:** `kubectl -n longhorn-system patch nodes.longhorn.io swift-mac
+   --type merge -p '{"spec":{"allowScheduling":false}}'` (set `true` to re-enable).
 
 ### LH-BENCHMARK run log (2026-10-02)
 - **Method:** disposable `lh-benchmark/lh-bench-pvc` — a 15 Gi, 3r, V1 Longhorn volume filled with **10 GiB of `/dev/urandom`** (incompressible), attached to a Gatekeeper-compliant filler pod. Orchestrator (`/tmp/lh_benchmark.py` on controller) per setting: wait healthy/3-RW → delete one replica → poll the engine `rebuildStatus.progress` + `replicaModeMap` + volume robustness → time degraded→healthy (total) and first-progress→100% (transfer). Constants: V1 engine, `fast-replica-rebuild-enabled` on, `concurrent-replica-rebuild-per-node-limit=2`, same volume/data. Setting restored to `{"v1":"1"}` after; test volume torn down.
