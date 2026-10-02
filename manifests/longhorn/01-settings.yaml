@@ -14,15 +14,19 @@ metadata:
   namespace: longhorn-system
 value: longhorn-backup-credentials
 ---
-# Gradually rebalances replicas to underutilised nodes (fast-heron currently
-# holds almost no replicas). least-effort moves one replica at a time and
-# only when a healthier placement exists — no disruption to running volumes.
+# Rebalances replicas across the 4 active storage nodes (set-hog + swift-mac are
+# allowScheduling=false). Raised least-effort -> best-effort (2026-10-02, Objective 2)
+# to actively even out exposure: by actual data star-kitten (~113 GiB) was the recovery
+# hotspot and loving-gannet carried the most replicas (41, thin-provisioned). best-effort
+# moves ONE replica at a time, only to a healthier placement, so it's gradual + non-
+# disruptive (0-faulted-gated); it REDISTRIBUTES exposure (lowers the worst node's
+# actual-data recovery ~113->~72 GiB) but does not reduce TOTAL replicated data.
 apiVersion: longhorn.io/v1beta2
 kind: Setting
 metadata:
   name: replica-auto-balance
   namespace: longhorn-system
-value: "least-effort"
+value: "best-effort"
 ---
 # Run a lightweight data-integrity check immediately after every snapshot
 # (daily at 01:00 UTC via the daily-snapshot recurring job).
