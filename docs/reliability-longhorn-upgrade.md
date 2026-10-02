@@ -318,8 +318,23 @@ Two levers applied:
   (Longhorn *removes* a replica — no rebuild); it removed the **fast-skunk** copy → **total replicated
   actual data 336.2 → 303.4 GiB (~33 GiB removed outright)**, 0 faulted. 2r still survives a single node loss.
 
-**Caveat / open:** the removed copy came off fast-skunk, so **star-kitten (the hotspot) still holds its
-harbor-registry replica** — the hotspot is unchanged. To cut it, relocate star-kitten's copy (best-effort
-auto-balance may do this over time; or delete that specific replica → rebuild on an under-utilised node).
-This is a GOOD compensating-control example: a live per-volume replica reduction on a rebuildable workload
-is a cheaper reliability lever than tuning the rebuild path.
+**Hotspot relocation — DONE (2026-10-02).** The 3r→2r removal came off fast-skunk, leaving star-kitten
+(the hotspot) still holding its copy — so star-kitten's replica was **deleted**; Longhorn rebuilt the 2nd
+copy on **fast-heron** (under-utilised). harbor-registry is now 2r on **fast-heron + loving-gannet** (off
+star-kitten), Healthy. Rebuild ran ~0.6 GiB/min (live, actively-used volume + a busy single source —
+slower than the idle-benchmark 1.78; non-disruptive, it's a rebuildable dev registry).
+
+### Objective-2 closeout verdict (2026-10-02)
+| metric | T0 | final | Δ |
+|---|---:|---:|---:|
+| worst-node actual exposure | star-kitten 113.2 GiB | **star-kitten 80.4 GiB** | **−29%** (recovery ~63→~45 min) |
+| per-node range | 45.1–113.2 (68.1) | 37.2–80.4 (**43.2**) | tightened ~37% |
+| total replicated actual | 336.2 GiB | **302.9 GiB** | −33.3 (one rebuildable copy removed) |
+| health | — | 0 faulted / 0 degraded / 0 rebuilding | ✅ |
+
+**The lesson (recorded): the win came from TARGETED manual levers, not the auto-balance policy.**
+`replica-auto-balance: best-effort` was trialled and **moved ZERO replicas in ~1h** (loving-gannet stayed
+at 41) — on this topology (4 active nodes + soft-anti-affinity + mostly-3r volumes) it finds no "strictly
+healthier" placement. Reverted to `least-effort`. What actually moved the needle: **(1) cutting replicas
+on a large rebuildable cache** (harbor-registry 3r→2r) + **(2) relocating the hotspot copy** off the worst
+node. On a small/constrained cluster, targeted per-volume action beats a global rebalance policy.
