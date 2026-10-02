@@ -1,0 +1,37 @@
+---
+# Longhorn CORE — Helm chart reconciled by ArgoCD (Finding A closure; adoption of the
+# live 1.12.1 install previously managed by raw `kubectl apply`).
+# Settings/recurring-jobs/pvc-labels/backup remain in the SEPARATE `longhorn-base` app.
+#
+# AUTO-SYNC IS INTENTIONALLY OFF: the first sync is an attended, diff-gated in-place
+# ADOPTION. A second PR enables `syncPolicy.automated` only after post-sync verification
+# passes (see docs/reliability-longhorn-helm-migration.md). Do NOT add `automated` here
+# until that verification is green.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  sources:
+    - repoURL: https://charts.longhorn.io
+      chart: longhorn
+      targetRevision: "1.12.1"
+      helm:
+        releaseName: longhorn
+        valueFiles:
+          - $values/helm-values/minicloud-1/longhorn-values.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system
+  syncPolicy:
+    # NO `automated:` block on purpose — manual first sync for the adoption. (Second PR adds it.)
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
