@@ -1,0 +1,10 @@
+---
+# Intranet (BookStack) — Digital Workplace #10. The human consultation layer for governance
+# guidelines (business lines) + HR + Legal + corporate docs. Scoping:
+# minicloud-platform-docs insurance-platform/governance-intranet.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: intranet
+  labels:
+    kubernetes.io/metadata.name: intranet

@@ -109,6 +109,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: insurance-dev
       server: https://kubernetes.default.svc
+    - namespace: intranet
+      server: https://kubernetes.default.svc
     - namespace: insurance-prod
       server: https://kubernetes.default.svc
     - namespace: keda
