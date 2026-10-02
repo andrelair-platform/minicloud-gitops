@@ -297,3 +297,29 @@ Benchmark it only if replica re-attach (not full rebuild) becomes a measured pai
 - **Method:** disposable `lh-benchmark/lh-bench-pvc` — a 15 Gi, 3r, V1 Longhorn volume filled with **10 GiB of `/dev/urandom`** (incompressible), attached to a Gatekeeper-compliant filler pod. Orchestrator (`/tmp/lh_benchmark.py` on controller) per setting: wait healthy/3-RW → delete one replica → poll the engine `rebuildStatus.progress` + `replicaModeMap` + volume robustness → time degraded→healthy (total) and first-progress→100% (transfer). Constants: V1 engine, `fast-replica-rebuild-enabled` on, `concurrent-replica-rebuild-per-node-limit=2`, same volume/data. Setting restored to `{"v1":"1"}` after; test volume torn down.
 - **Confound (stated honestly):** replica placement **redistributes each run** (delete one → a new replica lands on a free node), so the source/dest node set was **not** held constant. This is exactly what exposed finding #2/#3: limit-1 sourced from a fast node (1.78), limit-2 from two fast nodes (1.62), limit-3 from a set **including swift-mac** (0.56). The slow-node effect is real and operationally relevant (it's our actual fleet), but it means the A/B/C rows are **not** a pure sync-limit isolation — the version delta (1.6→1.12.1, 0.9→1.78) and the slow-source effect are the robust signals; the small A→B regression is within placement noise.
 - **Raw:** `[{"limit":1,"total_s":372,"transfer_s":338,"tp_xfer":1.78,"mbps":30.3,"sources":1},{"limit":2,"total_s":499,"transfer_s":370,"tp_xfer":1.62,"mbps":27.6,"sources":2},{"limit":3,"total_s":1116,"transfer_s":1072,"tp_xfer":0.56,"mbps":9.6,"sources":2}]` (`sources` = count of `fromReplicaAddressList` entries at 99%).
+
+## Objective 2 — per-node exposure reduction (2026-10-02)
+
+Goal: lower the actual-data a single node must rebuild on failure (the recovery-time driver).
+**Grounding correction:** by *actual* data (what a rebuild transfers), **star-kitten (~113 GiB) is the
+recovery hotspot**, not loving-gannet — loving-gannet led only on replica *count* (41, thin-provisioned)
+and *provisioned* size. T0 per-node actual: star-kitten 113.2 / fast-skunk 70.0 / loving-gannet 61.0 /
+set-hog 46.9 / fast-heron 45.1 GiB (set-hog + swift-mac are `allowScheduling=false` → 4 active nodes).
+
+Two levers applied:
+- **`replica-auto-balance: least-effort → best-effort`** (GitOps, `manifests/longhorn/01-settings.yaml`).
+  Redistributes placement across the 4 active nodes; gradual + conservative (one replica at a time, only to
+  a strictly healthier placement) → convergence plays out over hours, may be partial given 3r-on-4-nodes
+  has limited freedom. Redistributes, does not reduce total.
+- **`harbor-registry` 3r → 2r** (LIVE Volume CR patch, **not GitOps-captured** — reverts to the SC default
+  3r if the PVC is ever recreated; re-apply with `kubectl -n longhorn-system patch volumes.longhorn.io
+  <pvc-...> --type merge -p '{"spec":{"numberOfReplicas":2}}'`). harbor-registry is a **rebuildable dev
+  registry** (prod images are on ghcr), 32.8 GiB, so a 3rd copy isn't worth the exposure. Non-disruptive
+  (Longhorn *removes* a replica — no rebuild); it removed the **fast-skunk** copy → **total replicated
+  actual data 336.2 → 303.4 GiB (~33 GiB removed outright)**, 0 faulted. 2r still survives a single node loss.
+
+**Caveat / open:** the removed copy came off fast-skunk, so **star-kitten (the hotspot) still holds its
+harbor-registry replica** — the hotspot is unchanged. To cut it, relocate star-kitten's copy (best-effort
+auto-balance may do this over time; or delete that specific replica → rebuild on an under-utilised node).
+This is a GOOD compensating-control example: a live per-volume replica reduction on a rebuildable workload
+is a cheaper reliability lever than tuning the rebuild path.
