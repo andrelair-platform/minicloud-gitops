@@ -1,0 +1,37 @@
+---
+# Intranet (BookStack) — Digital Workplace #10. Phase-0 foundation: namespace + dedicated MariaDB
+# + DB credentials (ESO) + network policies. The BookStack web Deployment + Authentik OIDC SSO +
+# public route (intranet.devandre.sbs) land in the next Phase-0 step, once the Vault secret is
+# seeded and the DB is verified healthy. Scoping: minicloud-platform-docs insurance-platform/governance-intranet.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bookstack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: HEAD
+    path: manifests/bookstack
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: intranet
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[]?.remoteRef.conversionStrategy
+        - .spec.data[]?.remoteRef.decodingStrategy
+        - .spec.data[]?.remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

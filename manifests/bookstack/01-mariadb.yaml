@@ -1,0 +1,94 @@
+---
+# Dedicated MariaDB for BookStack (owner decision: a small isolated DB, NOT coupled to the
+# ERPNext prod MariaDB — avoids blast-radius + cross-ns netpol into `erp`). BookStack requires
+# MySQL/MariaDB (not Postgres) — the one platform deviation from CNPG, recorded in the scoping doc.
+# No hostname pin (Longhorn is network-attached); reschedules + reattaches its RWO volume anywhere.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bookstack-mariadb
+  namespace: intranet
+spec:
+  serviceName: bookstack-mariadb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookstack-mariadb
+  template:
+    metadata:
+      labels:
+        app: bookstack-mariadb
+    spec:
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mariadb
+          image: docker.io/library/mariadb:11.4
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MARIADB_DATABASE
+              value: bookstack
+            - name: MARIADB_USER
+              value: bookstack
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bookstack-db-secret
+                  key: mariadb-root-password
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bookstack-db-secret
+                  key: mariadb-password
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command: [healthcheck.sh, --connect, --innodb_initialized]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: longhorn
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookstack-mariadb
+  namespace: intranet
+  labels:
+    app: bookstack-mariadb
+spec:
+  selector:
+    app: bookstack-mariadb
+  ports:
+    - port: 3306
+      targetPort: 3306
