@@ -1,16 +1,16 @@
 # Longhorn Upgrade (1.6 → current) + Rebuild-Throughput Benchmark — Scoping
 
-**Status:** Scoping (design only — no cluster mutation) · **Owner:** Platform · **Date:** 2026-10-01
+**Status:** ✅ **LH-UPGRADE COMPLETE — 1.6.0 → 1.12.1 (6 hops, 2026-10-01)** · LH-BENCHMARK pending (owner go) · **Owner:** Platform · **Date:** 2026-10-01
 **Parent:** reliability epic #1518 · **Driver:** P1.6 — rebuild throughput ~0.9 GiB/min is the MTTR ceiling.
 
 Two **separate** workstreams (do not conflate — one variable at a time):
 - **LH-UPGRADE** — get from 1.6 to a current release *safely*.
 - **LH-BENCHMARK** — measure whether the new rebuild features actually improve *our* recovery.
 
-## Current state (grounded 2026-10-01)
+## Current state (grounded 2026-10-01, post-climb)
 | Fact | Value |
 |---|---|
-| Longhorn | **v1.6.0** (manager + engine `ei-acb7590c`) |
+| Longhorn | **v1.12.1** (manager + all 60 engines) — *was v1.6.0 at the start of the climb* |
 | Kubernetes | **v1.36.3+k3s1** (uniform on all 6 nodes) |
 | Data engine | **V1 on all 58 volumes** (no V2/SPDK) |
 | Health | 0 faulted (1 degraded = the in-flight P2.1 rebuild) |
@@ -226,5 +226,26 @@ mechanism generally). **U0 Recovery Gate = PASS only after all four + the underw
 - Engine upgrade (auto 1/node) → all 60 engines v1.8.2 → v1.9.2 live; 60/60 healthy (one brief transient non-healthy during a live upgrade, resolved); reverted auto to 0.
 - **Result:** manager + all 60 engines on v1.9.2. Zero data loss, zero app outage.
 
-### Hop 4 — v1.9.2 → v1.10.2 (in progress 2026-10-01)
-- Pre-hop: 60/60 healthy, engines v1.9.2, 0 rebuilds. Target v1.10.2 (latest 1.10; csi-provisioner still v5.3.0 — the v6.3.0/k8s≥1.34 floor only arrives at 1.13). Benign `int64` CRD-format warning on apply (harmless). Apply clean (39 configured, 2 created, 0 errors). Rollout + engine upgrade monitored (same procedure).
+### Hop 4 — v1.9.2 → v1.10.2 ✅ (2026-10-01)
+- Pre-hop: 60/60 healthy, engines v1.9.2, 0 rebuilds. Target v1.10.2 (latest 1.10; csi-provisioner still v5.3.0 — the v6.3.0/k8s≥1.34 floor only arrives at 1.13). Benign `int64` CRD-format warning on apply (harmless). Apply clean (39 configured, 2 created, 0 errors).
+- Manager/CSI rolled to v1.10.2, all pods Ready, 0 faulted throughout. Engine upgrade (auto 1/node) → all 60 engines v1.9.2 → v1.10.2 live; 60/60 healthy; reverted auto to 0.
+- **Result:** manager + all 60 engines on v1.10.2. Zero data loss, zero app outage.
+- **Monitor note:** the 1.10 manager image is `docker.io/longhornio/longhorn-manager:v1.10.2` (registry-prefixed) — the exact-image-match break condition in the watch loop missed it and idle-looped; subsequent hops break on `curVer=vX.Y.Z` + `notReady=0` instead (no functional impact, monitoring-only).
+
+### Hop 5 — v1.10.2 → v1.11.3 ✅ (2026-10-01)
+- Pre-hop: 60/60 healthy, engines v1.10.2, 0 rebuilds. Target **v1.11.3 — the floor for multi-source rebuild** (the throughput lever) **and the first Longhorn to officially support k8s 1.36** (we stop overshooting the support matrix here). Apply clean.
+- Manager/CSI rolled to v1.11.3 (notReady peaked 23 during the all-at-once manager roll, drained to 0 in ~400s), 0 faulted. Engine upgrade (auto 1/node) → all 60 engines v1.10.2 → v1.11.3 live in ~180s; 60/60 healthy; reverted auto to 0.
+- **Result:** manager + all 60 engines on v1.11.3. Zero data loss, zero app outage. **LH-BENCHMARK is now possible** (multi-source rebuild lives here).
+
+### Hop 6 (TARGET) — v1.11.3 → v1.12.1 ✅ (2026-10-01) — **climb COMPLETE: 1.6.0 → 1.12.1**
+- Pre-hop: 60/60 healthy, engines v1.11.3, 0 rebuilds. Target **v1.12.1 — the latest stable that lists k8s 1.36** (V2/SPDK is GA here but we **keep V1** on all volumes — V2 is a separate future experiment, not this climb). Apply clean (largest manifest, 207 KB).
+- Manager/CSI rolled to v1.12.1 (notReady peaked 24, drained to 0 in ~420s), 0 faulted. Engine upgrade (auto 1/node) → all 60 engines v1.11.3 → v1.12.1 live in ~210s; 60/60 healthy; reverted auto to 0.
+- **Result:** manager + all 60 engines on v1.12.1. **Final gate: engines {v1.12.1: 60}, robustness {healthy: 60}, curVer=v1.12.1.**
+- **Post-climb app smoke (green):** Vault Sealed=false, 7/7 CNPG clusters ready, NATS JS up (4/3). Only non-running pod = `monitoring/prometheus-kps-prometheus-0` (pre-existing 6-day CrashLoop, unrelated to storage). Multi-source-rebuild settings present (`replica-rebuilding-bandwidth-limit`, `replica-auto-balance-disk-pressure-percentage 90`).
+
+### Climb summary — 1.6.0 → 1.12.1, 6 hops, 2026-10-01
+**Zero data loss · zero app outage · 0 faulted throughout all 6 hops.** Each hop = apply manifest → manager/CSI rollout → health gate → live engine migration (auto 1/node) → revert → dwell. The recurring (benign) bottleneck was **swift-mac** (the 2012 MacBook) pulling images ~5 min/hop. k8s was *ahead* of the storage layer the whole climb (1.6 overshot its matrix by ~8 minors); from **1.11** onward we are back inside the official k8s-1.36 support matrix. **U0 recovery gate held** (prod DBs restorable) — the safety net was never needed but was real.
+
+**Remaining follow-ups (the whole effort was aimed at these):**
+1. **LH-BENCHMARK** — now unblocked on ≥1.11. Measure whether multi-source rebuild (`replica-rebuild-concurrent-sync-limit` 1→2→3) lifts the ~0.9 GiB/min / ~5.3h-recovery baseline. Protocol above (*LH-BENCHMARK*). **This is the original objective** — confirm with owner before running (it deletes replicas on a disposable 3r test volume).
+2. **Migrate Longhorn core to Helm-via-ArgoCD** — the proper end state for Finding A. Dedicated change on a settled cluster; never mix a management-method migration with a version migration.
