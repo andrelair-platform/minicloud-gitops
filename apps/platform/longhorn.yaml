@@ -3,10 +3,10 @@
 # live 1.12.1 install previously managed by raw `kubectl apply`).
 # Settings/recurring-jobs/pvc-labels/backup remain in the SEPARATE `longhorn-base` app.
 #
-# AUTO-SYNC IS INTENTIONALLY OFF: the first sync is an attended, diff-gated in-place
-# ADOPTION. A second PR enables `syncPolicy.automated` only after post-sync verification
-# passes (see docs/reliability-longhorn-helm-migration.md). Do NOT add `automated` here
-# until that verification is green.
+# Adopted in-place via an attended, diff-gated first sync (2026-10-02); the one-time
+# Helm-ownership-label rollout of longhorn-manager/ui is done, data plane verified intact
+# (60/60 volumes healthy, instance-managers untouched, RW smoke PASS). Auto-sync enabled
+# after that verification passed. See docs/reliability-longhorn-helm-migration.md.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -31,7 +31,15 @@ spec:
     server: https://kubernetes.default.svc
     namespace: longhorn-system
   syncPolicy:
-    # NO `automated:` block on purpose — manual first sync for the adoption. (Second PR adds it.)
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
     syncOptions:
       - CreateNamespace=false
       - ServerSideApply=true

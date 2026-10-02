@@ -1,6 +1,28 @@
 # Longhorn core → Helm-via-ArgoCD migration — Scoping (Finding A closure)
 
-**Status:** 🟡 **Scoping (design only — no cluster mutation)** · **Owner:** Platform · **Date:** 2026-10-02
+**Status:** ✅ **DONE (2026-10-02) — Longhorn core adopted into Helm/ArgoCD, auto-sync ON. Finding A closed.** · **Owner:** Platform · **Date:** 2026-10-02
+
+## Outcome (2026-10-02) — executed as scoped
+In-place SSA adoption via an attended, diff-gated first sync, then auto-sync enabled after verification.
+- **Diff gate** (`kubectl diff --server-side --force-conflicts`): 43 objects touched, almost all Helm
+  ownership labels; only real delta was +4 `CSI_*_REPLICA_COUNT` env vars on `longhorn-driver-deployer`.
+- **First sync (attended, auto-sync OFF):** app `Synced/Healthy`; **60/60 volumes attached+healthy, 0
+  faulted, instance-managers 0 restarts (data plane untouched), RW PVC smoke PASS.**
+- **Deviation + LESSON (see below):** longhorn-manager (DaemonSet) + longhorn-ui rolled, which the diff
+  gate had NOT predicted. One-time, benign, settled 6/6.
+- **Auto-sync enabled** (2nd PR) after verification: `automated{prune,selfHeal}` + retry.
+- **Upgrades henceforth** = bump chart `targetRevision` (one minor/hop) → CODEOWNERS PR → ArgoCD; engine
+  migration via the `concurrent-automatic-engine-upgrade-per-node-limit` Setting CR in longhorn-base.
+
+> ### ⚠️ LESSON — pod-template labels are rollout-causing, not harmless metadata
+> **Helm ownership labels added under `spec.template.metadata.labels` (`app.kubernetes.io/*`,
+> `helm.sh/chart`) are a pod-template change → they force a Deployment/DaemonSet rollout.** During an
+> adoption diff they must NOT be bucketed with *object-level* `metadata.labels` (which don't roll). The
+> first-sync diff gate under-predicted the churn because it treated all label additions as non-rolling;
+> in fact the manager/ui rolled. For Longhorn the roll is safe (instance-managers = the data plane are
+> separate CRs, never templated by the chart, so volumes stay served — proven here + across the 1.6→1.12
+> climb). But for a **stateful workload whose own Deployment/STS carries the data**, the same adoption
+> would cause a real restart — always expect a one-time rollout when adopting a running workload into Helm.
 **Parent:** reliability epic #1518 · **Driver:** *Finding A* — the Longhorn **core** is installed/upgraded by
 hand (`kubectl apply -f longhorn-<ver>.yaml`), outside Git/ArgoCD. The 1.6→1.12.1 climb proved the raw-apply
 path works, but every hop was a manual action with no PR/review/audit trail. End state: **the core is a

@@ -281,7 +281,7 @@ Benchmark it only if replica re-attach (not full rebuild) becomes a measured pai
    (0.9 → 1.78 GiB/min, worst-node recovery ~5.3 h → ~2.4 h); **raising the sync-limit did NOT help** and
    hurt when the slow node (swift-mac) was a source. Decision: keep sync-limit = 1; keep critical replicas
    off swift-mac. Full table + findings above (*Outcome / findings*).
-2. **Migrate Longhorn core to Helm-via-ArgoCD** — the proper end state for Finding A. Dedicated change on a settled cluster; never mix a management-method migration with a version migration. **Scoped:** `reliability-longhorn-helm-migration.md` (in-place SSA adoption, diff-gated cutover, two-app split keeping longhorn-base as settings authority). Low-urgency governance polish — not a reliability gap.
+2. ✅ **DONE (2026-10-02) — Longhorn core migrated to Helm-via-ArgoCD. Finding A closed.** In-place SSA adoption via an attended, diff-gated first sync (auto-sync OFF), then auto-sync enabled after verification (60/60 healthy, 0 faulted, instance-managers untouched, RW smoke PASS). One-time benign manager/ui rollout from Helm pod-template labels (lesson recorded). Upgrades henceforth = chart `targetRevision` bump → CODEOWNERS PR → ArgoCD. Full record: `reliability-longhorn-helm-migration.md`.
 3. ✅ **(Follow-on, from the benchmark) DONE (2026-10-02) — swift-mac made Longhorn storage-passive.**
    Set the swift-mac Longhorn node `spec.allowScheduling=false` so it never hosts a replica again (never a
    slow source/target for a rebuild — directly removes the limit-3 collapse cause). **Zero-disruption:**
