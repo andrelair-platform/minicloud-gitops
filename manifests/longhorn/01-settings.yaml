@@ -1,18 +1,18 @@
 # Longhorn backup target: MinIO at 10.0.0.1:9000, bucket "longhorn".
 # Region string is arbitrary for MinIO — Longhorn uses AWS_ENDPOINTS from the secret.
+# Longhorn 1.11+ manages the backup target via the BackupTarget CR; the old
+# `backup-target` / `backup-target-credential-secret` Settings were REMOVED in 1.12
+# (the webhook rejects them: "setting ... does not exist"). Migrated here 2026-10-02
+# after the 1.6->1.12.1 climb; ArgoCD SSA adopts the live `default` BackupTarget in place.
 apiVersion: longhorn.io/v1beta2
-kind: Setting
+kind: BackupTarget
 metadata:
-  name: backup-target
+  name: default
   namespace: longhorn-system
-value: "s3://longhorn@us-east-1/"
----
-apiVersion: longhorn.io/v1beta2
-kind: Setting
-metadata:
-  name: backup-target-credential-secret
-  namespace: longhorn-system
-value: longhorn-backup-credentials
+spec:
+  backupTargetURL: "s3://longhorn@us-east-1/"
+  credentialSecret: longhorn-backup-credentials
+  pollInterval: 5m0s
 ---
 # Rebalances replicas across the 4 active storage nodes (set-hog + swift-mac are
 # allowScheduling=false). Raised least-effort -> best-effort (2026-10-02, Objective 2)
@@ -32,12 +32,14 @@ value: "best-effort"
 # (daily at 01:00 UTC via the daily-snapshot recurring job).
 # Catches replica divergence the same day instead of waiting for the
 # weekly standalone scan (snapshot-data-integrity-cronjob: 0 0 */7 * *).
+# 1.12 stores this as a per-data-engine map (was a scalar "true" pre-1.11) — match the
+# live format so ArgoCD doesn't perpetually diff.
 apiVersion: longhorn.io/v1beta2
 kind: Setting
 metadata:
   name: snapshot-data-integrity-immediate-check-after-snapshot-creation
   namespace: longhorn-system
-value: "true"
+value: '{"v1":"true","v2":"true"}'
 ---
 # Node-failure auto-failover for STATEFUL workloads. Default "do-nothing" means when a
 # node goes down, Longhorn leaves the stuck pod in place → the StatefulSet/Deployment
