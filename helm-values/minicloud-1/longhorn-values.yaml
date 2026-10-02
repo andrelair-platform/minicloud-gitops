@@ -1,0 +1,23 @@
+# Longhorn CORE Helm values — reconciled to the live 1.12.1 install for in-place adoption
+# (Finding A closure; see docs/reliability-longhorn-helm-migration.md).
+#
+# Settings are NOT managed here — the `longhorn-base` ArgoCD app owns them as explicit
+# Setting CRs (continuously enforced; Helm defaultSettings only SEEDS at install). Only
+# the two keys the live longhorn-default-setting ConfigMap carries are set, to match live.
+persistence:
+  defaultClass: true
+  defaultClassReplicaCount: 3
+defaultSettings:
+  priorityClass: longhorn-critical
+  disableRevisionCounter: true
+# the pre-upgrade checker Job is disabled (we gate upgrades via the climb health-gate, not the chart hook)
+preUpgradeChecker:
+  jobEnabled: false
+longhornUI:
+  replicas: 2
+# CSI deployments are created by longhorn-driver-deployer at runtime; these feed its env (match live = 3)
+csi:
+  attacherReplicaCount: 3
+  provisionerReplicaCount: 3
+  resizerReplicaCount: 3
+  snapshotterReplicaCount: 3
