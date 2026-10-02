@@ -26,6 +26,8 @@ installed/upgraded by manual `kubectl apply`, not Helm/ArgoCD/Ansible).
 | v1.8.2 | 2026-10-01 (hop 2) | |
 | v1.9.2 | 2026-10-01 (hop 3) | 1.9 bumps instance-manager image |
 | v1.10.2 | 2026-10-01 (hop 4) | |
+| v1.11.3 | 2026-10-01 (hop 5) | **floor for multi-source rebuild**; first to officially support k8s 1.36 |
+| v1.12.1 | 2026-10-01 (hop 6 — **TARGET**) | **climb complete: 1.6.0 → 1.12.1**; latest stable on k8s 1.36; V2 GA but V1 kept |
 
 ## The proper end state (tracked follow-up, post-climb)
 Migrate the Longhorn **core** to the official **Helm chart managed by ArgoCD** (upgrade = a `targetRevision`
