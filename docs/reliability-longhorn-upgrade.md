@@ -1,6 +1,6 @@
 # Longhorn Upgrade (1.6 → current) + Rebuild-Throughput Benchmark — Scoping
 
-**Status:** ✅ **LH-UPGRADE COMPLETE — 1.6.0 → 1.12.1 (6 hops, 2026-10-01)** · LH-BENCHMARK pending (owner go) · **Owner:** Platform · **Date:** 2026-10-01
+**Status:** ✅ **LH-UPGRADE COMPLETE — 1.6.0 → 1.12.1 (6 hops, 2026-10-01)** · ✅ **LH-BENCHMARK COMPLETE (2026-10-02)** → *version upgrade ~2×'d single-source rebuild; raising sync-limit did NOT help (see Outcome/findings)* · **Owner:** Platform · **Date:** 2026-10-02
 **Parent:** reliability epic #1518 · **Driver:** P1.6 — rebuild throughput ~0.9 GiB/min is the MTTR ceiling.
 
 Two **separate** workstreams (do not conflate — one variable at a time):
@@ -172,12 +172,18 @@ mechanism generally). **U0 Recovery Gate = PASS only after all four + the underw
    *(ClickHouse's 1r→2r was NOT a valid multi-source test — only one source.)*
 2. For each setting, **delete one replica** (2 healthy sources remain) → time the rebuild of the 3rd:
 
-| Test | `replica-rebuild-concurrent-sync-limit` | Throughput | 30 Gi est | net MB/s | src CPU | src disk | dst disk |
-|---|---|---:|---:|---:|---:|---:|---:|
-| 1.6 baseline (single-source, from P1.6) | 1 | ~0.9 GiB/min | ~33 min | 15.7 | TBD | TBD | 13.5 |
-| target (≥1.11) A | 1 | TBD | TBD | TBD | TBD | TBD | TBD |
-| target (≥1.11) B | 2 | TBD | TBD | TBD | TBD | TBD | TBD |
-| target (≥1.11) C | 3 | TBD | TBD | TBD | TBD | TBD | TBD |
+| Test | `…concurrent-sync-limit` | sources actually used | Throughput (transfer) | 30 Gi est | net MB/s |
+|---|---|---|---:|---:|---:|
+| 1.6 baseline (single-source, from P1.6) | 1 | 1 | ~0.9 GiB/min | ~33 min | 15.7 |
+| **1.12.1 A** | 1 | **1** (fast node) | **1.78 GiB/min** | ~17 min | 30.3 |
+| **1.12.1 B** | 2 | **2** (both fast) | **1.62 GiB/min** | ~19 min | 27.6 |
+| **1.12.1 C** | 3 | **2** (incl. swift-mac) | **0.56 GiB/min** | ~54 min | 9.6 |
+
+> **RESULTS (measured 2026-10-02, 10 GiB disposable 3r volume, V1, fast-rebuild on, per-node-rebuild-limit 2).**
+> Multi-source **did engage** at limit ≥2 (`rebuildStatus.fromReplicaAddressList` carried 2 source
+> addresses at B and C — this is a *valid* multi-source test, unlike the ClickHouse 1r→2r). Raw JSON +
+> the full progress trace are in the climb log. **See the findings below — raising the sync-limit did NOT
+> help; the win was the version upgrade itself.**
 
 3. **Separately** benchmark fast-rebuild: `fast-replica-rebuild-enabled` + snapshot checksums
    (`snapshot-data-integrity`) — measure rebuild gain **vs** the CPU/IO cost of checksumming (it runs at
@@ -186,12 +192,36 @@ mechanism generally). **U0 Recovery Gate = PASS only after all four + the underw
    evaluate V2 as its own future experiment.
 5. Record the two-dimensional KPI after: `recovery ≈ worst-case-exposure ÷ measured-throughput`.
 
-## Expected outcome / decision criteria
-- If `sync-limit 2–3` materially raises throughput (network has 8× headroom: 15→up to ~125 MB/s), the
-  worst-node recovery (`286 Gi ÷ throughput`) drops proportionally → set it as default.
-- Multi-source helps **node-loss recovery of 3r criticals** (where ≥2 healthy sources exist) — exactly the
-  286 Gi concern; it does *not* speed 1r→2r migrations (one source), so it won't change P2 migration time.
-- Combine with P2 (lower exposure) for the multiplicative win.
+## Outcome / findings (measured 2026-10-02) — the hypothesis was WRONG; the win was the upgrade
+
+**1. The version upgrade is the real MTTR lever — ~2× on a like-for-like single-source rebuild.**
+1.6 single-source ≈ 0.9 GiB/min (15.7 MB/s) → **1.12.1 single-source = 1.78 GiB/min (30.3 MB/s)**. That
+alone recomputes worst-case recovery: the ~256 Gi worst node (P2.1) goes **~5.3 h → ~2.4 h** (256 ÷ 1.78),
+*with no tuning at all*. Getting current was the point, and it paid off.
+
+**2. Raising `replica-rebuild-concurrent-sync-limit` did NOT help — it was neutral-to-harmful.** The
+original hypothesis ("network has 8× headroom, so 2–3 concurrent sources → proportionally faster") is
+**refuted on this cluster**:
+- **limit 1 → 2 (both sources fast):** 1.78 → 1.62 GiB/min — a small *regression*, not a gain. Multi-source
+  engaged (2 source addresses) but added coordination overhead without raising throughput. The bottleneck
+  is **not** the number of read sources — it's the single rebuilding replica's **write/receive path + per-node
+  disk**, and the network was never the limiter at these rates.
+- **limit 3 (one source = swift-mac, the 2012 MacBook):** collapsed to **0.56 GiB/min (9.6 MB/s)**. A
+  multi-source rebuild is **only as fast as its slowest source** — concurrently pulling from a weak node
+  *drags the whole rebuild down*, worse than a single fast source would. On **heterogeneous** hardware,
+  cranking the sync-limit is a liability, not a win.
+
+**3. Decision — keep `replica-rebuild-concurrent-sync-limit = 1` (default, restored after the test).**
+Higher values bought nothing here and risk coupling a rebuild to the slowest replica. Multi-source would
+only pay off on a **homogeneous fast fleet**; with swift-mac in the pool it backfires. Corollary: keep
+critical 3r replicas **off swift-mac** (soft anti-affinity / node tags) so a rebuild never sources from it
+— a better lever than the sync-limit. The durable MTTR gains remain **(a)** being current (done) and
+**(b)** lowering exposure per node (P2) — combined, multiplicatively.
+
+**4. Not run (deferred):** the separate `fast-replica-rebuild` / `snapshot-data-integrity` benchmark
+(protocol step 3). Fast-rebuild was *on* (constant) during this test but has no effect on a brand-new
+replica (nothing to diff) — its payoff is re-adding a replica with pre-existing data, a different scenario.
+Benchmark it only if replica re-attach (not full rebuild) becomes a measured pain point.
 
 ## Climb log
 
@@ -246,6 +276,15 @@ mechanism generally). **U0 Recovery Gate = PASS only after all four + the underw
 ### Climb summary — 1.6.0 → 1.12.1, 6 hops, 2026-10-01
 **Zero data loss · zero app outage · 0 faulted throughout all 6 hops.** Each hop = apply manifest → manager/CSI rollout → health gate → live engine migration (auto 1/node) → revert → dwell. The recurring (benign) bottleneck was **swift-mac** (the 2012 MacBook) pulling images ~5 min/hop. k8s was *ahead* of the storage layer the whole climb (1.6 overshot its matrix by ~8 minors); from **1.11** onward we are back inside the official k8s-1.36 support matrix. **U0 recovery gate held** (prod DBs restorable) — the safety net was never needed but was real.
 
-**Remaining follow-ups (the whole effort was aimed at these):**
-1. **LH-BENCHMARK** — now unblocked on ≥1.11. Measure whether multi-source rebuild (`replica-rebuild-concurrent-sync-limit` 1→2→3) lifts the ~0.9 GiB/min / ~5.3h-recovery baseline. Protocol above (*LH-BENCHMARK*). **This is the original objective** — confirm with owner before running (it deletes replicas on a disposable 3r test volume).
+**Remaining follow-ups:**
+1. ✅ **LH-BENCHMARK — DONE (2026-10-02).** Result: the **version upgrade** ~2×'d single-source rebuild
+   (0.9 → 1.78 GiB/min, worst-node recovery ~5.3 h → ~2.4 h); **raising the sync-limit did NOT help** and
+   hurt when the slow node (swift-mac) was a source. Decision: keep sync-limit = 1; keep critical replicas
+   off swift-mac. Full table + findings above (*Outcome / findings*).
 2. **Migrate Longhorn core to Helm-via-ArgoCD** — the proper end state for Finding A. Dedicated change on a settled cluster; never mix a management-method migration with a version migration.
+3. **(Follow-on, from the benchmark)** soft anti-affinity / node-tag critical 3r replicas **off swift-mac** so a rebuild never sources from the weakest node — a better MTTR lever than the sync-limit. Pairs with P2 (lower per-node exposure).
+
+### LH-BENCHMARK run log (2026-10-02)
+- **Method:** disposable `lh-benchmark/lh-bench-pvc` — a 15 Gi, 3r, V1 Longhorn volume filled with **10 GiB of `/dev/urandom`** (incompressible), attached to a Gatekeeper-compliant filler pod. Orchestrator (`/tmp/lh_benchmark.py` on controller) per setting: wait healthy/3-RW → delete one replica → poll the engine `rebuildStatus.progress` + `replicaModeMap` + volume robustness → time degraded→healthy (total) and first-progress→100% (transfer). Constants: V1 engine, `fast-replica-rebuild-enabled` on, `concurrent-replica-rebuild-per-node-limit=2`, same volume/data. Setting restored to `{"v1":"1"}` after; test volume torn down.
+- **Confound (stated honestly):** replica placement **redistributes each run** (delete one → a new replica lands on a free node), so the source/dest node set was **not** held constant. This is exactly what exposed finding #2/#3: limit-1 sourced from a fast node (1.78), limit-2 from two fast nodes (1.62), limit-3 from a set **including swift-mac** (0.56). The slow-node effect is real and operationally relevant (it's our actual fleet), but it means the A/B/C rows are **not** a pure sync-limit isolation — the version delta (1.6→1.12.1, 0.9→1.78) and the slow-source effect are the robust signals; the small A→B regression is within placement noise.
+- **Raw:** `[{"limit":1,"total_s":372,"transfer_s":338,"tp_xfer":1.78,"mbps":30.3,"sources":1},{"limit":2,"total_s":499,"transfer_s":370,"tp_xfer":1.62,"mbps":27.6,"sources":2},{"limit":3,"total_s":1116,"transfer_s":1072,"tp_xfer":0.56,"mbps":9.6,"sources":2}]` (`sources` = count of `fromReplicaAddressList` entries at 99%).
