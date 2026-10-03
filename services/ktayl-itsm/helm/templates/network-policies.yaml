@@ -58,7 +58,7 @@ spec:
         - { port: 53, protocol: UDP }
         - { port: 53, protocol: TCP }
 ---
-# GLPI -> its MariaDB only (same ns). (Authentik OIDC egress added in S002.)
+# GLPI -> its MariaDB only (same ns).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: { name: allow-egress-mariadb }
@@ -72,3 +72,22 @@ spec:
             matchLabels: { app: glpi-mariadb }
       ports:
         - { port: 3306 }
+---
+# S002: GLPI OIDC back-channel to auth.devandre.sbs (split-horizon → the internal ingress VIP
+# 10.0.0.200). Allow 443 to the ingress-nginx pods + the VIP (one matches depending on how Cilium
+# classifies the DNAT'd VIP). minicloud-CA cert there is trusted via the CA-trust initContainer.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-egress-oidc-ingress }
+spec:
+  podSelector:
+    matchLabels: { app: glpi }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - ipBlock: { cidr: 10.0.0.200/32 }
+      ports:
+        - { port: 443, protocol: TCP }
