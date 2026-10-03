@@ -1,0 +1,44 @@
+---
+# S001: internal host only (Tailscale). The public itsm.devandre.sbs route + Authentik SSO land in
+# S002 — GLPI must not be publicly reachable without auth.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: glpi-tls
+spec:
+  secretName: glpi-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.host }}
+{{- if .Values.publicHost }}
+    - {{ .Values.publicHost }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: glpi
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - {{ .Values.host }}
+      secretName: glpi-tls
+  rules:
+    - host: {{ .Values.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: glpi
+                port:
+                  number: 80

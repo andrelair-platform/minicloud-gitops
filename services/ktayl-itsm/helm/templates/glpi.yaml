@@ -1,0 +1,93 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: glpi-config
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: {{ .Values.glpi.configStorage }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: glpi-files
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: {{ .Values.glpi.filesStorage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: glpi
+  annotations:
+    # GLPI is a supervisord+apache+php image that writes runtime paths (apache/supervisor logs, /run,
+    # /tmp) across the rootfs; persistent data (config, files) is on PVCs. readOnlyRootFilesystem is a
+    # tracked S001 hardening follow-on (needs emptyDirs for the exact runtime paths — iterate live).
+    checkov.io/skip1: CKV_K8S_22=GLPI supervisord/apache image writes runtime rootfs paths; persistent data on PVCs; RO-rootfs hardening tracked as S001 follow-on
+spec:
+  replicas: {{ .Values.glpi.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: glpi }
+  template:
+    metadata:
+      labels: { app: glpi }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 33
+        runAsUser: 33
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: glpi
+          image: {{ .Values.glpi.image.repository }}:{{ .Values.glpi.image.tag }}
+          ports:
+            - containerPort: 8080
+          env:
+            - { name: GLPI_DB_HOST, value: glpi-mariadb }
+            - { name: GLPI_DB_PORT, value: "3306" }
+            - { name: GLPI_DB_NAME, value: {{ .Values.db.name | quote }} }
+            - { name: GLPI_DB_USER, value: {{ .Values.db.user | quote }} }
+            - name: GLPI_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: ktayl-itsm-db, key: db-password } }
+            - { name: GLPI_CRONTAB_ENABLED, value: "1" }
+            - { name: TZ, value: Europe/Paris }
+          resources: {{ .Values.glpi.resources | toYaml | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            tcpSocket: { port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket: { port: 8080 }
+            initialDelaySeconds: 120
+            periodSeconds: 20
+          volumeMounts:
+            - { name: config, mountPath: /var/www/glpi/config }
+            - { name: files, mountPath: /var/www/glpi/files }
+      volumes:
+        - { name: config, persistentVolumeClaim: { claimName: glpi-config } }
+        - { name: files, persistentVolumeClaim: { claimName: glpi-files } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glpi
+  labels: { app: glpi }
+spec:
+  selector: { app: glpi }
+  ports:
+    - { name: http, port: 80, targetPort: 8080 }
