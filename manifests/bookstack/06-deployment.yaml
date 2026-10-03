@@ -33,6 +33,28 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # Append the minicloud CA to the image's own public CA bundle (preserving public trust) so
+        # BookStack's OIDC back-channel trusts the internal, minicloud-CA-signed auth.devandre.sbs
+        # endpoint. Writes the combined bundle to an emptyDir the main container mounts over its
+        # /etc/ssl/certs/ca-certificates.crt. Uses the same image to match the base bundle.
+        - name: ca-trust
+          image: ghcr.io/linuxserver/bookstack:26.09.1
+          command: ["sh", "-c", "cat /etc/ssl/certs/ca-certificates.crt /ca-src/ca.crt > /ca-shared/ca-certificates.crt"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [NET_RAW]
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+          volumeMounts:
+            - name: ca-src
+              mountPath: /ca-src
+              readOnly: true
+            - name: ca-shared
+              mountPath: /ca-shared
       containers:
         - name: bookstack
           image: ghcr.io/linuxserver/bookstack:26.09.1  # same image as lscr.io; ghcr is on the allowed-registries list
@@ -111,6 +133,10 @@ spec:
               mountPath: /run
             - name: tmp
               mountPath: /tmp
+            - name: ca-shared
+              mountPath: /etc/ssl/certs/ca-certificates.crt
+              subPath: ca-certificates.crt
+              readOnly: true
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -118,4 +144,9 @@ spec:
         - name: run
           emptyDir: {}
         - name: tmp
+          emptyDir: {}
+        - name: ca-src
+          configMap:
+            name: minicloud-ca-bundle
+        - name: ca-shared
           emptyDir: {}
