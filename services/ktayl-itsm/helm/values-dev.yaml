@@ -2,6 +2,6 @@
 glpi:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-itsm
-    tag: 8ebaf34-amd64
+    tag: a516565-amd64
 host: itsm.10.0.0.200.nip.io
 publicHost: ""

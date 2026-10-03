@@ -46,27 +46,7 @@ spec:
         runAsUser: 33
         runAsNonRoot: true
         seccompProfile: { type: RuntimeDefault }
-      initContainers:
-        # Runtime CA trust (the image's baked CA was flattened by the build-arg → invalid). Append the
-        # minicloud CA to the image's own bundle so GLPI's OIDC back-channel to auth.devandre.sbs
-        # (split-horizon → internal minicloud-CA ingress) verifies. Preferred runtime approach per
-        # docs/deployment-architecture.md; same pattern as BookStack.
-        - name: ca-trust
-          image: {{ .Values.glpi.image.repository }}:{{ .Values.glpi.image.tag }}
-          # Preserve the (clean) base bundle verbatim, then append the minicloud CA re-serialized by
-          # openssl x509 (canonical PEM + trailing newline). Raw cat/awk mangled the combine → certs
-          # curl's strict OpenSSL loader couldn't parse (exit 77). This is deterministic + clean.
-          command: ["sh", "-c", "cp /etc/ssl/certs/ca-certificates.crt /ca-shared/ca-certificates.crt && openssl x509 -in /ca-src/ca.crt >> /ca-shared/ca-certificates.crt"]
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities: { drop: [ALL] }
-          resources:
-            requests: { cpu: 10m, memory: 32Mi }
-            limits: { cpu: 100m, memory: 64Mi }
-          volumeMounts:
-            - { name: ca-src, mountPath: /ca-src, readOnly: true }
-            - { name: ca-shared, mountPath: /ca-shared }
+      # CA trust is baked into the image (BuildKit secret + update-ca-certificates) — no runtime initContainer.
       containers:
         - name: glpi
           image: {{ .Values.glpi.image.repository }}:{{ .Values.glpi.image.tag }}
@@ -104,12 +84,9 @@ spec:
             # glpi/glpi image stores mutable data under /var/glpi (NOT /var/www/glpi).
             - { name: config, mountPath: /var/glpi/config }
             - { name: files, mountPath: /var/glpi/files }
-            - { name: ca-shared, mountPath: /etc/ssl/certs/ca-certificates.crt, subPath: ca-certificates.crt, readOnly: true }
       volumes:
         - { name: config, persistentVolumeClaim: { claimName: glpi-config } }
         - { name: files, persistentVolumeClaim: { claimName: glpi-files } }
-        - { name: ca-src, configMap: { name: minicloud-ca-bundle } }
-        - { name: ca-shared, emptyDir: {} }
 ---
 apiVersion: v1
 kind: Service
