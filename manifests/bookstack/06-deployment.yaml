@@ -7,6 +7,15 @@ kind: Deployment
 metadata:
   name: bookstack
   namespace: intranet
+  annotations:
+    # linuxserver/* uses s6-overlay which MUST start as root (uid 0) to set up perms then drops to
+    # PUID/PGID 1000 — so it cannot satisfy runAsNonRoot (CKV_K8S_23), and its s6+nginx init needs the
+    # default cap set (chown/setuid/setgid/net_bind), so capabilities cannot be fully dropped
+    # (CKV_K8S_37). NET_RAW is dropped as the meaningful reduction. Every other control is kept
+    # (read-only rootfs, no SA token, seccomp, resource limits, default-deny netpols, OIDC-gated,
+    # not anon-public). Checkov reads these skips from the resource's OWN metadata.
+    checkov.io/skip1: CKV_K8S_23=linuxserver s6-overlay requires root start; drops to PUID/PGID 1000
+    checkov.io/skip2: CKV_K8S_37=s6+nginx init needs default caps (chown/setuid/net_bind); NET_RAW dropped
 spec:
   replicas: 1
   strategy:
@@ -18,12 +27,6 @@ spec:
     metadata:
       labels:
         app: bookstack
-      annotations:
-        # linuxserver/* uses s6-overlay which MUST start as root (uid 0) to set up perms then drops to
-        # PUID/PGID 1000 — it cannot satisfy runAsNonRoot. Every other control is kept (read-only rootfs,
-        # no SA token, NET_RAW dropped, seccomp, resource limits, default-deny netpols, OIDC-gated, not
-        # anon-public). Skip only the unavoidable root-start check, with this reason.
-        checkov.io/skip1: CKV_K8S_23=linuxserver s6-overlay requires root start; drops to PUID/PGID 1000
     spec:
       automountServiceAccountToken: false
       securityContext:
