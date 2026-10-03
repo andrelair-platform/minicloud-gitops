@@ -96,13 +96,15 @@ spec:
         - {port: 3306}
 ---
 # BookStack → Authentik for OIDC (discovery/token/jwks/userinfo) uses the PUBLIC issuer
-# auth.devandre.sbs (required so the browser front-channel works + a real public TLS cert, no
-# minicloud-CA injection). That back-channel hairpins out to Cloudflare, so the egress it needs is
-# HTTPS to the internet — NOT the internal authentik ns. DB + DNS stay the only other egress allowed.
+# auth.devandre.sbs (required so the browser front-channel gets a reachable authorize URL). Inside the
+# cluster, split-horizon DNS resolves auth.devandre.sbs → the ingress VIP 10.0.0.200, so the
+# back-channel stays IN-cluster (no internet hairpin). Allow 443 to the ingress-nginx pods AND the VIP
+# (10.0.0.200) — one of the two matches depending on how Cilium classifies the DNAT'd VIP. The cert
+# there is minicloud-CA signed → the pod trusts it via the CA-trust initContainer (see the Deployment).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-egress-https
+  name: allow-egress-oidc-ingress
   namespace: intranet
 spec:
   podSelector:
@@ -111,11 +113,10 @@ spec:
   policyTypes: [Egress]
   egress:
     - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
         - ipBlock:
-            cidr: 0.0.0.0/0
-            except:
-              - 10.0.0.0/8
-              - 172.16.0.0/12
-              - 192.168.0.0/16
+            cidr: 10.0.0.200/32
       ports:
         - {port: 443, protocol: TCP}
