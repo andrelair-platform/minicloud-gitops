@@ -46,7 +46,25 @@ spec:
         runAsUser: 33
         runAsNonRoot: true
         seccompProfile: { type: RuntimeDefault }
-      # CA trust is baked into the image (BuildKit secret + update-ca-certificates) — no runtime initContainer.
+      initContainers:
+        # Runtime CA trust from the trust-manager minicloud-ca-bundle configmap (the MINICLOUD_CA_CERT
+        # org secret is flattened/body-less, so baking it corrupts the store). The base image trust
+        # store is clean (150 certs); append the valid minicloud CA re-serialized by openssl x509
+        # (canonical PEM) → 151-cert bundle curl's strict loader accepts. Mounted over the main
+        # container's /etc/ssl/certs/ca-certificates.crt so GLPI's OIDC back-channel verifies.
+        - name: ca-trust
+          image: {{ .Values.glpi.image.repository }}:{{ .Values.glpi.image.tag }}
+          command: ["sh", "-c", "cp /etc/ssl/certs/ca-certificates.crt /ca-shared/ca-certificates.crt && openssl x509 -in /ca-src/ca.crt >> /ca-shared/ca-certificates.crt"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+          volumeMounts:
+            - { name: ca-src, mountPath: /ca-src, readOnly: true }
+            - { name: ca-shared, mountPath: /ca-shared }
       containers:
         - name: glpi
           image: {{ .Values.glpi.image.repository }}:{{ .Values.glpi.image.tag }}
@@ -84,9 +102,12 @@ spec:
             # glpi/glpi image stores mutable data under /var/glpi (NOT /var/www/glpi).
             - { name: config, mountPath: /var/glpi/config }
             - { name: files, mountPath: /var/glpi/files }
+            - { name: ca-shared, mountPath: /etc/ssl/certs/ca-certificates.crt, subPath: ca-certificates.crt, readOnly: true }
       volumes:
         - { name: config, persistentVolumeClaim: { claimName: glpi-config } }
         - { name: files, persistentVolumeClaim: { claimName: glpi-files } }
+        - { name: ca-src, configMap: { name: minicloud-ca-bundle } }
+        - { name: ca-shared, emptyDir: {} }
 ---
 apiVersion: v1
 kind: Service
