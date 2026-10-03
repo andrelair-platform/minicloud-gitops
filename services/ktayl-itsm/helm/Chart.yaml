@@ -1,0 +1,9 @@
+apiVersion: v2
+name: ktayl-itsm
+description: >-
+  GLPI ITSM wrapper chart (board #16). GLPI is a stateful app (its own PVC) + a dedicated MariaDB,
+  so the workloads are authored in templates/ (the shared stateless library subchart does not fit a
+  PVC-backed app). Custom GLPI image is built from the ktayl-itsm repo. ITSM-01 / S001.
+type: application
+version: 0.1.0
+appVersion: "10.0.28"

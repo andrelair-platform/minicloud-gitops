@@ -1,0 +1,7 @@
+# dev — Harbor image (k3s pulls internally), ns itsm, internal host only (S002 adds SSO + public route).
+glpi:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-itsm
+    tag: ba5d2a3-amd64
+host: itsm.10.0.0.200.nip.io
+publicHost: ""

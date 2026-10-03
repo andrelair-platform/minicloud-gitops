@@ -1,0 +1,26 @@
+# GLPI ITSM wrapper chart — common values (env overlays in values-dev.yaml / values-prod.yaml).
+glpi:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-itsm
+    tag: ""            # set per env (the CI-built SHA)
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: "1", memory: 1Gi }
+  configStorage: 1Gi
+  filesStorage: 5Gi
+
+mariadb:
+  image: docker.io/library/mariadb:11.4
+  storage: 8Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+db:
+  name: glpi
+  user: glpi
+
+# per-env
+host: ""             # e.g. itsm.10.0.0.200.nip.io
+publicHost: ""       # e.g. itsm.devandre.sbs (added to the cert SANs)
