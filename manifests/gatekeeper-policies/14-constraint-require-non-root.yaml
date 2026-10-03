@@ -52,3 +52,4 @@ spec:
             - erp               # ERPNext — frappe runs as UID 1000 but chart doesn't set runAsNonRoot explicitly
             - temporal          # schema Job init containers don't set runAsNonRoot — Helm chart doesn't expose containerSecurityContext for schema Job
             - node-problem-detector  # NPD DaemonSet runs as root to read kernel logs and /dev/kmsg
+            - intranet          # BookStack (linuxserver/* s6-overlay image) must start as root then drops to PUID/PGID 1000; all other controls kept (read-only rootfs, no SA token, NET_RAW dropped, seccomp, limits)
