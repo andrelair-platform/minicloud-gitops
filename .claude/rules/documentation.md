@@ -11,6 +11,25 @@ a DORA/AI-Act audit, or a job interview.
 **When you finish a workstream, update the docs in the same effort.** Do not
 consider a story/epic/incident "done" until its documentation reflects reality.
 
+## Documentation is a Definition-of-Done GATE — MANDATORY, not a follow-up
+
+**Every project / epic / feature / third-party deployment is NOT "Done" until its documentation is
+updated in the same effort** — at minimum its **org-site map page** (`minicloud-platform-docs`) brought
+to **as-built** (what's live · how to operate/verify · decisions resolved), plus any ADR/runbook the
+scope warrants. This is a **blocking DoD item at the same tier as tests and the QA gate** — the doc PR
+lands **with** (or immediately after) the deploy PR, build-checked (`npm run build`). "I'll document it
+later" or **waiting to be asked is the failure mode this rule forbids.**
+
+> **Anti-pattern actually observed (2026-10-03, BookStack #10 + GLPI #16):** the build was finished and
+> marked done, but the org-site doc was only written when the owner later asked. Shipping a capability
+> without its as-built doc leaves the platform undefensible in an audit/interview and rots the map.
+> For a **new product** this is Path-C `project-governance.md` work; for **any** deploy it's a DoD gate.
+
+**Enforcement:** the Definition of Done (`agile-execution.md` §2) and the BMAD gates
+(`bmad-compliance.md`) both carry "org-site as-built doc updated + build-checked" — a story/epic that
+deployed something cannot be closed without it. When you finish building, the **next action is the doc**,
+not the next feature.
+
 ## Where documentation lives (pick by scope)
 
 | What | Where | When |
