@@ -1,0 +1,36 @@
+---
+# No forward-auth annotations — BookStack gates itself via native OIDC to Authentik. Public route
+# (intranet.devandre.sbs) arrives via the Cloudflare tunnel; internal nip.io host for Tailscale access.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bookstack
+  namespace: intranet
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - intranet.10.0.0.200.nip.io
+        - intranet.devandre.sbs
+      secretName: bookstack-tls
+  rules:
+    - host: intranet.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bookstack
+                port:
+                  number: 80
+    - host: intranet.devandre.sbs
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bookstack
+                port:
+                  number: 80
