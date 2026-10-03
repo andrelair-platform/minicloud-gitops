@@ -1,0 +1,13 @@
+---
+# BookStack /config — uploads (images/attachments), logs, app state. RWO Longhorn; single replica.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bookstack-config
+  namespace: intranet
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi

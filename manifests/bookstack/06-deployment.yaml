@@ -1,0 +1,118 @@
+---
+# BookStack web (intranet wiki / governance knowledge base). linuxserver image: nginx + php-fpm via
+# s6-overlay. Native OIDC SSO to Authentik (per-user identity + group->role, for per-shelf roles).
+# Single replica, RWO /config PVC -> strategy Recreate. No hostname pin (Longhorn is network-attached).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookstack
+  namespace: intranet
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bookstack
+  template:
+    metadata:
+      labels:
+        app: bookstack
+      annotations:
+        # linuxserver/* uses s6-overlay which MUST start as root (uid 0) to set up perms then drops to
+        # PUID/PGID 1000 — it cannot satisfy runAsNonRoot. Every other control is kept (read-only rootfs,
+        # no SA token, NET_RAW dropped, seccomp, resource limits, default-deny netpols, OIDC-gated, not
+        # anon-public). Skip only the unavoidable root-start check, with this reason.
+        checkov.io/skip1: CKV_K8S_23=linuxserver s6-overlay requires root start; drops to PUID/PGID 1000
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bookstack
+          image: lscr.io/linuxserver/bookstack:26.09.1
+          ports:
+            - containerPort: 80
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Europe/Paris
+            - name: APP_URL
+              value: https://intranet.devandre.sbs
+            - name: DB_HOST
+              value: bookstack-mariadb
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_DATABASE
+              value: bookstack
+            - name: DB_USERNAME
+              value: bookstack
+            # OIDC SSO -> Authentik (public issuer; back-channel hairpins via Cloudflare)
+            - name: AUTH_METHOD
+              value: oidc
+            - name: AUTH_AUTO_INITIATE
+              value: "false"
+            - name: OIDC_NAME
+              value: Authentik
+            - name: OIDC_DISPLAY_NAME_CLAIMS
+              value: name
+            - name: OIDC_ISSUER
+              value: https://auth.devandre.sbs/application/o/bookstack/
+            - name: OIDC_ISSUER_DISCOVER
+              value: "true"
+            - name: OIDC_ADDITIONAL_SCOPES
+              value: groups
+            - name: OIDC_GROUPS_CLAIM
+              value: groups
+            - name: OIDC_USER_TO_GROUPS
+              value: "true"
+            - name: OIDC_REMOVE_FROM_GROUPS
+              value: "true"
+          envFrom:
+            - secretRef:
+                name: bookstack-app-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [NET_RAW]
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: 80
+            initialDelaySeconds: 90
+            periodSeconds: 20
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: run
+              mountPath: /run
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: bookstack-config
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

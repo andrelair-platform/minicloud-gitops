@@ -1,0 +1,17 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: bookstack-tls
+  namespace: intranet
+spec:
+  secretName: bookstack-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - intranet.10.0.0.200.nip.io
+    - intranet.devandre.sbs
