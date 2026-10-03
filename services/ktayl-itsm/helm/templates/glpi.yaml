@@ -53,7 +53,10 @@ spec:
         # docs/deployment-architecture.md; same pattern as BookStack.
         - name: ca-trust
           image: {{ .Values.glpi.image.repository }}:{{ .Values.glpi.image.tag }}
-          command: ["sh", "-c", "cat /etc/ssl/certs/ca-certificates.crt /ca-src/ca.crt > /ca-shared/ca-certificates.crt"]
+          # awk 1 (NOT cat): the glpi/glpi base bundle has no trailing newline, so `cat` glues its last
+          # cert to the appended minicloud cert -> corrupt PEM -> curl's strict CA loader rejects the
+          # whole file (exit 77). awk 1 guarantees a newline between the two files.
+          command: ["sh", "-c", "awk 1 /etc/ssl/certs/ca-certificates.crt /ca-src/ca.crt > /ca-shared/ca-certificates.crt"]
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
