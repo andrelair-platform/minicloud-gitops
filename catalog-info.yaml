@@ -14,6 +14,14 @@ metadata:
     backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
     github.com/project-slug: andrelair-platform/minicloud-gitops
     argocd/app-name: root
+    # Capability-registry governance columns (§8) — ICT change governance (DORA, family 11).
+    governance.ktayl-solution/applicable-policy: Politique gouvernance ICT (DORA)|https://intranet.devandre.sbs/books/it-security-dora-cadre-de-gouvernance/page/01-politique-policy
+    governance.ktayl-solution/applicable-standard: Standard change management|https://intranet.devandre.sbs/books/it-security-dora-cadre-de-gouvernance/page/02-standard
+    governance.ktayl-solution/applicable-guideline: Directive GitOps / déploiement|https://intranet.devandre.sbs/books/it-security-dora-cadre-de-gouvernance/page/03-directive-guideline
+    governance.ktayl-solution/applicable-procedure: Procédure de changement (PR→prod)|https://intranet.devandre.sbs/books/it-security-dora-cadre-de-gouvernance/page/04-procedure
+    governance.ktayl-solution/required-controls: PR + CODEOWNERS · commits signés GPG · cosign+SBOM · Gatekeeper/OPA · change-record audit
+    governance.ktayl-solution/approval-authority: Platform Admins / CODEOWNERS
+    governance.ktayl-solution/evidence-required: change-record issues · historique PR · historique ArgoCD · signatures de commits
   tags:
     - argocd
     - gitops
