@@ -66,18 +66,23 @@ spec:
             readOnlyRootFilesystem: false
             capabilities:
               drop: [ALL]
+          # First boot auto-installs the schema THEN apache binds 8080 — a startupProbe covers that
+          # (~10 min budget); readiness/liveness engage only after startup succeeds.
+          startupProbe:
+            tcpSocket: { port: 8080 }
+            periodSeconds: 10
+            failureThreshold: 60
           readinessProbe:
             tcpSocket: { port: 8080 }
-            initialDelaySeconds: 30
             periodSeconds: 10
-            failureThreshold: 12
           livenessProbe:
             tcpSocket: { port: 8080 }
-            initialDelaySeconds: 120
             periodSeconds: 20
+            failureThreshold: 6
           volumeMounts:
-            - { name: config, mountPath: /var/www/glpi/config }
-            - { name: files, mountPath: /var/www/glpi/files }
+            # glpi/glpi image stores mutable data under /var/glpi (NOT /var/www/glpi).
+            - { name: config, mountPath: /var/glpi/config }
+            - { name: files, mountPath: /var/glpi/files }
       volumes:
         - { name: config, persistentVolumeClaim: { claimName: glpi-config } }
         - { name: files, persistentVolumeClaim: { claimName: glpi-files } }
