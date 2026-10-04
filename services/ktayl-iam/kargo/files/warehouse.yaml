@@ -1,0 +1,26 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: ktayl-iam
+  namespace: ktayl-iam-kargo
+spec:
+  # GIT-Warehouse model (MANDATORY for a MULTI-image MONOREPO — gitops.md). ktayl-iam builds TWO images
+  # (backend + frontend) from ONE repo at ONE commit. Two NewestBuild image subscriptions (the OLD setup)
+  # produce MIXED Freight when one image is a byte-identical cached rebuild (no newer timestamp → Kargo
+  # can't rank the new SHA) → the two could land at DIFFERENT commits, and dev had to be hand-bumped.
+  # Keying Freight on the COMMIT keeps both images consistent and lets Kargo own the promotion (no
+  # hand-edit). Stages pin BOTH image.tags to commitFrom(...).ID[0:7] (== the CI 7-char short-SHA tag).
+  # Source repo is PUBLIC → no git credential for the subscription (the promotion push to minicloud-gitops
+  # uses the kargo git cred). Phantom-commit guard: exclude paths routinely committed with [skip ci].
+  interval: 5m
+  freightCreationPolicy: Automatic
+  subscriptions:
+    - git:
+        repoURL: https://github.com/andrelair-platform/ktayl-iam.git
+        branch: main
+        commitSelectionStrategy: NewestFromBranch
+        excludePaths:
+          - docs
+          - bmad
+          - catalog-info.yaml
+          - "regex:.*\\.md$"

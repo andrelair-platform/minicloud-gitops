@@ -1,0 +1,18 @@
+# Variant C: let the AnalysisRun Job (in the ktayl-iam-kargo project ns) reach the dev Services
+# (backend + frontend, both :3000) cross-namespace. ns ktayl-iam is default-deny-ingress.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kargo-verification
+  namespace: ktayl-iam
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kargo.akuity.io/project: "true"
+      ports:
+        - port: 3000
+          protocol: TCP

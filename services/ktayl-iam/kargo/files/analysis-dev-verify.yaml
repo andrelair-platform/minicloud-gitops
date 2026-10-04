@@ -1,0 +1,70 @@
+# Kargo dev-Stage verification (Variant C — always-on, internal). One AnalysisRun Job smokes BOTH
+# images of the promoted commit via their dev Services cross-namespace (ns ktayl-iam): the backend's
+# public health endpoint + the frontend root. A Freight is verifiedIn:dev only if this passes → the
+# prod Stage (sources.stages:[dev]) accepts only verified Freight = the dev→prod gate. Needs the
+# allow-kargo-verification NetworkPolicy in ns ktayl-iam (netpol-dev.yaml). Gatekeeper-compliant pod
+# (non-root, drop-all, limits, seccomp) + fully-qualified image (allowed-registries policy).
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: ktayl-iam-dev-verify
+  namespace: ktayl-iam-kargo
+spec:
+  metrics:
+    - name: dev-smoke
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 3
+            activeDeadlineSeconds: 300
+            ttlSecondsAfterFinished: 300
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/part-of: ktayl-iam
+                  kargo.akuity.io/verify: dev-smoke
+              spec:
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: smoke
+                    image: docker.io/curlimages/curl:8.11.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests: { cpu: 25m, memory: 32Mi }
+                      limits: { cpu: 100m, memory: 64Mi }
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        BE=http://ktayl-iam-backend.ktayl-iam.svc.cluster.local:3000/api/health
+                        FE=http://ktayl-iam-frontend.ktayl-iam.svc.cluster.local:3000/
+                        # Readiness gate (a rolling-update endpoints gap can outlast a plain retry).
+                        wait_up() {  # $1=url $2=label
+                          i=0
+                          while [ "$i" -lt 50 ]; do
+                            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$1" 2>/dev/null || true)
+                            [ -z "$code" ] && code=000
+                            if [ "$code" != "000" ]; then echo "$2 reachable (HTTP $code) after $((i*3))s"; return 0; fi
+                            i=$((i+1)); sleep 3
+                          done
+                          echo "$2 never became reachable after 150s"; return 1
+                        }
+                        wait_up "$BE" backend
+                        wait_up "$FE" frontend
+                        # Both images of the promoted commit must serve.
+                        bc=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --retry 4 --retry-delay 5 --retry-all-errors "$BE")
+                        fc=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --retry 4 --retry-delay 5 --retry-all-errors "$FE")
+                        echo "backend /api/health=$bc  frontend /=$fc"
+                        [ "$bc" = 200 ] || { echo "backend not healthy"; exit 1; }
+                        case "$fc" in 200|304) ;; *) echo "frontend not serving"; exit 1;; esac
+                        echo "ktayl-iam dev smoke passed (both images serve)"
