@@ -46,10 +46,14 @@ spec:
     # now a NON-empty ScheduleAnyway list in values, which the chart honors — so git is
     # the source of truth and ArgoCD can enforce/selfHeal it. The old `[]` was falsy and
     # ignored by the chart, which is why it used to need suppression.)
+    # strategy set to Recreate via kubectl patch — chart doesn't template it. ERPNext pods all mount
+    # the RWO sites volume (one node), so the default RollingUpdate surge creates a 2nd pod that can't
+    # mount the volume on another node → wedge + stale mount (2026-10-04 incident). Recreate = no surge.
     - group: apps
       kind: Deployment
       jqPathExpressions:
         - .spec.template.spec.priorityClassName
+        - .spec.strategy
     - group: apps
       kind: StatefulSet
       jqPathExpressions:
