@@ -55,6 +55,28 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: observability
 ---
+# Allow n8n (automation ns) → Stalwart SMTP submission (587/STARTTLS) for the HR-12
+# fan-out notify email. mail is default-deny-ingress; this is the explicit, port-scoped allow.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-automation-smtp
+  namespace: mail
+spec:
+  podSelector:
+    matchLabels:
+      app: stalwart
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: automation
+      ports:
+        - protocol: TCP
+          port: 587
+---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
