@@ -50,9 +50,22 @@ spec:
               value: "false"
             - name: NODE_OPTIONS
               value: "--max-old-space-size=1024"
+            # HR-12 fan-out: let workflow nodes read the GLPI tokens + signing key via $env
+            # (n8n blocks env access in nodes by default). See the hr-lifecycle fan-out workflow.
+            - name: N8N_BLOCK_ENV_ACCESS_IN_NODE
+              value: "false"
+            # allow the fan-out Code node to `require('crypto')` for HMAC signature verification
+            - name: NODE_FUNCTION_ALLOW_BUILTIN
+              value: "crypto"
           envFrom:
             - secretRef:
                 name: n8n-credentials
+            # HR-12 non-access fan-out creds: GLPI_APP_TOKEN, GLPI_USER_TOKEN, GLPI_API_URL,
+            # HR_LIFECYCLE_SIGNING_KEY (bootstrapped secret — provisioned by
+            # minicloud-ops scripts/glpi/enable-api.sh + the signing key copied from erp).
+            - secretRef:
+                name: n8n-hr-glpi
+                optional: true
           volumeMounts:
             - name: data
               mountPath: /home/node/.n8n
