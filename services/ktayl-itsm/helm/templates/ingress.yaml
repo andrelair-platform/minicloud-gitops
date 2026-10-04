@@ -1,6 +1,7 @@
 ---
-# S001: internal host only (Tailscale). The public itsm.devandre.sbs route + Authentik SSO land in
-# S002 — GLPI must not be publicly reachable without auth.
+# S002: internal host (Tailscale) + public host (itsm.devandre.sbs via the Cloudflare tunnel).
+# GLPI gates itself via NATIVE OIDC to Authentik (the glpi-singlesignon plugin) — NOT forward-auth —
+# so the public ingress carries no forward-auth annotations; GLPI's own login page is the gate.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -30,6 +31,9 @@ spec:
   tls:
     - hosts:
         - {{ .Values.host }}
+{{- if .Values.publicHost }}
+        - {{ .Values.publicHost }}
+{{- end }}
       secretName: glpi-tls
   rules:
     - host: {{ .Values.host }}
@@ -42,3 +46,15 @@ spec:
                 name: glpi
                 port:
                   number: 80
+{{- if .Values.publicHost }}
+    - host: {{ .Values.publicHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: glpi
+                port:
+                  number: 80
+{{- end }}

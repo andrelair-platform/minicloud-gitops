@@ -1,7 +1,8 @@
-# dev — Harbor image (k3s pulls internally), ns itsm, internal host only (S002 adds SSO + public route).
+# dev — Harbor image (k3s pulls internally), ns itsm. S002: internal host (Tailscale) + public host
+# (itsm.devandre.sbs via Cloudflare tunnel), gated by GLPI's native Authentik OIDC (singlesignon plugin).
 glpi:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-itsm
     tag: 32ef4ce-amd64
 host: itsm.10.0.0.200.nip.io
-publicHost: ""
+publicHost: itsm.devandre.sbs
