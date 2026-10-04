@@ -192,6 +192,21 @@ worker:
     resources:
       requests: { cpu: 50m, memory: 128Mi }
       limits:   { cpu: 200m, memory: 256Mi }
+    # HR-12 — the lifecycle publish is enqueued to the SHORT queue (queue="short"), so the short
+    # worker MUST carry the signing key + fan-out URL (the gunicorn/default sections alone aren't enough).
+    envVars:
+      - name: HR_LIFECYCLE_SIGNING_KEY
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-hr-lifecycle
+            key: HR_LIFECYCLE_SIGNING_KEY
+            optional: true
+      - name: HR_N8N_WEBHOOK_URL
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-hr-lifecycle
+            key: HR_N8N_WEBHOOK_URL
+            optional: true
     affinity:
       podAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
@@ -204,6 +219,20 @@ worker:
     resources:
       requests: { cpu: 50m, memory: 128Mi }
       limits:   { cpu: 200m, memory: 256Mi }
+    # HR-12 — carry the signing key + fan-out URL here too (a future long-queue publish, and uniformity).
+    envVars:
+      - name: HR_LIFECYCLE_SIGNING_KEY
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-hr-lifecycle
+            key: HR_LIFECYCLE_SIGNING_KEY
+            optional: true
+      - name: HR_N8N_WEBHOOK_URL
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-hr-lifecycle
+            key: HR_N8N_WEBHOOK_URL
+            optional: true
     affinity:
       podAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
