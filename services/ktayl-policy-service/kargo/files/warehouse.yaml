@@ -18,9 +18,12 @@ spec:
     - git:
         repoURL: https://github.com/andrelair-platform/ktayl-policy-service.git
         branch: main
-        # Phantom-commit guard: only Freight for commits whose image CI builds. Policy CI has no
-        # paths-ignore (every main commit builds), so this just skips pure docs/md commits. Keep
-        # excludePaths a SUPERSET of any future CI paths-ignore.
+        # Phantom-commit guard: only Freight for commits whose image CI builds. CI is skipped by
+        # paths-ignore OR a `[skip ci]` message — the latter is routinely used on docs/catalog/bmad
+        # commits (this bit ktayl-underwriting on a catalog-info.yaml `[skip ci]`). Exclude those paths
+        # so such commits never create un-built Freight. Keep excludePaths a SUPERSET of the CI skips.
         excludePaths:
           - docs
+          - bmad
+          - catalog-info.yaml
           - "regex:.*\\.md$"

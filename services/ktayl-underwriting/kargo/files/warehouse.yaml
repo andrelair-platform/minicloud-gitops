@@ -11,9 +11,14 @@ spec:
   # The git model keys Freight on the COMMIT, so both stages pin BOTH images to commitFrom(...).ID[0:7]
   # → always a consistent set. The source repo is PUBLIC → no git credential needed.
   #
-  # Phantom-commit guard: the git Warehouse creates Freight for every main commit. The underwriting CI
-  # builds both images on EVERY push to main (no paths-ignore), so every commit has images → no gap →
-  # no excludePaths. If a paths-ignore is ever added to that CI, mirror it here as a SUPERSET.
+  # Phantom-commit guard (FIXED 2026-10-04): the git Warehouse creates Freight for EVERY main commit,
+  # but a commit whose CI build was SKIPPED has no image → promoting it = ImagePullBackOff. CI is
+  # skipped two ways: (a) paths-ignore, AND (b) a `[skip ci]` message (regardless of path). The earlier
+  # claim "every commit has images" was wrong — a docs/catalog commit with `[skip ci]` (e.g. 477758d,
+  # catalog-info.yaml) phantom-promoted to dev and wedged it. excludePaths below mirrors the paths that
+  # are routinely committed with `[skip ci]` (docs / *.md / catalog-info.yaml / bmad) so they never
+  # create Freight. (A `[skip ci]` on a non-excluded CODE path would still phantom → don't do that;
+  # add its path here if a new skip pattern appears. Keep excludePaths a SUPERSET of the CI skips.)
   interval: 5m
   freightCreationPolicy: Automatic
   subscriptions:
@@ -21,3 +26,8 @@ spec:
         repoURL: https://github.com/andrelair-platform/ktayl-underwriting.git
         branch: main
         commitSelectionStrategy: NewestFromBranch
+        excludePaths:
+          - docs
+          - bmad
+          - catalog-info.yaml
+          - "regex:.*\\.md$"
