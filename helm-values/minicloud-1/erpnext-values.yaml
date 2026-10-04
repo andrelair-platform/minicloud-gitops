@@ -100,8 +100,8 @@ worker:
             optional: true
       # HR-12 — J/M/L lifecycle event emission (erpnext_hr_lifecycle). The /api/method/
       # emit_test_event endpoint runs in gunicorn, so it needs the signing key + fan-out URL
-      # too; the actual publish runs in a background worker (below). Secret is bootstrapped
-      # in-cluster (erpnext-hr-lifecycle) — TODO migrate to Vault+ESO when a write token exists.
+      # too; the actual publish runs in a background worker (below). Secret erpnext-hr-lifecycle
+      # is ESO-managed from Vault (secret/platform/hr-lifecycle) — see manifests/erpnext/01-externalsecrets.yaml.
       - name: HR_LIFECYCLE_SIGNING_KEY
         valueFrom:
           secretKeyRef:

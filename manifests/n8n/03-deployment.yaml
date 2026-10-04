@@ -61,8 +61,9 @@ spec:
             - secretRef:
                 name: n8n-credentials
             # HR-12 non-access fan-out creds: GLPI_APP_TOKEN, GLPI_USER_TOKEN, GLPI_API_URL,
-            # HR_LIFECYCLE_SIGNING_KEY (bootstrapped secret — provisioned by
-            # minicloud-ops scripts/glpi/enable-api.sh + the signing key copied from erp).
+            # HR_LIFECYCLE_SIGNING_KEY — rendered by ESO from Vault (platform/glpi +
+            # platform/hr-lifecycle) via the n8n-hr-glpi ExternalSecret (01-externalsecret.yaml).
+            # GLPI tokens are (re)provisioned into Vault by minicloud-ops scripts/glpi/enable-api.sh.
             - secretRef:
                 name: n8n-hr-glpi
                 optional: true
