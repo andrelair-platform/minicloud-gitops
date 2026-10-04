@@ -98,6 +98,22 @@ worker:
             name: erpnext-dsn-config
             key: DSN_COMPANY_NAME
             optional: true
+      # HR-12 — J/M/L lifecycle event emission (erpnext_hr_lifecycle). The /api/method/
+      # emit_test_event endpoint runs in gunicorn, so it needs the signing key + fan-out URL
+      # too; the actual publish runs in a background worker (below). Secret is bootstrapped
+      # in-cluster (erpnext-hr-lifecycle) — TODO migrate to Vault+ESO when a write token exists.
+      - name: HR_LIFECYCLE_SIGNING_KEY
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-hr-lifecycle
+            key: HR_LIFECYCLE_SIGNING_KEY
+            optional: true
+      - name: HR_N8N_WEBHOOK_URL
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-hr-lifecycle
+            key: HR_N8N_WEBHOOK_URL
+            optional: true
     affinity:
       nodeAffinity:
         # Soft PREFERENCE for fast-skunk, not a hard pin — passes the k8snohostnamepin guard
@@ -149,6 +165,20 @@ worker:
           secretKeyRef:
             name: erpnext-dsn-config
             key: DSN_COMPANY_NAME
+            optional: true
+      # HR-12 — the background worker that publishes J/M/L events (frappe.enqueue → publish):
+      # signs the event (HMAC) + publishes to NATS HR_LIFECYCLE + POSTs the n8n fan-out.
+      - name: HR_LIFECYCLE_SIGNING_KEY
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-hr-lifecycle
+            key: HR_LIFECYCLE_SIGNING_KEY
+            optional: true
+      - name: HR_N8N_WEBHOOK_URL
+        valueFrom:
+          secretKeyRef:
+            name: erpnext-hr-lifecycle
+            key: HR_N8N_WEBHOOK_URL
             optional: true
     affinity:
       podAffinity:

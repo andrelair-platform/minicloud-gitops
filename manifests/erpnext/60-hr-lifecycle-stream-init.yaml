@@ -1,0 +1,65 @@
+# HR-12 — the JetStream stream that captures the J/M/L lifecycle events ERPNext emits
+# (erpnext_hr_lifecycle publishes signed events to subjects hr.lifecycle.<joiner|mover|leaver>;
+# it does NOT create the stream). ktayl-iam v3 adds its own durable consumer here later for ACCESS.
+#
+# Idempotent create-if-absent. Deliberately a PLAIN Job (no hook, no Replace=true) — same rationale
+# as services/ktayl-claims/helm/templates/debezium.yaml: a PreSync hook that fails wedges the whole
+# sync (hook-finalizer), and Replace=true `kubectl replace` fails on an existing Job (auto-generated
+# selector) and retries forever. The Job body is STABLE → a plain apply on the completed Job is a
+# clean no-op each sync. If the body ever must change (immutable Job fields), delete it once by hand.
+# A completed Job is Healthy so it never stalls a wave. Runs in ns erp; allow-cluster-clients in
+# messaging permits any ns → nats:4222.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hr-lifecycle-stream-init
+  namespace: erp
+  labels:
+    app.kubernetes.io/name: erpnext-hr-lifecycle
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: erpnext-hr-lifecycle
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: stream-init
+          image: docker.io/natsio/nats-box:0.14.5   # fully-qualified: Gatekeeper denies a bare name
+          workingDir: /tmp                            # writable cwd (readOnly rootfs)
+          env:
+            - { name: HOME, value: /tmp }
+            - { name: XDG_CONFIG_HOME, value: /tmp }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits:   { cpu: 100m, memory: 64Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -eu
+              S=nats://nats.messaging.svc:4222
+              ST=HR_LIFECYCLE
+              SUBJ="hr.lifecycle.>"
+              if nats --no-context -s "$S" stream info "$ST" >/dev/null 2>&1; then
+                echo "$ST already exists"
+              else
+                nats --no-context -s "$S" stream add "$ST" --subjects "$SUBJ" --defaults
+              fi
+              nats --no-context -s "$S" stream info "$ST"
+      volumes:
+        - name: tmp
+          emptyDir: {}
