@@ -30,7 +30,8 @@ backend:
   nameOverride: backend             # container name "backend"
   fullnameOverride: retrieva-backend
   selectorLabels: { app: retrieva-backend }
-  image: { repository: retrieva-backend }   # repo+tag set per env
+  image:                       # repo + tag set per env (block style — Kargo-safe)
+    repository: retrieva-backend
   ports:
     - { name: http, containerPort: 3007, protocol: TCP }
   service:
@@ -53,7 +54,8 @@ frontend:
   nameOverride: frontend            # container name "frontend"
   fullnameOverride: retrieva-frontend
   selectorLabels: { app: retrieva-frontend }
-  image: { repository: retrieva-frontend }
+  image:                       # repo + tag set per env (block style — Kargo-safe)
+    repository: retrieva-frontend
   ports:
     - { name: http, containerPort: 3000, protocol: TCP }
   service:
