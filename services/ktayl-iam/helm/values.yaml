@@ -27,7 +27,8 @@ backend:
   nameOverride: backend
   fullnameOverride: ktayl-iam-backend
   selectorLabels: { app: ktayl-iam-backend }
-  image: { repository: harbor.10.0.0.200.nip.io/library/ktayl-iam-backend }   # tag per env
+  image:                                                  # tag set per env (block style — Kargo-safe)
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-iam-backend
   ports:
     - { name: http, containerPort: 3000, protocol: TCP }
   service:
@@ -59,7 +60,8 @@ frontend:
   nameOverride: frontend
   fullnameOverride: ktayl-iam-frontend
   selectorLabels: { app: ktayl-iam-frontend }
-  image: { repository: harbor.10.0.0.200.nip.io/library/ktayl-iam-frontend }  # tag per env
+  image:                                                  # tag set per env (block style — Kargo-safe)
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-iam-frontend
   ports:
     - { name: http, containerPort: 3000, protocol: TCP }
   service:
