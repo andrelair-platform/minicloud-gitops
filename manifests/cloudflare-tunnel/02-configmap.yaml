@@ -134,6 +134,14 @@ data:
           noTLSVerify: true
           originServerName: intranet.10.0.0.200.nip.io
 
+      # ITSM — GLPI (ITIL v4, board #16, IS Foundations). Public + SSO, gated by GLPI's OWN native
+      # OIDC to Authentik (singlesignon plugin, not forward-auth) → per-user auto-provision.
+      - hostname: itsm.devandre.sbs
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: itsm.10.0.0.200.nip.io
+
       # ── retrieva.online (own apex domain, RTV-03e) ───────────────────
       - hostname: retrieva.online
         service: https://10.0.0.200
