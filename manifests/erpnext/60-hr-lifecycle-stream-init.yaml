@@ -27,6 +27,7 @@ spec:
         app.kubernetes.io/name: erpnext-hr-lifecycle
     spec:
       restartPolicy: Never
+      automountServiceAccountToken: false   # talks only to NATS; no kube-API access needed (CKV_K8S_38)
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
