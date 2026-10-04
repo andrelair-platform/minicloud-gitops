@@ -35,6 +35,23 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: ingress-nginx
 ---
+# HR-12: allow the n8n fan-out (automation ns) to call the GLPI REST API (svc 80 → pod 8080)
+# to open software-provisioning tickets on J/M/L events.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-automation-glpi-api }
+spec:
+  podSelector:
+    matchLabels: { app: glpi }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: automation
+      ports:
+        - { port: 8080 }
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: { name: allow-monitoring-scrape }
