@@ -111,6 +111,11 @@ spec:
               subPath: config.json
             - name: data
               mountPath: /opt/stalwart-mail/data
+            # minicloud-CA cert (cert-manager stalwart-tls) → served on the mail listeners via a
+            # certificate setting referencing these files (see the Stalwart settings step).
+            - name: tls
+              mountPath: /opt/stalwart-mail/etc/certs
+              readOnly: true
           resources:
             requests:
               cpu: 100m
@@ -132,6 +137,9 @@ spec:
         - name: config
           configMap:
             name: stalwart-config
+        - name: tls
+          secret:
+            secretName: stalwart-tls
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -203,3 +211,7 @@ spec:
   dnsNames:
     - mail.devandre.sbs
     - mail.10.0.0.200.nip.io
+    # in-cluster service names so mail clients (Nextcloud Mail, …) connecting to the Service verify
+    # against minicloud-CA instead of Stalwart's rcgen self-signed fallback.
+    - stalwart.mail.svc
+    - stalwart.mail.svc.cluster.local
