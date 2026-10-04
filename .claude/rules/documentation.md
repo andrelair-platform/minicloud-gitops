@@ -62,6 +62,32 @@ the code); the org-site page is how it's discovered. Do **not** move the ADR ont
 7. **Status honesty** — if a doc has superseded sections, say so with a `:::note`
    rather than leaving stale info unmarked.
 
+## Verified reality — write what you actually ran, not what you assume (AI era)
+
+The value of a doc is no longer technically-correct prose (AI generates that in seconds) — it's
+helping a reader get from *"I don't understand this"* to *"I can implement this."* Three hard rules:
+
+1. **Every command / endpoint / output in a doc was actually RUN against the live system — not
+   assumed.** The flow is `understand → build → test → document → review`, never
+   `prompt → answer → publish`. An "Operate / verify" block shows the real command *and its real
+   result* (the `http=200 ssl_verify=0`, the `Synced/Healthy`, the actual `401`) because you ran it.
+   If you didn't run it, it doesn't go in the doc.
+2. **Verification is the non-delegable skill — not prompt-writing.** When AI drafts a doc, verify
+   every claim against the running system before it ships (does that package / flag / endpoint exist
+   and return what the doc says?). Ref: this is the docs-specific face of `ai-native-engineering.md`.
+3. **The reader test (before merging a doc):** hand it to someone who doesn't know the system — can
+   they, in order, (a) say what it is, (b) operate/verify it, (c) act on it, without asking you? A doc
+   only its author can use isn't done. Follow the system's real shape ("documentation follows the
+   architecture; it doesn't fight it"), and pick the right *type* — an as-built map page, a runbook, an
+   ADR and a tutorial are different artefacts; don't conflate them.
+
+**API / endpoint docs — answer the reader's immediate questions before they ask.** An endpoint line
+like `POST /api/users` is not documented by "creates a user." Cover, every time: **auth** (who may call
+it), **headers**, **request body** + **required fields**, **validation errors**, **response shape**,
+**status codes**, and **idempotency** (safe to retry?). A reader hits these nine questions the moment
+they try to call it — a good doc has already answered them. (Applies to our service docs: ktayl-iam,
+ktayl-policy-service, underwriting, …)
+
 ## Discipline
 
 - **Supersede, don't lie:** when reality diverges from an old doc, add a status
