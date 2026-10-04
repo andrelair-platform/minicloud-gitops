@@ -55,6 +55,28 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: observability
 ---
+# HR-12: allow ERPNext (erp ns) → n8n webhook (5678) so the signed J/M/L Joiner/Mover/Leaver
+# events reach the non-access fan-out. automation is default-deny-ingress; this is the explicit allow.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-erp-to-n8n-webhook
+  namespace: automation
+spec:
+  podSelector:
+    matchLabels:
+      app: n8n
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: erp
+      ports:
+        - protocol: TCP
+          port: 5678
+---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
