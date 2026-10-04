@@ -1,0 +1,12 @@
+# Auto-promotion: Kargo is the SOLE promoter of dev (no more hand-bumping the tag). New Freight (a
+# commit, from the git Warehouse) auto-promotes to the dev Stage; prod stays MANUAL (CODEOWNERS PR).
+# ProjectConfig is a singleton whose name MUST equal the Kargo Project name = the project namespace.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: ktayl-iam-kargo
+  namespace: ktayl-iam-kargo
+spec:
+  promotionPolicies:
+    - stage: dev
+      autoPromotionEnabled: true

@@ -31,8 +31,10 @@ spec:
       kind: Warehouse
       jqPathExpressions:
         - .spec.interval
-        - .spec.subscriptions[].image.strictSemvers
-        - .spec.subscriptions[].image.discoveryLimit
+        # git-Warehouse now (monorepo → 2 images): the webhook defaults these on a git subscription.
+        - .spec.subscriptions[].git.strictSemvers
+        - .spec.subscriptions[].git.commitSelectionStrategy
+        - .spec.subscriptions[].git.discoveryLimit
   syncPolicy:
     automated:
       prune: true

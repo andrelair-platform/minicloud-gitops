@@ -1,22 +1,26 @@
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
-  name: frontend-prod
+  name: dev
   namespace: ktayl-iam-kargo
 spec:
+  # One dev Stage for the whole monorepo: promotes the Freight (= a commit) by pinning BOTH image.tags
+  # in values-dev.yaml to the commit's short SHA. dev auto-promotes (ProjectConfig) + is verified; a
+  # Freight is verifiedIn:dev only if the smoke passes → the prod Stage accepts only verified Freight.
   requestedFreight:
     - origin:
         kind: Warehouse
-        name: ktayl-iam-frontend
+        name: ktayl-iam
       sources:
-        stages: [frontend-dev]
+        direct: true
+  verification:
+    analysisTemplates:
+      - name: ktayl-iam-dev-verify
   promotionTemplate:
     spec:
       vars:
         - name: gitopsRepo
           value: https://github.com/andrelair-platform/minicloud-gitops.git
-        - name: img
-          value: ghcr.io/andrelair-platform/ktayl-iam-frontend
       steps:
         - uses: git-clone
           as: clone
@@ -26,17 +30,19 @@ spec:
               - branch: main
                 path: ./repo
         - uses: yaml-update
-          as: set-image
+          as: set-images
           config:
-            path: ./repo/services/ktayl-iam/helm/values-prod.yaml
+            path: ./repo/services/ktayl-iam/helm/values-dev.yaml
             updates:
+              - key: backend.image.tag
+                value: '${{ quote(commitFrom("https://github.com/andrelair-platform/ktayl-iam.git").ID[0:7]) }}'
               - key: frontend.image.tag
-                value: '${{ quote(imageFrom(vars.img).Tag) }}'
+                value: '${{ quote(commitFrom("https://github.com/andrelair-platform/ktayl-iam.git").ID[0:7]) }}'
         - uses: git-commit
           as: commit
           config:
             path: ./repo
-            message: 'kargo(ktayl-iam): promote frontend ${{ imageFrom(vars.img).Tag }} to PROD'
+            message: 'kargo(ktayl-iam): promote ${{ commitFrom("https://github.com/andrelair-platform/ktayl-iam.git").ID[0:7] }} to dev'
         - uses: git-push
           as: push
           if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
@@ -51,8 +57,8 @@ spec:
             sourceBranch: ${{ outputs.push.branch }}
             targetBranch: main
             provider: github
-            title: 'kargo(ktayl-iam): promote frontend ${{ imageFrom(vars.img).Tag }} to PROD'
-            labels: [kargo, env-prod]
+            title: 'kargo(ktayl-iam): promote ${{ commitFrom("https://github.com/andrelair-platform/ktayl-iam.git").ID[0:7] }} to dev'
+            labels: [kargo, env-dev, automerge]
         - uses: git-wait-for-pr
           as: wait-pr
           if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
