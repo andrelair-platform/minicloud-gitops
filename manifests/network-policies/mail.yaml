@@ -77,6 +77,29 @@ spec:
         - protocol: TCP
           port: 587
 ---
+# Allow Nextcloud (nextcloud ns) → Stalwart IMAP + SMTP submission so the Nextcloud Mail app
+# (the browser 'Outlook') can read/send mail. IMAP 143 (STARTTLS) + 993 (implicit TLS) + 587 (submission).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nextcloud-mail
+  namespace: mail
+spec:
+  podSelector:
+    matchLabels:
+      app: stalwart
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nextcloud
+      ports:
+        - { protocol: TCP, port: 143 }
+        - { protocol: TCP, port: 993 }
+        - { protocol: TCP, port: 587 }
+---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
