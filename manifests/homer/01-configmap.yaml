@@ -112,6 +112,20 @@ data:
         tagstyle: is-success
         url: https://vault-pw.devandre.sbs
         target: _blank
+      - name: Intranet
+        icon: fas fa-book
+        subtitle: "Governance intranet — BookStack: policies, standards, procedures, runbooks"
+        tag: Public
+        tagstyle: is-success
+        url: https://intranet.devandre.sbs
+        target: _blank
+      - name: Projects
+        icon: fas fa-diagram-project
+        subtitle: "Project & task management — Plane"
+        tag: Public
+        tagstyle: is-success
+        url: https://plane.devandre.sbs
+        target: _blank
     - name: Insurance Business
       icon: fas fa-briefcase
       items:
