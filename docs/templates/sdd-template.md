@@ -9,8 +9,14 @@
 - **Product / repo(s):** · **Owner (SA/TL):** · **Status:** draft | reviewed | as‑built · **Date:**
 - **Delivery path:** C (full) | B (subset) · **Board:** #
 
-## 1. Context & problem (why this exists)
-One paragraph: the business problem + where this sits in the ktayl‑solution IS. → links the PRD / brief.
+> **Write for the reader, in three views** (one doc, audience‑tagged): **Conceptual** (business/UX — for
+> PM, stakeholder, new hire) · **Component** (how parts interact — for FE/BE engineers) · **Operational**
+> (where it runs — for DevOps/SRE). A reader should find their perspective in <30s. **Diagrams over
+> prose, plain language over jargon, the *why* not just the *what*.** (See *Documentation principles* at the end.)
+
+## 1. Conceptual view — what it does & why it matters  *(for PM / stakeholder / new hire)*
+Plain language, no jargon: the business problem, who it serves, the value it delivers, and where it sits
+in the ktayl‑solution IS. A newcomer should understand the point before any diagram. → links the PRD / brief.
 
 ## 2. Requirements
 ### 2.1 Functional
@@ -19,8 +25,18 @@ The capabilities (bulleted or → link the PRD).
 SLOs (latency/availability), scale, data volume/retention, **RTO/RPO**, security, observability, **cost/
 footprint** (fits which namespace quota). → the measurable NFRs; the live targets live in
 `reliability-and-gamedays.md` (SLO register).
+### 2.3 Technical → user‑outcome translation *(makes the NFRs legible to non‑engineers)*
+Every NFR/tech choice restated as the outcome a stakeholder cares about — this is how you explain the
+architecture to a PM (and in an interview):
 
-## 3. System architecture (C4)
+| Requirement | Technical choice | User / business outcome |
+|---|---|---|
+| Scalability | Kubernetes + KEDA | "handles a 10× day without slowdown" |
+| Performance | caching / off‑request work | "the action returns in < 300 ms" |
+| Reliability | SLO + canary + DR | "stays up through an incident; recovers in minutes, loses no data" |
+| Security | Authentik SSO + TLS + netpol | "only authorised people/systems touch the data" |
+
+## 3. System architecture (C4)  *(Component + Operational views — for engineers / DevOps)*
 - **Context** (who/what it talks to) — mermaid `C4Context` or ASCII.
 - **Container** (the deployable units + data stores + boundary ports) — mermaid/ASCII.
 - **Deployment** (where it runs: ns, dev/prod, ingress, Kargo) — ASCII.
@@ -66,6 +82,20 @@ Index of the product's ADRs (id · title · status · the trade‑off it settled
 ## 9. Open questions / deferred
 What's explicitly out of scope now + the revisit trigger (honest, not gaps).
 
----
-**Keep it as‑built.** Update this in the same effort as the change (the `documentation.md` DoD gate).
-Each section is evidence for the proof‑catalog (`evidence-and-proof.md`) + cert BC02/BC03.
+## Documentation principles (how to write this — not optional)
+- **Multi‑audience, three views** — Conceptual / Component / Operational, each tagged so a PM, an
+  engineer and an SRE each find their part fast.
+- **Diagrams over prose** — a **Mermaid** diagram (rendered, versioned in Git) beats paragraphs; *any*
+  diagram beats none. Never ship stale static PNG/PowerPoint exports.
+- **Consistent naming** — the *same* names across every diagram, the ERD, the API and the text (a service
+  is called one thing everywhere).
+- **The *why*, not just the *what*** — justify the major decisions (→ the ADR log, §8).
+- **Plain language + the translation table** (§2.3) — translate jargon into user outcomes.
+- **Accessible + living** — give each diagram **alt text / a one‑line caption**; keep it **as‑built**
+  (update in the same effort as the change — the `documentation.md` DoD gate). *A living doc people read
+  beats a "perfect" one no one opens.*
+- **The reader test** — hand it to someone who doesn't know the system: can they say what it is, operate/
+  verify it, and act on it without asking you? If not, it isn't done.
+
+Each section is evidence for the proof‑catalog (`evidence-and-proof.md`) + cert BC02/BC03. Tooling is
+docs‑as‑code (Markdown + Mermaid + Git) — the house standard; no Confluence/Notion.
