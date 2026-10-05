@@ -68,6 +68,9 @@ nextcloud:
         - cp /etc/ssl/certs/ca-certificates.crt /ca-bundle/ca-certificates.crt && cat /ca-src/minicloud-ca.crt >> /ca-bundle/ca-certificates.crt
       securityContext:
         runAsUser: 0
+        capabilities:
+          drop:
+            - NET_RAW
       volumeMounts:
         - name: ca-src
           mountPath: /ca-src
