@@ -58,10 +58,17 @@ data:
       items:
       - name: Mail
         icon: fas fa-envelope
-        subtitle: "Self-hosted email — Stalwart, webmail + IMAP/SMTP — login with full email address"
+        subtitle: "Webmail — Nextcloud Mail on Stalwart (IMAP/SMTP); log in with your mailbox password"
         tag: Public
         tagstyle: is-success
-        url: https://mail.devandre.sbs/webmail
+        url: https://cloud.devandre.sbs/apps/mail
+        target: _blank
+      - name: Calendar
+        icon: fas fa-calendar-days
+        subtitle: "Agenda & meetings — Nextcloud Calendar; add a Jitsi link (meet.devandre.sbs) to events"
+        tag: Public
+        tagstyle: is-success
+        url: https://cloud.devandre.sbs/apps/calendar
         target: _blank
       - name: Chat
         icon: fas fa-comments
@@ -86,7 +93,7 @@ data:
         target: _blank
       - name: Jitsi Meet
         icon: fas fa-video
-        subtitle: "Video conferencing — Spaces, screen share"
+        subtitle: "Video meetings — screen share; paste the room URL into a Calendar event to invite"
         tag: Public
         tagstyle: is-success
         url: https://meet.devandre.sbs
