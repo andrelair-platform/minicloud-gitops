@@ -55,6 +55,24 @@ nextcloud:
       secure: false
       authtype: LOGIN
 
+  # minicloud CA into the pod SYSTEM trust (Mail app IMAP/SMTP TLS verifies Stalwart's
+  # minicloud-CA cert). configmap nextcloud-ca-trust (manifests/nextcloud/30-ca-trust.yaml):
+  # the CA → /usr/local/share/ca-certificates, + a before-starting hook runs update-ca-certificates.
+  extraVolumes:
+    - name: ca-trust
+      configMap:
+        name: nextcloud-ca-trust
+        defaultMode: 0755
+  extraVolumeMounts:
+    - name: ca-trust
+      mountPath: /usr/local/share/ca-certificates/minicloud-ca.crt
+      subPath: minicloud-ca.crt
+      readOnly: true
+    - name: ca-trust
+      mountPath: /docker-entrypoint-hooks.d/before-starting/10-minicloud-ca.sh
+      subPath: 10-minicloud-ca.sh
+      readOnly: true
+
 # No hostname pin — Longhorn is network-attached (scheduling.md / #1189); pinning to set-hog
 # only loads the control-plane node + makes it a SPOF. The Deployment is strategy:Recreate
 # (RWO-safe), so it reschedules + reattaches its volume on any node.
