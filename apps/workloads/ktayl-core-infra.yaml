@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ktayl-core-infra
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  # ktayl-core / Billing shared infra (BILL-011, ADR-003): the UNDERWRITING_EVENTS JetStream stream
+  # that durably captures the Underwriting bound-risk event for Billing's ingest consumer. Deployed
+  # ahead of the ktayl-core WORKLOAD (GAP wrapper chart, BILL-016) so it starts capturing binds now.
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: manifests/ktayl-core
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ktayl-core
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
