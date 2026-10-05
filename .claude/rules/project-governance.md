@@ -83,6 +83,13 @@ standard SDD lacks: ADR log (#3), threat model (#5), compliance + cost (the PRD)
 initiative), not a one-line fix. Docs-as-code (Markdown + Docusaurus + Mermaid in Git) is the house
 tooling — no Confluence/Notion.
 
+**Write it for readers (the template enforces this):** one doc, **three audience-tagged views** —
+*Conceptual* (business/UX, plain language — PM/stakeholder/new hire), *Component* (FE/BE engineers),
+*Operational* (DevOps/SRE); **diagrams over prose** (rendered Mermaid, never stale PNGs), **consistent
+naming** everywhere, the **why** (ADRs) not just the what, and a mandatory **"technical → user-outcome"
+translation table** so NFRs are legible to non-engineers (and to an interviewer). A living doc people
+read beats a perfect one no one opens.
+
 **Owner = SA/TL**, approved at the **architecture spine review** + **security review** gates
 (`bmad-compliance.md`). For the **cert**, these artefacts are evidence for **BC02 (concevoir)** /
 **BC03 (déployer & sécuriser)** — the threat model + NFR register especially.
