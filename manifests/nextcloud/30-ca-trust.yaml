@@ -1,0 +1,32 @@
+# minicloud Internal Root CA → injected into the Nextcloud pod's SYSTEM trust bundle so the
+# Mail app (PHP/Horde IMAP+SMTP) can verify Stalwart's minicloud-CA cert. Nextcloud's own
+# `occ security:certificates` store only covers outbound HTTP (Guzzle), NOT the Mail app's TLS,
+# so the CA must be in /etc/ssl/certs via update-ca-certificates. The hook runs on every start
+# (official nextcloud image: /docker-entrypoint-hooks.d/before-starting/, as root, pre-Apache).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nextcloud-ca-trust
+  namespace: nextcloud
+data:
+  minicloud-ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIICAzCCAaigAwIBAgIUXS8lZg8k9yh42Gyd7EBDeQpvrnAwCgYIKoZIzj0EAwIw
+    XzEbMBkGA1UEChMSYW5kcmVsYWlyLXBsYXRmb3JtMRswGQYDVQQLExJtaW5pY2xv
+    dWQgcGxhdGZvcm0xIzAhBgNVBAMTGm1pbmljbG91ZCBJbnRlcm5hbCBSb290IENB
+    MB4XDTI2MDUwOTExNTY0NloXDTM2MDUwNjExNTY0NlowXzEbMBkGA1UEChMSYW5k
+    cmVsYWlyLXBsYXRmb3JtMRswGQYDVQQLExJtaW5pY2xvdWQgcGxhdGZvcm0xIzAh
+    BgNVBAMTGm1pbmljbG91ZCBJbnRlcm5hbCBSb290IENBMFkwEwYHKoZIzj0CAQYI
+    KoZIzj0DAQcDQgAEIYSIb9sazO1MO/DE8TFIpQYnlPmh+mVpe7p+lBl7gouSefd/
+    SUAJd0t7xNMqWqmgnyaMiiw0TohHA3sh1YcHNKNCMEAwDgYDVR0PAQH/BAQDAgKk
+    MA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFACl2vBxhgRX0PvqGapck0sM4efd
+    MAoGCCqGSM49BAMCA0kAMEYCIQCApyHzARqV3RlzFR5uIdpwyyUyGJugM89NXvWv
+    bEJ7gQIhAJq5mnZKS/EJTMPYzkuq33K4g+FJp2zt+VpUkg24ETKO
+    -----END CERTIFICATE-----
+  10-minicloud-ca.sh: |
+    #!/bin/sh
+    # Append the minicloud CA to the system trust so PHP (Mail app IMAP/SMTP TLS) verifies Stalwart.
+    set -e
+    if [ -f /usr/local/share/ca-certificates/minicloud-ca.crt ]; then
+      update-ca-certificates >/dev/null 2>&1 || true
+    fi
