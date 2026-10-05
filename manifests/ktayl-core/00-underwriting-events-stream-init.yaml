@@ -1,0 +1,74 @@
+# ktayl-core / Billing (BILL-011, ADR-003) — the JetStream stream that DURABLY captures the
+# Underwriting bound-risk event. ktayl-underwriting already publishes (core NATS) to
+# `insurance.underwriting.bound-risk`; it does NOT create a stream, so the event is otherwise
+# fire-and-forget. A JetStream stream captures matching subjects even from a core publish, so this
+# needs ZERO underwriting change. Billing's durable consumer (in the ktayl-core workload, BILL-016)
+# reads from here — deploying the stream now means it starts capturing binds immediately, so the
+# consumer can replay anything bound before it went live.
+#
+# Idempotent create-if-absent PLAIN Job (same rationale as the HR_LIFECYCLE stream-init: no PreSync
+# hook / no Replace=true — a stable body is a clean no-op each sync; a completed Job is Healthy).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ktayl-core
+  labels:
+    app.kubernetes.io/part-of: ktayl-core
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: underwriting-events-stream-init
+  namespace: ktayl-core
+  labels:
+    app.kubernetes.io/name: ktayl-core
+    app.kubernetes.io/component: stream-init
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ktayl-core
+        app.kubernetes.io/component: stream-init
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false   # talks only to NATS; no kube-API access (CKV_K8S_38)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: stream-init
+          image: docker.io/natsio/nats-box:0.14.5   # fully-qualified: Gatekeeper denies a bare name
+          workingDir: /tmp
+          env:
+            - { name: HOME, value: /tmp }
+            - { name: XDG_CONFIG_HOME, value: /tmp }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits:   { cpu: 100m, memory: 64Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -eu
+              S=nats://nats.messaging.svc:4222
+              ST=UNDERWRITING_EVENTS
+              SUBJ="insurance.underwriting.>"
+              if nats --no-context -s "$S" stream info "$ST" >/dev/null 2>&1; then
+                echo "$ST already exists"
+              else
+                nats --no-context -s "$S" stream add "$ST" --subjects "$SUBJ" --defaults
+              fi
+              nats --no-context -s "$S" stream info "$ST"
+      volumes:
+        - name: tmp
+          emptyDir: {}
