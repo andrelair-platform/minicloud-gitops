@@ -20,6 +20,19 @@ backend:
     - { name: AUTHENTIK_CALLBACK_URL, value: "https://iam.10.0.0.200.nip.io/api/auth/callback" }
     - { name: AUTHENTIK_SCOPE, value: "profile email groups" }
     - { name: ADMIN_GROUP, value: "Platform Admins" }
+    # S015/S016/S017 — HR J/M/L lifecycle (Joiner provisioning + Leaver revocation). INERT until
+    # HR_NATS_URL is set (the consumer no-ops on a blank URL), so staging these changes nothing now.
+    # GO-LIVE = uncomment HR_NATS_URL below AND remove it from values-dev.yaml in the SAME change, so
+    # exactly ONE environment owns the single HR_LIFECYCLE durable (two same-durable consumers would
+    # split/compete the events). See the PR go-live runbook.
+    - { name: HR_LIFECYCLE_STREAM, value: "HR_LIFECYCLE" }
+    - { name: WORKPLACE_GROUP, value: "Workplace Users" }
+    - { name: STALWART_JMAP_URL, value: "http://stalwart.mail.svc:8080/jmap" }
+    - { name: STALWART_ADMIN_USER, value: "admin" }
+    - { name: MAIL_DOMAIN, value: "devandre.sbs" }
+    # GO-LIVE SWITCH — uncomment to make PROD the authoritative HR consumer (+ remove from dev):
+    # - { name: HR_NATS_URL, value: "nats://nats.messaging.svc:4222" }
+    # HR_LIFECYCLE_SIGNING_KEY + STALWART_ADMIN_SECRET arrive via ktayl-iam-secret (shared ESO template).
   envFrom:
     - secretRef: { name: ktayl-iam-secret }
 
