@@ -55,22 +55,35 @@ nextcloud:
       secure: false
       authtype: LOGIN
 
-  # minicloud CA into the pod SYSTEM trust (Mail app IMAP/SMTP TLS verifies Stalwart's
-  # minicloud-CA cert). configmap nextcloud-ca-trust (manifests/nextcloud/30-ca-trust.yaml):
-  # the CA → /usr/local/share/ca-certificates, + a before-starting hook runs update-ca-certificates.
+  # minicloud CA into the pod SYSTEM trust so the Mail app (PHP/Horde IMAP+SMTP) verifies Stalwart's
+  # minicloud-CA cert. The image's before-starting hook runs as www-data and CANNOT write /etc/ssl/certs,
+  # so an initContainer (root) copies the base bundle + appends the CA into a shared emptyDir, mounted
+  # over /etc/ssl/certs/ca-certificates.crt. CA PEM = configmap nextcloud-ca-trust (manifests/nextcloud/30-ca-trust.yaml).
+  extraInitContainers:
+    - name: ca-inject
+      image: docker.io/library/nextcloud:33.0.5-apache
+      command:
+        - sh
+        - -c
+        - cp /etc/ssl/certs/ca-certificates.crt /ca-bundle/ca-certificates.crt && cat /ca-src/minicloud-ca.crt >> /ca-bundle/ca-certificates.crt
+      securityContext:
+        runAsUser: 0
+      volumeMounts:
+        - name: ca-src
+          mountPath: /ca-src
+          readOnly: true
+        - name: ca-bundle
+          mountPath: /ca-bundle
   extraVolumes:
-    - name: ca-trust
+    - name: ca-src
       configMap:
         name: nextcloud-ca-trust
-        defaultMode: 0755
+    - name: ca-bundle
+      emptyDir: {}
   extraVolumeMounts:
-    - name: ca-trust
-      mountPath: /usr/local/share/ca-certificates/minicloud-ca.crt
-      subPath: minicloud-ca.crt
-      readOnly: true
-    - name: ca-trust
-      mountPath: /docker-entrypoint-hooks.d/before-starting/10-minicloud-ca.sh
-      subPath: 10-minicloud-ca.sh
+    - name: ca-bundle
+      mountPath: /etc/ssl/certs/ca-certificates.crt
+      subPath: ca-certificates.crt
       readOnly: true
 
 # No hostname pin — Longhorn is network-attached (scheduling.md / #1189); pinning to set-hog
