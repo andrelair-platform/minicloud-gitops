@@ -26,7 +26,9 @@ data:
   10-minicloud-ca.sh: |
     #!/bin/sh
     # Append the minicloud CA to the system trust so PHP (Mail app IMAP/SMTP TLS) verifies Stalwart.
+    # Use the ABSOLUTE path: at the before-starting hook stage PATH may not include /usr/sbin, so a
+    # bare `update-ca-certificates` is silently not-found (the earlier failure mode).
     set -e
     if [ -f /usr/local/share/ca-certificates/minicloud-ca.crt ]; then
-      update-ca-certificates >/dev/null 2>&1 || true
+      /usr/sbin/update-ca-certificates || true
     fi
