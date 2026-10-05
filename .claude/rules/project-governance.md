@@ -70,14 +70,28 @@ initiative**, or a change crossing a security/architecture boundary (see the gov
 | 4 | **NFR register** | SLOs, scale, availability, RTO/RPO, security, observability | 🔴 | the PRD NFR section (#1088) made measurable |
 | 5 | **Threat model** (STRIDE-lite + mitigations) | trust boundaries, attack surface, controls | 🔴 (boundary changes) | feeds the **security review** gate |
 | 6 | **Integration / data-flow design** | APIs, events, data ownership, residency | 🟡 when it integrates / holds PII | data-flow + API contracts |
+| 7 | **Data design** — schema + **ERD** + migration strategy | the data model, ownership, how it evolves | 🔴 **if it has a DB** | a mermaid `erDiagram` + the schema + Flyway/Alembic migrations (the per-repo `data-model/` MCD→MLD→MPD) |
+| 8 | **API specification** — the contract | endpoints, request/response, errors, auth, idempotency | 🔴 **if it exposes an API** | a committed **`<repo>/api/openapi.yaml`** (+ the `documentation.md` endpoint rule + the L3 contract tests in `testing.md`) |
+
+**The SDD = artefact #1 assembled.** A **System Design Document** is not a separate deliverable — it is
+the **Solution Architecture Document (#1)** assembled from #1–#8 into one per-product blueprint (the
+single source of truth). It maps 1:1 to the standard SDD checklist: **Requirements/NFR** (#4 + the PRD) ·
+**System architecture / C4** (#2) · **Data design / ERD** (#7) · **API spec** (#8) · **Operational &
+scaling** (SLOs in `reliability-and-gamedays.md` + envs/promotion in `gitops.md`) — **plus** the extras a
+standard SDD lacks: ADR log (#3), threat model (#5), compliance + cost (the PRD). Template:
+**`docs/templates/sdd-template.md`**. Scale by delivery path — a full SDD is Path-C (new product / major
+initiative), not a one-line fix. Docs-as-code (Markdown + Docusaurus + Mermaid in Git) is the house
+tooling — no Confluence/Notion.
 
 **Owner = SA/TL**, approved at the **architecture spine review** + **security review** gates
 (`bmad-compliance.md`). For the **cert**, these artefacts are evidence for **BC02 (concevoir)** /
 **BC03 (déployer & sécuriser)** — the threat model + NFR register especially.
 
-**Reference implementation:** `retrieva/docs/docs/architecture/solution-architecture.md` (assembles
-retrieva's existing architecture/ + security/ docs into the set + C4 + NFR register + threat model +
-ADR log). Copy its shape for a new Path-C product.
+**Reference implementations:** `retrieva/docs/docs/architecture/solution-architecture.md` (assembles
+retrieva's architecture/ + security/ docs into the set + C4 + NFR register + threat model + ADR log) and
+`ktayl-core/docs/architecture/solution-architecture.md` (the SDD template worked end-to-end: Requirements/
+NFR · C4 · **Data design + ERD** · **OpenAPI** · operational/scaling · ADR log · threat model, assembling
+its PRD + architecture + ADR-001/002/003 + SPEC). Copy either for a new Path-C product.
 
 ## Applied projects
 
