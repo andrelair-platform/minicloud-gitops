@@ -224,6 +224,13 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: ktayl-iam-kargo
       server: https://kubernetes.default.svc
+    # ktayl-core — insurance-LOB modular monolith (Billing first): infra+dev / prod / Kargo project
+    - namespace: ktayl-core
+      server: https://kubernetes.default.svc
+    - namespace: ktayl-core-prod
+      server: https://kubernetes.default.svc
+    - namespace: ktayl-core-kargo
+      server: https://kubernetes.default.svc
     - namespace: retrieva-kargo
       server: https://kubernetes.default.svc
 
