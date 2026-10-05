@@ -29,7 +29,17 @@ backend:
     # - the governance groups the platform EXCLUSIVELY owns → reconcile may remove hand-adds there;
     #   every other group is add-only + alert (so it can never nuke e.g. Platform Admins).
     - { name: RECONCILE_EXCLUSIVE_GROUPS, value: "ktayl-engineering,ktayl-observability-admin,ktayl-observability-viewer,ktayl-argocd-admin,ktayl-argocd-readonly" }
-  # secrets (DATABASE_PASSWORD · SESSION_SECRET · AUTHENTIK_CLIENT_ID/SECRET · AUTHENTIK_API_TOKEN)
+    # S015/S016 — HR Joiner lifecycle (DEV only; prod leaves HR_NATS_URL blank so a single durable
+    # consumer processes events — two same-durable consumers across envs would split/compete).
+    - { name: HR_NATS_URL, value: "nats://nats.messaging.svc:4222" }
+    - { name: HR_LIFECYCLE_STREAM, value: "HR_LIFECYCLE" }
+    - { name: WORKPLACE_GROUP, value: "Workplace Users" }
+    - { name: STALWART_JMAP_URL, value: "http://stalwart.mail.svc:8080/jmap" }
+    - { name: STALWART_ADMIN_USER, value: "admin" }
+    - { name: MAIL_DOMAIN, value: "devandre.sbs" }
+    # HR_LIFECYCLE_SIGNING_KEY + STALWART_ADMIN_SECRET come from ktayl-iam-secret (Vault, envFrom below)
+  # secrets (DATABASE_PASSWORD · SESSION_SECRET · AUTHENTIK_CLIENT_ID/SECRET · AUTHENTIK_API_TOKEN
+  #          · HR_LIFECYCLE_SIGNING_KEY · STALWART_ADMIN_SECRET)
   envFrom:
     - secretRef: { name: ktayl-iam-secret }
 
