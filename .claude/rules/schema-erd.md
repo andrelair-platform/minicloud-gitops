@@ -21,8 +21,18 @@ Gate the **schema**, built from the migrations, so the doc can never silently ro
 | **Flyway** (raw `V*.sql`) | ktayl-core, ktayl-claims | `psql -f $(ls src/main/resources/db/migration/V*.sql \| sort)` (+ `CREATE SCHEMA`/`SET search_path` if schema-per-module) |
 | **golang-migrate** (raw `*.up.sql`) | ktayl-policy-service | `psql -f $(ls db/migrations/*.up.sql \| sort)` |
 | **Alembic** (Python) | ktayl-underwriting | `pip install .` → `alembic upgrade head` (reads `DATABASE_URL`) |
+| **Drizzle** (raw `*.sql`, drizzle-kit) | retrieva-backend | `psql -f $(ls db/migrations/*.sql \| sort)` (the `--> statement-breakpoint` is a comment → psql-safe) |
 | **TypeORM** (TS classes, run on boot) | ktayl-iam | a **standalone `npm run db:migrate`** runner (`DataSource` + `.runMigrations()`, **no app boot** → no HTTP/NATS/OIDC) — NOT `node dist/main` (booting the app drags its deps + may hang) |
-| **dbt / warehouse** (models, not DDL) | ktayl-data-platform | *(evaluate per repo — the ERD may target the built warehouse schema, not migrations)* |
+
+## The dbt / warehouse exception — do NOT force tbls (ktayl-data-platform)
+A **dbt warehouse** (medallion models materialised FROM live upstream DBs — not a migration-owned schema)
+is the **deliberate carve-out**: tbls is the wrong tool. The schema is *derived* (staging views + marts),
+so reverse-engineering it would mean standing up source fixtures + a full `dbt build` in CI — heavy and
+*lower-value* than dbt's own self-documentation. A dbt repo is already self-documenting and drift-gated by:
+- **committed model contracts** (`models/**/_*.yml` — every mart column described + `tests:`), reviewed in-PR;
+- **CI `dbt parse`** (offline — validates refs/sources/contracts/macros without a DB connection).
+That pair IS the warehouse's "docs-can't-lie" gate. Optionally add `dbt docs generate` (lineage + catalog)
+later, but it needs a built warehouse. **Record the carve-out here; don't bolt tbls onto a dbt repo.**
 
 > **TypeORM lesson:** migrations run as a *side-effect of boot* (`migrationsRun: true`). Don't boot the
 > whole app in CI to get the schema — write a tiny standalone `DataSource` runner (`src/database/migrate.ts`)
@@ -41,7 +51,7 @@ Net: same tbls (digest) + same pg (17.4) + same arch (x86) + explicit flags → 
 - **Location:** `docs/data-model/` at the repo root; for a **monorepo**, under the DB-owning component (e.g. `backend/docs/data-model/` + `backend/.tbls.yml`, running tbls from that dir). Ensure the CI `paths:` filter (if any) covers it.
 - **`.tbls.yml`:** `docPath: docs/data-model` · `er.format: mermaid` · `format.sort+adjust: true` · **exclude the migration-bookkeeping table** (`flyway_schema_history` / `public.schema_migrations` / `public.alembic_version` / `public.migrations`).
 - **Baseline-generation recipe** (the one-off, on x86): clone the repo → ephemeral `postgres:17.4` → apply the migrations (per toolchain) → native/`docker` digest-pinned tbls `doc … --force` → commit `docs/data-model/` + `.tbls.yml`. Docker-as-root leaves root-owned files in a mounted repo → `chown` back (or generate into a user-owned clone) before `scp`.
-- **Reference CI jobs:** copy the `schema-erd-drift` job from `ktayl-core` (Flyway) / `ktayl-policy-service` (golang-migrate) / `ktayl-underwriting` (Alembic) / `ktayl-iam` (TypeORM).
+- **Reference CI jobs:** copy the `schema-erd-drift` job from `ktayl-core` (Flyway) / `ktayl-policy-service` (golang-migrate) / `ktayl-underwriting` (Alembic) / `ktayl-iam` (TypeORM) / `retrieva-backend` (Drizzle).
 
 ## Live DB (adopted / vendor schemas, no migrations in-repo)
 For a DB whose schema we **adopted** (vendor app, or no migrations to replay), generate the ERD from the
