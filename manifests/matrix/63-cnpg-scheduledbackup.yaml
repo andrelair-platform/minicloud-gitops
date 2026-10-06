@@ -1,0 +1,13 @@
+# Daily base backup of the Synapse CNPG cluster to R2 (WAL archived continuously by the Cluster's
+# barmanObjectStore). CNPG cron is 6-field (seconds first): 04:45:00 UTC — staggered after
+# authentik (04:00) / nextcloud (04:15) / langfuse (04:30) to avoid a simultaneous R2 burst.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: synapse-cnpg-daily
+  namespace: chat
+spec:
+  schedule: "0 45 4 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: synapse-postgres

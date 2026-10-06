@@ -1,0 +1,44 @@
+# Alert on stale CNPG backups / unhealthy cluster for synapse-postgres. CNPG exports
+# cnpg_collector_last_available_backup_timestamp + cnpg_collector_up per cluster via the PodMonitor
+# enabled on the Cluster. Placed in the monitoring namespace (kps rule selector); applied there by
+# the matrix-synapse app (project minicloud-platform allows the monitoring destination, same as the
+# cnpg-nextcloud/langfuse rules). Mirrored from nextcloud/langfuse.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cnpg-synapse
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: cnpg-synapse
+      rules:
+        - alert: CNPGSynapseBackupStale
+          expr: |
+            (time() - max(cnpg_collector_last_available_backup_timestamp{namespace="chat"})) / 3600 > 26
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Synapse CNPG has no fresh R2 backup in 26+ hours"
+            description: |
+              The synapse-postgres cluster's last available Barman/R2 backup is
+              {{ $value | printf "%.1f" }} hours old (or the metric is absent → no backup yet).
+              Check: kubectl -n chat get cluster synapse-postgres
+                     kubectl -n chat get backup,scheduledbackup
+              Logs:  kubectl -n chat logs -l cnpg.io/cluster=synapse-postgres -c postgres --tail=100
+
+        - alert: CNPGSynapseNotHealthy
+          expr: |
+            max(cnpg_collector_up{namespace="chat"}) < 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Synapse CNPG cluster reporting unhealthy"
+            description: |
+              The synapse-postgres CloudNativePG cluster is not reporting healthy instances.
+              Matrix/Synapse's DB is backed by this cluster → the chat service is at risk.
+              Check: kubectl -n chat get cluster synapse-postgres -o wide
