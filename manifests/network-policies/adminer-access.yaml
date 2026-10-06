@@ -1,0 +1,88 @@
+# Scoped DB reach for the Adminer cockpit (SSO'd to Platform Admins — see manifests/adminer/ +
+# developer-platform/adminer-db-cockpit). Each rule is an EXPLICIT, per-namespace ingress allow from the
+# `adminer` namespace to that namespace's database port — never a blanket cross-namespace hole.
+# podSelector:{} + the DB port means "only the DB (the sole listener on that port) accepts adminer";
+# NetworkPolicies are additive, so this just ADDS adminer alongside each ns's existing allows.
+# Add/remove a namespace here to widen/narrow the cockpit's reach. (The ai namespace's rule lives in ai.yaml.)
+# PostgreSQL namespaces (:5432) ──────────────────────────────────────────────
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-adminer, namespace: langfuse }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: adminer } } }]
+      ports: [{ protocol: TCP, port: 5432 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-adminer, namespace: chat }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: adminer } } }]
+      ports: [{ protocol: TCP, port: 5432 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-adminer, namespace: underwriting }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: adminer } } }]
+      ports: [{ protocol: TCP, port: 5432 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-adminer, namespace: ktayl-iam }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: adminer } } }]
+      ports: [{ protocol: TCP, port: 5432 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-adminer, namespace: ktayl-policy-service }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: adminer } } }]
+      ports: [{ protocol: TCP, port: 5432 }]
+# MariaDB / MySQL namespaces (:3306) ─────────────────────────────────────────
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-adminer, namespace: erp }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: adminer } } }]
+      ports: [{ protocol: TCP, port: 3306 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-adminer, namespace: intranet }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: adminer } } }]
+      ports: [{ protocol: TCP, port: 3306 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-adminer, namespace: itsm }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: adminer } } }]
+      ports: [{ protocol: TCP, port: 3306 }]
