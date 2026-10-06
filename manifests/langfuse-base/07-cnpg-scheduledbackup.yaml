@@ -1,0 +1,13 @@
+# Daily base backup of the Langfuse CNPG cluster to R2 (WAL is archived continuously by the
+# Cluster's barmanObjectStore). CNPG cron is 6-field (seconds first): 04:30:00 UTC — staggered
+# after authentik-cnpg (04:00) + nextcloud-cnpg (04:15) to avoid a simultaneous R2 burst.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: langfuse-cnpg-daily
+  namespace: langfuse
+spec:
+  schedule: "0 30 4 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: langfuse-postgres

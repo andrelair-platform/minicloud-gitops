@@ -15,6 +15,16 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: langfuse
+  # ESO injects 4 defaults into each ExternalSecret spec at admission (never in git) → SSA sees drift.
+  # Ignore them so the app stays Synced (the CNPG role + R2 ExternalSecrets added here, #langfuse-cnpg).
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
   syncPolicy:
     automated:
       prune: true
@@ -22,3 +32,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true

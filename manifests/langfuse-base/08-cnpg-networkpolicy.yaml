@@ -1,0 +1,25 @@
+# Allow the CloudNativePG operator (cnpg-system) to reach the langfuse-postgres instances'
+# status endpoint (:8000) + Postgres (:5432). Without this, langfuse's default-deny-ingress
+# drops the operator's https://<pod>:8000/pg/status probe → "Instance Status Extraction Error"
+# → the cluster never goes healthy (observed live on authentik-cnpg 2026-09-22; mirrored from
+# nextcloud-postgres). Langfuse web/worker → DB (:5432) is already covered by the ns
+# allow-same-namespace policy; Prometheus scrape (:9187) by allow-prometheus-scrape.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator
+  namespace: langfuse
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: langfuse-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 5432 }
