@@ -1,0 +1,41 @@
+---
+# default-deny ingress to the adminer pod
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: adminer
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+# only ingress-nginx may reach the Adminer UI (:8080) — reached via the SSO'd ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-nginx
+  namespace: adminer
+spec:
+  podSelector: { matchLabels: { app: adminer } }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+# Cilium: allow kubelet probes (host + remote-node) so readiness/liveness aren't dropped
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-node-entities
+  namespace: adminer
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities: [host, remote-node]
+# NOTE: egress is intentionally left unrestricted within the cluster — the segmentation that matters
+# is enforced on the DATABASE side (each DB namespace must add an explicit `allow-adminer` ingress rule,
+# starter = ai/postgresql-ai). Adminer cannot reach a DB whose namespace hasn't opted in.

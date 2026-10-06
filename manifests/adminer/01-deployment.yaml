@@ -1,0 +1,57 @@
+# Adminer — the scoped Day-2 DB cockpit (multi-engine: PostgreSQL + MySQL/MariaDB).
+# Stateless web app: it only serves adminer.php and presents a LOGIN FORM — it stores no credentials;
+# operators type the server/user/password/db at login. Access is gated by Authentik forward-auth
+# (ingress) restricted to the `Platform Admins` group, and the database reach is gated by explicit
+# per-namespace NetworkPolicies (starter = the `ai` namespace / postgresql-ai). Schema CHANGES still
+# go through migrations (Flyway/Alembic) — Adminer is for inspect/debug/operate, not a design canvas.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adminer
+  namespace: adminer
+  labels: { app: adminer }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: adminer }
+  template:
+    metadata:
+      labels: { app: adminer }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: adminer
+          image: docker.io/library/adminer:4.8.1
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            # listen on 8080 (default); default to the postgresql driver in the login form
+            - name: ADMINER_DEFAULT_SERVER
+              value: "postgresql-ai.ai.svc.cluster.local"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits:   { cpu: 200m, memory: 192Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: sessions, mountPath: /sessions }
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          livenessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 30
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - { name: sessions, emptyDir: {} }

@@ -105,6 +105,30 @@ spec:
         - ipBlock:
             cidr: 10.0.0.0/8
 ---
+# Adminer (scoped DB cockpit, SSO'd to Platform Admins) may reach postgresql-ai for inspect/debug.
+# This is the STARTER scope for the Adminer console (ai = 6 DBs: openwebui/litellm/ragdb/vaultwarden/
+# flowise/mlflow). Extend to another DB by adding the same one-rule allow in THAT namespace — never a
+# blanket cross-namespace hole. See manifests/adminer/ + developer-platform/adminer-db-cockpit.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-adminer-postgresql
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: adminer
+      ports:
+        - port: 5432
+          protocol: TCP
+---
 # Vaultwarden uses postgresql-ai as its database backend (separate vaultwarden DB)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
