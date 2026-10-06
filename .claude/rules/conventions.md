@@ -40,9 +40,19 @@ with:
 
 ---
 
-## Per-repo static documentation (Docusaurus)
+## Per-repo static documentation (Docusaurus) — OPTIONAL (the central docs site is canonical)
 
-Every custom-built repo gets its own **Docusaurus 3.x site** in a `website/` directory, deployed to GitHub Pages at `https://andrelair-platform.github.io/<repo-name>/`.
+> **Standardisation decision (2026-10-06): the canonical docs surface is the CENTRAL site
+> (`minicloud-platform-docs`), NOT a per-repo website.** A per-repo `website/` had been mandated here but
+> was in practice skipped by most repos — a standard that isn't followed is the inconsistency, so the rule
+> is aligned to one uniform process: **detailed docs are committed *with the code* (`<repo>/docs/` — data
+> model, ADRs, runbooks) and surfaced on the central site** (overview + pointer, and for data models the
+> **auto-generated ERD index** — see `schema-erd.md`). A per-repo `website/` is now **opt-in**, only when a
+> product genuinely warrants its own branded docs site (e.g. a flagship like retrieva/ktayl-policy-service);
+> most repos should NOT create one. When a repo does have one, surface generated docs by **build-time copy**
+> from `<repo>/docs/`, never a hand-maintained duplicate.
+
+If you do stand up a per-repo site, it is a **Docusaurus 3.x site** in a `website/` directory, deployed to GitHub Pages at `https://andrelair-platform.github.io/<repo-name>/`.
 
 ### What goes where
 
@@ -227,8 +237,9 @@ Every repo must have these three files at the root:
 - [ ] `README.md` — full structure with all mandatory sections
 - [ ] `LICENSE` — MIT, correct year
 - [ ] `CONTRIBUTING.md` — branch rules, commit style, PR requirements
-- [ ] Docusaurus `website/` — see Per-repo static documentation section above
-- [ ] GitHub Pages enabled — `gh api repos/.../pages --method POST -f "build_type=workflow"`
+- [ ] **If the repo owns a relational schema:** `.tbls.yml` + committed `docs/data-model/` baseline + the `schema-erd-drift` CI job (`schema-erd.md`) — it then auto-appears on the central ERD index (no extra step). **Mandatory for DB repos.**
+- [ ] Central docs site (`minicloud-platform-docs`) — overview + pointer page for the service (**mandatory**, `documentation.md`)
+- [ ] Docusaurus `website/` — **OPTIONAL** (opt-in for flagship products only; see Per-repo static documentation section above). If created: GitHub Pages enabled — `gh api repos/.../pages --method POST -f "build_type=workflow"`
 - [ ] Release automation — see Automated releases section below
 
 **BMAD setup (before any story implementation begins):**
