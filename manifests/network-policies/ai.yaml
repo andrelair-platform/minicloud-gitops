@@ -126,27 +126,9 @@ spec:
         - port: 5432
           protocol: TCP
 ---
-# Langfuse uses postgresql-ai as its database backend (separate langfuse DB)
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-langfuse-postgresql
-  namespace: ai
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: postgresql
-  policyTypes:
-    - Ingress
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: langfuse
-      ports:
-        - port: 5432
-          protocol: TCP
----
+# (removed 2026-10-06) Langfuse's metadata DB was migrated OFF postgresql-ai onto its own CNPG
+# cluster (langfuse-postgres, langfuse ns) — see developer-platform/cnpg-standard. The langfuse->ai
+# cross-ns allowance is no longer needed; the langfuse db+role were dropped from postgresql-ai.
 # Grafana (monitoring ns) uses postgresql-ai as a data source for PromQL-over-Postgres
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
