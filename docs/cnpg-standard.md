@@ -75,15 +75,56 @@ Langfuse was moved off `postgresql-ai` onto a dedicated CNPG cluster `langfuse-p
    the same hour you cut over (`[[feedback_cnpg_repoint_wal_retention]]`); here the destructive step was
    gated on the **restore drill passing**, not on wall-clock bake time.
 
+## Second migration — Synapse / Matrix (2026-10-06)
+
+Moved Matrix's DB off the `-noavx512` `postgresql-synapse` STS onto a dedicated stock CNPG cluster
+`synapse-postgres` (chat ns, gitops #1657 additive + #1658 cutover). **Key verification that reframed the
+whole noavx512 story:** nothing on `postgresql-synapse` *or* `postgresql-ai` actually has the **`vector`
+extension** installed (RAG vectors live in Qdrant, not pgvector) — so the custom `-noavx512` base is a
+historical artifact and **stock CNPG (PG 17.4) is correct for all of them**. Synapse-specific: bootstrap the
+db with **`localeCollate: C` / `localeCType: C`** (Matrix hard-requires C collation). Data migrated at exact
+parity (173 tables; users/devices/access_tokens match).
+
+**⚠️ Incident — the stateful-media-PVC trap (postmortem).** The DB cutover itself was clean, but Synapse
+*also* owns an **RWO Longhorn media PVC**, and the host-change rollout (RWO + `strategy: Recreate` + Longhorn's
+slow cross-node detach) **wedged that volume's engine** (oscillating `attaching`↔`faulted`; the pod failed to
+attach → ReplicaSet recreated it on another node → chased the volume → re-faulted). Recovery lessons (full
+detail → `[[reference_cnpg_migration_playbook]]`):
+- **Manual `kubectl scale`/`kubectl patch application` made it worse** — selfHeal **and the root app-of-apps**
+  revert both faster than you act, each scale adding a Recreate roll = more churn. A ~2-min cutover became a
+  ~40-min incident.
+- **To hold a chart-managed workload at replicas=0 against selfHeal** (the ananace chart exposes no usable
+  replica value), add `ignoreDifferences` on the Deployment `/spec/replicas` + `RespectIgnoreDifferences=true`
+  to the **Application via git** (kubectl patches are reverted by the root app). Then `kubectl scale 0` sticks.
+- A **wedged/faulted volume with healthy replicas = engine wedge from churn, not corruption**; it detaches
+  clean at zero consumers. Delete stale k8s VolumeAttachments pinning a bad node; cordon the bad engine node.
+- The media store was near-empty + non-critical (the real state is the DB) → **recreated the media PVC fresh**
+  (reclaim=Delete removed the wedged volume; ArgoCD recreated it empty) → clean attach, no churn. Matrix healthy.
+- **The lesson for the next migration: quiesce the workload BEFORE the host cutover** so the roll + RWO attach
+  happen once, cleanly — don't cut over against a live rollout.
+
+The old `postgresql-synapse` STS is kept as a **bake anchor (~24h)**, then deleted (its `synapse-logical-backup`
+CronJob — now superseded by CNPG R2 PITR — is removed with it). That retires the first of the two noavx512
+consumers.
+
 ## Consequences
 
 - **+** Langfuse metadata now has PITR + a dedicated instance; the cross-ns coupling + shared-SPOF are gone.
 - **+** One more instance on the standard → consistent backup/restore/monitoring (`[[feedback_cnpg_backup_restore_ops]]`).
 - **−** One more Postgres pod (modest: 100m/256Mi req) — fits the `langfuse` footprint, no quota bump.
-- **Remaining debt (ordered candidates):** the other raw/vendor instances (ktayl-iam, policy-service,
-  retrieva, plane, temporal, backstage) → CNPG; the `-noavx512` pgvector instances (`postgresql-ai`,
-  `postgresql-synapse`) need a CNPG image with the custom base (or the pgvector-vs-Qdrant consolidation
-  ADR) before they can move. Migrate need-first, not as a sweep.
+- **+** Synapse off `-noavx512`; **verified nothing uses pgvector** → the custom base is retireable with
+  stock CNPG (no custom-image prerequisite, contrary to the earlier assumption).
+- **Remaining debt (ordered):**
+  - **`postgresql-synapse` STS** — redundant, **bake-pending deletion** (~24h anchor) → then it + its
+    `synapse-logical-backup` CronJob are removed = **1 of 2 noavx512 consumers retired**.
+  - **`postgresql-ai`** (the other noavx512 consumer — 6 DBs: openwebui, litellm, ragdb, vaultwarden,
+    flowise, mlflow) → stock CNPG. Plan: **Vaultwarden its own CNPG** (cross-ns + break-glass), the 5 ai-ns
+    apps a **shared stock `ai-postgres`**. Once both instances are off it → **delete the
+    `minicloud-postgresql-noavx512` image + repo + its Harbor always-retain rule.**
+  - Other raw/vendor instances (ktayl-iam, policy-service, retrieva, plane, temporal, backstage) → CNPG.
+  - **Process change (from the synapse incident): for any workload with its own stateful RWO PVC, QUIESCE it
+    (scale to 0 via a git `ignoreDifferences`/replica hold) BEFORE the host cutover** — never cut over against
+    a live rollout. Migrate need-first, not as a sweep.
 
 ## Operate / verify
 
