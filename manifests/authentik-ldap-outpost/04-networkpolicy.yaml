@@ -1,0 +1,19 @@
+# The authentik ns is default-deny-INGRESS. Stalwart (mail ns) must reach the LDAP outpost to
+# authenticate mail against Authentik → allow ONLY mail → this outpost on the LDAP ports. Egress is
+# open in this ns, so the outpost reaches authentik-server without an egress rule.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mail-to-ldap-outpost
+  namespace: authentik
+spec:
+  podSelector:
+    matchLabels: { app: ktayl-ldap-outpost }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: mail }
+      ports:
+        - { protocol: TCP, port: 3389 }
+        - { protocol: TCP, port: 6636 }
