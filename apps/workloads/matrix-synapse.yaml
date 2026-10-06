@@ -30,14 +30,9 @@ spec:
       kind: Deployment
       jqPathExpressions:
         - .spec.template.spec.priorityClassName
-        # TEMPORARY (2026-10-06): ignore replicas so a manual `kubectl scale 0` sticks against
-        # selfHeal, to recreate the wedged media PVC during the CNPG cutover recovery. REMOVE
-        # this line (restore selfHeal-managed replicas) once Synapse is healthy on the fresh PVC.
-        - .spec.replicas
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - RespectIgnoreDifferences=true
