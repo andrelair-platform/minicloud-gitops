@@ -57,6 +57,8 @@ spec:
 
   destinations:
     # Explicit namespace allowlist — kube-system, kube-public, kube-node-lease excluded
+    - namespace: adminer
+      server: https://kubernetes.default.svc
     - namespace: ai
       server: https://kubernetes.default.svc
     - namespace: argocd
