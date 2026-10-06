@@ -61,10 +61,19 @@ Langfuse was moved off `postgresql-ai` onto a dedicated CNPG cluster `langfuse-p
    (`platform/langfuse/db-password`) the chart already consumes → a pure host repoint, no credential
    change. New web pod logged "412 migrations, No pending migrations to apply" (zero schema drift),
    `/api/public/health` = 200, live app connections on the new cluster.
-4. **Cleanup (bake-gated follow-up)** — the old `langfuse` db on `postgresql-ai` + the now-unused
-   `allow-langfuse-postgresql` netpol (ai ns) are **kept briefly as a rollback anchor** (repoint `host:`
-   back), then dropped once the new cluster is proven stable. Don't destroy the source the same hour you
-   cut over (`[[feedback_cnpg_repoint_wal_retention]]`).
+4. **Restore drill (the backup/restore "done" bar)** — recovered a throwaway cluster
+   (`langfuse-restore-verify`) **entirely from the R2 backup** (`bootstrap.recovery` + an
+   `externalClusters` barman store). **Gotcha:** the externalCluster's barman **`serverName` must be set
+   to the SOURCE cluster name** (`langfuse-postgres`) — it otherwise defaults to the externalCluster's
+   own `name` and the restore fails with **`no target backup found`**. The recovered cluster showed exact
+   parity (70 prompts / 166 models / 3 api_keys / 2 projects / 71 tables) → the new cluster's R2 backups
+   are proven recoverable. Drill cluster + its temp operator netpol deleted after.
+5. **Cleanup (completed 2026-10-06, once the drill proved recoverability)** — with the data living in
+   three places (live cluster + proven-recoverable R2 backup + the old copy), the old `langfuse` db +
+   role were **dropped from `postgresql-ai`** and the now-dead `allow-langfuse-postgresql` netpol (ai ns)
+   **removed** (PR #1654; ArgoCD pruned it). The general rule still holds — *don't* destroy the source
+   the same hour you cut over (`[[feedback_cnpg_repoint_wal_retention]]`); here the destructive step was
+   gated on the **restore drill passing**, not on wall-clock bake time.
 
 ## Consequences
 
