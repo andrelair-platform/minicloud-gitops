@@ -28,7 +28,11 @@ postgresql:
   enabled: false
 
 externalPostgresql:
-  host: postgresql-synapse.chat.svc.cluster.local
+  # Migrated 2026-10-06 off the custom-base postgresql-synapse STS (noavx512, no PITR) to a dedicated
+  # stock CloudNativePG cluster — own backed-up DB with R2 PITR; C collation preserved. See the
+  # CNPG-standard ADR / developer-platform/cnpg-standard. The synapse role password is the SAME secret
+  # value (pg-password), so this is a pure host repoint.
+  host: synapse-postgres-rw.chat.svc.cluster.local
   port: 5432
   username: synapse
   existingSecret: postgresql-synapse-secret
