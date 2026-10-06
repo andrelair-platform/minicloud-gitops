@@ -1,0 +1,72 @@
+# Synapse CloudNativePG cluster — moves Matrix's DB off the shared-base postgresql-synapse STS
+# (custom `postgresql:18.4.0-noavx512` image, Harbor-only SPOF, no PITR) onto the standard CNPG
+# operator with automated R2 PITR backup. Verified 2026-10-06 that NOTHING on this instance (or
+# postgresql-ai) uses pgvector → the noavx512 base is unnecessary; the operator-default stock image
+# (PG 17.4) is correct. Retiring this is one of the two steps that let the noavx512 image+repo go.
+#
+# ⚠️ CRITICAL — Matrix Synapse HARD-REQUIRES the database to use C collation. The live DB is
+# datcollate=C / datctype=C / UTF8; the new cluster MUST match or Synapse refuses to start
+# ("Database has incorrect collation ... Set LC_COLLATE/LC_CTYPE to C"). CNPG applies these via
+# bootstrap.initdb.{encoding,localeCollate,localeCType} (libc provider) → the synapse db inherits them.
+#
+# Bootstrap = an EMPTY `synapse` db owned by role `synapse`; data moved by pg_dump→restore at cutover.
+# The role password = the value Synapse already uses (60- ESO, Vault platform/postgresql-synapse
+# pg-password) → drop-in: at cutover only externalPostgresql.host changes in synapse-values.yaml.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: synapse-postgres
+  namespace: chat
+spec:
+  instances: 1
+  primaryUpdateStrategy: unsupervised
+
+  storage:
+    size: 8Gi
+    storageClass: longhorn
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  monitoring:
+    enablePodMonitor: true
+
+  managed:
+    roles:
+      - name: synapse
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: synapse-cnpg-role
+
+  # Empty `synapse` db owned by role `synapse`, created with C collation (the Synapse requirement).
+  bootstrap:
+    initdb:
+      database: synapse
+      owner: synapse
+      encoding: UTF8
+      localeCollate: C
+      localeCType: C
+
+  backup:
+    retentionPolicy: "14d"
+    barmanObjectStore:
+      destinationPath: s3://minicloud-cnpg-offsite/synapse
+      endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
+      s3Credentials:
+        accessKeyId:
+          name: synapse-cnpg-r2
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: synapse-cnpg-r2
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip

@@ -10,9 +10,12 @@ metadata:
   namespace: chat
 spec:
   hard:
-    requests.cpu: 500m
+    # Bumped 2026-10-06 for the synapse-postgres CNPG migration: during Phase 1→5 the new CNPG
+    # cluster (100m/256Mi) + the transient restore-drill pod run ALONGSIDE the old postgresql-synapse
+    # STS (50m/128Mi). Can be tightened back toward ~750m/1.5Gi after the old STS is deleted at cleanup.
+    requests.cpu: "1"
     limits.cpu: "4"
-    requests.memory: 1Gi
+    requests.memory: 2Gi
     limits.memory: 6Gi
     count/pods: "15"
 ---
