@@ -1,5 +1,5 @@
 # Langfuse v3 values for minicloud-platform.
-# PostgreSQL: external (postgresql-ai-0 in ai namespace)
+# PostgreSQL: external — dedicated CNPG cluster langfuse-postgres (langfuse ns, R2 PITR backup)
 # ClickHouse: internal single-node (minimal resources)
 # Redis/Valkey: internal standalone (minimal resources)
 # MinIO/S3: external (controller Docker MinIO at http://10.0.0.1:9000)
@@ -129,10 +129,13 @@ langfuse:
       mountPath: /etc/ssl/minicloud
       readOnly: true
 
-# External PostgreSQL (postgresql-ai-0 in ai namespace)
+# External PostgreSQL — dedicated CloudNativePG cluster in the langfuse ns (own, backed-up DB
+# with R2 PITR). Migrated off the shared postgresql-ai STS (ai ns, noavx512 base) 2026-10-06
+# — see manifests/langfuse-base/06-cnpg-cluster.yaml + the CNPG-standard ADR. The langfuse role
+# password is the SAME Vault value (platform/langfuse db-password) → drop-in, no credential change.
 postgresql:
   deploy: false
-  host: postgresql-ai.ai.svc.cluster.local
+  host: langfuse-postgres-rw.langfuse.svc.cluster.local
   port: 5432
   auth:
     username: langfuse
