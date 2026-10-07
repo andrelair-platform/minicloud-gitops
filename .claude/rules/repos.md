@@ -2,7 +2,10 @@
 
 ## GitHub Repos (org: `andrelair-platform`)
 
-All repos cloned under `~/Developer/cloudplateform/`:
+All repos cloned under `~/Developer/cloudplateform/` — **except the RNCP39583 certification project
+(Retrieva), whose repos are grouped one level deeper under `~/Developer/cloudplateform/RNCP39583/`**
+(the cert deliverable kept together; see the two-layer model in `github-projects.md`). `git`/CI are
+unaffected (remotes unchanged); only the local parent path differs.
 
 | Repo                                                                                    | Directory                          | Purpose                                           |
 | --------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------- |
@@ -27,6 +30,8 @@ All repos cloned under `~/Developer/cloudplateform/`:
 | [ktayl-integration](https://github.com/andrelair-platform/ktayl-integration)             | `ktayl-integration/`             | Integration transversal layer (board #25) — scaffold |
 | [ktayl-data-platform](https://github.com/andrelair-platform/ktayl-data-platform)         | `ktayl-data-platform/`           | Data Platform code — dbt + ingest + Metabase provisioner (board #5; deploy in minicloud-gitops `manifests/data-platform/`) |
 | [ktayl-core](https://github.com/andrelair-platform/ktayl-core)                           | `ktayl-core/`                    | **Insurance-LOB modular monolith** (Spring Boot + Spring Modulith, Java 21; board #28) — the home for custom insurance business domains as *modules*, not new services (see `architecture-strategy.md`). First module: **Billing** (premium→cash→GL). Kargo **git-Warehouse** (JVM base-layer date breaks NewestBuild). |
+| [retrieva](https://github.com/andrelair-platform/retrieva)                               | `RNCP39583/retrieva/`            | **RNCP39583 certification flagship** (board #2) — DORA third-party-ICT product; own Docusaurus docs. Grouped under `RNCP39583/` with its backend. |
+| [retrieva-backend](https://github.com/andrelair-platform/retrieva-backend)               | `RNCP39583/retrieva-backend/`    | Retrieva backend (Express 5 / Node 20 TS). Member repo of the Retrieva product (board #2). |
 
 > The full **ktayl-\* domain repo ↔ product board** mapping (Claims/#11, Underwriting/#12,
 > Distribution/#13, Finance/#14, Compliance/#15, ITSM/#16, IAM/#17, MDM/#20, + the 5 above, etc.)
