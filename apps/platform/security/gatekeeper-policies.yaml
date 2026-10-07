@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/gatekeeper-policies
+    path: platform/security/gatekeeper-policies
   destination:
     server: https://kubernetes.default.svc
     namespace: gatekeeper-system
