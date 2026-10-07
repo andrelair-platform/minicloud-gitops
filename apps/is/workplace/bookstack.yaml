@@ -15,7 +15,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: HEAD
-    path: manifests/bookstack
+    path: is/workplace/bookstack
   destination:
     server: https://kubernetes.default.svc
     namespace: intranet
