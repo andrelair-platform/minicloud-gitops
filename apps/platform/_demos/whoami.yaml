@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: event-demo
+  name: whoami
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,10 +10,10 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/event-demo
+    path: platform/_demos/whoami
   destination:
     server: https://kubernetes.default.svc
-    namespace: event-demo
+    namespace: gitops-demo
   syncPolicy:
     automated:
       prune: true
