@@ -22,7 +22,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/chaos-engineering/observability
+    path: platform/_demos/chaos-engineering/observability
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
