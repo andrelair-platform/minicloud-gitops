@@ -15,6 +15,10 @@ kind: CronJob
 metadata:
   name: nextcloud-mail-provisioner
   namespace: nextcloud
+  annotations:
+    # The SA token IS necessary here: the job authenticates to the Kubernetes API to
+    # `kubectl exec` into the live nextcloud pod and run `php occ`. Skip with justification.
+    checkov.io/skip1: CKV_K8S_38=SA token required — the job calls the k8s API (kubectl exec into the nextcloud pod)
 spec:
   schedule: "*/15 * * * *"
   concurrencyPolicy: Forbid
