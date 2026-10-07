@@ -21,7 +21,7 @@ spec:
       ref: values
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
-      path: manifests/harbor
+      path: platform/delivery/harbor
   destination:
     server: https://kubernetes.default.svc
     namespace: harbor
