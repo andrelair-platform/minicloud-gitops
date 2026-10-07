@@ -1,68 +1,110 @@
 # ADR — Unified credential: federate Stalwart mail auth to Authentik (LDAP)
 
-- **Status:** Proposed — **governance gate (architecture + security review) pending owner approval.**
-  The B2 cutover (switching Stalwart's auth to LDAP) MUST NOT be executed until this ADR is approved.
-- **Owner:** SA/TL + SEC · **Date:** 2026-10-06 · **Tracks:** minicloud-gitops#1686
+- **Status:** ✅ **ACCEPTED & IMPLEMENTED (B1 + B2 live, 2026-10-07).** Mail now authenticates against
+  Authentik; one credential for SSO + mail.
+- **Owner:** SA/TL + SEC · **Created:** 2026-10-06 · **Cutover:** 2026-10-07 · **Tracks:** minicloud-gitops#1686
 - **Relates to:** `workplace-architecture.md` (identity = perimeter), `twelve-factor.md` (#3 config),
-  ktayl-iam #73/#74 (the one-credential onboarding code), `bmad-compliance.md` (this gate).
+  ktayl-iam #73/#74 (one-credential onboarding), memory `project_mail_authentik_ldap_federation`.
+- **Operate/verify runbook + ops script:** `minicloud-ops/scripts/stalwart/stalwart-mail-ops.sh`.
 
 ## Context
-A new employee today ends up with **two credentials**: an Authentik identity (SSO) and a **separate**
+A new employee used to end up with **two credentials**: an Authentik identity (SSO) and a **separate**
 Stalwart mailbox password. That contradicts the workplace principle (one identity, identity is the
-perimeter) and confuses users. We want **one credential, owned by Authentik**, with mail authenticating
-*against* Authentik — the employee logs into SSO and mail with the same password, and rotates it once
-in Authentik.
+perimeter) and confuses users. Goal: **one credential, owned by Authentik** — the employee logs into SSO
+and mail with the same password and rotates it once in Authentik.
 
 ## Decision
-Federate Stalwart's mail authentication to **Authentik via an LDAP outpost**:
-- **Onboarding (done, ktayl-iam #73/#74):** the Joiner sets the employee's **Authentik** password (+ the
-  mailbox) to a shared default, once, via a **scoped elevated token** (`reset_user_password` only).
-- **B1 (this ADR, additive):** deploy an **Authentik LDAP outpost** (GitOps-managed Deployment + Service
-  `:3389/:6636` + the outpost token via ESO + a `mail→outpost` NetworkPolicy). Base DN `dc=devandre,dc=sbs`.
-- **B2 (gated):** configure Stalwart with an **LDAP directory** pointing at the outpost and switch mail
-  auth to it → the mail login becomes the Authentik credential; the separate mailbox password disappears.
+Federate Stalwart mail authentication to **Authentik via an LDAP outpost**, and switch Stalwart's active
+authentication directory to it.
 
-## Architecture
+- **Onboarding (ktayl-iam #73/#74):** the Joiner sets the employee's **Authentik** password (+ mailbox)
+  to a shared default, once, via a **scoped elevated token** (`reset_user_password` only).
+- **B1 — Authentik LDAP outpost (GitOps):** `manifests/authentik-ldap-outpost/` — Deployment
+  (`ghcr.io/goauthentik/ldap:2026.5.3`, non-root/readOnlyRootFS/drop-ALL) + Service `:3389/:6636` +
+  outpost token via ESO + a `mail→outpost` NetworkPolicy. Provider `ktayl-ldap`, base DN `dc=devandre,dc=sbs`.
+- **B2 — cutover (done):** Stalwart webadmin → **Settings → Authentication → Authentication Directory** =
+  the LDAP directory. Mail login becomes the Authentik credential; the separate mailbox password disappears.
+
+## Architecture (as-built)
 ```
-employee ── SSO ─────────────▶ Authentik (identity source of truth)
-   │                                 ▲   ▲
-   │ IMAP/SMTP (password)            │   │ LDAP bind+search (:3389, scoped svc account)
-   ▼                                 │   │
-Nextcloud Mail ── IMAP/SMTP ─▶ Stalwart ─┘  (LDAP directory → validates against Authentik)
+employee ── SSO ─────────────▶ Authentik  (identity source of truth)
+   │                                ▲   ▲
+   │ IMAP/SMTP (password)           │   │ LDAP search (svc, superuser) + bind-as-user (:3389)
+   ▼                                │   │
+Nextcloud Mail ── IMAP/SMTP ─▶ Stalwart ─┘  (Authentication Directory = ktayl-ldap outpost)
 ```
+- **Stalwart directory config:** `Use Bind Authentication = ON` (Authentik exposes **no** password hash →
+  Stalwart searches by the login filter, then **binds as the user**). The Create-Directory **default
+  filters work as-is** with Authentik (its LDAP entries carry `inetOrgPerson` for users and `groupOfNames`
+  for groups).
+- **Search service account:** `cn=stalwart-ldap-svc,ou=users,dc=devandre,dc=sbs` — made a **superuser**
+  (this Authentik version has no `search_group` field, so a bound account can only list all users if it is
+  a superuser). Bind creds in Vault `secret/platform/authentik-ldap-outpost` (`stalwart-bind-dn`/`-secret`).
+
+## Key finding — mailbox keying (why the cutover is non-destructive)
+The feared risk was that Stalwart might key mailboxes by the LDAP `cn` (= **matricule**, e.g. `100001`)
+while the existing mailboxes are named by **email local-part** (`kanmegnea`) → a global switch could
+orphan every mailbox. **Proven false by a controlled test:** a marker message placed in the internal
+`testbox` mailbox (LDAP `cn=100099`, mail `testbox@`) **survived** the flip (login as `testbox@` via LDAP
+still showed it). **→ Stalwart keys mailboxes by EMAIL and reuses the existing one.** Confirmed live:
+`kanmegnea` kept all **7362** messages. No credential-alignment pre-step was needed.
+
+## Special cases (as-built)
+- **sophie.bernard (a new person):** `sophie.bernard` = a **user** (matricule `100006`, Direction RH).
+  A brand-new LDAP user has **no Stalwart mailbox until their first mail delivery** (the box auto-creates
+  on delivery); then login works.
+- **it@ (IT team shared mailbox):** a **login-capable shared account** `it` (mail `it@devandre.sbs`; was a
+  service account, converted to a normal account + shared password in Vault `secret/platform/stalwart-shared-it`).
+  Stalwart exposes **no shared/other-users IMAP namespace** here, so **ACL delegation (SETACL) is set but
+  not reachable** from another user's session → the working model is adding `it@` as a **second account in
+  each IT-roster member's Nextcloud Mail** (reply-as it@ is native). Reusable: `stalwart-mail-ops.sh
+  share-it <nc-uid>`. The group **Direction IT / SI** is the roster (ACL source), not a distribution list.
+- **Distribution list vs shared mailbox:** Stalwart principal type `group` = shared mailbox (members share
+  its box); `list` = fan-out. Authentik exposes a group's custom `mail` attribute over LDAP **with no
+  property mapping** (so a pure distribution list would also work if ever needed).
 
 ## Security review (SEC)
-- **Scoped privilege (threat T4 preserved):** the onboarding token belongs to a dedicated Authentik
-  service account with a Role granting **only** `authentik_core.reset_user_password` — not admin; the
-  ktayl-iam **sync** token stays least-privilege. Token stored in Vault, delivered by ESO. Decrypted/
-  provisioned via a break-glass script (`minicloud-ops/scripts/authentik/provision-iam-credential.sh`).
-- **Mono-directory global-switch risk (the critical one):** Stalwart appears to use a **single active
-  auth directory**. Switching to LDAP affects **all** mailboxes at once, not a test one — so B2 cannot be
-  isolated to a throwaway account.
-  - **Mitigation 1 — credential alignment before cutover:** set the owner's (and any existing user's)
-    Authentik password = the value their mail client already stores, so the LDAP switch keeps their mail
-    working (no lockout). For the owner: align Authentik `100001` → the password Nextcloud Mail stores.
-  - **Mitigation 2 — recovery admin preserved:** Stalwart's `STALWART_RECOVERY_ADMIN` (fallback admin)
-    bypasses the directory → admin access survives an LDAP misconfig (rollback hatch).
-  - **Mitigation 3 — reversible:** B2 is a config change; capture the pre-change Stalwart auth config and
-    the exact revert, and verify the owner's mail still syncs immediately after the switch. If anything is
-    off, revert to internal auth.
-  - **Precondition:** verify whether Stalwart can run **internal + LDAP in combination/fallback** (so the
-    existing internal accounts survive) — if it cannot, B2 is a hard global cutover and only proceeds
-    once every active mailbox's credential is aligned.
-- **Network:** a NetworkPolicy allows **only** `mail` (Stalwart) → the LDAP outpost `:3389`; nothing else.
-- **No XOAUTH2:** Nextcloud Mail can't do custom-OIDC XOAUTH2, so mail stays **password-auth** (against
-  LDAP). Consequence: on password **rotation** in Authentik, the password stored in Nextcloud Mail goes
-  stale → the user re-enters it once (or the future self-service rotation flow updates it). Accepted.
+- **Scoped privilege:** the onboarding token = a dedicated Authentik service account, Role granting **only**
+  `authentik_core.reset_user_password`. Vault-stored, ESO-delivered, break-glass-provisioned
+  (`minicloud-ops/scripts/authentik/provision-iam-credential.sh`). The ktayl-iam **sync** token stays least-privilege.
+- **Recovery hatch preserved:** Stalwart's `STALWART_RECOVERY_ADMIN` (fallback admin) bypasses the directory
+  → admin access survives an LDAP misconfig. **Revert = clear the `Authentication Directory` field** (back to
+  internal) — captured before the flip.
+- **Network:** NetworkPolicy allows **only** `mail` → the LDAP outpost `:3389/:6636`; egress-open ns reaches
+  authentik-server implicitly.
+- **No XOAUTH2:** Nextcloud Mail can't do custom-OIDC XOAUTH2 → mail stays **password-auth** against LDAP.
+  On rotation in Authentik, the password stored in Nextcloud Mail goes stale → re-entered once. Accepted.
+- **Shared `it@` secret:** a shared password (no per-user audit on `it@` itself) — accepted for a small team;
+  per-user audit still exists on each member's own SSO login. Stored in Vault.
 
 ## Consequences
-- One credential (Authentik) for SSO + mail; rotation in Authentik propagates to mail auth.
-- B1 is additive and safe (no effect on existing mail). B2 is a **gated, reversible, credential-aligned**
-  cutover — executed only after this ADR is approved, verified non-breaking on the owner's live mailbox.
-- Outpost is a **GitOps-tracked workload** (not Authentik auto-deployed) — consistent with the platform's
-  everything-in-gitops rule.
+- **One credential** (Authentik) for SSO + mail; rotation in Authentik propagates to mail auth.
+- The cutover was **non-destructive** (keying by email) and **reversible** (one field).
+- Outpost + manifests are **GitOps-tracked** (not Authentik auto-deployed) — consistent with everything-in-gitops.
+
+## Gotchas (learned — don't relearn)
+1. **Stalwart caches auth/directory results.** A login attempted **before** the user's password is set gets
+   cached as a failure and keeps failing until the cache clears. **Fix:** `stalwart-mail-ops.sh clear-cache`
+   (restart Stalwart). This blocked `sophie.bernard` until cleared.
+2. **New LDAP user ⇒ no mailbox until first delivery** — send a welcome mail (`stalwart-mail-ops.sh welcome`)
+   to materialise it before expecting login.
+3. **Stalwart mgmt REST API (`/api/settings`, `/api/principal`) is not reachable** here (404), the OAuth
+   token endpoint rejects ROPC, and only `/api/account/*` (self) answers Basic auth → directory/principal
+   changes are **webadmin-only**; mailbox ops are scriptable via **IMAP/JMAP** from an in-cluster pod.
+4. **`Use Bind Authentication` MUST be ON** — Authentik exposes no password hash; OFF → all logins fail.
+
+## Operate / verify (real commands, run live)
+```bash
+# verify a user authenticates via Authentik (IMAP 143 STARTTLS, run from a mail-ns pod):
+ssh controller "bash ~/minicloud-ops/scripts/stalwart/stalwart-mail-ops.sh verify <email> [password]"
+# materialise a new joiner's mailbox:   ... welcome <email>
+# clear a stale auth cache:              ... clear-cache
+# add the it@ shared mailbox to an IT member's Nextcloud Mail:  ... share-it <nc-user-id>
+```
+Final verification 2026-10-07 (4/4 PASS): `testbox` GONE · `kanmegnea` INBOX=7362 · `sophie` INBOX=1 ·
+`it@` INBOX=5 — all three real accounts log in **via Authentik**.
 
 ## Rollback
-Revert the Stalwart LDAP directory config to the prior internal-auth config (captured pre-change); the
-recovery admin guarantees access meanwhile. Remove the outpost manifest + the Authentik LDAP objects if
-abandoning. The ktayl-iam onboarding code is inert without the env (already gated).
+Clear the Stalwart **Authentication Directory** field (→ internal auth; captured pre-change). The recovery
+admin guarantees access meanwhile. Remove `manifests/authentik-ldap-outpost/` + the Authentik LDAP objects
+to abandon. The ktayl-iam onboarding code is inert without its env (gated).
