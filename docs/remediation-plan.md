@@ -289,3 +289,64 @@ git mv apps/workloads/ktayl-claims-prod.yaml apps/is/insurance/ktayl-claims-prod
 **Stage 0 + Stage 1** (write `ARCHITECTURE.md`, freeze, evict `provision_dashboard.py`, delete the dead
 scaffold) — all low/zero risk — then the **BookStack pilot** (Stage 3) to prove the path-only / no-live-diff
 loop before anything else moves.
+
+---
+
+## 13. Execution log (as executed)
+
+**Session 2026-10-07 — Stages 0, 1, 3 (IS complete) + Stage 4 lot 1. All PRs verified: moved apps
+`Synced/Healthy` at new paths, no NEW regression vs the baseline oracle.**
+
+| PR | Scope |
+|---|---|
+| #1700 | Stage 0 (`ARCHITECTURE.md` + freeze + baseline) + Stage 1 (evict `data-platform/` code, `services/_template-helm`) |
+| #1701 | Stage 3 pilot — BookStack → `is/workplace/` (proved the path-only / no-live-diff loop) |
+| #1702 | Stage 3 — workplace + erp (10 apps: nextcloud(+mail), stalwart, matrix, jitsi, docuseal, n8n, searxng, vaultwarden, erpnext) |
+| #1703 | **bug-fix** — deduplicate + rehome `ktayl-base` (was defined in both apps/platform + apps/workloads) |
+| #1704 | Stage 3 — insurance/itsm/iam (custom-service Application files → `apps/is/*`; `services/` unchanged; ktayl-core raw → `is/insurance/`) |
+| #1705 | rescue `plane` → `is/workplace/` + ARCHITECTURE refinements (new layers automation/messaging/autoscaling/_demos) |
+| #1706 | **Stage 4 lot 1** — platform shared-services + observability (11 apps: adminer, homer, ghproj-exporter, authentik(+ldap-outpost), cnpg-authentik, loki, otelcol, tempo, cert-observability, monitoring) |
+
+IS pillar fully migrated (`is/` + `apps/is/`); `manifests/` 55 → ~30 subdirs. Custom services stayed in
+`services/` (golden path + Kargo intact). `data-platform/metabase/provision_dashboard.py` evicted (lives in
+`ktayl-data-platform`). **Baseline non-regression oracle** = the 2026-10-07 pre-existing unhealthy set in
+`ARCHITECTURE.md`; the rule is "do not ADD to it".
+
+## 14. Stage 4 — refined blast-radius lots (remainder, NOT yet done)
+
+Validated execution order for the rest of `platform/`. **Each cluster-critical component = its own PR,
+path-only, empty Argo diff, Synced/Healthy + cluster check, then the next.**
+
+```
+LOT A (low)        : ai · _demos
+LOT B (low/med)    : automation(temporal) · data(non-critical) · harbor · kargo
+LOT C (med/high,   : network-policies · rbac · quotas · polaris · external-dns
+       split it)
+LOT D (very high,  : Argo CD itself · Gatekeeper · ESO · Vault
+       1 PR each)
+LOT E (foundation, : CNPG operator · Longhorn · cert-manager · Cilium
+       last, 1 each)
+```
+
+**Nuances (hard):**
+- **Vault is ONLY in LOT D** (never migrated early in a "secrets" batch).
+- **Argo CD itself** is not a banal `delivery` component — treat it with foundation discipline (isolated PR, check the root app before/after).
+- **Gatekeeper** — a policy mistake can block workload create/update cluster-wide → do NOT put all of `security/` in one batch; isolate Gatekeeper.
+- **external-dns** — handle carefully but it is lower risk than Cilium/Longhorn (a DNS break ≠ dataplane destruction).
+- **Longhorn migration MUST NOT START** until the storage layer is confirmed stable (see the 2026-10-07
+  matrix-synapse Longhorn attach incident — a separate storage issue, unrelated to this path refactor).
+- **backstage / minicloud-agent / minicloud-crew-agent / platform-demo / retrieva** — classify each
+  **individually** (an experiment/demo is not automatically a platform capability); retrieva is the cert
+  product (own repo/docs), not `platform/` nor `is/`.
+
+## 15. Remaining stages
+- **Stage 5** — reorganize `apps/` fully to mirror the layers (platform sublayers + is groups).
+- **Stage 6** — guardrails: extend `.claude/hooks/guard-write.py` (block new `manifests/<dir>` + app source
+  code) + a CI check (apps only under `apps/platform/*`|`apps/is/*`, new top-level dir needs an ADR).
+- **Stage 7** — delete `manifests/` once empty.
+
+> **Incident note (separate from the refactor):** 2026-10-07 `matrix-synapse` hit a Longhorn
+> `FailedAttachVolume` (engine stopped, volume stuck `attaching`, attached nowhere — **not** a stale
+> attachment, so no force-detach). Root cause is a Longhorn engine/attach flake, independent of the
+> path-only move (which cannot restart a pod). Remediated by deleting the stuck `ContainerCreating` pod
+> to trigger a clean re-attach. Treat Longhorn stability as a precondition for LOT E.
