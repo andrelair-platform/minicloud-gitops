@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops
     targetRevision: main
-    path: manifests/argocd-project
+    path: platform/delivery/argocd-project
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
