@@ -1,0 +1,94 @@
+# Auto-provision Nextcloud Mail for every ktayl employee — so webmail "just works" with no manual
+# IMAP config (the requirement: le process doit être auto). Reconcile model: every 15 min, for each
+# Nextcloud user that (a) has a @devandre.sbs address and (b) has no mail account yet, create one
+# pointing at Stalwart. Idempotent + additive — it never deletes or edits an existing account.
+#
+# WHY a reconcile CronJob (not Nextcloud Mail's native provisioning): native provisioning authenticates
+#   IMAP with the user's *Nextcloud login password*, which with OIDC login Nextcloud never sees. So we
+#   must create accounts with an explicit password = the shared default (foundation A). A user only
+#   exists in Nextcloud after their first OIDC login → their mail account is provisioned on the next run.
+# PASSWORD lifecycle: the stored IMAP password is the default until the employee changes their
+#   credential; after a change they re-enter it once in Nextcloud Mail settings (OIDC+IMAP limitation,
+#   documented — rotation story is future work).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nextcloud-mail-provisioner
+  namespace: nextcloud
+  annotations:
+    # The SA token IS necessary here: the job authenticates to the Kubernetes API to
+    # `kubectl exec` into the live nextcloud pod and run `php occ`. Skip with justification.
+    checkov.io/skip1: CKV_K8S_38=SA token required — the job calls the k8s API (kubectl exec into the nextcloud pod)
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 120
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels: { app: nextcloud-mail-provisioner }
+        spec:
+          serviceAccountName: nextcloud-mail-provisioner
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: provisioner
+              image: docker.io/alpine/k8s:1.36.1
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: HOME
+                  value: /tmp
+                - name: KUBECACHEDIR
+                  value: /tmp/.kube-cache
+                - name: DEFAULT_MAILBOX_PASSWORD
+                  valueFrom:
+                    secretKeyRef: { name: nextcloud-mail-provisioner, key: DEFAULT_MAILBOX_PASSWORD }
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  NS=nextcloud
+                  POD=$(kubectl get pod -n "$NS" -l app.kubernetes.io/name=nextcloud \
+                        -o jsonpath='{.items[0].metadata.name}')
+                  [ -n "$POD" ] || { echo "no nextcloud pod found"; exit 1; }
+                  echo "nextcloud pod: $POD"
+                  occ() { kubectl exec -n "$NS" "$POD" -c nextcloud -- php occ "$@"; }
+                  created=0; skipped=0
+                  for uid in $(occ user:list --output=json | jq -r 'keys[]'); do
+                    info=$(occ user:info "$uid" --output=json)
+                    email=$(echo "$info" | jq -r '.email // ""')
+                    name=$(echo "$info"  | jq -r '.display_name // ""')
+                    case "$email" in
+                      *@devandre.sbs) : ;;
+                      *) skipped=$((skipped+1)); continue ;;
+                    esac
+                    if occ mail:account:export "$uid" 2>/dev/null | grep -q "E-Mail: $email"; then
+                      skipped=$((skipped+1)); continue
+                    fi
+                    echo "provisioning mail account for $uid <$email>"
+                    occ mail:account:create "$uid" "$name" "$email" \
+                      stalwart.mail.svc.cluster.local 143 tls "$email" "$DEFAULT_MAILBOX_PASSWORD" \
+                      stalwart.mail.svc.cluster.local 587 tls "$email" "$DEFAULT_MAILBOX_PASSWORD" password
+                    created=$((created+1))
+                  done
+                  echo "done: created=$created skipped=$skipped"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 25m, memory: 64Mi }
+                limits: { cpu: 200m, memory: 256Mi }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - { name: tmp, emptyDir: {} }
