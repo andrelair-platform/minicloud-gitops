@@ -72,7 +72,7 @@ spec:
     # 2) The ESO ExternalSecret (+ namespace) that renders the CF token.
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
-      path: manifests/external-dns
+      path: platform/networking/external-dns
   destination:
     server: https://kubernetes.default.svc
     namespace: external-dns
