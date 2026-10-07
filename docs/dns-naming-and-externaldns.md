@@ -173,4 +173,4 @@ URIs, tunnel rules, and Ingress hosts). Instead:
   (*Cloudflare*) · Deploy golden path: `.claude/rules/gitops.md` · URLs: `.claude/rules/urls.md`.
 - Two-layer model (IS vs Retrieva): `.claude/rules/github-projects.md`.
 - Mail-auth posture on the same zone (custom MAIL FROM, also Cloudflare-managed): docs
-  `developer-platform/amazon-ses`.
+  `is/amazon-ses`.
