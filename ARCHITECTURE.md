@@ -35,6 +35,7 @@ platform/
   shared-services/         # authentik(+ldap-outpost, cnpg-authentik), adminer, homer, ghproj-exporter
 is/
   workplace/               # nextcloud, stalwart, matrix, jitsi, docuseal, n8n, bookstack, searxng, vaultwarden
+  iam/                     # ktayl-iam (Identity & Access Governance / IGA — transverse IS capability)
   erp/                     # erpnext
   insurance/               # raw/vendor LOB bundles (custom LOB services stay in services/)
   itsm/                    # glpi
@@ -42,7 +43,7 @@ is/
 services/                  # custom wrapper charts (+ /kargo) — UNCHANGED, flat, packaging only
 apps/
   platform/{foundation,storage,networking,secrets,delivery,security,observability,data,ai,shared-services}/
-  is/{workplace,erp,insurance,itsm,data-products}/
+  is/{workplace,iam,erp,insurance,itsm,data-products}/
   previews/
 helm-values/ · charts/ · environments/        # UNCHANGED
 docs/ · scripts/ · .claude/ · ARCHITECTURE.md
