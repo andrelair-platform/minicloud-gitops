@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: nextcloud-mail-provisioner
+  name: n8n
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -11,12 +11,10 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/nextcloud-mail-provisioner
+    path: is/workplace/n8n
   destination:
     server: https://kubernetes.default.svc
-    namespace: nextcloud
-  # Contains an ExternalSecret → ESO injects 4 default fields at admission that are never in git.
-  # Ignore them (+ RespectIgnoreDifferences) so the app isn't permanently OutOfSync (gitops.md).
+    namespace: automation
   ignoreDifferences:
     - group: external-secrets.io
       kind: ExternalSecret
@@ -30,5 +28,5 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
+      - CreateNamespace=true
       - ServerSideApply=true
-      - RespectIgnoreDifferences=true
