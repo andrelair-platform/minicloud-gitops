@@ -1,0 +1,35 @@
+# The provisioner CronJob runs `php occ` INSIDE the live nextcloud pod (occ needs config.php + the
+# RWO data PVC → can't run in a separate pod). It therefore needs pods/exec on the nextcloud ns only.
+# Same least-privilege shape as the existing onlyoffice-configurator SA in this namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nextcloud-mail-provisioner
+  namespace: nextcloud
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: nextcloud-mail-provisioner
+  namespace: nextcloud
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: nextcloud-mail-provisioner
+  namespace: nextcloud
+subjects:
+  - kind: ServiceAccount
+    name: nextcloud-mail-provisioner
+    namespace: nextcloud
+roleRef:
+  kind: Role
+  name: nextcloud-mail-provisioner
+  apiGroup: rbac.authorization.k8s.io
