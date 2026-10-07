@@ -19,7 +19,7 @@ services/*/helm/              @AndreLair
 # Kargo Project/Warehouse/Stage manifests define the promotion machinery — gate them
 # (a Stage's promotionTemplate can write to any overlay, so it needs review too).
 services/*/kargo/             @AndreLair
-manifests/kargo/              @AndreLair
+platform/delivery/kargo/      @AndreLair
 
 # ArgoCD Application manifests — these DEFINE the deploy gate (syncPolicy,
 # targetRevision, source path). Changing one can bypass every other control,
@@ -27,8 +27,8 @@ manifests/kargo/              @AndreLair
 apps/                         @AndreLair
 
 # Production quota and network-policy manifests
-manifests/quotas/*-prod.yaml  @AndreLair
-manifests/network-policies/*-prod.yaml @AndreLair
+platform/security/quotas/*-prod.yaml  @AndreLair
+platform/security/network-policies/*-prod.yaml @AndreLair
 
 # Helm values — any change here affects running platform tools
 helm-values/                  @AndreLair
@@ -38,7 +38,7 @@ helm-values/minicloud-1/      @AndreLair
 bootstrap/                    @AndreLair
 
 # RBAC — security-sensitive
-manifests/rbac/               @AndreLair
+platform/security/rbac/       @AndreLair
 
 # Agent operating config — the Claude Code hooks (deterministic guardrails / approval
 # gates) and the auto-loaded rules constitution. A change here alters what the agent is
