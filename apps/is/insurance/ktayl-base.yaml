@@ -6,13 +6,13 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   project: minicloud-platform
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/ktayl
+    path: is/insurance/ktayl
   destination:
     server: https://kubernetes.default.svc
     namespace: ktayl
@@ -24,6 +24,13 @@ spec:
         - .spec.data[].remoteRef.decodingStrategy
         - .spec.data[].remoteRef.metadataPolicy
         - .spec.target.deletionPolicy
+    - group: apps
+      kind: StatefulSet
+      jqPathExpressions:
+        - .spec.volumeClaimTemplates[].apiVersion
+        - .spec.volumeClaimTemplates[].kind
+        - .spec.volumeClaimTemplates[].spec.volumeMode
+        - .spec.updateStrategy.rollingUpdate
   syncPolicy:
     automated:
       prune: true
