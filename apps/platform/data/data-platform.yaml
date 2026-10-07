@@ -13,7 +13,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/data-platform
+    path: platform/data/data-platform
   destination:
     server: https://kubernetes.default.svc
     namespace: data-platform
