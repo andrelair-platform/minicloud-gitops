@@ -208,11 +208,11 @@ server:
     enabled: true
     ingressClassName: nginx
     hostname: argocd.10.0.0.200.nip.io
-    # NB: do not add `nginx.org/proxy-buffer-size: "16k"` — it conflicts
-    # with the default proxy_buffers config and makes nginx -s reload fail
-    # with "proxy_busy_buffers_size must be less than the size of all
-    # proxy_buffers minus one buffer". Keeps every Ingress in the cluster
-    # broken until removed.
+    # NB: do not add `nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"` — it conflicts
+    # with the default proxy_buffers config and makes `nginx -s reload` fail with
+    # "proxy_busy_buffers_size must be less than the size of all proxy_buffers minus one
+    # buffer". Keeps every Ingress in the cluster broken until removed.
+    # (This cluster runs the COMMUNITY ingress-nginx; `nginx.org/*` annotations are F5-only no-ops.)
     annotations:
     tls: true            # chart auto-creates a tls section using the secretName below
     extraTls:
