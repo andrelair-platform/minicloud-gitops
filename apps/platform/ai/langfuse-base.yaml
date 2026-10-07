@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/langfuse-base
+    path: platform/ai/langfuse-base
   destination:
     server: https://kubernetes.default.svc
     namespace: langfuse

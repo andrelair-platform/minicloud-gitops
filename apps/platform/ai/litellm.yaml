@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/ai
+    path: platform/ai/litellm
   destination:
     server: https://kubernetes.default.svc
     namespace: ai
