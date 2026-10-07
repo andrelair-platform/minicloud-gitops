@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: HEAD
-    path: manifests/ghproj-exporter
+    path: platform/shared-services/ghproj-exporter
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

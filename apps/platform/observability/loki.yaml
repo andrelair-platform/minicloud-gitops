@@ -2,29 +2,29 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: authentik
+  name: loki
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: minicloud-platform
   sources:
-    - repoURL: https://charts.goauthentik.io
-      chart: authentik
-      targetRevision: "2026.5.3"
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: loki
+      targetRevision: "7.0.0"
       helm:
-        releaseName: authentik
+        releaseName: loki
         valueFiles:
-          - $values/helm-values/minicloud-1/authentik-values.yaml
+          - $values/helm-values/minicloud-1/loki-values.yaml
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
       ref: values
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
-      path: manifests/authentik
+      path: platform/observability/loki
   destination:
     server: https://kubernetes.default.svc
-    namespace: authentik
+    namespace: observability
   syncPolicy:
     automated:
       prune: true

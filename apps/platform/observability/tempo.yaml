@@ -1,8 +1,7 @@
----
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: loki
+  name: tempo
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,18 +9,18 @@ spec:
   project: minicloud-platform
   sources:
     - repoURL: https://grafana.github.io/helm-charts
-      chart: loki
-      targetRevision: "7.0.0"
+      chart: tempo
+      targetRevision: "1.24.4"
       helm:
-        releaseName: loki
+        releaseName: tempo
         valueFiles:
-          - $values/helm-values/minicloud-1/loki-values.yaml
+          - $values/helm-values/minicloud-1/tempo-values.yaml
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
       ref: values
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
-      path: manifests/loki
+      path: platform/observability/tempo
   destination:
     server: https://kubernetes.default.svc
     namespace: observability
@@ -31,4 +30,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true

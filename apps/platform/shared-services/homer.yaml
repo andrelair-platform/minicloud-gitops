@@ -1,8 +1,7 @@
----
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cert-observability
+  name: homer
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -11,13 +10,14 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/cert-observability
+    path: platform/shared-services/homer
   destination:
     server: https://kubernetes.default.svc
-    namespace: cert-manager
+    namespace: homer
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
+      - CreateNamespace=true
       - ServerSideApply=true
