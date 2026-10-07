@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/cnpg-authentik
+    path: platform/shared-services/cnpg-authentik
   destination:
     server: https://kubernetes.default.svc
     namespace: authentik

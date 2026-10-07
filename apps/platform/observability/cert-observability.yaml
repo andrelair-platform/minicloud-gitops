@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: adminer
+  name: cert-observability
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -11,13 +11,13 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/adminer
+    path: platform/observability/cert-observability
   destination:
     server: https://kubernetes.default.svc
-    namespace: adminer
+    namespace: cert-manager
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+      - ServerSideApply=true

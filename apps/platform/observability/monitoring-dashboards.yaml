@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/monitoring
+    path: platform/observability/monitoring
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
