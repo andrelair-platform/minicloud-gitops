@@ -312,21 +312,35 @@ IS pillar fully migrated (`is/` + `apps/is/`); `manifests/` 55 → ~30 subdirs. 
 `ktayl-data-platform`). **Baseline non-regression oracle** = the 2026-10-07 pre-existing unhealthy set in
 `ARCHITECTURE.md`; the rule is "do not ADD to it".
 
-## 14. Stage 4 — refined blast-radius lots (remainder, NOT yet done)
+## 14. Stage 4 — refined blast-radius lots
 
 Validated execution order for the rest of `platform/`. **Each cluster-critical component = its own PR,
 path-only, empty Argo diff, Synced/Healthy + cluster check, then the next.**
 
 ```
-LOT A (low)        : ai · _demos
-LOT B (low/med)    : automation(temporal) · data(non-critical) · harbor · kargo
-LOT C (med/high,   : network-policies · rbac · quotas · polaris · external-dns
-       split it)
-LOT D (very high,  : Argo CD itself · Gatekeeper · ESO · Vault
-       1 PR each)
-LOT E (foundation, : CNPG operator · Longhorn · cert-manager · Cilium
-       last, 1 each)
+LOT A (low)      ✅ DONE : ai · _demos                                       (#1708, #1709)
+LOT B (low/med)  ✅ DONE : automation(temporal) · data(non-crit) · harbor · kargo (#1710, #1711)
+LOT C (med/high) ✅ DONE : network-policies · rbac · quotas · polaris · external-dns (#1712, #1713)
+LOT D (very high)✅ DONE : ESO · Gatekeeper · Vault · Argo CD (1 PR each)     (#1714,#1715,#1716,#1717)
+LOT E (foundation, ⛔ GATED on the node-reboot storage-stability fix):
+       CNPG operator · cert-manager · Cilium · Longhorn (last, 1 each)
 ```
+
+**Session 2026-10-07 (continuation) — LOT A–D complete.** All path-only, byte-identical renders
+(rename-purity proven per PR: moved manifests = 0 content change, only the `spec.source.path` lines
+edited), each verified live `Synced/Healthy` at its new path with **zero NEW regression** vs the baseline
+oracle. CODEOWNERS prod-gate path-refs realigned atomically in C1 (quotas/network-policies/rbac +
+retroactive kargo). LOT D verified the `minicloud-platform` AppProject stayed **in place** (original
+creationTimestamp preserved → never deleted) and every ExternalSecret stayed `SecretSynced`.
+**`manifests/` now holds only the foundation/storage residue** (cilium, longhorn, cert-manager-config,
+backup-dr, external-snapshotter, kured, vpa, priority, system-upgrade, cloudflare-tunnel) = LOT E.
+
+**LOT E is GATED** on the 2026-10-07 matrix-synapse Longhorn incident: two nodes (fast-heron,
+star-kitten) carry stale `tgtd` iSCSI targets that only a **node reboot** clears (an IM restart does
+NOT — memory `feedback_longhorn_stale_iscsi_target_wedges_engine`). Reboot both (1-at-a-time,
+capacity-aware) to confirm storage stability BEFORE migrating Longhorn. cert-manager/Cilium/CNPG-operator
+aren't storage-dependent but are the highest cluster-wide blast radius → each its own PR, quiet time,
+with an extra `argocd app diff` confirmation.
 
 **Nuances (hard):**
 - **Vault is ONLY in LOT D** (never migrated early in a "secrets" batch).
