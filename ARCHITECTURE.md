@@ -31,8 +31,13 @@ platform/
   security/                # gatekeeper-policies, network-policies, falco, rbac, polaris, quotas
   observability/           # kube-prometheus-stack, grafana, loki, tempo, otelcol, monitoring
   data/                    # CNPG operator + shared data engine (kafka/clickhouse)   [per-app DBs stay with the app]
+  messaging/               # nats (shared eventing bus)
+  autoscaling/             # keda (event/metric-driven scaling)
+  automation/              # temporal (durable, code-first workflow/orchestration engine)
   ai/                      # litellm, qdrant, langfuse(+base), open-webui
   shared-services/         # authentik(+ldap-outpost, cnpg-authentik), adminer, homer, ghproj-exporter
+  _demos/                  # TEMPORARY holding: whoami, podinfo, event-demo, chaos-engineering — non-prod
+                           #   examples/validation. Long-term: move to examples/ or remove; NOT a 1st-class layer.
 is/
   workplace/               # nextcloud, stalwart, matrix, jitsi, docuseal, n8n, bookstack, searxng, vaultwarden
   iam/                     # ktayl-iam (Identity & Access Governance / IGA — transverse IS capability)
@@ -42,7 +47,7 @@ is/
   data-products/           # policy_portfolio / metabase provisioning CONFIG (code in ktayl-data-platform)
 services/                  # custom wrapper charts (+ /kargo) — UNCHANGED, flat, packaging only
 apps/
-  platform/{foundation,storage,networking,secrets,delivery,security,observability,data,ai,shared-services}/
+  platform/{foundation,storage,networking,secrets,delivery,security,observability,data,messaging,autoscaling,automation,ai,shared-services,_demos}/
   is/{workplace,iam,erp,insurance,itsm,data-products}/
   previews/
 helm-values/ · charts/ · environments/        # UNCHANGED
@@ -66,6 +71,13 @@ Harbor → `platform/delivery/` · external-snapshotter → `platform/storage/` 
 backup-dr → `platform/storage/` · cnpg-authentik (Authentik's DB) → `platform/shared-services/` ·
 langfuse-base → `platform/ai/` · CNPG **operator** → `platform/data/` (per-app CNPG clusters stay with their app).
 *If a future component is genuinely 50/50, add a line here instead of debating it in a PR.*
+
+**Automation boundary (Temporal vs n8n — different problems, different pillars):**
+`platform/automation` = **automation *infrastructure*** (Temporal: durable, code-first workflow execution
+for services — retries, state, long-running, compensation → *"how do our systems reliably execute
+workflows?"*). `is/` = **business process automation** (n8n: low-code, business/IT users connecting apps —
+onboarding, approvals, notifications, document routing → *"how do teams automate business processes?"*).
+n8n stays IS (currently `is/workplace/n8n`; promote to `is/automation/` if it grows into a broad business-automation surface).
 
 ## FREEZE (in force)
 
