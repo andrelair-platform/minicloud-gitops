@@ -13,12 +13,15 @@ ktayl-solution as "the certification" or Retrieva as "just another platform app"
 **Consequences:**
 - Certification **project = Retrieva** (per the #282 pivot); the ktayl-solution IS is its
   **organisational context**, not the cert itself.
-- **Project-level** cert evidence (BC02 concevoir/développer, BC04 optimiser — accessibility/RGAA,
-  cahier de recettes, manuels, MCO) is drawn from **Retrieva**. **Org-level** evidence (BC01
-  cadrage/pilotage — CdCF IS, budget, governance) is drawn from the **ktayl-solution IS** as context.
-- Bloc names are the **#282 authoritative** set: **BC01 Piloter · BC02 Concevoir & développer ·
-  BC03 Déployer & sécuriser · BC04 Optimiser & faire évoluer** (the `Bloc` field on the Retrieva
-  board uses these).
+- All 4 blocs are defended on **Retrieva** (the software project): accessibility/RGAA, cahier de
+  recettes, manuels (Bloc 2), MCO/anomalies (Bloc 4). The **ktayl-solution IS** is organisational
+  context (esp. Bloc 1 cadrage + Bloc 3 pilotage/RACI — budget, governance).
+- Bloc names are the **RNCP39583 official** set (réf. France Compétences/YNOV — v1.01, 15/09/2025):
+  **Bloc 1 Cadrer (ORAL 45') · Bloc 2 Concevoir & développer (ÉCRIT: code + dossier 30p) ·
+  Bloc 3 Coordonner & piloter (ORAL 45' + démo) · Bloc 4 Maintenir en condition opérationnelle
+  (ÉCRIT: dossier 20p)** — the `Bloc` field on the Retrieva board uses these. ⚠️ The old labels
+  « BC01 Piloter / BC03 Déployer & sécuriser / BC04 Optimiser & faire évoluer » were **WRONG**
+  (corrected 2026-10-08; deployment/security = Bloc 2, project-mgmt = Bloc 3).
 - **Separate documentation.** Retrieva has its **own** Docusaurus docs (`retrieva/docs/`), distinct
   from ktayl / `minicloud-platform-docs`. **Certification evidence lives in Retrieva's own docs** at
   `retrieva/docs/docs/certification/` (overview + one page per bloc artefact; raw evidence like the
@@ -222,7 +225,7 @@ into what `gh project`/the API can automate and what is **UI-only** — know the
 | `Initiative` | single-select | Insurance LOB · Certification · IS Foundations | ✅ `field-create`; **auto-set** by the bridge from `initiative:` |
 | `Start date` / `Target date` | date | — | ✅ `field-create` |
 | `Sprint` | iteration | 2-week | ✋ **UI only** (API has no iteration data-type) |
-| `Bloc` | single-select | BC01–BC04 | retrieva #2 only |
+| `Bloc` | single-select | Bloc 1 Cadrer · Bloc 2 Concevoir & développer · Bloc 3 Coordonner & piloter · Bloc 4 Maintenir en condition opérationnelle · Cross-cutting | retrieva #2 only |
 
 `Kind`/`Effort`/`Initiative`/`Start date`/`Target date` were created on every board via
 `gh project field-create` (idempotent script). `Status` (the 6-state flow) + `Sprint` (iteration)
