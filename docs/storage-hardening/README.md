@@ -13,6 +13,7 @@
 | `implementation-backlog.md` | Phased, per-change spec (problem / evidence / files / preconditions / procedure / validation / rollback / blast radius). |
 | `reliability-validation-plan.md` | Controlled fault-injection scenarios, measurable recovery targets, explicit stop conditions. |
 | `runbooks.md` | Operational runbooks (the correct remediation for each failure mode; what NOT to do). |
+| `phase1-execution-plan.md` | **The deliberate remediation to execute** (planned low-load window) for the 2026-10-11 post-reboot *churn equilibrium* — shed batch I/O → let it converge → de-concentrate replicas → re-enable, with data-safety abort gates. |
 
 ## Headline finding (one paragraph, evidence-backed)
 The 2026-10-08/09 incident was **not** caused by a misconfigured resource limit. The instance-managers
