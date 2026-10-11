@@ -322,9 +322,37 @@ LOT A (low)      ✅ DONE : ai · _demos                                       (
 LOT B (low/med)  ✅ DONE : automation(temporal) · data(non-crit) · harbor · kargo (#1710, #1711)
 LOT C (med/high) ✅ DONE : network-policies · rbac · quotas · polaris · external-dns (#1712, #1713)
 LOT D (very high)✅ DONE : ESO · Gatekeeper · Vault · Argo CD (1 PR each)     (#1714,#1715,#1716,#1717)
-LOT E (foundation, ⛔ GATED on the node-reboot storage-stability fix):
-       CNPG operator · cert-manager · Cilium · Longhorn (last, 1 each)
+LOT E (foundation):
+       Op1 ✅ DONE : relocate the Application FILES → apps/platform/{foundation,storage,data}/
+                     (source.path UNCHANGED → byte-identical Application → empty diff)   (#1772)
+       Op2 ⏳ SOAK  : manifests/<x> content move + source.path repoint + delete manifests/
+                     CNPG operator · cert-manager · Cilium · Longhorn (last, 1 PR each, argocd app diff)
 ```
+
+**Session 2026-10-11 — storage incident RESOLVED; LOT E gate LIFTED; LOT E split Op1/Op2.**
+The 2026-10-07 Longhorn degradation was fully resolved this session (67/67 volumes healthy, 0 faulted) —
+root cause was a 3-layer stack (WO:RW engine bug → over-provisioning → rebuildRetryCount exhaustion),
+fixed by the **Longhorn 1.12.1→1.13.0 chart bump** (#1769) + settings (over-provisioning 200,
+auto-engine-upgrade 3; #1770) + deleting retry-exhausted replicas. See
+`[[reference_longhorn_stuck_rebuild_113_resolution]]` and `docs/storage-hardening/phase1-execution-plan.md`.
+
+Because the fix was a **Longhorn version upgrade hours old**, LOT E is executed in two phases:
+- **Op1 (safe, done this session, #1772):** relocate the LOT E Application *files* into their taxonomy
+  homes — `foundation/` (cilium, cert-manager, cert-manager-config), `storage/` (longhorn,
+  external-snapshotter, backup-dr, velero), `data/` (cloudnative-pg). **`spec.source.path` is left
+  pointing at the existing `manifests/<x>`** → the Application object is byte-identical → **no
+  re-render, no resync** of any foundation/storage resource. This completes the Stage-5 apps/ taxonomy
+  projection for these components with zero cluster-wide risk.
+- **Op2 (deferred, 24–48h storage soak):** the dangerous half — move `manifests/<x>` → `platform/<layer>/<x>`
+  and repoint `spec.source.path` for Cilium/Longhorn/cert-manager/CNPG-operator, **one PR each, at a quiet
+  time, with an `argocd app diff` confirming EMPTY before merge** (§5 invariant). Only after Op2 repoints
+  every component may Stage 7 delete `manifests/`. **⚠️ `manifests/` MUST NOT be deleted until Op2 repoints
+  these source.paths** — the relocated Application files still point there.
+
+> §3 placement rows added this session: **cilium/cert-manager → `platform/foundation/`** (CNI + PKI =
+> cluster primitives), **longhorn/external-snapshotter/backup-dr/velero → `platform/storage/`**,
+> **cloudnative-pg (CNPG operator) → `platform/data/`** (per §3 table; per-app CNPG *clusters* stay with
+> their app).
 
 **Session 2026-10-07 (continuation) — LOT A–D complete.** All path-only, byte-identical renders
 (rename-purity proven per PR: moved manifests = 0 content change, only the `spec.source.path` lines
