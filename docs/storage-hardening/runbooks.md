@@ -84,9 +84,57 @@ A freshly-empty node is a **scheduler magnet** (E13). To avoid re-triggering RB-
 - iSCSI stale check: per node `sudo iscsiadm -m session | wc -l` vs that node's attached-volume count
 - Which fragility class: CNPG PVCs carry label `cnpg.io/cluster`; everything else stuck = raw-RWO.
 
+## RB-8 — App "password authentication failed" after a CNPG failover/recovery
+**Recognise:** an app crashloops with `FATAL: password authentication failed for user "<role>"` *after*
+a CNPG primary failover or recovery, even though its DB secret is unchanged/correct. The error often
+starts as `No route to host` (new primary still coming up) then flips to the auth failure — that flip
+is the tell it's credentials, not connectivity.
+**Cause:** CNPG **managed-role password drift**. CNPG tracks last-applied by the secret's
+`resourceVersion` (`cluster.status.managedRolesStatus.passwordStatus`); after the DB comes back with an
+older role password, if the secret's resourceVersion is unchanged CNPG reports the role `reconciled` and
+**skips re-applying** → live DB role pw ≠ secret. Status lies about the live password.
+**Confirm (no plaintext on argv):**
+```
+PW=$(kubectl -n NS get secret <role-secret> -o jsonpath='{.data.password}' | base64 -d)
+printf '%s' "$PW" | kubectl -n NS exec -i <primary> -c postgres -- bash -c 'read -r P; PGPASSWORD="$P" psql -h 127.0.0.1 -U <role> -d <db> -tAc "select 1"'
+```
+Fails while the app-side secret hash == the managed-role secret hash → drift.
+**Fix (realign DB to the secret; matches CNPG's recorded state so it won't revert):**
+```
+PW_ESC=${PW//\'/\'\'}
+printf "ALTER ROLE <role> WITH PASSWORD '%s';\n" "$PW_ESC" | kubectl -n NS exec -i <primary> -c postgres -- psql -U postgres -d <db> -v ON_ERROR_STOP=1
+```
+Peer-auth superuser, SQL via **stdin** (`:'pw'` does NOT interpolate under `-c`). Then delete the app
+pods to clear the backoff. First hit: authentik after the 2026-10-10 incident (failover → `authentik-cnpg-3`).
+
+## RB-9 — Raw-RWO DB volume corrupt after unclean crashes (fsck → restore-verify-swap)
+**Recognise (diagnose in layers):** kubelet `MountVolume.MountDevice failed … 'fsck' found errors …
+Resize inode not valid` = **ext4 corruption** (kubelet's `fsck -a` can't fix); Longhorn
+`robustness=healthy` means block replicas are fine, damage is fs-only. After fsck, if the DB won't start
+with `InnoDB: Header page consists of zero bytes … ibdata1 … Data structure corruption` = **data-file
+corruption** → fsck can't help, restore from backup.
+**Do:**
+1. **Snapshot first** (undo): `snapshots.longhorn.io` with `createSnapshot:true` on the volume.
+2. **fsck the fs** (volume attached to the stuck pod's node → `/dev/longhorn/<pvc>` exists there):
+   `sudo e2fsck -f -y /dev/longhorn/<pvc>` until exit 0, then `kubectl delete pod` to remount. If the DB
+   reaches "ready for connections" → done (free/inode-count + bitmap fixes = normal, not data loss).
+3. **If InnoDB can't recover → restore-verify-swap** (NEVER trust a backup blind): pick the newest
+   **pre-corruption** `backups.longhorn.io` (a post-corruption backup captures the corruption);
+   test-restore it to a **scratch** volume (`spec.fromBackup`, RF=1), bind a PV+PVC, run a throwaway DB
+   pod (model ns/securityContext on the real STS for Gatekeeper), confirm "ready for connections" AND a
+   real table count. Only then rebind the production PVC to the verified volume (retain the corrupt PV
+   as evidence, clear `claimRef`, match the VCT spec, bump RF→3). Take a fresh logical backup after.
+**Gotchas:** **pause ArgoCD selfHeal on the app AND the root app** for the swap (it reverts `scale 0` →
+pod re-holds the PVC → stuck `Terminating`); restore `automated` after. A stuck `Terminating` PVC =
+stale CSI `volumeattachment` → delete it. Longhorn v1.12: `volume.spec.nodeID` does NOT attach (use a
+PVC+pod). Full write-up: memory [[reference_longhorn_fs_corruption_restore_swap]].
+
 ## What NOT to do (the anti-patterns this incident proved)
 - ❌ Reboot a node to clear a Longhorn wedge (triggers mass reschedule → herd).
 - ❌ Bulk-delete pods to "spread" them (re-clusters the herd onto the next empty node).
 - ❌ Uncordon a freshly-rebooted node while reschedules are in flight (magnet).
 - ❌ "Raise the instance-manager pids/thread limit" (there is no limit set — E6; it's a null change).
 - ❌ Restart instance-managers to fix an attach (disrupts their healthy volumes for no proven benefit).
+- ❌ `kubectl scale`/`delete pod` to do a stateful swap while ArgoCD auto-sync is ON — selfHeal reverts it mid-operation (RB-9). Pause `automated` on the app **and** the root app, then restore.
+- ❌ Restore a DB from a backup without a **test-restore + data verification** on a scratch volume first — a backup taken after corruption contains the corruption (RB-9).
+- ❌ Treat a `ReadonlyFilesystem=True` node condition as real without checking live `mount`/root-fs rw — it's usually a stale NPD latch; `test -w` as a non-root SSH user on a root-owned dir is a false signal (confirm via `findmnt -no OPTIONS /` + `sudo -n` write).
