@@ -35,6 +35,28 @@ spec:
               inaccessible. Check for multipathd claiming IET VIRTUAL-DISK as mpatha.
               Fix: blacklist IET devices in /etc/multipath.conf on the affected node.
 
+        # Escalation: a volume degraded for OVER AN HOUR means its replica rebuild is NOT
+        # converging — the signature of the 2026-10-11 incident (stuck rebuilds: WO:RW engine
+        # bug + rebuildRetryCount exhaustion). Normal node maintenance degrades a volume only
+        # briefly (rebuild completes in minutes); >1h degraded = investigate, do NOT wait.
+        # See [[reference_longhorn_stuck_rebuild_113_resolution]].
+        - alert: LonghornVolumeDegradedStuck
+          expr: longhorn_volume_robustness == 2
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            summary: "Longhorn volume degraded >1h — rebuild not converging: {{ $labels.pvc }} ({{ $labels.pvc_namespace }})"
+            description: >-
+              Volume {{ $labels.volume }} (PVC {{ $labels.pvc }}/{{ $labels.pvc_namespace }}) has
+              been degraded for over an hour — its replica rebuild is NOT completing. This is the
+              2026-10-11 stuck-rebuild signature. Check the engine image version (should be
+              >=1.13.0), per-node disk schedulability, and whether replicas are
+              rebuildRetryCount-exhausted (`kubectl -n longhorn-system get replicas.longhorn.io`
+              for the volume → spec.rebuildRetryCount=5 + currentState=stopped → delete the
+              retry-exhausted stopped replica with a healthy running sibling). Do NOT reboot nodes
+              (that triggered the cascade). Runbook: docs/storage-hardening/.
+
     - name: longhorn.node
       rules:
         - alert: LonghornNodeNotReady
@@ -76,3 +98,44 @@ spec:
               Longhorn storage node {{ $labels.node }} is {{ $value | humanize }}% full.
               No new replicas can be scheduled. Volumes at risk of going degraded if
               existing replicas are lost. Immediate action required.
+
+        # THE OVER-PROVISIONING TRAP (2026-10-11 incident, layer 2). The DiskPressure/Critical
+        # alerts above watch ACTUAL USAGE; they stay SILENT when a disk goes unschedulable because
+        # SCHEDULED (provisioned) total crossed storage-over-provisioning-percentage while real
+        # free space is ample — exactly what wedged rebuilds on the surviving node. This watches
+        # the `schedulable` CONDITION directly, scoped to nodes that are SUPPOSED to schedule
+        # (allowScheduling=1) so the by-design non-scheduling nodes (set-hog, swift-mac) are ignored.
+        - alert: LonghornNodeDiskUnschedulable
+          expr: >-
+            longhorn_disk_status{condition="schedulable"} == 0
+            and on(node) longhorn_node_status{condition="allowScheduling"} == 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Longhorn node {{ $labels.node }} disk unschedulable (likely over-provisioning cap, not disk-full)"
+            description: >-
+              Node {{ $labels.node }} has a disk with schedulable=0 while it is set to allow
+              scheduling. If actual usage is LOW, this is the over-provisioning trap:
+              ScheduledTotal > ProvisionedLimit (= capacity x over-provisioning%/100). Rebuilds
+              can't place replicas here → volumes stay degraded. Fix = raise
+              storage-over-provisioning-percentage (currently 200) or rebalance replicas off this
+              node. NOT a disk-full condition. See [[reference_longhorn_stuck_rebuild_113_resolution]].
+
+        # Early warning BEFORE the trap trips: scheduled/capacity approaching the 200% limit.
+        # Threshold 1.8 = 90% of the 2.0 cap (storage-over-provisioning-percentage=200). If that
+        # setting changes, update this threshold. Current headroom is wide (max node ~0.71).
+        - alert: LonghornNodeOverProvisionNear
+          expr: >-
+            longhorn_node_storage_scheduled_bytes
+            / longhorn_node_storage_capacity_bytes > 1.8
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Longhorn node {{ $labels.node }} near over-provisioning limit ({{ $value | humanize }}x capacity)"
+            description: >-
+              Node {{ $labels.node }} has scheduled (provisioned) storage at {{ $value | humanize }}x
+              its raw capacity, approaching the 2.0x over-provisioning cap. At the cap the disk goes
+              schedulable=0 and replica rebuilds can no longer place here (the 2026-10-11 layer-2
+              trap). Rebalance replicas or raise the cap before it trips.
