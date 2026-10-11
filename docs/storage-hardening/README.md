@@ -1,9 +1,18 @@
-# Storage Hardening — investigation & plan (review draft, NOT executed)
+# Storage Hardening — investigation, plan & resolution
 
-> **Status: PROPOSAL / under review. Nothing in here has been applied to the cluster.**
-> Produced as a **read-only** investigation (no mutations, no reboots, no setting changes) after the
-> 2026-10-08/09 Longhorn storage incident. Delivered for review **before** any execution, and
-> **before LOT E** (the Longhorn path-migration) and **before any Longhorn version upgrade**.
+> **Status: RESOLVED (executed 2026-10-11) — cluster back to 67/67 volumes healthy, 0 faulted.**
+> The remediation was executed: root cause was a 3-layer stack (Longhorn 1.12.1 WO:RW engine bug →
+> replica over-concentration hitting the over-provisioning cap → `rebuildRetryCount` exhaustion),
+> fixed by the **chart upgrade 1.12.1→1.13.0** + settings (over-provisioning 200, auto-engine-upgrade
+> 3) + deleting retry-exhausted replicas. **See `phase1-execution-plan.md` §"Resolution — as executed
+> (2026-10-11)"** for the full account, plus the follow-on alerting gap-fix
+> (`platform/observability/monitoring/21-longhorn-alerts.yaml`: over-provisioning-trap +
+> degraded-stuck alerts).
+>
+> _Historical note:_ this set was originally produced as a **read-only investigation** (no mutations,
+> reboots, or setting changes) delivered for review **before** execution, LOT E, and any version
+> upgrade. The proposal/ADR/evidence framing below is kept as the decision record (that pre-execution
+> snapshot); where the as-executed outcome differs, the resolution section is authoritative.
 
 ## Documents in this set
 | File | Purpose |
