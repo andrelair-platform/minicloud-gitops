@@ -109,6 +109,17 @@ apps/       → WHERE does Argo CD classify and deploy everything?
 | langfuse-base | data vs ai | **`platform/ai/`** (it serves the AI platform) |
 | CNPG **operator** | data | **`platform/data/`** (per-app CNPG *clusters* stay with their app, not here) |
 
+| kured / system-upgrade / priority / vpa / node-problem-detector / trust-manager / reloader | foundation vs shared-services | **`platform/foundation/`** (cluster-primitive operators: node lifecycle, resource/priority mgmt, PKI-trust distribution, config-reload) |
+| nfs-provisioner | storage | **`platform/storage/`** |
+| nginx-ingress / cloudflare-tunnel | networking | **`platform/networking/`** |
+| kube-prometheus-stack | observability | **`platform/observability/`** |
+| chaos-mesh | observability vs security | **`platform/observability/`** (SRE/reliability fault-injection tooling) |
+| falco | security | **`platform/security/`** (runtime security) |
+| keda / keda-http-addon | delivery vs shared-services | **`platform/shared-services/`** (autoscaling capability apps consume) |
+| nats | data vs shared-services | **`platform/shared-services/`** (messaging bus every domain consumes) |
+| postgresql-ai | data vs ai | **`platform/data/`** (shared Postgres datastore; being retired) |
+| environments.yaml (ApplicationSet generator) | — | **stays at `apps/platform/` top-level** (a generator over `environments/overlays/*`, not a layer component) |
+
 If a future component is genuinely 50/50, add a row here rather than debating it in a PR.
 
 ---
