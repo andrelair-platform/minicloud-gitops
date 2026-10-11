@@ -125,3 +125,46 @@ Once `degraded = 0`, rebalance the heavy nodes (loving-gannet ~48, then fast-sku
 > because aging disks can't sync many concentrated-source rebuilds at once under load. The fix is a
 > planned, low-load window: shed batch I/O → let it converge → de-concentrate → re-enable, with a
 > data-safety abort gate — executed deliberately, never as live reactive poking.
+
+---
+
+## Resolution — as executed (2026-10-11)
+
+The Phase-1 operational levers above (shed I/O, watch at concurrency 2, batch-clear, concurrency→1,
+detach/reattach) **did NOT converge it** — proving the churn was not I/O contention. Escalation to the
+deferred **Longhorn version upgrade (LOT E)** was the actual fix, and the root cause turned out to be
+**three stacked problems**, each hidden behind the previous:
+
+1. **Engine `WO:RW` rebuild bug (Longhorn 1.12.1).** Rebuilds copied to ~99% then failed at the final
+   write-only→read-write promotion (`replica is not in mode WO: RW`, `cannot set rebuilding=true from
+   state rebuilding`). Upstream [#13914](https://github.com/longhorn/longhorn/issues/13914) +
+   [#13992](https://github.com/longhorn/longhorn/issues/13992). **Fix: upgrade chart 1.12.1 → 1.13.0**
+   (PR #1769) + enable `concurrent-automatic-engine-upgrade-per-node-limit` so HEALTHY volumes migrate
+   to the v1.13.0 engine. This alone healed ~14 (degraded 30→16).
+
+2. **Replica over-concentration → disk unschedulable.** `loving-gannet` (the node that survived the
+   reboot cascade) accumulated ~47 replicas and crossed the `storage-over-provisioning-percentage: 100`
+   cap (`ScheduledTotal 355.9G > ProvisionedLimit 351.7G`) → its disk went `Schedulable=False` → the
+   remaining rebuilds had nowhere to place (`rebuilds=0`), despite ~47% real free space. **Fix: raise
+   over-provisioning 100 → 200** (PR #1770) → disk schedulable again.
+
+3. **`rebuildRetryCount` exhaustion.** The 14 stuck replicas had `rebuildRetryCount=5` (maxed) +
+   `healthyAt=''` — they'd burned their retries during the 1.12.1 WO:RW churn, so Longhorn had **given
+   up** initiating their rebuilds. **Fix: delete the retry-exhausted `stopped` replicas** (fail=0, with
+   a healthy running sibling) → Longhorn created fresh replicas (retry reset) → which, on the v1.13.0
+   engine with placement restored, **finalized**.
+
+**Outcome:** all three together drained it to **67/67 healthy, 0 faulted** (0 data lost at any point).
+The chart bump is merged (#1769); the two settings are persisted to gitops (#1770).
+
+### Lessons
+- The "shed-I/O-and-wait" Phase-1 plan was the wrong model: this was **stacked engine/scheduling/retry
+  bugs**, not I/O contention. The **version upgrade was the real fix** — justified only once the WO:RW
+  root cause was confirmed against the release notes.
+- **Verify convergence before declaring stuck.** The rebuilds finalized on a *delay* after the fixes;
+  an interim "stuck" call was premature — always re-check the live count before concluding.
+- A degraded volume **won't** auto-migrate its engine (Longhorn defers engine upgrade until healthy) —
+  the chicken-and-egg that required the detach/retry-reset path for the degraded set specifically.
+- **Prevention (Phase-A backlog):** the replica-concentration alert (>40%/node) would have caught
+  loving-gannet before it crossed the over-provisioning cap; RB-6 staggered re-admission prevents the
+  concentration in the first place.
