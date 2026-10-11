@@ -79,3 +79,30 @@ metadata:
   name: concurrent-replica-rebuild-per-node-limit
   namespace: longhorn-system
 value: "2"
+---
+# Over-provisioning cap raised 100 -> 200 (2026-10-11). During the post-incident rebuild recovery,
+# loving-gannet (the node that survived the cascade and accumulated ~47 replicas) hit the 100% cap
+# (ScheduledTotal > StorageMax-StorageReserved) -> its disk went Schedulable=False -> stuck rebuilds
+# could not place a replica (rebuilds=0). loving-gannet had ~47% real free space, so the 100% cap was
+# the artificial blocker. 200% gives headroom on a cluster with genuine free space; revisit if actual
+# disk usage (not allocation) approaches the minimal-available reserve. Root cause + resolution:
+# docs/storage-hardening/phase1-execution-plan.md.
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: storage-over-provisioning-percentage
+  namespace: longhorn-system
+value: "200"
+---
+# Automatic engine upgrade enabled (0 -> 3) 2026-10-11, part of the 1.12.1 -> 1.13.0 upgrade. With 0,
+# engine images never auto-migrate and volumes stay on the old engine (the v1.12.1 WO:RW rebuild bug
+# persisted even after the manager upgraded). 3 lets Longhorn migrate HEALTHY volumes' engines to the
+# default (v1.13.0) automatically, per-node-capped so the migration doesn't thunder. (DEGRADED volumes
+# still won't auto-upgrade — Longhorn defers those until healthy; they were handled by a controlled
+# detach/reattach + retry-reset — see the execution plan.)
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: concurrent-automatic-engine-upgrade-per-node-limit
+  namespace: longhorn-system
+value: "3"
