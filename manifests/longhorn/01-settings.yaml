@@ -67,9 +67,18 @@ value: "delete-both-statefulset-and-deployment-pod"
 #       enough to avoid the saturation thrash. Observed live 2026-09-30 (fast-skunk 98%→31%
 #       when dropped off 5; deadlock reproduced at 1).
 # See memory [[feedback_longhorn_stale_rofs_after_churn]].
+#
+# TEMPORARY REMEDIATION OVERRIDE 2026-10-11 → "1" (normally "2"): after the post-reboot cascade,
+# ~34 volumes are stuck in a rebuild-SYNC churn — at "2" the concurrent rebuilds (up to 2/node ×
+# 4 nodes) overload the concentrated source (loving-gannet ~47 replicas) → sync i/o-timeouts →
+# rebuilds never complete → degraded oscillates and never drains (confirmed: freshly-cleared
+# volumes stayed degraded 5+ min). Dropping to "1" halves concurrent source/target load so a
+# single sync can finish. Accepted risk: the documented single-slot DEADLOCK on a stuck rebuild —
+# BEING BABYSAT (hand-delete a wedged target replica to free the slot). REVERT TO "2" once the
+# backlog drains to 0 degraded. Plan: docs/storage-hardening/phase1-execution-plan.md (Step 3b).
 apiVersion: longhorn.io/v1beta2
 kind: Setting
 metadata:
   name: concurrent-replica-rebuild-per-node-limit
   namespace: longhorn-system
-value: "2"
+value: "1"
