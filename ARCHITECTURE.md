@@ -79,12 +79,18 @@ workflows?"*). `is/` = **business process automation** (n8n: low-code, business/
 onboarding, approvals, notifications, document routing → *"how do teams automate business processes?"*).
 n8n stays IS (currently `is/workplace/n8n`; promote to `is/automation/` if it grows into a broad business-automation surface).
 
-## FREEZE (in force)
+## FREEZE (in force — enforced, Stage 6)
 
 - **`manifests/` is FROZEN** — no new subdirectories. New config goes to `platform/<layer>/` or `is/<group>/`.
 - **`apps/platform/` (flat) is FROZEN** — new Argo Applications go under `apps/platform/<layer>/` or `apps/is/<group>/`.
 - A **new top-level directory requires an ADR.**
 - **No application source code in this repo** — code lives in the product repo; a runtime Job clones it.
+
+> **Enforced on two layers (remediation-plan.md Stage 6):** the agent-layer hook
+> `.claude/hooks/guard-write.py` (rules 5–6, keystroke-time) **and** the server-side CI check
+> `.github/workflows/architecture-guard.yml` (every PR). Both inspect only *new* entries
+> (creation / PR-added files) so the legacy residue (`apps/workloads/`, the `manifests/` LOT E
+> residue) is grandfathered — the FREEZE blocks adding to the entropy, not the existing state.
 
 ## Migration invariant (every refactor PR)
 

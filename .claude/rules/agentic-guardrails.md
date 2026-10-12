@@ -19,7 +19,7 @@ as the project root. (The workspace-root `CLAUDE.md` and other repos are unaffec
 | Hook | Event · matcher | Blocks (exit 2) — and the rule it enforces |
 |---|---|---|
 | `guard-bash.py` | PreToolUse · `Bash` | `rm -rf` of a catastrophic root (`/ /* ~ $HOME . ..`); force-push to `main/master` (branch strategy); **manual ArgoCD mutation** `argocd app sync\|rollback\|patch\|set` ([[feedback_never_manual_argocd_sync]], gitops.md); `kubectl delete namespace\|ns`; `curl\|wget … \| sh` (supply-chain); `git add … CLAUDE.md` ([[feedback_claude_md_repo_rule]]). Also scans the remote command inside `ssh host "…"`. |
-| `guard-write.py` | PreToolUse · `Write\|Edit\|MultiEdit` | literal **secret material** in new content (private keys, `AKIA…`, Vault `hv[sb].…`, `ghp_…`, `github_pat_…`, Slack/GitLab tokens → secrets go to Vault→ESO, gitops.md); edits under `services/*/helm/charts/` (vendored, gitignored); anything under `.git/`; creating a `CLAUDE.md` in-repo ([[feedback_claude_md_repo_rule]]). |
+| `guard-write.py` | PreToolUse · `Write\|Edit\|MultiEdit` | literal **secret material** in new content (private keys, `AKIA…`, Vault `hv[sb].…`, `ghp_…`, `github_pat_…`, Slack/GitLab tokens → secrets go to Vault→ESO, gitops.md); edits under `services/*/helm/charts/` (vendored, gitignored); anything under `.git/`; creating a `CLAUDE.md` in-repo ([[feedback_claude_md_repo_rule]]); **creating a NEW `manifests/<subdir>`** (FROZEN — ARCHITECTURE.md) and **application source code** (`*.py/*.go/*.ts`) outside `scripts/`/`evals/`/`.claude/`/`.github/` (deployment-repo rule, conventions.md). The last two are **creation-only** — editing an existing manifests file or code file is never blocked (so the LOT E content moves still work). |
 | `validate-yaml.py` | PostToolUse · `Write\|Edit\|MultiEdit` | *advisory* — after editing a **plain** `.yaml/.yml`, fast `safe_load_all` syntax check (exit 2 feeds the parse error back so Claude fixes it). Skips `templates/` + any file with `{{`/`${{` (Helm/Kargo), and no-ops if PyYAML is absent. |
 
 ## Design principles (keep these when extending)
@@ -48,12 +48,25 @@ record. Prod safety still rests on **CODEOWNERS** (gated paths), **Gatekeeper/OP
 **change-record** audit. Hooks catch mistakes *at the keystroke*, before they ever
 reach a PR or the cluster.
 
+**Architecture taxonomy — paired agent + server gate (remediation-plan.md Stage 6).** The
+repo's `platform/` vs `is/` + `apps/` taxonomy (ARCHITECTURE.md) is enforced on two layers:
+the `guard-write.py` rules 5–6 above (keystroke) **and** the server-side
+`.github/workflows/architecture-guard.yml` CI check, which fails any PR that ADDS a new
+`manifests/<subdir>`, an `apps/` Application outside `apps/platform/<layer>/`|`apps/is/<group>/`,
+a new top-level dir without an ADR, or application source code. The CI check inspects only
+PR-**added** files (`--diff-filter=A`) so the pre-existing legacy state (`apps/workloads/`, the
+`manifests/` LOT E residue) is grandfathered — only *new* rot is blocked.
+
 ## Test / extend
 
 ```bash
 # unit-test a hook by piping the Claude Code hook JSON on stdin:
 echo '{"tool_input":{"command":"rm -rf /"}}'      | python3 .claude/hooks/guard-bash.py ; echo "exit $?"   # 2
 echo '{"tool_input":{"command":"git status"}}'    | python3 .claude/hooks/guard-bash.py ; echo "exit $?"   # 0
+# guard-write taxonomy rules (CLAUDE_PROJECT_DIR must point at the repo root):
+echo '{"tool_input":{"file_path":"'"$PWD"'/manifests/newdir/x.yaml","content":"a: b"}}' | python3 .claude/hooks/guard-write.py ; echo "exit $?"  # 2 (new manifests subdir)
+echo '{"tool_input":{"file_path":"'"$PWD"'/platform/ai/app.py","content":"x"}}'          | python3 .claude/hooks/guard-write.py ; echo "exit $?"  # 2 (app code outside allowed)
+echo '{"tool_input":{"file_path":"'"$PWD"'/scripts/x.py","content":"x"}}'                 | python3 .claude/hooks/guard-write.py ; echo "exit $?"  # 0 (tooling code allowed)
 ```
 
 - **Add a rule to a block:** extend the regex/first-token dispatch in the relevant
