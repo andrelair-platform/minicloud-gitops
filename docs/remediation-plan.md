@@ -393,9 +393,12 @@ with an extra `argocd app diff` confirmation.
   product (own repo/docs), not `platform/` nor `is/`.
 
 ## 15. Remaining stages
-- **Stage 5** — reorganize `apps/` fully to mirror the layers (platform sublayers + is groups). *(Platform
-  side done #1773; remaining = relocate `apps/workloads/*` custom-service Application files to their
-  taxonomy homes — byte-identical, `source.path` UNCHANGED.)*
+- **Stage 5** — ✅ **DONE (2026-10-12)** — `apps/` fully mirrors the layers. Platform side done #1773;
+  this session relocated the final 12 `apps/workloads/*` custom-service Application files to their taxonomy
+  homes (all `R100` pure renames, `source.path` UNCHANGED → empty Argo diff): longhorn-base→`storage/`,
+  platform-demo(+dev)→`_demos/`, backstage→`shared-services/`, agent/crew(+dev)→`ai/`,
+  plane(+prod)→`is/workplace/`, retrieva(dev+prod)→new `apps/retrieva/` group (cert product, §14).
+  `apps/workloads/` is now **empty/retired**.
 - **Stage 6** — ✅ **DONE (2026-10-12)** — guardrails on two layers: `guard-write.py` rules 5–6 (block a new
   `manifests/<subdir>` + app source code outside `scripts/`/`evals/`/`.claude/`/`.github/`, creation-only) +
   the CI check `.github/workflows/architecture-guard.yml` (fails a PR ADDING a new `manifests/*` dir, an
@@ -413,13 +416,14 @@ OutOfSync + Progressing on debezium/nextcloud/chaos). **Therefore the dangerous 
 it has regressed; do not migrate storage/CNI while a volume is faulted.
 
 **Done this session (storage-independent, zero/low cluster risk):**
-- **Stage 6 guardrails** (above) — pure repo change, no cluster touch; hook + CI logic unit-tested green.
+- **Stage 6 guardrails** — pure repo change, no cluster touch; hook + CI logic unit-tested green.
+- **Stage 5** — relocated the 12 `apps/workloads/*` files to taxonomy homes (all `R100` pure renames,
+  `source.path` unchanged → empty Argo diff by construction); retrieva → new `apps/retrieva/` group
+  (owner decision, §14); `apps/workloads/` now empty. README/gitops.md/ARCHITECTURE updated + the guard
+  allow-list extended for `apps/retrieva/`. **Per-PR verification: on merge, confirm each moved app stays
+  `Synced/Healthy` and the Argo diff was empty (root-app `recurse:true` → folder is pure taxonomy).**
 
 **Still remaining (for a future session):**
-- **Stage 5** — relocate the 12 `apps/workloads/*` files (byte-identical, `source.path` unchanged → empty
-  Argo diff). Straightforward except **retrieva** (cert product — needs an `apps/` home decision: it is
-  neither `platform/` nor `is/` per §14). longhorn-base→`apps/platform/storage/`, platform-demo→`_demos/`,
-  backstage→`shared-services/`, agent/crew→`ai/` are clear.
 - **LOT E Op2 — low-risk manifests content moves** (kured, vpa, priority, system-upgrade, cert-manager-config,
   backup-dr, external-snapshotter, cloudflare-tunnel) — path-only, but needs the `validate-manifests.yml` CI
   `paths:`/globs extended to `platform/**` + `is/**` first (migrated raw CRs currently escape kubeconform).

@@ -59,8 +59,11 @@ jobs:
           CODE_EXT = (".py", ".go", ".ts")
           CODE_ALLOWED = ("scripts/", "evals/", ".claude/", ".github/")
           # apps/ exceptions that are allowed to live outside a platform/<layer> or is/<group> home.
+          # apps/retrieva/ is the RNCP39583 cert product's own group (neither platform/ nor is/ —
+          # remediation-plan.md §14); apps/previews/ is preview-env apps; environments.yaml is the
+          # ApplicationSet generator that stays at the apps/platform/ top level.
           APPS_ALLOWED_EXACT = {"apps/platform/environments.yaml"}
-          APPS_ALLOWED_PREFIX = ("apps/platform/", "apps/is/", "apps/previews/")
+          APPS_ALLOWED_PREFIX = ("apps/platform/", "apps/is/", "apps/retrieva/", "apps/previews/")
 
           errors = []
 

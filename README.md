@@ -206,7 +206,7 @@ services/<name>/helm/
 
 1. Copy `services/_template-helm/` → `services/<name>/helm/`; replace `SERVICE_NAME`; `helm dependency update .` → commit `Chart.lock`.
 2. Fill `values.yaml` (under the `minicloud-app-deployment:` key) + `values-{dev,prod}.yaml`.
-3. Copy `services/_template-helm/apps/*` → `apps/workloads/<name>-{dev,prod}.yaml`; keep `helm.releaseName: <name>`.
+3. Create the two Argo CD Application files under the service's **taxonomy home** — `apps/is/<group>/<name>-{dev,prod}.yaml` for a business/IS app or `apps/platform/<layer>/<name>-{dev,prod}.yaml` for a platform capability (NOT `apps/workloads/` — retired; the Architecture Guard CI blocks new entries there); keep `helm.releaseName: <name>`.
 4. Add the namespaces to `manifests/argocd-project/00-project.yaml`; update the Vault k8s auth role.
 5. Add a Kargo pipeline (`services/<name>/kargo/`) — promotion does a `yaml-update` on `minicloud-app-deployment.image.tag`.
 
