@@ -2,7 +2,7 @@
 # trust-manager (cert-manager sub-project) — distributes the minicloud CA to every namespace
 # as a ConfigMap, so new apps trust the internal PKI at RUNTIME (mount + NODE_EXTRA_CA_CERTS)
 # instead of baking the CA into a custom image. See docs: developer-platform/custom-images
-# ("CA trust: bake vs runtime") + the Bundle in manifests/cert-manager-config/.
+# ("CA trust: bake vs runtime") + the Bundle in platform/foundation/cert-manager-config/.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

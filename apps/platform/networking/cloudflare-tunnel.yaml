@@ -9,7 +9,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/cloudflare-tunnel
+    path: platform/networking/cloudflare-tunnel
   destination:
     server: https://kubernetes.default.svc
     namespace: cloudflare-tunnel

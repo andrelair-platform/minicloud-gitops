@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/backup-dr
+    path: platform/storage/backup-dr
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

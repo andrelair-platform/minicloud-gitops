@@ -6,6 +6,8 @@ on:
     paths:
       - 'services/**'
       - 'manifests/**'
+      - 'platform/**'
+      - 'is/**'
 
 env:
   KUBECONFORM_VERSION: "0.6.7"
@@ -40,7 +42,9 @@ jobs:
           def skip(f):
               return "/templates/" in f
           for f in sorted(glob.glob("services/**/*.yaml", recursive=True)
-                          + glob.glob("manifests/**/*.yaml", recursive=True)):
+                          + glob.glob("manifests/**/*.yaml", recursive=True)
+                          + glob.glob("platform/**/*.yaml", recursive=True)
+                          + glob.glob("is/**/*.yaml", recursive=True)):
               if skip(f):
                   continue
               try:
@@ -71,10 +75,10 @@ jobs:
       # are Go templates, validated by the "Validate Helm charts render" step; the chart's
       # files/*.yaml raw CRs ARE validated here). xargs passes file paths as arguments (not
       # stdin) so kubeconform reads file contents.
-      - name: Validate manifests/
+      - name: Validate manifests/ + platform/ + is/
         run: |
           set -euo pipefail
-          find manifests/ -name "*.yaml" \
+          find manifests/ platform/ is/ -name "*.yaml" \
             ! -name "Chart.yaml" \
             ! -path "*/templates/*" \
             ! -path "*/gatekeeper-policies/*" \
@@ -94,7 +98,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          charts=(services/*/kargo manifests/kargo environments/overlays/*/*)
+          charts=(services/*/kargo platform/delivery/kargo environments/overlays/*/*)
           FAILED=0
           for c in "${charts[@]}"; do
             [ -f "$c/Chart.yaml" ] || continue

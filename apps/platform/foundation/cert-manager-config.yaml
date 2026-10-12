@@ -13,7 +13,7 @@ spec:
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main
-    path: manifests/cert-manager-config
+    path: platform/foundation/cert-manager-config
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
