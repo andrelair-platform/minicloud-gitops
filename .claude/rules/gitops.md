@@ -28,7 +28,7 @@ minicloud-gitops/services/<service>/
 A Kargo-promotable service also has a `services/<service>/kargo/` dir (Project +
 Warehouse + dev/prod Stages). See *Multi-stage promotion — Kargo* below.
 
-**ArgoCD apps split:** `apps/platform/` (43 infra apps) + `apps/workloads/` services. Root-app has `recurse: true`.
+**ArgoCD apps split (taxonomy projection, ARCHITECTURE.md):** `apps/platform/<layer>/` (platform capabilities) + `apps/is/<group>/` (business/IS apps) + `apps/retrieva/` (the cert product) + `apps/previews/`. Root-app points at `apps` with `recurse: true`, so an Application is discovered wherever it sits in the tree — its folder is pure taxonomy. (`apps/workloads/` is retired/emptied; the Architecture Guard CI blocks new entries there.)
 
 **Promotion flow (2-env):** CI builds + pushes the image; promotion of the tag into the overlays is where **Kargo** takes over (see *Multi-stage promotion — Kargo*). `dev (auto) → prod (CODEOWNERS-gated PR → auto-sync)`. prod moves only via a PR that bumps the prod newTag; ArgoCD then auto-syncs it (no manual UI click). Legacy path (pre-Kargo, no longer used — all custom services are on Kargo): CI did `kustomize edit set image` in `minicloud-1/dev/` + a manual prod PR.
 
