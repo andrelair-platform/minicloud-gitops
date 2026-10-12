@@ -1,0 +1,118 @@
+name: Architecture Guard
+
+# Human-layer enforcement of the ARCHITECTURE.md contract + remediation-plan.md Stage 6.
+# The agent-layer counterpart is .claude/hooks/guard-write.py (keystroke-time); this is the
+# server-side gate that holds for every PR, agent or human. It inspects only the files a PR
+# ADDS (diff-filter=A) against the base — so the pre-existing legacy state (apps/workloads/,
+# the manifests/ LOT E residue) is grandfathered and never fails a PR; only NEW rot is blocked.
+#
+# Fails a PR that:
+#   (a) adds a NEW subdirectory under manifests/            (manifests/ is FROZEN)
+#   (b) adds an apps/ Application outside apps/platform/<layer>/ or apps/is/<group>/
+#   (c) adds a NEW top-level directory without an ADR (a docs/*.md in the same PR)
+#   (d) adds application source code (*.py/*.go/*.ts) outside scripts/|evals/|.claude/|.github/
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  architecture-guard:
+    name: architecture-guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Enforce repository taxonomy on added files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          python3 - "$BASE_SHA" "$HEAD_SHA" <<'PY'
+          import subprocess, sys
+
+          base, head = sys.argv[1], sys.argv[2]
+
+          def git(*args):
+              return subprocess.run(["git", *args], capture_output=True, text=True).stdout
+
+          # Files ADDED in this PR (status A) relative to the base commit.
+          added = [l for l in git("diff", "--diff-filter=A", "--name-only", base, head).splitlines() if l]
+          # Everything touched (added OR modified) — used for the "ADR present?" test.
+          touched = set(l for l in git("diff", "--name-only", base, head).splitlines() if l)
+
+          # Top-level dirs that already existed in the base tree (so a NEW one is detectable).
+          base_toplevel = set(
+              l.rstrip("/").split("/")[0]
+              for l in git("ls-tree", "--name-only", "-r", base).splitlines() if l
+          ) | set(
+              # include bare top-level entries (files + dirs) from a non-recursive listing
+              l.rstrip("/") for l in git("ls-tree", "--name-only", base).splitlines() if l
+          )
+
+          CODE_EXT = (".py", ".go", ".ts")
+          CODE_ALLOWED = ("scripts/", "evals/", ".claude/", ".github/")
+          # apps/ exceptions that are allowed to live outside a platform/<layer> or is/<group> home.
+          APPS_ALLOWED_EXACT = {"apps/platform/environments.yaml"}
+          APPS_ALLOWED_PREFIX = ("apps/platform/", "apps/is/", "apps/previews/")
+
+          errors = []
+
+          def base_has_dir(path):
+              # True if `path` (a dir) already has tracked content in the base tree.
+              return bool(git("ls-tree", base, path + "/").strip())
+
+          for f in added:
+              parts = f.split("/")
+
+              # (a) new manifests/ subdirectory
+              if f.startswith("manifests/") and len(parts) >= 2:
+                  sub = "manifests/" + parts[1]
+                  if not base_has_dir(sub):
+                      errors.append(f"[a] {f}: creates a NEW subdir '{sub}/' — manifests/ is FROZEN. "
+                                    "Put new config under platform/<layer>/ or is/<group>/.")
+
+              # (b) apps/ Application outside a classified home
+              if f.startswith("apps/") and (f.endswith(".yaml") or f.endswith(".yml")):
+                  ok = f in APPS_ALLOWED_EXACT or f.startswith(APPS_ALLOWED_PREFIX)
+                  # require a real sublayer segment, e.g. apps/platform/<layer>/<file>.yaml
+                  if f.startswith(("apps/platform/", "apps/is/")) and len(parts) < 4:
+                      ok = f in APPS_ALLOWED_EXACT
+                  if not ok:
+                      errors.append(f"[b] {f}: Argo CD Applications must live under "
+                                    "apps/platform/<layer>/ or apps/is/<group>/ (not apps/ root, "
+                                    "apps/platform/ flat, or apps/workloads/).")
+
+              # (d) application source code in the deployment repo
+              if f.endswith(CODE_EXT) and not f.startswith(CODE_ALLOWED):
+                  errors.append(f"[d] {f}: application source code belongs in the product's OWN "
+                                "repo (conventions.md). Only scripts/, evals/, .claude/, .github/ "
+                                "may hold tooling code here.")
+
+          # (c) a NEW top-level directory requires an ADR (a docs/*.md added or changed in this PR)
+          new_toplevel = set()
+          for f in added:
+              top = f.split("/")[0]
+              if "/" in f and top not in base_toplevel:
+                  new_toplevel.add(top)
+          if new_toplevel:
+              adr_present = any(t.startswith("docs/") and t.endswith(".md") for t in touched)
+              if not adr_present:
+                  errors.append("[c] new top-level director(y/ies) " + ", ".join(sorted(new_toplevel)) +
+                                " introduced without an ADR — add a docs/*.md recording the decision "
+                                "(ARCHITECTURE.md FREEZE).")
+
+          if errors:
+              print("Architecture Guard FAILED:\n")
+              for e in errors:
+                  print("::error::" + e)
+                  print("  - " + e)
+              sys.exit(1)
+          print("Architecture Guard passed — all added files respect the ARCHITECTURE.md taxonomy.")
+          PY

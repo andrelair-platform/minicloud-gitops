@@ -393,10 +393,37 @@ with an extra `argocd app diff` confirmation.
   product (own repo/docs), not `platform/` nor `is/`.
 
 ## 15. Remaining stages
-- **Stage 5** — reorganize `apps/` fully to mirror the layers (platform sublayers + is groups).
-- **Stage 6** — guardrails: extend `.claude/hooks/guard-write.py` (block new `manifests/<dir>` + app source
-  code) + a CI check (apps only under `apps/platform/*`|`apps/is/*`, new top-level dir needs an ADR).
-- **Stage 7** — delete `manifests/` once empty.
+- **Stage 5** — reorganize `apps/` fully to mirror the layers (platform sublayers + is groups). *(Platform
+  side done #1773; remaining = relocate `apps/workloads/*` custom-service Application files to their
+  taxonomy homes — byte-identical, `source.path` UNCHANGED.)*
+- **Stage 6** — ✅ **DONE (2026-10-12)** — guardrails on two layers: `guard-write.py` rules 5–6 (block a new
+  `manifests/<subdir>` + app source code outside `scripts/`/`evals/`/`.claude/`/`.github/`, creation-only) +
+  the CI check `.github/workflows/architecture-guard.yml` (fails a PR ADDING a new `manifests/*` dir, an
+  `apps/*` outside `apps/platform/<layer>/`|`apps/is/<group>/`, a new top-level dir without an ADR, or app
+  source code). Both inspect only *new* entries → legacy residue grandfathered. Hook + CI unit-tested.
+- **Stage 7** — delete `manifests/` once empty (blocked on LOT E Op2 content moves — storage-gated).
+
+## 16. Execution log — session 2026-10-12
+
+**Storage soak gate RE-CHECKED and FAILING** — Longhorn at session start: **65 healthy / 1 degraded
+(`underwriting-postgres-1`) / 1 faulted (`claims-debezium`, detaching)**, not the 67/67 the LOT E soak
+requires. Argo baseline = 9/114 not-`Synced/Healthy`, all within the pre-existing oracle (Kargo-pending
+OutOfSync + Progressing on debezium/nextcloud/chaos). **Therefore the dangerous LOT E Op2 content moves
+(Cilium, Longhorn → `platform/foundation|storage/`) REMAIN DEFERRED** — the gate is not just un-elapsed,
+it has regressed; do not migrate storage/CNI while a volume is faulted.
+
+**Done this session (storage-independent, zero/low cluster risk):**
+- **Stage 6 guardrails** (above) — pure repo change, no cluster touch; hook + CI logic unit-tested green.
+
+**Still remaining (for a future session):**
+- **Stage 5** — relocate the 12 `apps/workloads/*` files (byte-identical, `source.path` unchanged → empty
+  Argo diff). Straightforward except **retrieva** (cert product — needs an `apps/` home decision: it is
+  neither `platform/` nor `is/` per §14). longhorn-base→`apps/platform/storage/`, platform-demo→`_demos/`,
+  backstage→`shared-services/`, agent/crew→`ai/` are clear.
+- **LOT E Op2 — low-risk manifests content moves** (kured, vpa, priority, system-upgrade, cert-manager-config,
+  backup-dr, external-snapshotter, cloudflare-tunnel) — path-only, but needs the `validate-manifests.yml` CI
+  `paths:`/globs extended to `platform/**` + `is/**` first (migrated raw CRs currently escape kubeconform).
+- **LOT E Op2 — Cilium + Longhorn** — GATED on storage returning to 67/67 healthy + a 24–48h soak.
 
 > **Incident note (separate from the refactor):** 2026-10-07 `matrix-synapse` hit a Longhorn
 > `FailedAttachVolume` (engine stopped, volume stuck `attaching`, attached nowhere — **not** a stale
