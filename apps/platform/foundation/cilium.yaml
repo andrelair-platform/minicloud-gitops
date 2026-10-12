@@ -26,7 +26,7 @@ spec:
       ref: values
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
-      path: manifests/cilium
+      path: platform/foundation/cilium
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
