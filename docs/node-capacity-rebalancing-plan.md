@@ -33,51 +33,48 @@ ceiling) — which is why the 2026-10-13 recovery routed *around* the limit rath
 2. **Load concentration** (why it's fragile + set-hog is at 93%) → **rebalance** (§4, LOT 2). Resilience /
    defence-in-depth so one weak node can't wedge the storage layer again.
 
-## 3. LOT 1 — raise the PID/thread ceiling (PRIMARY, do first; low-risk)
+## 3. LOT 1 — raise the per-pod PID limit (PRIMARY, do first; low-risk)
 
-### 3a. Diagnose WHICH ceiling is hit (don't blindly raise everything)
-Run on the controller; `<IM>` = the instance-manager pod on a fork-failing node (e.g. fast-skunk):
-```bash
-# (a) the IM pod's cgroup pids controller — the most likely culprit
-IM=$(kubectl get pod -n longhorn-system -o wide --field-selector spec.nodeName=fast-skunk \
-      -l longhorn.io/component=instance-manager -o jsonpath='{.items[0].metadata.name}')
-kubectl exec -n longhorn-system "$IM" -- sh -c 'cat /sys/fs/cgroup/pids.current /sys/fs/cgroup/pids.max 2>/dev/null \
-  || cat /sys/fs/cgroup/pids/pids.current /sys/fs/cgroup/pids/pids.max'
-# (b) kubelet per-pod pids cap (needs node shell; k3s)
-ssh <node> "sudo grep -i podPidsLimit /etc/rancher/k3s/kubelet.config 2>/dev/null; \
-            sudo cat /var/lib/kubelet/config.yaml 2>/dev/null | grep -i pid"
-# (c) kernel ceilings (world-readable; no sudo)
-ssh <node> "cat /proc/sys/kernel/pid_max /proc/sys/kernel/threads-max; awk -F/ '{print \$2}' /proc/loadavg"
-# (d) the process RLIMIT_NPROC the engine runs under
-kubectl exec -n longhorn-system "$IM" -- sh -c 'ulimit -u'
+### 3a. ✅ DIAGNOSIS CONFIRMED (2026-10-13) — it's the per-pod `pids.max = 1024`
+Read live on fast-heron's engine instance-manager (`instance-manager-a6f4…`, pod uid `48e3d3a1…`, Burstable):
 ```
-Interpretation: if **pids.max** on the IM pod is a finite number near **pids.current** → it's the
-**cgroup pids limit** (fix 3b). If `kernel.threads-max` is being approached (tasks ≈ threads-max) → fix
-3c. `pid_max` on modern Ubuntu is usually already 4194304 (not the cause).
+kubepods-burstable-pod48e3….slice/pids.max         current=992   max=1024    ← BINDING LIMIT
+  └─ cri-containerd-….scope/pids.max                current=991   max=18558
+kubepods.slice/pids.max  (node top level)           current=1879  max=123725
+```
+The **pod-level cgroup caps total PIDs at 1024**, and the engine IM already runs **~992 threads** on a
+replica-dense node → only ~32 PIDs of headroom. Forking a new engine/replica process — and a live engine
+upgrade briefly runs **both** old+new engines → doubles threads — exceeds 1024 → `fork/exec: resource
+temporarily unavailable`. **Everything else ruled out:** `kernel.pid_max=4194304`,
+`kernel.threads-max≈123729` with only **~3000** threads in use, `ulimit -u=unlimited`, node `kubepods.slice`
+pids.max `123725`. This also explains why the underwriting-postgres engine restarted fine on loving-gannet
+(its IM was under 1024 then) — it's **not** a global node limit, it's the **1024 per-pod cap** biting
+whichever IM accumulates ~1000 threads. So the fix is unambiguous (§3b); the kernel-ceiling tuning is
+**NOT needed** and is dropped.
 
-### 3b. Fix — raise the kubelet per-pod PID limit (k3s)
-The instance-manager legitimately needs thousands of threads on a replica-dense node. Raise the per-pod
-cap (default is often a low distro value or inherited):
+Re-read the limit any time:
 ```bash
-# On EACH node, add to the k3s kubelet args (persisted), then restart k3s on that node:
-#   agent nodes:        /etc/systemd/system/k3s-agent.service.env  (or the install flags)
-#   server (set-hog):   /etc/systemd/system/k3s.service
-# add kubelet arg:  --kubelet-arg=pod-max-pids=32768     (from the default; 32768 gives ample headroom)
-ssh <node> "sudo systemctl restart k3s-agent"   # or k3s on the server; ONE node at a time, verify Ready
+ssh <node> 'for f in $(find /sys/fs/cgroup/kubepods.slice -name pids.max 2>/dev/null); do
+  c=$(cat "${f%max}current" 2>/dev/null); m=$(cat "$f"); [ "$m" != max ] && [ "${c:-0}" -gt 300 ] && echo "$c/$m  $f"; done'
 ```
-Apply **one node at a time**, verify the node returns `Ready` and its volumes re-attach before the next.
-Do fast-skunk + fast-heron first (the proven offenders), then the other replica-dense nodes
-(loving-gannet, star-kitten).
 
-### 3c. Fix — raise kernel thread/PID ceilings (only if 3a shows these are the limit)
+### 3b. Fix — raise the kubelet per-pod PID limit (k3s), 1024 → 32768
 ```bash
-# persist via sysctl.d (survives reboot), apply live:
-ssh <node> "echo 'kernel.pid_max=4194304'   | sudo tee /etc/sysctl.d/99-longhorn-pids.conf
-            echo 'kernel.threads-max=512000' | sudo tee -a /etc/sysctl.d/99-longhorn-pids.conf
-            sudo sysctl --system"
+# EACH node — add the kubelet arg to the k3s unit, then restart k3s on that node:
+#   agent nodes (fast-*, star-kitten, loving-gannet, swift-mac): /etc/systemd/system/k3s-agent.service  (ExecStart) or *.service.env
+#   server node (set-hog):                                       /etc/systemd/system/k3s.service
+# add:  --kubelet-arg=pod-max-pids=32768
+#   (k3s passes it to the embedded kubelet → sets every pod slice's pids.max to 32768; ample for an IM
+#    hosting dozens of replicas. 32768 ≪ kernel.threads-max 123729, so still safely bounded.)
+sudo systemctl daemon-reload && sudo systemctl restart k3s-agent   # or k3s on set-hog
 ```
-(threads-max scales with RAM; 512000 is safe on the 16 GiB nodes. On swift-mac/8 GiB keep it lower,
-~256000, and prefer *reducing* its load — §4.)
+Apply **one node at a time**; verify the node returns `Ready` and its volumes re-attach before the next.
+Do **fast-skunk + fast-heron first** (proven offenders), then the other replica-dense nodes
+(loving-gannet, star-kitten). Confirm after each: the IM pod-slice `pids.max` now reads `32768`.
+
+> NOTE: a k3s restart re-reads the kubelet config without disrupting running containerd workloads on that
+> node (the kubelet/agent restarts, pods keep running); the IM pods are unaffected unless they crashloop.
+> Still do it one node at a time during a quiet window.
 
 ### 3d. Verify
 Re-run the stuck rebuild/upgrade that failed (or simply observe): on a limit-raised node the
@@ -127,8 +124,8 @@ headroom on a stale-`tgtd` node.
 
 ## 6. Order of execution (safest → highest-value)
 ```
-1. LOT 1 diagnose (§3a)            ← read-only, do now
-2. LOT 1 raise pod-max-pids (§3b)  ← one node at a time, verify Ready + volumes; fast-skunk + fast-heron first
+1. LOT 1 diagnose (§3a)            ← ✅ DONE 2026-10-13: confirmed per-pod pids.max=1024 (IM at 992)
+2. LOT 1 raise pod-max-pids (§3b)  ← 1024→32768, one node at a time, verify Ready + volumes; fast-skunk + fast-heron first
 3. LOT 1 verify (§3d) + revert underwriting-postgres to 3 replicas
 4. LOT 2a protect set-hog          ← drain its replicas, shed pods
 5. LOT 2b/2c swift-mac in, rebalance replicas (quiet window)
