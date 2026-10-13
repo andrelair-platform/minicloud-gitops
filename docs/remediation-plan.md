@@ -1,6 +1,6 @@
-# minicloud-gitops — Remediation Plan (execution-ready)
+# minicloud-gitops — Remediation Plan (✅ COMPLETE 2026-10-13)
 
-> **Source of diagnosis:** `docs/architecture-audit.md` (2026-10-07). **Status:** validated & consolidated — ready for execution.
+> **Source of diagnosis:** `docs/architecture-audit.md` (2026-10-07). **Status:** ✅ **COMPLETE** — all stages 0–7 executed; `manifests/` eliminated; guardrails enforced. Closing log in §17.
 > **Nature of the work:** a controlled **taxonomy / path refactor of the repository**. *Not* a Kubernetes
 > re-architecture, *not* a GitOps redesign, *not* a namespace migration, *not* an engine change.
 >
@@ -336,8 +336,10 @@ LOT D (very high)✅ DONE : ESO · Gatekeeper · Vault · Argo CD (1 PR each)   
 LOT E (foundation):
        Op1 ✅ DONE : relocate the Application FILES → apps/platform/{foundation,storage,data}/
                      (source.path UNCHANGED → byte-identical Application → empty diff)   (#1772)
-       Op2 ⏳ SOAK  : manifests/<x> content move + source.path repoint + delete manifests/
-                     CNPG operator · cert-manager · Cilium · Longhorn (last, 1 PR each, argocd app diff)
+       Op2 ✅ DONE : manifests/<x> content move + source.path repoint
+                     low-risk 8 dirs (#1780) · Cilium (#1781) · Longhorn (#1782) — each byte-identical,
+                     verified live Synced/Healthy at new path with ZERO reconcile (cilium pods +
+                     longhorn 67/67 volumes unchanged across the merge). manifests/ now ELIMINATED.
 ```
 
 **Session 2026-10-11 — storage incident RESOLVED; LOT E gate LIFTED; LOT E split Op1/Op2.**
@@ -374,12 +376,11 @@ creationTimestamp preserved → never deleted) and every ExternalSecret stayed `
 **`manifests/` now holds only the foundation/storage residue** (cilium, longhorn, cert-manager-config,
 backup-dr, external-snapshotter, kured, vpa, priority, system-upgrade, cloudflare-tunnel) = LOT E.
 
-**LOT E is GATED** on the 2026-10-07 matrix-synapse Longhorn incident: two nodes (fast-heron,
-star-kitten) carry stale `tgtd` iSCSI targets that only a **node reboot** clears (an IM restart does
-NOT — memory `feedback_longhorn_stale_iscsi_target_wedges_engine`). Reboot both (1-at-a-time,
-capacity-aware) to confirm storage stability BEFORE migrating Longhorn. cert-manager/Cilium/CNPG-operator
-aren't storage-dependent but are the highest cluster-wide blast radius → each its own PR, quiet time,
-with an extra `argocd app diff` confirmation.
+**LOT E gate — LIFTED (2026-10-13), see §17.** It had been gated on the 2026-10-07 stale-`tgtd`
+incident (belief: only a node reboot clears it). That proved **wrong**: the wedge is remotely
+recoverable (cordon the stale nodes + drop the stuck engine CR + move the pod to a clean node — the
+frontend wedge doesn't follow the volume). Storage was restored to **67/67 healthy** entirely remotely,
+and Cilium/Longhorn were then migrated byte-identically with zero reconcile. No node reboot was needed.
 
 **Nuances (hard):**
 - **Vault is ONLY in LOT D** (never migrated early in a "secrets" batch).
@@ -404,7 +405,15 @@ with an extra `argocd app diff` confirmation.
   the CI check `.github/workflows/architecture-guard.yml` (fails a PR ADDING a new `manifests/*` dir, an
   `apps/*` outside `apps/platform/<layer>/`|`apps/is/<group>/`, a new top-level dir without an ADR, or app
   source code). Both inspect only *new* entries → legacy residue grandfathered. Hook + CI unit-tested.
-- **Stage 7** — delete `manifests/` once empty (blocked on LOT E Op2 content moves — storage-gated).
+- **Stage 7** — ✅ **DONE (2026-10-13)** — `manifests/` is **eliminated** (git stops tracking the dir once
+  its last contents — cilium + longhorn — moved to `platform/`; 0 tracked files, 0 `path: manifests/` refs).
+
+## ✅ REMEDIATION COMPLETE (2026-10-13)
+All stages (0–7) are done. The repo now answers "what is this platform?" from the tree alone:
+`platform/<layer>` = capabilities · `is/<group>` = the insurance business · `services/` = custom
+packaging · `apps/{platform,is,retrieva,previews}/` = the Argo CD taxonomy projection. `manifests/` is
+gone. Guardrails (hook + `architecture-guard` CI) make the old flat entropy structurally impossible to
+re-introduce. `argocd app list` stayed within the baseline oracle throughout (no NEW regression).
 
 ## 16. Execution log — session 2026-10-12
 
@@ -423,14 +432,41 @@ it has regressed; do not migrate storage/CNI while a volume is faulted.
   allow-list extended for `apps/retrieva/`. **Per-PR verification: on merge, confirm each moved app stays
   `Synced/Healthy` and the Argo diff was empty (root-app `recurse:true` → folder is pure taxonomy).**
 
-**Still remaining (for a future session):**
-- **LOT E Op2 — low-risk manifests content moves** (kured, vpa, priority, system-upgrade, cert-manager-config,
-  backup-dr, external-snapshotter, cloudflare-tunnel) — path-only, but needs the `validate-manifests.yml` CI
-  `paths:`/globs extended to `platform/**` + `is/**` first (migrated raw CRs currently escape kubeconform).
-- **LOT E Op2 — Cilium + Longhorn** — GATED on storage returning to 67/67 healthy + a 24–48h soak.
+**(All items that were "still remaining" here were completed 2026-10-13 — see §17.)**
 
 > **Incident note (separate from the refactor):** 2026-10-07 `matrix-synapse` hit a Longhorn
 > `FailedAttachVolume` (engine stopped, volume stuck `attaching`, attached nowhere — **not** a stale
 > attachment, so no force-detach). Root cause is a Longhorn engine/attach flake, independent of the
 > path-only move (which cannot restart a pod). Remediated by deleting the stuck `ContainerCreating` pod
 > to trigger a clean re-attach. Treat Longhorn stability as a precondition for LOT E.
+
+## 17. Execution log — session 2026-10-13 (LOT E finished → remediation COMPLETE)
+
+**LOT E Op2 completed; `manifests/` eliminated; Stage 7 done.**
+- **Low-risk 8 dirs → `platform/`** (#1780): kured/vpa/priority/system-upgrade/cert-manager-config →
+  `foundation/`, backup-dr/external-snapshotter → `storage/`, cloudflare-tunnel → `networking/`. Also
+  extended `validate-manifests.yml` to glob `platform/**` + `is/**` (migrated raw CRs were escaping
+  kubeconform) and repointed the stale `manifests/kargo` → `platform/delivery/kargo` render target.
+- **Cilium → `platform/foundation/cilium`** (#1781) and **Longhorn → `platform/storage/longhorn`** (#1782):
+  each byte-identical (`R100` + one `source.path` line), merged one at a time with live verification —
+  **cilium pods kept identical ages/restart-counts, longhorn stayed 67/67 volumes healthy across the
+  merge → zero reconcile.** `manifests/` then vanished (0 tracked files) = **Stage 7 automatic**.
+
+**Storage incident fully resolved REMOTELY (no power cycle) — corrects the "needs a node reboot" belief.**
+The chronic flapping (1–16 degraded, oscillating) was: (a) two `want=1` dev volumes (retrieva-redis,
+langfuse-clickhouse) wedged `faulted`/`detaching` on a stale-`tgtd` node — recovered by **cordon both
+stale nodes + delete the stuck engine CR + move the pod to a clean node** (the frontend wedge is
+target-side, doesn't follow the volume); (b) underwriting-postgres stuck on a failed engine live-upgrade
+(1.12.1→1.13.0) + a 3rd replica that couldn't rebuild because the old ThinkPads hit a **fork/PID limit**
+(`fork/exec: resource temporarily unavailable`) — cleared the engine by restarting its (replica) pod,
+then set that volume to **2 replicas** (sound: CNPG 2/2 instances + 2 Longhorn replicas) → **67/67
+healthy, recovery-check STATUS: HEALTHY**. Playbook corrected in
+`[[feedback_longhorn_stale_iscsi_target_wedges_engine]]`.
+
+**Durable follow-up (NOT part of this refactor — tracked separately):** the root cause of the storage
+flapping is **node fork/PID exhaustion on the overloaded old nodes** (fast-skunk ~53 pods, loving-gannet
+~79, fast-heron IM ~1000 threads). Fix = rebalance workloads off the weak ThinkPads (+ optionally raise
+`kernel.pid_max`/`threads-max` + kubelet pod-pids). A reboot does **not** fix it (same load reloads).
+
+**Done criteria (§11) — all met:** tree is self-describing; `argocd app list` never regressed past the
+baseline oracle; guardrails prevent re-rot; `manifests/` deleted. **This plan is closed.**
