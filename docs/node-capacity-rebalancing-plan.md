@@ -41,9 +41,13 @@ ceiling) — which is why the 2026-10-13 recovery routed *around* the limit rath
 >   already `pids.max=max` (unlimited) — only **agent** nodes carry the 1024 cap.
 > - **VALIDATED:** reverting underwriting-postgres to 3 replicas → the 3rd replica **rebuilt successfully on
 >   fast-skunk** (the node that previously fork-failed) → volume `healthy`, 3 replicas. Fix proven end-to-end.
+> - **`want=1` resilience DONE (§4b):** the 5 chronic re-wedge offenders (qdrant, retrieva-redis,
+>   langfuse-clickhouse, claims-debezium, claims-postgres-dev) were bumped **1 → 2 replicas** (now possible
+>   thanks to the raised cap) → a single-node stale-`tgtd` wedge can no longer fault them. All healthy@2.
+> - **Durable fix committed — minicloud-ansible PR #23** (`podPidsLimit 1024 → 32768`, §3b). The live raise
+>   holds until the playbook is run.
 > - **⚠️ The live raise is EPHEMERAL** — a per-pod cgroup write reverts when the IM pod is recreated or the
->   node reboots. **Durability needs Phase 2 (§3b): the kubelet `pod-max-pids` config, applied + validated
->   per node.** Until then the 1024 default returns on any IM-pod/node restart.
+>   node reboots. **Durability needs §3b (Ansible PR #23) applied** — run the playbook in a quiet window.
 > - **loving-gannet** could not be reached from this session (no SSH alias / different user+key) → its live
 >   raise **and** Phase 2 must be done with owner node access. It wasn't fork-failing (it's the healthy node),
 >   so not urgent — but it has the most replicas (52), so it WILL hit 1024 eventually.
@@ -71,26 +75,23 @@ ssh <node> 'for f in $(find /sys/fs/cgroup/kubepods.slice -name pids.max 2>/dev/
   c=$(cat "${f%max}current" 2>/dev/null); m=$(cat "$f"); [ "$m" != max ] && [ "${c:-0}" -gt 300 ] && echo "$c/$m  $f"; done'
 ```
 
-### 3b. Durability — persist `pod-max-pids=32768` in the kubelet config (OWNER follow-up)
-Only the **agent** nodes need it (set-hog/server is already unlimited). Cleanest is the k3s config file
-(no unit edit). On each agent node (`fast-heron, fast-skunk, star-kitten, swift-mac, loving-gannet`):
-```bash
-# append (create if absent) — do NOT clobber existing keys:
-sudo sh -c 'grep -q "^kubelet-arg:" /etc/rancher/k3s/config.yaml 2>/dev/null \
-  || echo "kubelet-arg:" >> /etc/rancher/k3s/config.yaml
-  echo "  - pod-max-pids=32768" >> /etc/rancher/k3s/config.yaml'
-sudo systemctl restart k3s-agent      # agents; one node at a time
-```
-**⚠️ Two hard cautions — this is why it was left as an owner step, not auto-applied:**
-1. **A malformed `config.yaml` makes k3s FAIL to start on the next restart/reboot** (latent node outage).
-   Validate immediately after the restart: node returns `Ready`, then `sudo systemctl status k3s-agent`.
-   Do it in a window where a failed restart can be caught — **one node at a time**, verify before the next.
-2. **A k3s-agent restart on a storage node can briefly bounce its Longhorn IM** → that node's volumes
-   detach/reattach (the churn we fought). Expect brief per-node rebuild activity; keep
-   `concurrent-replica-rebuild-per-node-limit=2`; proceed only while storage is green (67/67).
+### 3b. Durability — raise `podPidsLimit` in the CIS Ansible playbook (committed; owner runs it)
+**The 1024 is NOT a containerd default or a bare `kubelet-arg` — it's `podPidsLimit: 1024` set by CIS
+control 4.2.13** in `/var/lib/kubelet/config.yaml`, written by
+**`minicloud-ansible/playbooks/cis-kubelet-hardening.yml`** (the source of truth). So the durable fix is a
+one-line change there, **not** a per-node `config.yaml` edit (a manual edit is reverted by the next Ansible
+run; and adding `--pod-max-pids` as a flag *conflicts* with the `podPidsLimit` config field → kubelet errors).
+- ✅ **Fix committed — minicloud-ansible PR #23** (`podPidsLimit: 1024 → 32768`). CIS 4.2.13 only requires a
+  non-zero limit (fork-bomb guard) → 32768 stays compliant; ≪ `kernel.threads-max` ~123729.
+- ⏳ **OWNER runs it in a quiet window:** `ansible-playbook playbooks/cis-kubelet-hardening.yml` — the task
+  `notify: restart k3s` restarts the kubelet to apply, **uniformly on every node** (incl. loving-gannet +
+  set-hog). Run **one node at a time** (serial / `--limit`), confirm each returns `Ready`.
+- The **live cgroup raise (status box) holds the limit now**, so there's no rush; the playbook makes it
+  durable across reboot + re-provisioning.
 
-After each node: confirm `/etc/rancher/k3s/config.yaml` is valid YAML and a *new* pod's slice shows
-`pids.max=32768`. The live raise (§3-status) holds the limit until each node is done, so there's no rush.
+**⚠️ Caution:** a `restart k3s` on a storage node can briefly bounce its Longhorn IM → that node's volumes
+detach/reattach. The chronic `want=1` volumes now have **2 replicas** (status box), so a single-node IM
+bounce no longer faults them; still proceed while storage is green (67/67), one node at a time.
 
 ### 3d. Verify
 Re-run the stuck rebuild/upgrade that failed (or simply observe): on a limit-raised node the
