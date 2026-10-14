@@ -35,6 +35,19 @@ ceiling) — which is why the 2026-10-13 recovery routed *around* the limit rath
 
 ## 3. LOT 1 — raise the per-pod PID limit (PRIMARY, do first; low-risk)
 
+> **STATUS 2026-10-13/14 — Phase 1 APPLIED & VALIDATED; Phase 2 (durability) + loving-gannet = owner follow-up.**
+> - **Live raise DONE** on all reachable IM pod-slices (`pids.max 1024 → 32768`, zero disruption): fast-heron,
+>   fast-skunk (was at **1000/1024**), star-kitten (**940/1024**), swift-mac. set-hog (k3s **server**) was
+>   already `pids.max=max` (unlimited) — only **agent** nodes carry the 1024 cap.
+> - **VALIDATED:** reverting underwriting-postgres to 3 replicas → the 3rd replica **rebuilt successfully on
+>   fast-skunk** (the node that previously fork-failed) → volume `healthy`, 3 replicas. Fix proven end-to-end.
+> - **⚠️ The live raise is EPHEMERAL** — a per-pod cgroup write reverts when the IM pod is recreated or the
+>   node reboots. **Durability needs Phase 2 (§3b): the kubelet `pod-max-pids` config, applied + validated
+>   per node.** Until then the 1024 default returns on any IM-pod/node restart.
+> - **loving-gannet** could not be reached from this session (no SSH alias / different user+key) → its live
+>   raise **and** Phase 2 must be done with owner node access. It wasn't fork-failing (it's the healthy node),
+>   so not urgent — but it has the most replicas (52), so it WILL hit 1024 eventually.
+
 ### 3a. ✅ DIAGNOSIS CONFIRMED (2026-10-13) — it's the per-pod `pids.max = 1024`
 Read live on fast-heron's engine instance-manager (`instance-manager-a6f4…`, pod uid `48e3d3a1…`, Burstable):
 ```
@@ -58,23 +71,26 @@ ssh <node> 'for f in $(find /sys/fs/cgroup/kubepods.slice -name pids.max 2>/dev/
   c=$(cat "${f%max}current" 2>/dev/null); m=$(cat "$f"); [ "$m" != max ] && [ "${c:-0}" -gt 300 ] && echo "$c/$m  $f"; done'
 ```
 
-### 3b. Fix — raise the kubelet per-pod PID limit (k3s), 1024 → 32768
+### 3b. Durability — persist `pod-max-pids=32768` in the kubelet config (OWNER follow-up)
+Only the **agent** nodes need it (set-hog/server is already unlimited). Cleanest is the k3s config file
+(no unit edit). On each agent node (`fast-heron, fast-skunk, star-kitten, swift-mac, loving-gannet`):
 ```bash
-# EACH node — add the kubelet arg to the k3s unit, then restart k3s on that node:
-#   agent nodes (fast-*, star-kitten, loving-gannet, swift-mac): /etc/systemd/system/k3s-agent.service  (ExecStart) or *.service.env
-#   server node (set-hog):                                       /etc/systemd/system/k3s.service
-# add:  --kubelet-arg=pod-max-pids=32768
-#   (k3s passes it to the embedded kubelet → sets every pod slice's pids.max to 32768; ample for an IM
-#    hosting dozens of replicas. 32768 ≪ kernel.threads-max 123729, so still safely bounded.)
-sudo systemctl daemon-reload && sudo systemctl restart k3s-agent   # or k3s on set-hog
+# append (create if absent) — do NOT clobber existing keys:
+sudo sh -c 'grep -q "^kubelet-arg:" /etc/rancher/k3s/config.yaml 2>/dev/null \
+  || echo "kubelet-arg:" >> /etc/rancher/k3s/config.yaml
+  echo "  - pod-max-pids=32768" >> /etc/rancher/k3s/config.yaml'
+sudo systemctl restart k3s-agent      # agents; one node at a time
 ```
-Apply **one node at a time**; verify the node returns `Ready` and its volumes re-attach before the next.
-Do **fast-skunk + fast-heron first** (proven offenders), then the other replica-dense nodes
-(loving-gannet, star-kitten). Confirm after each: the IM pod-slice `pids.max` now reads `32768`.
+**⚠️ Two hard cautions — this is why it was left as an owner step, not auto-applied:**
+1. **A malformed `config.yaml` makes k3s FAIL to start on the next restart/reboot** (latent node outage).
+   Validate immediately after the restart: node returns `Ready`, then `sudo systemctl status k3s-agent`.
+   Do it in a window where a failed restart can be caught — **one node at a time**, verify before the next.
+2. **A k3s-agent restart on a storage node can briefly bounce its Longhorn IM** → that node's volumes
+   detach/reattach (the churn we fought). Expect brief per-node rebuild activity; keep
+   `concurrent-replica-rebuild-per-node-limit=2`; proceed only while storage is green (67/67).
 
-> NOTE: a k3s restart re-reads the kubelet config without disrupting running containerd workloads on that
-> node (the kubelet/agent restarts, pods keep running); the IM pods are unaffected unless they crashloop.
-> Still do it one node at a time during a quiet window.
+After each node: confirm `/etc/rancher/k3s/config.yaml` is valid YAML and a *new* pod's slice shows
+`pids.max=32768`. The live raise (§3-status) holds the limit until each node is done, so there's no rush.
 
 ### 3d. Verify
 Re-run the stuck rebuild/upgrade that failed (or simply observe): on a limit-raised node the
@@ -124,13 +140,14 @@ headroom on a stale-`tgtd` node.
 
 ## 6. Order of execution (safest → highest-value)
 ```
-1. LOT 1 diagnose (§3a)            ← ✅ DONE 2026-10-13: confirmed per-pod pids.max=1024 (IM at 992)
-2. LOT 1 raise pod-max-pids (§3b)  ← 1024→32768, one node at a time, verify Ready + volumes; fast-skunk + fast-heron first
-3. LOT 1 verify (§3d) + revert underwriting-postgres to 3 replicas
-4. LOT 2a protect set-hog          ← drain its replicas, shed pods
-5. LOT 2b/2c swift-mac in, rebalance replicas (quiet window)
-6. LOT 2d prune star-kitten AI density
-7. LOT 3 ongoing hygiene
+1. LOT 1 diagnose (§3a)            ← ✅ DONE: per-pod pids.max=1024 (IM at 992) is the ceiling
+2. LOT 1 live-raise 1024→32768     ← ✅ DONE (5 reachable nodes, zero disruption); loving-gannet = owner
+3. LOT 1 verify + revert to 3 repl ← ✅ DONE: 3rd replica rebuilt on fast-skunk → underwriting healthy
+4. LOT 1 §3b PERSIST (config.yaml) ← ⏳ OWNER: durable across reboot/IM-restart; validate per node
+5. LOT 2a protect set-hog          ← drain its replicas, shed pods
+6. LOT 2b/2c swift-mac in, rebalance replicas (quiet window)
+7. LOT 2d prune star-kitten AI density
+8. LOT 3 ongoing hygiene
 ```
 
 ## 7. Risks & rollback
