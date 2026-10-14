@@ -467,6 +467,7 @@ healthy, recovery-check STATUS: HEALTHY**. Playbook corrected in
 flapping is **node fork/PID exhaustion on the overloaded old nodes** (fast-skunk ~53 pods, loving-gannet
 ~79, fast-heron IM ~1000 threads). Fix = rebalance workloads off the weak ThinkPads (+ optionally raise
 `kernel.pid_max`/`threads-max` + kubelet pod-pids). A reboot does **not** fix it (same load reloads).
+**Drafted plan: `docs/node-capacity-rebalancing-plan.md`.**
 
 **Done criteria (§11) — all met:** tree is self-describing; `argocd app list` never regressed past the
 baseline oracle; guardrails prevent re-rot; `manifests/` deleted. **This plan is closed.**
