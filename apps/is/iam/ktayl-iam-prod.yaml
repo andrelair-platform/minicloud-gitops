@@ -27,6 +27,21 @@ spec:
         - .spec.data[].remoteRef.decodingStrategy
         - .spec.data[].remoteRef.metadataPolicy
         - .spec.target.deletionPolicy
+    # CNPG operator injects spec defaults into the ktayl-iam-cnpg Cluster (managed-role +
+    # initdb + monitoring + backup fields not in git) → SSA drift → OutOfSync. Ignore exactly the
+    # operator-managed fields (mirrors the cnpg-authentik app, which uses managed.roles too).
+    - group: postgresql.cnpg.io
+      kind: Cluster
+      jqPathExpressions:
+        - .spec.storage.resizeInUseVolumes
+        - .spec.monitoring.customQueriesConfigMap
+        - .spec.monitoring.disableDefaultQueries
+        - .spec.backup.target
+        - .spec.managed.roles[].connectionLimit
+        - .spec.managed.roles[].inherit
+        - .spec.bootstrap.initdb.encoding
+        - .spec.bootstrap.initdb.localeCType
+        - .spec.bootstrap.initdb.localeCollate
   syncPolicy:
     automated:
       prune: true
