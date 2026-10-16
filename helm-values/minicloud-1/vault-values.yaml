@@ -40,25 +40,26 @@ server:
       container:
         # MED-06 (pentest 2026-08-16): read-only root filesystem. Vault already runs non-root
         # (uid 100) + seccomp RuntimeDefault + no-priv-escalation (pod SC); this closes the last
-        # gap. Verified live (2026-10-16) that the ONLY root-FS writes are /tmp and ~/.cache
-        # (/home/vault) — data is on the /vault/data PVC, config is a mounted secret, and
-        # disable_mlock=true (no IPC_LOCK needed). The two emptyDirs below cover those paths.
+        # gap. Verified live (2026-10-16): the only root-FS writes are /tmp and ~/.cache
+        # (/home/vault). /vault/data is the PVC, config is a mounted secret, disable_mlock=true.
+        # The chart ALREADY mounts an emptyDir `home` at /home/vault, so under a read-only root
+        # that path stays writable with no extra volume — only /tmp needs an emptyDir. (A second
+        # /home/vault mount is a duplicate volumeMount key that breaks ArgoCD's typed diff with
+        # `ComparisonError: duplicate entries for key [mountPath="/home/vault"]` — helm renders it
+        # fine but ArgoCD's structured-merge-diff rejects it. Do NOT re-add a /home/vault mount.)
         readOnlyRootFilesystem: true
         capabilities:
           drop:
             - NET_RAW
 
-  # MED-06: the only two root-FS paths Vault writes under a read-only root.
+  # MED-06: /tmp is the only writable root-FS path the chart does not already mount (it mounts
+  # data→/vault/data, config→/vault/config, home→/home/vault).
   volumes:
     - name: vault-tmp
-      emptyDir: {}
-    - name: vault-home
       emptyDir: {}
   volumeMounts:
     - name: vault-tmp
       mountPath: /tmp
-    - name: vault-home
-      mountPath: /home/vault
 
   resources:
     requests:
