@@ -37,9 +37,11 @@ minicloud-app-deployment:
     httpGet: { path: /healthz, port: http }
     initialDelaySeconds: 30
     periodSeconds: 30
+  # Right-sized to fit the tight retrieva-dev-quota headroom (idle/insufficient-evidence until the
+  # crew does real LLM work — RTV-81b should bump these + the retrieva-dev quota when it does).
   resources:
-    requests: { cpu: 100m, memory: 512Mi }
-    limits:   { cpu: "1", memory: 1Gi }
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
 
 # ---- wrapper-local keys ----
 secretsVaultPath: platform/retrieva-dev   # litellm-api-key source (overridden in prod)
