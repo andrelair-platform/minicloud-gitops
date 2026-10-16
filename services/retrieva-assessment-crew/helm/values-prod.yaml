@@ -8,7 +8,7 @@ minicloud-app-deployment:
     tag: b664731
   imagePullSecrets: [{ name: ghcr-pull }]
   workload:
-    replicas: 2
+    replicas: 1
   env:
     - { name: PORT, value: "8080" }
     - { name: HOST, value: "0.0.0.0" }
