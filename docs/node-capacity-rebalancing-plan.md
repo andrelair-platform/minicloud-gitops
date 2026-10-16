@@ -1,4 +1,8 @@
-# Node Capacity & Fork-Limit Rebalancing Plan (draft)
+# Node Capacity & Fork-Limit Rebalancing Plan
+
+**Status:** ✅ **COMPLETE (2026-10-16)** — root cause fixed (CIS `podPidsLimit` 1024→32768, minicloud-ansible
+PR #23) and the related inotify-instance drift codified (`fs.inotify.max_user_instances`→512 on all nodes,
+minicloud-ansible PR #24); both merged + applied live. Retained as the diagnosis + decision record.
 
 > **Driver:** the durable follow-up from the 2026-10-13 storage session (`remediation-plan.md` §17).
 > Longhorn volumes chronically failed to rebuild / finish engine upgrades on the old nodes with
