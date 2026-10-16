@@ -1,0 +1,16 @@
+apiVersion: v2
+name: retrieva-assessment-crew
+description: >-
+  retrieva-assessment-crew wrapper chart (GAP golden path). Single workload: the CrewAI DORA
+  third-party-ICT assessment crew, exposed over A2A (cluster-internal) to the retrieva supervisor.
+  The app-creds + ghcr-pull ExternalSecrets and the NetworkPolicies are this chart's own templates.
+  No ingress/certificate (A2A only, no public surface); stateless (no DB, no PVC). One Helm render,
+  one ArgoCD source. Deployed into retrieva-dev (dev) / retrieva (prod) so same-ns netpol lets the
+  supervisor reach it.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: minicloud-app-deployment
+    version: 0.4.0
+    repository: oci://ghcr.io/andrelair-platform

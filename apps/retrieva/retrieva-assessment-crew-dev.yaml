@@ -1,0 +1,40 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: retrieva-assessment-crew-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  # GAP wrapper chart (single workload): the CrewAI assessment crew over A2A. Deployed INTO retrieva-dev
+  # so the supervisor (retrieva-backend) reaches it same-namespace; ESO/netpols are the chart's templates.
+  # releaseName = retrieva-assessment-crew. Image tag is bootstrapped by hand until Kargo is wired (RTV-80b/3).
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/retrieva-assessment-crew/helm
+    helm:
+      releaseName: retrieva-assessment-crew
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: retrieva-dev
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

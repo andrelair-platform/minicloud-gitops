@@ -1,0 +1,20 @@
+# dev (ns retrieva-dev) — Harbor image, 1 replica, free-tier LLM via the governed LiteLLM gateway.
+secretsVaultPath: platform/retrieva-dev
+minicloud-app-deployment:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/retrieva-assessment-crew
+    tag: b664731
+  workload:
+    replicas: 1
+  env:
+    - { name: PORT, value: "8080" }
+    - { name: HOST, value: "0.0.0.0" }
+    - { name: A2A_PUBLIC_URL, value: "http://retrieva-assessment-crew.retrieva-dev.svc.cluster.local:8080" }
+    # LLM via the governed LiteLLM gateway (crewai routes model via litellm → base_url). Free tier in dev.
+    - { name: LITELLM_BASE_URL, value: "http://litellm.ai.svc.cluster.local:4000" }
+    - { name: LITELLM_MODEL, value: "openai/ollama-cloud" }
+    - { name: LITELLM_API_KEY, valueFrom: { secretKeyRef: { name: retrieva-crew-secrets, key: litellm-api-key } } }
+    # Langfuse (shared project, dev environment attribute)
+    - { name: LANGFUSE_HOST, value: "http://langfuse-web.langfuse.svc.cluster.local:3000" }
+    - { name: LANGFUSE_PUBLIC_KEY, valueFrom: { secretKeyRef: { name: retrieva-crew-secrets, key: langfuse-public-key } } }
+    - { name: LANGFUSE_SECRET_KEY, valueFrom: { secretKeyRef: { name: retrieva-crew-secrets, key: langfuse-secret-key } } }

@@ -1,0 +1,47 @@
+# retrieva-assessment-crew wrapper — common values. Single library subchart (minicloud-app-deployment).
+# Per-env image tag / env / replicas / vault path live in values-{dev,prod}.yaml (Helm lists don't merge
+# → env is restated in full per env). releaseName = retrieva-assessment-crew (set on the ArgoCD app).
+minicloud-app-deployment:
+  fullnameOverride: retrieva-assessment-crew
+  # Match the live Deployment/Service selector → in-place rolling flip (netpols match app=…).
+  selectorLabels: { app: retrieva-assessment-crew }
+  serviceAccount: { create: false, name: default }
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001          # Dockerfile appuser uid 10001
+    fsGroup: 10001
+    seccompProfile: { type: RuntimeDefault }
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false   # uv/python writes to /tmp
+    capabilities: { drop: ["ALL"] }
+  workload:
+    kind: Deployment
+    strategy:
+      type: RollingUpdate
+      rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }
+  ingress: { enabled: false }       # cluster-internal A2A only — no public surface
+  certificate: { enabled: false }
+  image:
+    repository: retrieva-assessment-crew   # full repo + tag set per env (block style — Kargo-safe)
+  ports:
+    - { name: http, containerPort: 8080, protocol: TCP }
+  service:
+    ports: [{ name: http, port: 8080, targetPort: 8080 }]
+  readinessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    failureThreshold: 6
+  livenessProbe:
+    httpGet: { path: /healthz, port: http }
+    initialDelaySeconds: 30
+    periodSeconds: 30
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits:   { cpu: "1", memory: 1Gi }
+
+# ---- wrapper-local keys ----
+secretsVaultPath: platform/retrieva-dev   # litellm-api-key source (overridden in prod)
+prodExtras:
+  enabled: false   # prod: true → the ghcr-pull imagePullSecret ES

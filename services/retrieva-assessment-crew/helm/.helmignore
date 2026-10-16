@@ -1,0 +1,4 @@
+# NOTE: charts/ is intentionally NOT ignored here (it would make Helm treat the vendored
+# library dep as missing at render). charts/ is gitignored at the repo level; Chart.lock is committed.
+.git
+*.tmp
