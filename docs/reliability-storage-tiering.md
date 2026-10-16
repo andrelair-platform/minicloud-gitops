@@ -1,9 +1,25 @@
 # Reliability: Storage Tiering & Failure-Domain-Aware Replication
 
-**Status:** In progress (P0 executing) · **Owner:** Platform · **Started:** 2026-10-01
+**Status:** ✅ **CLOSED (2026-10-16)** — experiment log, actionable phases shipped · **Owner:** Platform · **Started:** 2026-10-01
 **Board:** GitOps — Platform Engineering (#3)
 
-> Frozen baseline + live experiment log. Do not rewrite past measurements — append.
+> **Closeout (2026-10-16).** This is a completed experiment log, no longer "in progress":
+> - **P0** (cut replicated bytes) ✅ done — see §6 *"P0 outcome (closed)"* (~15% state cut, 0 data loss).
+> - **P1** (node qualification) ✅ done — fast-skunk + swift-mac SMART-PASSED.
+> - **P1.6** (rebuild throughput) ✅ done — the central finding: *throughput (~0.9 GiB/min), not
+>   placement, bounds recovery* (network/disk/SATA-vs-NVMe ruled out).
+> - **P3** (Longhorn 1.6→current) ✅ done — executed to 1.13.0 + benchmarked (see
+>   `reliability-longhorn-upgrade.md`). **This plan's thesis — "the upgrade is the real MTTR lever" —
+>   was carried forward and RESOLVED in `docs/storage-hardening/` (RESOLVED 2026-10-11): the
+>   1.12.1→1.13.0 upgrade + settings that restored 67/67.** `storage-hardening/` is the formal successor.
+> - **P2** (placement/topology) ⏸ **paused by decision** — P2.1 proved placement *redistributes*
+>   exposure, it doesn't *reduce* it; only throughput shrinks recovery pressure → deferred in favour of
+>   the upgrade.
+> - **P4** (auto-remediation operator) + **P5** (chaos/recovery suite) ❌ not built — these are **future
+>   initiatives**, tracked under `.claude/rules/reliability-and-gamedays.md` (SLO + Game Days), not open
+>   work on this doc.
+>
+> Retained below as the frozen baseline + measurement log. Do not rewrite past measurements — append.
 
 ## 1. Problem
 
