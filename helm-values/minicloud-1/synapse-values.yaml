@@ -148,6 +148,10 @@ workers:
 
 redis:
   enabled: true
+  # LOW-04 (pentest 2026-08-16): a Redis pod has no need for a Kubernetes API token.
+  # Don't mount the SA token so a compromised Redis can't present a valid k8s credential.
+  serviceAccount:
+    automountServiceAccountToken: false
   resources:
     requests:
       cpu: 10m
