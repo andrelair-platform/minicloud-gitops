@@ -38,9 +38,27 @@ server:
   statefulSet:
     securityContext:
       container:
+        # MED-06 (pentest 2026-08-16): read-only root filesystem. Vault already runs non-root
+        # (uid 100) + seccomp RuntimeDefault + no-priv-escalation (pod SC); this closes the last
+        # gap. Verified live (2026-10-16) that the ONLY root-FS writes are /tmp and ~/.cache
+        # (/home/vault) — data is on the /vault/data PVC, config is a mounted secret, and
+        # disable_mlock=true (no IPC_LOCK needed). The two emptyDirs below cover those paths.
+        readOnlyRootFilesystem: true
         capabilities:
           drop:
             - NET_RAW
+
+  # MED-06: the only two root-FS paths Vault writes under a read-only root.
+  volumes:
+    - name: vault-tmp
+      emptyDir: {}
+    - name: vault-home
+      emptyDir: {}
+  volumeMounts:
+    - name: vault-tmp
+      mountPath: /tmp
+    - name: vault-home
+      mountPath: /home/vault
 
   resources:
     requests:
