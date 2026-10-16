@@ -49,6 +49,10 @@ frontend:
 
 postgres:
   enabled: true
+# dev keeps the plain STS (regenerable dev data = a "shrug" per datastore-selection.md); the CNPG
+# migration is prod-only (prod held the authoritative identity data that was RF=1 + unbacked).
+cnpg:
+  enabled: false
 appSecret:
   enabled: true
 secretsVaultPath: platform/ktayl-iam

@@ -44,6 +44,22 @@ postgres:
   requestMemory: 256Mi
   limitMemory: 512Mi
   storage: 5Gi
+
+# CNPG migration (additive). While both are enabled the STS stays authoritative; the CNPG cluster is
+# stood up alongside it (see templates/cnpg.yaml). Cutover = flip DATABASE_HOST (above) to
+# ktayl-iam-cnpg-rw after a pg_dump→restore parity load; then set postgres.enabled:false to retire the STS.
+cnpg:
+  enabled: true
+  instances: 2          # DB-layer failover (App-HA shape) — the STS had none
+  storageSize: 5Gi
+  backup:
+    enabled: true
+    retentionPolicy: "14d"
+    bucket: minicloud-cnpg-offsite/ktayl-iam
+    endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
+    vaultPath: platform/cloudflare
+    schedule: "0 45 4 * * *"   # staggered after langfuse (04:30)
+
 appSecret:
   enabled: true
 secretsVaultPath: platform/ktayl-iam-prod

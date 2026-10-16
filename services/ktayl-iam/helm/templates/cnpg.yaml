@@ -1,0 +1,146 @@
+# Additive CNPG migration for ktayl-iam's identity DB (datastore-selection.md + the 2026-10-17 posture
+# audit: prod ran as a SINGLE-instance alpine StatefulSet on Longhorn RF=1 with NO backup → one volume
+# wedge = total, unrecoverable loss of identity data). This stands up a dedicated, HA, PITR-backed CNPG
+# cluster ALONGSIDE the existing STS (templates/postgres.yaml stays on under .Values.postgres.enabled)
+# so there is NO data-loss window. Sequence: (1) this lands additively + goes healthy + first R2 backup;
+# (2) supervised pg_dump (from ktayl-iam-postgres) → restore (into ktayl-iam-cnpg) at parity;
+# (3) cutover = flip DATABASE_HOST ktayl-iam-postgres → ktayl-iam-cnpg-rw (one line in values-prod);
+# (4) soak; (5) remove the STS (postgres.enabled:false) + its PVC.
+# Drop-in: the managed `ktayl_iam` role password = the SAME Vault value the app already uses
+# (platform/ktayl-iam-prod → postgres-password), so ONLY DATABASE_HOST changes at cutover.
+# Prod-only (.Values.cnpg.enabled); 2 instances = DB-layer failover (App-HA shape, scheduling.md).
+{{- if .Values.cnpg.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ktayl-iam-cnpg
+  labels:
+    app.kubernetes.io/name: ktayl-iam
+spec:
+  instances: {{ .Values.cnpg.instances }}
+  primaryUpdateStrategy: unsupervised
+  storage:
+    size: {{ .Values.cnpg.storageSize }}
+    storageClass: longhorn
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  monitoring:
+    enablePodMonitor: true
+  # Managed role password = the SAME Vault value the STS/app already use → drop-in at cutover.
+  managed:
+    roles:
+      - name: ktayl_iam
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: ktayl-iam-cnpg-role
+  # Empty DB `ktayl_iam` owned by role `ktayl_iam`; the supervised pg_dump→restore loads schema+rows.
+  bootstrap:
+    initdb:
+      database: ktayl_iam
+      owner: ktayl_iam
+{{- if .Values.cnpg.backup.enabled }}
+  # Continuous WAL archiving + base backups to R2 (PITR) — the protection the STS never had.
+  backup:
+    retentionPolicy: {{ .Values.cnpg.backup.retentionPolicy | quote }}
+    barmanObjectStore:
+      destinationPath: s3://{{ .Values.cnpg.backup.bucket }}
+      endpointURL: {{ .Values.cnpg.backup.endpointURL }}
+      s3Credentials:
+        accessKeyId:
+          name: ktayl-iam-cnpg-r2
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: ktayl-iam-cnpg-r2
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+{{- end }}
+---
+# Password for the CNPG `ktayl_iam` role — sourced from the SAME Vault value the app already uses
+# (so only DATABASE_HOST changes at cutover). ESO output-template `{{ "{{" }} .pgpass {{ "}}" }}` is
+# backtick-escaped so Helm emits it verbatim for ESO (gitops.md golden-path gotcha).
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ktayl-iam-cnpg-role
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: ktayl-iam-cnpg-role
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: "ktayl_iam"
+        password: "{{ `{{ .pgpass }}` }}"
+  data:
+    - secretKey: pgpass
+      remoteRef:
+        key: {{ .Values.secretsVaultPath }}
+        property: postgres-password
+{{- if .Values.cnpg.backup.enabled }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ktayl-iam-cnpg-r2
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: ktayl-iam-cnpg-r2
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: ACCESS_KEY_ID
+      remoteRef: { key: {{ .Values.cnpg.backup.vaultPath }}, property: r2-access-key-id }
+    - secretKey: SECRET_ACCESS_KEY
+      remoteRef: { key: {{ .Values.cnpg.backup.vaultPath }}, property: r2-secret-access-key }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: ktayl-iam-cnpg-daily
+spec:
+  schedule: {{ .Values.cnpg.backup.schedule | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: ktayl-iam-cnpg
+{{- end }}
+---
+# The CNPG operator (cnpg-system) must reach the instances' status endpoint (:8000) + Postgres (:5432),
+# or default-deny-ingress drops the operator probe and the cluster never goes healthy (observed on
+# authentik-cnpg 2026-09-22). App→DB (:5432) is covered by the namespace's allow-same-namespace policy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: ktayl-iam-cnpg
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 5432 }
+{{- end }}
