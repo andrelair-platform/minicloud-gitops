@@ -24,7 +24,11 @@ spec:
   primaryUpdateStrategy: unsupervised
 
   storage:
-    size: 2Gi
+    # 5Gi (was 2Gi) — 2026-10-16: during a cluster-wide egress outage, WAL archiving to R2
+    # stalled and the WAL backlog filled the 2Gi primary PVC, taking Authentik/SSO down. The
+    # live PVCs were expanded to 5Gi to recover; this bumps the source to match (2Gi is too
+    # small to absorb a WAL backlog when off-site archiving is briefly unavailable).
+    size: 5Gi
     storageClass: longhorn
 
   resources:
