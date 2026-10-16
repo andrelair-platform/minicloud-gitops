@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'services/**'
-      - 'manifests/**'
       - 'platform/**'
       - 'is/**'
 
@@ -27,7 +26,7 @@ jobs:
       # This step parses every YAML doc and fails on any syntax error, catching that
       # class before kubeconform. (A bad PrometheusRule indentation merged once this
       # way — see 22-node-resource-alerts.yaml history.)
-      - name: YAML syntax check (services/ + manifests/)
+      - name: YAML syntax check (services/ + platform/ + is/)
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -42,7 +41,6 @@ jobs:
           def skip(f):
               return "/templates/" in f
           for f in sorted(glob.glob("services/**/*.yaml", recursive=True)
-                          + glob.glob("manifests/**/*.yaml", recursive=True)
                           + glob.glob("platform/**/*.yaml", recursive=True)
                           + glob.glob("is/**/*.yaml", recursive=True)):
               if skip(f):
@@ -69,16 +67,18 @@ jobs:
         with:
           version: v3.19.0
 
-      # Validate raw manifests/ YAML files. The repo is Helm-only (kustomize fully retired,
-      # zero kustomization.yaml since 2026-09-24). Excluded: gatekeeper-policies (schemas,
-      # not instances), and Helm chart internals (Chart.yaml + */templates/** — the latter
-      # are Go templates, validated by the "Validate Helm charts render" step; the chart's
-      # files/*.yaml raw CRs ARE validated here). xargs passes file paths as arguments (not
-      # stdin) so kubeconform reads file contents.
-      - name: Validate manifests/ + platform/ + is/
+      # Validate raw platform/ + is/ YAML files. The repo is Helm-only (kustomize fully retired,
+      # zero kustomization.yaml since 2026-09-24) and the former top-level manifests/ dir was
+      # eliminated in the taxonomy refactor (remediation-plan.md LOT E) — do NOT re-add it to the
+      # find list or the step fails with `find: 'manifests/': No such file or directory` under
+      # `set -e`. Excluded: gatekeeper-policies (schemas, not instances), and Helm chart internals
+      # (Chart.yaml + */templates/** — the latter are Go templates, validated by the "Validate Helm
+      # charts render" step; the chart's files/*.yaml raw CRs ARE validated here). xargs passes
+      # file paths as arguments (not stdin) so kubeconform reads file contents.
+      - name: Validate platform/ + is/
         run: |
           set -euo pipefail
-          find manifests/ platform/ is/ -name "*.yaml" \
+          find platform/ is/ -name "*.yaml" \
             ! -name "Chart.yaml" \
             ! -path "*/templates/*" \
             ! -path "*/gatekeeper-policies/*" \
