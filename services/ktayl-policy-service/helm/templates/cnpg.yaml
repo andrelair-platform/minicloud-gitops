@@ -124,11 +124,21 @@ spec:
   policyTypes:
     - Ingress
   ingress:
+    # Operator (cnpg-system) → instance status (:8000) + Postgres (:5432).
     - from:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: cnpg-system
       ports:
         - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 5432 }
+    # Same-namespace → Postgres (:5432): REQUIRED for intra-cluster streaming replication
+    # (cnpg-2 → cnpg-1-rw) AND the app → DB at cutover. Selecting the CNPG pods above ISOLATES them,
+    # so a namespace WITHOUT an allow-same-namespace policy (ktayl-prod lacks one, unlike ktayl-iam-prod)
+    # would block the replica join → cluster stuck at 1/2 (observed 2026-10-17). This makes the netpol
+    # self-sufficient in any namespace.
+    - from:
+        - podSelector: {}
+      ports:
         - { protocol: TCP, port: 5432 }
 {{- end }}
