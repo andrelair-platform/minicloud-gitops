@@ -1,5 +1,10 @@
 # Documentation Standard — always document what was built or solved
 
+> **This file is the DISCIPLINE (how we write + gate docs). For the TAXONOMY MAP — every doc category,
+> its home here, and when it's required (path-gated), plus requirement-ID traceability and the canonical
+> per-product `docs/` skeleton — see `documentation-standard.md`.** The two are paired: *what/where/when*
+> there, *how* here.
+
 Every meaningful piece of work — a new capability, a hardening epic, a resolved
 incident, a non-obvious fix — must leave a **technical written trace**, not just
 a merged PR. Code shows *how*; docs explain *what*, *why*, and *how to operate/
