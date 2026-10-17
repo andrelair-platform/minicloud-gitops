@@ -141,4 +141,97 @@ spec:
         - podSelector: {}
       ports:
         - { protocol: TCP, port: 5432 }
+---
+# WAL keepalive (DR Game Day 2026-10-17) — a near-idle CNPG DB produces no WAL, so a base backup's
+# CLOSING WAL segment never archives and the backup is NOT restorable ("WAL ends before end of online
+# backup"). A heartbeat INSERT every 10min keeps WAL advancing so archive_timeout (5min) flushes the
+# closing segment → backups stay restorable (validated by the scenario-08 restore drill, see the DR
+# postmortem). pg_switch_wal needs superuser; a plain app-role INSERT does not → least-privilege fix.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ktayl-cnpg-wal-keepalive
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 60
+      template:
+        metadata:
+          labels:
+            app: ktayl-cnpg-wal-keepalive
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            fsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: keepalive
+              image: docker.io/library/postgres:17-alpine
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  psql -v ON_ERROR_STOP=1 -tAc "create table if not exists public._wal_keepalive(id bigserial primary key, ts timestamptz default now()); insert into public._wal_keepalive default values; delete from public._wal_keepalive where ts < now() - interval '2 days';"
+              env:
+                - name: PGHOST
+                  value: ktayl-cnpg-rw
+                - name: PGUSER
+                  value: ktayl
+                - name: PGDATABASE
+                  value: ktayl_policy
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: ktayl-cnpg-role
+                      key: password
+                - name: HOME
+                  value: /tmp
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests: { cpu: 10m, memory: 32Mi }
+                limits: { cpu: 100m, memory: 64Mi }
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ktayl-cnpg-wal-keepalive-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: ktayl-cnpg-wal-keepalive
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: ktayl-cnpg
+      ports:
+        - { protocol: TCP, port: 5432 }
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+
 {{- end }}
