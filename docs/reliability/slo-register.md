@@ -31,7 +31,7 @@ load *during* the incident so MTTR/RPO/RTO are measured, not estimated. Write-up
 | 05 | Bad deployment | broken image | canary analysis auto-aborts | — |
 | 06 | Security incident | leaked secret / rogue workload | Gatekeeper deny / Vault rotate; audited | — |
 | 07 | AI failure | LLM down / bad output | gateway fallback; eval catches it | — |
-| 08 | Disaster recovery | destroy node/cluster | restore within RTO; verify RPO | — (authentik restore drill ✅) |
+| 08 | Disaster recovery | destroy node/cluster; restore CNPG from R2 | restore within RTO; verify RPO | **2026-10-17 ✅** — CNPG R2 restore drill (iam/ktayl/retrieva): found+fixed a WAL-archive gap, re-verified restore 53–71s, full parity. Postmortem: `postmortems/2026-10-17-cnpg-dr-restore-wal-gap.md` |
 
 **Priority first runs:** 03 (DB), 04 (NATS backlog → KEDA), 08 (full DR) — the three highest-signal
 proofs for the proof-catalog.
