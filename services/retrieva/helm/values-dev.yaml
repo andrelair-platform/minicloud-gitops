@@ -10,8 +10,8 @@ quota:
   limitRangeName: retrieva-dev-limits
   requestsCpu: "1"
   requestsMemory: 1800Mi   # +300Mi headroom for Postgres (req 256Mi) — RTV-46
-  limitsCpu: "4"
-  limitsMemory: 4Gi
+  limitsCpu: "5"          # +1 CPU so the nightly pg-backup job fits (crew A2A ate the limits headroom) — RTV-85
+  limitsMemory: 5Gi       # +1Gi: steady-state (backend+worker+crew+frontend+pg+redis) = 4032Mi of 4Gi → the 512Mi backup pod was quota-denied → DeadlineExceeded
   pods: "12"
 
 # Dedicated BullMQ worker (retrieva-backend#437) — dev enables it first for verification.
