@@ -21,11 +21,7 @@ worker:
 backend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-backend
-<<<<<<< Updated upstream
     tag: 6e9717a
-=======
-    tag: 6e9717a   # RTV-81b §2a: 0-clause short-circuit (supervisor)
->>>>>>> Stashed changes
   workload:
     replicas: 1
   env:
