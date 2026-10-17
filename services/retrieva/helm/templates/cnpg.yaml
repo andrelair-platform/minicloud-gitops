@@ -1,0 +1,144 @@
+# Additive CNPG migration for retrieva's prod DB (datastore-selection.md — prod retrieva-postgres is a
+# single-instance alpine STS, no failover/PITR). Stands up a dedicated HA + PITR-backed CNPG cluster
+# ALONGSIDE the existing STS (postgres.yaml stays under .Values.postgres.enabled) — no data-loss window.
+# Mirrors the ktayl-iam / ktayl-policy-service migrations. Cutover (checked): rewrite the app's
+# `database-url` host (retrieva-secrets, from Vault platform/retrieva) retrieva-postgres -> retrieva-cnpg-rw
+# in the ExternalSecret target.template (a Vault write to secret/platform/retrieva needs break-glass root;
+# the ops token has none). The managed `retrieva` role password = the same Vault postgres-password the
+# STS/database-url already use -> drop-in. Gated on .Values.cnpg.enabled (prod only; renders alongside
+# the STS); 2 instances on Longhorn RF-1 (App-HA 1r tier).
+{{- if .Values.cnpg.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: retrieva-cnpg
+  labels:
+    app.kubernetes.io/name: retrieva
+spec:
+  instances: {{ .Values.cnpg.instances }}
+  primaryUpdateStrategy: unsupervised
+  storage:
+    size: {{ .Values.cnpg.storageSize }}
+    storageClass: longhorn
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  monitoring:
+    enablePodMonitor: true
+  managed:
+    roles:
+      - name: retrieva
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: retrieva-cnpg-role
+  bootstrap:
+    initdb:
+      database: retrieva
+      owner: retrieva
+{{- if .Values.cnpg.backup.enabled }}
+  backup:
+    retentionPolicy: {{ .Values.cnpg.backup.retentionPolicy | quote }}
+    barmanObjectStore:
+      destinationPath: s3://{{ .Values.cnpg.backup.bucket }}
+      endpointURL: {{ .Values.cnpg.backup.endpointURL }}
+      s3Credentials:
+        accessKeyId:
+          name: retrieva-cnpg-r2
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: retrieva-cnpg-r2
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+{{- end }}
+---
+# CNPG `retrieva` role password = the SAME Vault value the STS/database-url already use → drop-in at cutover.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: retrieva-cnpg-role
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: retrieva-cnpg-role
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: "retrieva"
+        password: "{{ `{{ .pgpass }}` }}"
+  data:
+    - secretKey: pgpass
+      remoteRef:
+        key: {{ .Values.secretsVaultPath }}
+        property: postgres-password
+{{- if .Values.cnpg.backup.enabled }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: retrieva-cnpg-r2
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: retrieva-cnpg-r2
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: ACCESS_KEY_ID
+      remoteRef: { key: {{ .Values.cnpg.backup.vaultPath }}, property: r2-access-key-id }
+    - secretKey: SECRET_ACCESS_KEY
+      remoteRef: { key: {{ .Values.cnpg.backup.vaultPath }}, property: r2-secret-access-key }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: retrieva-cnpg-daily
+spec:
+  schedule: {{ .Values.cnpg.backup.schedule | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: retrieva-cnpg
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator-retrieva
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: retrieva-cnpg
+  policyTypes:
+    - Ingress
+  ingress:
+    # Operator (cnpg-system) → instance status (:8000) + Postgres (:5432).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 5432 }
+    # Same-namespace → Postgres (:5432): REQUIRED for intra-cluster streaming replication
+    # (cnpg-2 → cnpg-1-rw) AND the app → DB at cutover. Selecting the CNPG pods above ISOLATES them,
+    # so without this the replica can't join → cluster stuck at 1/2 (the ktayl #1818 lesson, baked in).
+    - from:
+        - podSelector: {}
+      ports:
+        - { protocol: TCP, port: 5432 }
+{{- end }}
