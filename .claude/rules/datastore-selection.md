@@ -74,12 +74,20 @@ thesis, and only *partially* relieves Longhorn (non-PG stores stay). See the 202
   kept until a soak, then retired. PRs: gitops #1815 (additive) · #1818 (CNPG netpol same-ns :5432) ·
   #1821 (ESO cutover). Gotcha: adding a `template` to a live ES is an **ArgoCD-SSA no-op** → delete the
   ES so it recreates WITH the template (the secret then re-renders rewritten).
-- **Still plain STS holding *prod business* data → remaining CNPG candidate** ⚠️ (posture checked
-  2026-10-17): **`retrieva` (prod)** — single-instance STS, no DB failover, no PITR (🟠 — has a
-  logical-dump CronJob, so recoverable, less urgent than iam was). Serialized behind the iam+ktayl STS
-  retirements (cluster under additive pressure — Longhorn climbed to ~20 degraded during this round);
-  needs its flagship quota bump first. Bring up to CNPG (2-instance / RF-1 shape) using the
-  ktayl-iam / ktayl-policy-service migrations as the template.
+- **`retrieva` (prod) — ✅ MIGRATED to CNPG 2026-10-17** (the last candidate: single-instance alpine STS,
+  no failover/PITR). Additive `retrieva-cnpg` (2 inst, R2 PITR) with the same-ns `:5432` netpol **baked in
+  from the start** (the ktayl #1818 lesson) → healthy **2/2 with no 1/2 stall** → parity (24 tables, 103KB
+  dump) → flagship **quota bump** (req 2560→3200Mi/1→1.5cpu, lim 6→7.5Gi/6→7cpu, pods 16→18) → **cutover
+  via the ESO `database-url` host-rewrite** (`retrieva-postgres`→`retrieva-cnpg-rw`, `index . "database-url"`
+  for the hyphenated key, gated `cnpg.enabled`) → verified (4 live app conns on the CNPG primary — backend
+  ×2 + worker). **Follow-up (owner, non-urgent):** update the Vault `database-url` host + remove the ES
+  template. STS kept until a soak, then retired. PRs: gitops #1823 (additive+quota) · #1825 (ESO cutover).
+  Note: `--clean` restore errors on Drizzle's `__drizzle_migrations` bookkeeping table are non-fatal.
+- **AUDIT COMPLETE (2026-10-17): every prod business/identity Postgres is now on CNPG** (HA 2/2 + R2 PITR)
+  — no remaining STS candidates holding prod data. Two cutovers used the **ESO host-rewrite** pattern
+  (ktayl, retrieva) because `secret/platform/*` writes need break-glass root; iam used a clean values
+  `DATABASE_HOST` flip. Open items: 2 Vault host edits (ktayl DSN + retrieva database-url) → then remove
+  the 2 ES template rewrites; retire the 3 soaking STSes (ktayl-iam/ktayl/retrieva-postgres) to reclaim volumes.
 - **Plain STS genuinely fine**: dev branches; vendor-coupled regenerable state (backstage catalog, plane
   demo) — exceptions recorded.
 
