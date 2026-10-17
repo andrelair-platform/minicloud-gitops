@@ -26,8 +26,8 @@ load *during* the incident so MTTR/RPO/RTO are measured, not estimated. Write-up
 |---|---|---|---|---|
 | 01 | Normal ops baseline | simulator | SLOs green; capture baseline | — |
 | 02 | Traffic spike ×10 | simulator burst | autoscale/degrade, no 5xx storm | — |
-| 03 | DB unavailable 15 min | Chaos Mesh / scale CNPG→0 | clean degrade, alert, recover, no data loss | — |
-| 04 | NATS down | Chaos Mesh | JetStream persists → lag → KEDA → drain | — |
+| 03 | DB unavailable 15 min | Chaos Mesh / scale CNPG→0 | clean degrade, alert, recover, no data loss | **2026-10-17 ✅** — killed ktayl-cnpg primary → failover to cnpg-2, **no data loss**, app up (~2min graceful-delete failover). Postmortem: `postmortems/2026-10-17-chaos-gameday-db-nats.md` |
+| 04 | NATS down | Chaos Mesh | JetStream persists → lag → KEDA → drain | **2026-10-17 ✅** — killed nats-0 → 3/3 recovered, JetStream PVCs intact (stream-count unmeasured, CLI-auth caveat) |
 | 05 | Bad deployment | broken image | canary analysis auto-aborts | — |
 | 06 | Security incident | leaked secret / rogue workload | Gatekeeper deny / Vault rotate; audited | — |
 | 07 | AI failure | LLM down / bad output | gateway fallback; eval catches it | — |
