@@ -14,22 +14,10 @@ metadata:
 spec:
   groups:
     - name: cnpg-nextcloud
+      # Backup-staleness now covered generically for every CNPG cluster by CNPGBackupStale in
+      # platform/storage/backup-dr/00-prometheusrule.yaml (verified: it evaluates ns=nextcloud) —
+      # the per-cluster BackupStale was removed here. The health alert stays (no generic equivalent yet).
       rules:
-        - alert: CNPGNextcloudBackupStale
-          expr: |
-            (time() - max(cnpg_collector_last_available_backup_timestamp{namespace="nextcloud"})) / 3600 > 26
-          for: 30m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Nextcloud CNPG has no fresh R2 backup in 26+ hours"
-            description: |
-              The nextcloud-postgres cluster's last available Barman/R2 backup is
-              {{ $value | printf "%.1f" }} hours old (or the metric is absent → no backup yet).
-              Check: kubectl -n nextcloud get cluster nextcloud-postgres
-                     kubectl -n nextcloud get backup,scheduledbackup
-              Logs:  kubectl -n nextcloud logs -l cnpg.io/cluster=nextcloud-postgres -c postgres --tail=100
-
         - alert: CNPGNextcloudNotHealthy
           expr: |
             max(cnpg_collector_up{namespace="nextcloud"}) < 1
