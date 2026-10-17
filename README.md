@@ -53,11 +53,12 @@ Every resource running in the minicloud k3s cluster originates from this repo. A
 | Path | Role |
 |---|---|
 | `bootstrap/` | The app-of-apps **seed** (`root-app.yaml`) — the only thing applied by hand to bootstrap ArgoCD. |
-| `apps/` | ArgoCD **`Application` manifests** = what ArgoCD watches. `platform/` (third-party/infra apps) · `workloads/` (custom-app apps) · `previews/`. |
-| `services/<svc>/` | Per-custom-app **deployment artifacts**: `helm/` (GAP **wrapper chart** — the standard), `kargo/` (promotion pipeline). (`base/`+`minicloud-1/` = legacy kustomize kept as rollback during migration.) |
+| `apps/` | ArgoCD **`Application` manifests** = what ArgoCD watches (the taxonomy projection — see `ARCHITECTURE.md`): `platform/<layer>/` · `is/<group>/` · `retrieva/` · `previews/`. (`workloads/` is **retired** — the Architecture-Guard CI blocks new entries there.) |
+| `platform/<layer>/` | **Platform capabilities** (domain-agnostic) by layer — `foundation` · `networking` · `secrets` · `security` · `observability` · `data` · `ai` · `delivery` · `storage` · `automation` · `shared-services`. Holds the raw K8s/CRD manifests (network-policies, quotas, gatekeeper-policies, argocd-project…). |
+| `is/<group>/` | **Information-System** (the insurance business) resources — `insurance` · `erp` · `workplace`. |
+| `services/<svc>/` | Per-custom-app **packaging**: `helm/` (GAP **wrapper chart** — the standard) + `kargo/` (promotion pipeline). **Helm-only — zero kustomize.** |
 | `charts/` | The shared **`minicloud-app-deployment` library chart** (the golden path consumed by every wrapper chart). |
 | `helm-values/` | Values for **third-party** Helm charts (Grafana/Vault/Harbor/ERPNext…) consumed by `apps/platform`. |
-| `manifests/<concern>/` | Platform-level **raw K8s/CRD** manifests not owned by one app (network-policies, quotas, rbac, gatekeeper-policies, argocd-project, argocd-repos, kargo, ai, backup-dr…). |
 | `environments/overlays/{dev,prod}` | Shared per-environment config. |
 | `bmad/` | Story authoring — `templates/` + this product's stories (`stories/platform/`). Per-product BMAD otherwise lives in each product's home repo. |
 | `docs/` | **In-repo ADRs** — design decisions coupled to the code (`helm-golden-path.md`), reviewed in the same PR. Reference/governance docs live on the org site ([minicloud-platform-docs](https://andrelair-platform.github.io/minicloud-platform-docs/), e.g. the *AI Model Governance Matrix* / *DORA Audit Trail* under AI & ML). Rule: **ADRs/runbooks with the code; reference & governance on the org site.** No per-repo Docusaurus site for this infra repo. |
@@ -72,9 +73,9 @@ Every resource running in the minicloud k3s cluster originates from this repo. A
 - **All OPA Gatekeeper policies in deny mode, zero violations** — NET_RAW, capabilities, seccomp, privilege escalation, host namespace, allowed registries, resource limits, non-root, ingress TLS
 - **Zero-trust NetworkPolicy** — default-deny ingress on all platform namespaces; services may only reach declared upstreams
 - **Secrets via Vault + ESO** — all credentials in HashiCorp Vault; External Secrets Operator syncs them to Kubernetes Secrets at runtime; nothing committed to git
-- **Enterprise AI stack** — LiteLLM gateway routing cloud and local LLM providers (Groq, OpenAI, Anthropic, Mistral, Gemini, Ollama); RAG pipeline (bge-m3 + pgvector HNSW + BM25 + cross-encoder + Docling OCR)
+- **Enterprise AI stack** — LiteLLM gateway routing cloud and local LLM providers (Groq, OpenAI, Anthropic, Mistral, Gemini, Ollama); RAG pipeline (bge-m3 + **Qdrant** vector DB + BM25 + cross-encoder + Docling OCR)
 - **Full supply chain** — all custom images Trivy-scanned, Cosign-signed (keyless via GitHub OIDC → Sigstore Fulcio), syft CycloneDX SBOM as OCI referrer; GPG-signed gitops bump commits
-- **Kustomize Combo 1** — base + `minicloud-1/{dev,staging,prod}` overlays for internal services; CI promotes via `kustomize edit set image` to dev only; staging and prod require PR
+- **Helm GAP wrapper-chart + Kargo promotion** — each custom app is a thin Helm chart on the shared `minicloud-app-deployment` library (no kustomize); **two environments only** (`dev` + `prod`); **Kargo** promotes one immutable image `dev → prod` (dev auto-merge · prod CODEOWNERS-gated PR)
 
 ---
 
@@ -100,25 +101,28 @@ git push → GitHub             MAAS + OpenTofu (bare metal)
      v
 minicloud-gitops (this repo — ArgoCD app-of-apps)
 +-- bootstrap/      root-app.yaml (one-time apply)
-+-- apps/           ArgoCD Application per workload
-+-- helm-values/    all Helm overrides per cluster (helm-values/minicloud-1/)
-+-- services/       Kustomize base + minicloud-1/{dev,staging,prod} overlays
-+-- manifests/      cluster-wide resources (CRDs, RBAC, policies)
++-- apps/           ArgoCD Application per workload (platform · is · retrieva · previews)
++-- platform/       platform capabilities by layer (ai, security, observability…)
++-- is/             insurance-business resources (insurance · erp · workplace)
++-- services/       custom-app packaging — helm/ wrapper chart + kargo/ (Helm-only)
++-- helm-values/    third-party chart values (helm-values/minicloud-1/)
      |
-     v (ArgoCD reconciles on every push)
+     v (ArgoCD reconciles on every push; Kargo promotes dev → prod)
 +--------------------------------------------------+
-|  k3s cluster — 5 nodes                          |
-|  set-hog (control plane, 10.0.0.2)              |
-|  fast-skunk / fast-heron / star-kitten / swift-mac|
+|  k3s cluster — 6 nodes (1 control plane + 5 workers) |
+|  set-hog (control plane, 10.0.0.2)                   |
+|  fast-skunk · fast-heron · star-kitten ·            |
+|  loving-gannet · swift-mac                           |
+|  CNI: Cilium (CNI + LB-IPAM 10.0.0.200 + Hubble)    |
 |                                                  |
 |  Secrets:   Vault (AWS KMS auto-unseal) + ESO   |
 |  Identity:  Authentik OIDC + TOTP               |
 |  Ingress:   nginx-ingress + cert-manager         |
-|  Storage:   Longhorn (distributed, swift-mac)   |
+|  Storage:   Longhorn (replicated: heron/gannet/swift)|
 |  Security:  Gatekeeper + Falco + NetworkPolicy  |
-|  Observ:    Prometheus + Grafana + Loki          |
+|  Observ:    Prometheus + Grafana + Loki + Tempo + OTel|
 |  AI/ML:     LiteLLM → Groq/OpenAI/Ollama        |
-|             RAG: rag-ingest + pgvector + bge-m3  |
+|             RAG: rag-ingest + Qdrant + bge-m3   |
 |  Platform:  Backstage IDP + Plane CE + Harbor   |
 |  Collab:    Nextcloud + OnlyOffice + Vaultwarden |
 +--------------------------------------------------+
@@ -129,11 +133,12 @@ minicloud-gitops (this repo — ArgoCD app-of-apps)
 
 | Component | Detail |
 |---|---|
-| Kubernetes | k3s — 1 control plane (set-hog) + 4 workers |
-| GitOps | ArgoCD — app-of-apps, `selfHeal: true`, webhook on push |
+| Kubernetes | k3s — 1 control plane (set-hog) + 5 workers (fast-skunk, fast-heron, star-kitten, loving-gannet, swift-mac) |
+| GitOps | ArgoCD — app-of-apps, `selfHeal: true`, webhook on push; **Kargo** promotes `dev → prod` |
+| CNI / LB | **Cilium** — CNI + LB-IPAM (`10.0.0.200`) + Hubble (replaced flannel + MetalLB) |
 | Secrets | HashiCorp Vault (AWS KMS auto-unseal) + External Secrets Operator |
-| Storage | Longhorn distributed block storage; swift-mac as primary storage node |
-| Registry | Harbor (`harbor.10.0.0.200.nip.io` internal, `harbor.devandre.sbs` public) |
+| Storage | Longhorn distributed block storage (replicated across fast-heron / loving-gannet / swift-mac) |
+| Registry | **Hybrid** — Harbor (`harbor.10.0.0.200.nip.io`) for dev images · **ghcr.io** for prod (immutable SHA, cosign-signed) |
 | Network | Tailscale VPN mesh (internal) + Cloudflare Tunnel (public `*.devandre.sbs`) |
 
 ---
@@ -168,17 +173,18 @@ The AI stack lives in the `ai` namespace and is fully managed here.
 | **Langfuse** | LLM observability — traces, scores, cost per department key, prompt versioning |
 | **Presidio** | PII/DLP guardrail — masks PERSON, PHONE, EMAIL, IP_ADDRESS before logging (DATE_TIME/LOCATION pass through to preserve financial context) |
 | **markitdown-proxy** | Document converter: PDF/images → Docling OCR, Office → MarkItDown |
-| **rag-ingest** | Ingest pipeline: convert → French-aware chunking → bge-m3 embed → pgvector HNSW insert |
-| **postgresql-ai** | pgvector (1024-dim HNSW + GIN French FTS) for RAG; LiteLLM + Langfuse databases |
+| **Qdrant** | Vector DB — the RAG retrieval store (HNSW); `platform/ai/litellm/42-qdrant.yaml` |
+| **rag-ingest** | Ingest pipeline: convert → French-aware chunking → bge-m3 embed → **Qdrant** insert |
+| **postgresql-ai** | Postgres for the **LiteLLM** metadata DB (Langfuse moved to its own CNPG cluster `langfuse-postgres`) |
 
 ### LiteLLM config
 
-LiteLLM config is managed in [minicloud-litellm-custom](https://github.com/andrelair-platform/minicloud-litellm-custom). CI syncs `config/litellm-config.yaml` into `manifests/ai/00-litellm-configmap.yaml` automatically. **Do not edit that file directly here.**
+LiteLLM config is managed in [minicloud-litellm-custom](https://github.com/andrelair-platform/minicloud-litellm-custom). CI syncs `config/litellm-config.yaml` into `platform/ai/litellm/00-litellm-configmap.yaml` automatically. **Do not edit that file directly here.**
 
 ### RAG eval pipeline
 
-`manifests/ai/16-rag-eval-job.yaml` — ArgoCD PostSync hook that runs Ragas (GPT-4o judge) + ROUGE-L / Hit Rate / MRR after every `ai` namespace sync.  
-`manifests/ai/17-rag-eval-cronjob.yaml` — 5% online sampling every 15 min with scores written back to Langfuse.
+`platform/ai/litellm/16-rag-eval-job.yaml` — ArgoCD PostSync hook that runs Ragas (GPT-4o judge) + ROUGE-L / Hit Rate / MRR after every `ai` namespace sync.  
+`platform/ai/litellm/17-rag-eval-cronjob.yaml` — 5% online sampling every 15 min with scores written back to Langfuse.
 
 ---
 
@@ -186,7 +192,7 @@ LiteLLM config is managed in [minicloud-litellm-custom](https://github.com/andre
 
 | Control | Detail |
 |---|---|
-| **NetworkPolicy** | Default-deny ingress on all platform namespaces; webhook namespaces allow both `10.0.0.0/24` (kube-apiserver) and `10.42.0.0/24` (flannel VTEP) |
+| **NetworkPolicy** | Default-deny ingress on all platform namespaces; apiserver/webhook reachability uses a **CiliumNetworkPolicy `toEntities`** (`kube-apiserver` · `host` · `remote-node`) — the Cilium identity, not a flannel CIDR |
 | **OPA Gatekeeper** | All policies in deny mode, zero violations: no-latest-tag, no-privileged, allowed-registries, require-resource-limits, require-non-root, no-privilege-escalation, require-ingress-tls, no-loadbalancer-in-dev, no-hostpath |
 | **Pod Security Admission** | `warn:restricted` on all namespaces; `enforce:restricted` on homer, podinfo, insurance/collab envs |
 | **ESO + Vault KV** | All ExternalSecrets synced — no secrets committed to git; all credentials in HashiCorp Vault (AWS KMS auto-unseal) |
@@ -239,7 +245,7 @@ services/<name>/helm/
 
 **Never apply Application CRs manually.** `bootstrap/root-app.yaml` is the only file that needs a one-time `kubectl apply`. All other apps are created by the root app from `apps/`. Running `kubectl apply` on Application CRs manually competes with `selfHeal: true` and causes "missing last-applied-configuration" annotation conflicts.
 
-**Webhook namespaces** (cert-manager, external-secrets, gatekeeper-system, keda, vault): the `allow-webhook-from-apiserver` NetworkPolicy must allow both `10.0.0.0/24` (kube-apiserver node IP) and `10.42.0.0/24` (flannel VTEP — the source IP for traffic arriving from worker-node pods).
+**Webhook namespaces** (cert-manager, external-secrets, gatekeeper-system, keda, vault): under **Cilium**, a plain `ipBlock` CIDR does **not** match the kube-apiserver identity — use a **CiliumNetworkPolicy** `toEntities: [kube-apiserver, host, remote-node]` so admission webhooks stay reachable. (The old flannel `10.42.0.0/24` CIDR rule no longer applies.)
 
 **ResourceQuota sizing:** set quotas at ~2× steady-state to allow rolling updates. Both old and new pods count against the quota simultaneously during a rollout. For single-replica workloads with a tight quota, use `strategy.type: Recreate`.
 
@@ -255,7 +261,7 @@ services/<name>/helm/
 | Harbor ArgoCD sync loop triggering rolling restarts | `ServerSideApply: true` + `genSelfSignedCert`/`randAlphaNum` generates new checksums each render | Remove `ServerSideApply: true` from `apps/harbor.yaml` syncOptions |
 | Rollout stalled after adding pod label to pre-Gatekeeper workload | New RS pods blocked by `K8sBlockNetRaw` — old pod predates the constraint | Add `securityContext.capabilities.drop: [NET_RAW]` in the same commit as the label change |
 | New pod blocked by `K8sBlockCapabilities` on rollout | Container spec missing `capabilities.drop` list format | Gatekeeper requires the list form (`capabilities.drop: [NET_RAW]`), not the map form |
-| Webhook-dependent pod fails to start with `connection refused` | NetworkPolicy missing flannel VTEP source (`10.42.0.0/24`) | Add `10.42.0.0/24` to the `allow-webhook-from-apiserver` NetworkPolicy alongside `10.0.0.0/24` |
+| Webhook-dependent pod fails to start with `connection refused` | Under Cilium, an `ipBlock` CIDR doesn't match the kube-apiserver identity | Use a **CiliumNetworkPolicy** `toEntities: [kube-apiserver, host, remote-node]` (not a flannel `10.42.0.0/24` ipBlock) |
 | ESO ExternalSecret stuck in `SecretSyncedError` | Vault KV path changed or policy missing `read` permission | Check `vault kv get secret/platform/<name>` and the Vault Kubernetes auth role `bound_service_account_namespaces` |
 | VPA update loop after switching to `updateMode: Auto` | Short `startupProbe` fails when VPA raises resource limits mid-start | Set `startupProbe.failureThreshold: 30` (5 min) and `minAllowed.cpu` in the VPA object |
 
