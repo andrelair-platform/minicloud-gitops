@@ -78,6 +78,17 @@ spec:
       ports:
         - { protocol: TCP, port: 6379 }
         - { protocol: TCP, port: 5432 }
+{{- if .Values.crewA2A.enabled }}
+    # A2A to the assessment crew (RTV-81b): the supervisor delegates the gap node over A2A to the
+    # CrewAI crew (8080), same namespace. Least-privilege — scoped to the crew pod + port. Gated by
+    # crewA2A.enabled so it renders only where the crew delegation is turned on (dev first).
+    - to:
+        - podSelector:
+            matchLabels:
+              app: retrieva-assessment-crew
+      ports:
+        - { protocol: TCP, port: 8080 }
+{{- end }}
     # The AI platform (ai ns): LiteLLM gateway (4000) + Qdrant (6333/6334)
     # + document conversion for ingestion (RTV-14): markitdown-proxy (8000) and
     # docling-serve (5001) — layout-aware parsing + OCR of scanned PDFs/images.

@@ -70,6 +70,15 @@ backend:
     - { name: ENCRYPTION_KEY,     valueFrom: { secretKeyRef: { name: retrieva-secrets, key: encryption-key } } }
     - { name: FRONTEND_URL, value: "https://retrieva-dev.10.0.0.200.nip.io" }
     - { name: ALLOWED_ORIGINS, value: "https://retrieva-dev.10.0.0.200.nip.io" }
+    # RTV-81b — delegate the assessment gap node to the CrewAI crew over A2A (dev first). The crew
+    # output is PROPOSED (never persisted); the supervisor's human gate stays authoritative. Paired
+    # with crewA2A.enabled below (opens the backend→crew:8080 egress netpol).
+    - { name: CREW_A2A_ENABLED, value: "true" }
+    - { name: CREW_A2A_URL, value: "http://retrieva-assessment-crew.retrieva-dev.svc.cluster.local:8080" }
+
+# Opens the least-privilege backend→crew:8080 egress rule (templates/networkpolicy.yaml).
+crewA2A:
+  enabled: true
 
 frontend:
   image:

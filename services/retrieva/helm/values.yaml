@@ -110,6 +110,12 @@ cnpg:
 # retrieva Vault path and the backend gets RESEND_API_KEY. (#475)
 email:
   enabled: false
+# Supervisor → CrewAI crew A2A delegation (RTV-81b). Default OFF: the backend uses the in-process
+# engine until an env enables it. When true, the backend env sets CREW_A2A_ENABLED/CREW_A2A_URL AND
+# the egress netpol opens backend→crew:8080. dev flips first (values-dev); prod stays off until its
+# own gated flip.
+crewA2A:
+  enabled: false
 secretsVaultPath: platform/retrieva
 ingress:
   host: retrieva.online
