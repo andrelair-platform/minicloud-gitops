@@ -1,0 +1,48 @@
+# Langfuse ClickHouse disk alerts. ClickHouse is Langfuse's trace store; when its PVC hits 100% the
+# worker drops EVERY trace (`NOT_ENOUGH_SPACE`, code 243) and crashloops → all LLM observability is
+# lost platform-wide, silently (RTV-81b incident, 2026-10-17: the 30Gi PVC filled → every crew +
+# supervisor trace dropped). The generic KubePersistentVolumeFillingUp only warns near-full/predictive;
+# this is a LOUD, EARLY, static threshold on the exact volume so a refill is caught days ahead.
+# Permanent fix is Langfuse data-retention (so it never approaches full) — this is the safety net.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: langfuse-clickhouse-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: langfuse-clickhouse
+      rules:
+        - alert: LangfuseClickHouseDiskWarning
+          expr: |
+            100 * (1 - kubelet_volume_stats_available_bytes{persistentvolumeclaim="data-langfuse-clickhouse-shard0-0"}
+                      / kubelet_volume_stats_capacity_bytes{persistentvolumeclaim="data-langfuse-clickhouse-shard0-0"}) > 80
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Langfuse ClickHouse PVC >80% full"
+            description: |
+              The Langfuse ClickHouse volume is {{ $value | printf "%.0f" }}% full. At 100% the worker
+              drops every trace (NOT_ENOUGH_SPACE) + crashloops → ALL LLM tracing lost platform-wide.
+              Fix now: set/lower Langfuse Data Retention (Project Settings → it purges ClickHouse+blobs),
+              and/or expand the PVC (Longhorn online): kubectl -n langfuse patch pvc
+              data-langfuse-clickhouse-shard0-0 -p '{"spec":{"resources":{"requests":{"storage":"<N>Gi"}}}}'.
+              Check table sizes: system.parts where database='default'.
+
+        - alert: LangfuseClickHouseDiskCritical
+          expr: |
+            100 * (1 - kubelet_volume_stats_available_bytes{persistentvolumeclaim="data-langfuse-clickhouse-shard0-0"}
+                      / kubelet_volume_stats_capacity_bytes{persistentvolumeclaim="data-langfuse-clickhouse-shard0-0"}) > 90
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Langfuse ClickHouse PVC >90% full — trace loss imminent"
+            description: |
+              The Langfuse ClickHouse volume is {{ $value | printf "%.0f" }}% full. Trace ingestion will
+              fail at 100% (worker drops + crashloops). Expand the PVC NOW (Longhorn online expansion)
+              and apply data retention. See the RTV-81b incident in the LLMOps/ops-runbooks notes.
