@@ -164,3 +164,44 @@ spec:
               kubectl get clustersecretstore vault-backend -o jsonpath='{.status.conditions[0].reason}'
               If SecretStoreNotReady: wait for Vault Ready, then:
               kubectl rollout restart deploy/external-secrets -n external-secrets
+
+    # Generic CNPG backup-staleness coverage for EVERY cluster (current + future).
+    # Supersedes the per-cluster hardcoded CNPG<Name>BackupStale alerts (authentik/langfuse/
+    # nextcloud/synapse) — those only ever covered 4 of ~13 clusters, so clusters added later
+    # (claims-prod, underwriting-prod, ktayl-prod, ktayl-iam-prod, retrieva, data-platform…)
+    # had NO backup alert and their recovery point could slip silently. Follow-up: remove the
+    # now-redundant per-cluster *BackupStale alerts (keep the *NotHealthy ones).
+    # TRAP handled: cnpg_collector_last_available_backup_timestamp reports 0 on REPLICA
+    # instances → a naive `time() - metric` false-fires "decades stale" on every HA cluster.
+    # `max by (namespace, job)` takes the primary's real (freshest) timestamp.
+    - name: cnpg-backups
+      rules:
+        - alert: CNPGBackupStale
+          expr: |
+            (time() - max by (namespace, job) (cnpg_collector_last_available_backup_timestamp)) / 3600 > 26
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "CNPG cluster {{ $labels.job }} has no fresh backup (> 26h)"
+            description: |
+              The last available backup for CNPG cluster `{{ $labels.job }}` (ns
+              `{{ $labels.namespace }}`) is {{ $value | printf "%.1f" }}h old — a daily cadence is
+              expected, so the recovery point (RPO) is slipping. For a prod DB this is a DORA
+              Art. 11 off-site-DR exposure. Check: the cluster's ScheduledBackup, the
+              `barmanObjectStore` destination, and the R2 credentials (Vault
+              `secret/platform/cloudflare`); look for a `Backup` CR in phase `failed`
+              (`kubectl get backup.postgresql.cnpg.io -n {{ $labels.namespace }}`).
+        - alert: CNPGBackupCritical
+          expr: |
+            (time() - max by (namespace, job) (cnpg_collector_last_available_backup_timestamp)) / 3600 > 49
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "CNPG cluster {{ $labels.job }} backup is >2 days stale"
+            description: |
+              No backup for `{{ $labels.job }}` in {{ $value | printf "%.1f" }}h — two daily
+              cadences missed. Treat as a recovery-point outage: a controller/site loss now would
+              lose more than a day of data for this database. Investigate the ScheduledBackup +
+              barmanObjectStore immediately.
