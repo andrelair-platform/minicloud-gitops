@@ -21,7 +21,7 @@ worker:
 backend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-backend
-    tag: 5e2df0a
+    tag: fe73460   # RTV-81b QA: crew A2A via direct JSON-RPC message/send (SDK didn't interop)
   workload:
     replicas: 1
   env:
