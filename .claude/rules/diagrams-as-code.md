@@ -65,6 +65,14 @@ canonical → the loop converges (no more noise). `make check` is a *local same-
 
 ## Gotchas (proven 2026-10-17)
 
+- **SVGs are NOT self-contained — you MUST inline the icons or the SVG is broken standalone.**
+  Graphviz/`diagrams` renders SVG with `<image xlink:href="/abs/local/path/icon.png">` — icons are
+  referenced by **filesystem path**, not embedded. The SVG renders only where it was generated and is
+  **broken when opened in a browser / on GitHub Pages** (every icon 404s → the poster looks empty), and
+  it **leaks the author's local path** into a committed file. Fix: a post-process that rewrites every
+  local `xlink:href` to a base64 **data URI** (reusable `embed-svg-images.py`, idempotent), run as the
+  last step of `make generate`. Verify `grep -c '/Users/' <svg>` == 0. The **PNG** has no such problem
+  (icons are rasterised in) — but prefer the self-contained SVG for crisp zoom; use the PNG in READMEs.
 - `diagrams` package has **no `__version__`** attr → use `importlib.metadata.version('diagrams')`.
 - `diagrams.custom.Custom` needs a **PNG** (Graphviz won't render an SVG as a node image).
 - `https://github.com/cloudflare.png` is **not** a PNG (fails the fetch) — keep the built-in Cloudflare node.
