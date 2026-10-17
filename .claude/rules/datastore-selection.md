@@ -60,12 +60,14 @@ thesis, and only *partially* relieves Longhorn (non-PG stores stay). See the 202
 
 ## Current placement audit (keep current)
 - **Correctly on CNPG** ✅: authentik, synapse, claims, data-platform, langfuse, nextcloud, underwriting.
-- **Plain STS but hold *prod business/identity* data → CNPG migration candidates** ⚠️ (posture checked
-  2026-10-17): all single-**instance** alpine StatefulSets (no DB failover, no PITR), ~145–196 MiB each —
-  they fail the 10-second test on the wrong side. Priority order by how exposed:
-  **`ktayl-iam` (prod) is 🔴 urgent — Longhorn RF=1 *and* no backup CronJob → one volume wedge = total,
-  unrecoverable loss of identity data**; `ktayl` + `retrieva` (prod) are 🟠 (RF=3 + a logical-dump
-  CronJob, so recoverable, but no failover/PITR). Bring all three up to CNPG (2-instance / RF-1 shape).
+- **`ktayl-iam` (prod) — ✅ MIGRATED to CNPG 2026-10-17** (was the 🔴 urgent case: RF=1 + no backup).
+  Additive cluster → quiesced pg_dump→restore at exact parity → `DATABASE_HOST` drop-in flip →
+  verified (backend 0 restarts, IAM 200, role rows match) → 2 instances + R2 PITR. STS kept until a
+  soak, then retired. PRs: gitops #1810 (additive) · #1812 (Cluster ignoreDifferences) · #1813 (cutover).
+- **Still plain STS holding *prod business* data → remaining CNPG candidates** ⚠️ (posture checked
+  2026-10-17): **`ktayl` + `retrieva` (prod)** — single-instance alpine STS, no DB failover, no PITR
+  (🟠 — RF=3 + a logical-dump CronJob, so recoverable, less urgent than iam was). Bring up to CNPG
+  (2-instance / RF-1 shape) using the ktayl-iam migration as the template.
 - **Plain STS genuinely fine**: dev branches; vendor-coupled regenerable state (backstage catalog, plane
   demo) — exceptions recorded.
 
