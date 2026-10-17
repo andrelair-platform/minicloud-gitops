@@ -1,7 +1,7 @@
 # retrieva PostgreSQL — the primary datastore (RTV-45 cutover complete; Mongo removed RTV-49).
 # Gated by .Values.postgres.enabled (dev first; prod enabled via the gated quota-bump PR). Password
 # from retrieva-secrets (ESO → Vault secretsVaultPath/postgres-password). Mirrors the ktayl pattern.
-{{- if .Values.postgres.enabled }}
+{{- if .Values.legacySts.enabled }}
 apiVersion: v1
 kind: Service
 metadata:

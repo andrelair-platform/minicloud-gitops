@@ -6,7 +6,9 @@ secretsVaultPath: platform/retrieva
 email:
   enabled: true
 postgres:
-  enabled: true          # prod Postgres — the primary datastore (STS; being migrated to CNPG 2026-10-17)
+  enabled: true          # kept true so the retrieva-secrets ExternalSecret renders (app secret source)
+legacySts:
+  enabled: false         # legacy STS RETIRED 2026-10-17 — prod app on retrieva-cnpg (2/2 + PITR)
 cnpg:
   enabled: true          # additive HA+PITR CNPG cluster (retrieva-cnpg), alongside the STS → cutover
 ingress:

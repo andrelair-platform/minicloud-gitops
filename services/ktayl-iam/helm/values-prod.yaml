@@ -40,7 +40,7 @@ frontend:
   imagePullSecrets: [{ name: ghcr-pull }]
 
 postgres:
-  enabled: true
+  enabled: false   # legacy STS RETIRED 2026-10-17 — app on ktayl-iam-cnpg (2/2 + PITR)
   requestMemory: 256Mi
   limitMemory: 512Mi
   storage: 5Gi
