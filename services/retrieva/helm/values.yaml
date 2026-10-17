@@ -92,6 +92,19 @@ postgres:
     enabled: true
     schedule: "30 2 * * *"
     retentionDays: 7
+# CNPG — the HA + PITR Postgres the STS above is being migrated to (datastore-selection.md).
+# Disabled by default; prod enables it (additive, alongside the STS) via the gated quota-bump PR.
+cnpg:
+  enabled: false
+  instances: 2
+  storageSize: 5Gi
+  backup:
+    enabled: true
+    retentionPolicy: "14d"
+    bucket: minicloud-cnpg-offsite/retrieva
+    endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
+    vaultPath: platform/cloudflare
+    schedule: "0 0 6 * * *"   # staggered 06:00 (ktayl=05:00)
 # Transactional/notification email via Resend. Off by default (dev stays unconfigured —
 # emails no-op). Prod enables it: the ExternalSecret then pulls `resend-api-key` from the
 # retrieva Vault path and the backend gets RESEND_API_KEY. (#475)

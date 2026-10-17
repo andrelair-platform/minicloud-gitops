@@ -31,6 +31,19 @@ spec:
         - .spec.data[].remoteRef.decodingStrategy
         - .spec.data[].remoteRef.metadataPolicy
         - .spec.target.deletionPolicy
+    # CNPG operator-injected spec defaults (retrieva-cnpg) → else permanently OutOfSync. Mirrors ktayl.
+    - group: postgresql.cnpg.io
+      kind: Cluster
+      jqPathExpressions:
+        - .spec.storage.resizeInUseVolumes
+        - .spec.monitoring.customQueriesConfigMap
+        - .spec.monitoring.disableDefaultQueries
+        - .spec.backup.target
+        - .spec.managed.roles[].connectionLimit
+        - .spec.managed.roles[].inherit
+        - .spec.bootstrap.initdb.encoding
+        - .spec.bootstrap.initdb.localeCType
+        - .spec.bootstrap.initdb.localeCollate
   syncPolicy:
     automated:
       prune: true

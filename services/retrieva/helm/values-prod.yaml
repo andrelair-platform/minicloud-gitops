@@ -6,18 +6,20 @@ secretsVaultPath: platform/retrieva
 email:
   enabled: true
 postgres:
-  enabled: true          # prod Postgres — the primary datastore (RTV-49 cutover complete)
+  enabled: true          # prod Postgres — the primary datastore (STS; being migrated to CNPG 2026-10-17)
+cnpg:
+  enabled: true          # additive HA+PITR CNPG cluster (retrieva-cnpg), alongside the STS → cutover
 ingress:
   host: retrieva.online
   tlsSecretName: retrieva-tls
 quota:
   name: retrieva-quota
   limitRangeName: retrieva-limits
-  requestsCpu: "1"
-  requestsMemory: 2560Mi   # +512Mi for Postgres (req 256Mi + headroom) — RTV-46; was 2Gi (1920Mi used)
-  limitsCpu: "6"
-  limitsMemory: 6Gi        # fits (5148Mi used + PG 512Mi limit = 5660 < 6144)
-  pods: "16"
+  requestsCpu: "1500m"     # +500m for 2 CNPG instances (2×100m req) + headroom — was "1" (650m used)
+  requestsMemory: 3200Mi   # +640Mi for 2 CNPG instances (2×256Mi req) + headroom — was 2560Mi (2304 used)
+  limitsCpu: "7"           # +1 for 2 CNPG instances (2×500m limit) — was 6 (5300m used)
+  limitsMemory: 7680Mi     # +1536Mi for 2 CNPG instances (2×512Mi limit) + headroom — was 6Gi (5696 used)
+  pods: "18"               # +2 for the CNPG instances — was 16
 
 # Dedicated BullMQ worker (retrieva-backend#437) — enabled after dev verification. Enabled
 # together with promoting the worker-free API image (Kargo) so prod never loses its worker.
