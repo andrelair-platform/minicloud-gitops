@@ -3,7 +3,7 @@ secretsVaultPath: platform/retrieva-dev
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-assessment-crew
-    tag: b664731
+    tag: 8bfe3b9   # RTV-81b: Langfuse instrumentation + control catalog + verdict rule + snippet-null fix
   workload:
     replicas: 1
   env:
