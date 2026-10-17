@@ -66,5 +66,5 @@ spec:
             summary: "SSD wear >90% on {{ $labels.instance }} device {{ $labels.device }}"
             description: >-
               The NVMe on {{ $labels.instance }} ({{ $labels.device }}) reports
-              {{ $value | printf \"%.0f\" }}% of its rated write endurance used. Plan replacement
+              {{ $value | printf "%.0f" }}% of its rated write endurance used. Plan replacement
               before it hits 100% (read-only / failure territory).
