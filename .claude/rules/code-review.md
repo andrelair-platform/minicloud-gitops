@@ -78,6 +78,24 @@ gate** (`qa-gate.md`), the **test pyramid** (`testing.md`), and the **docs DoD g
   emergency**. Pre-existing/out-of-scope problems → **record them** in `deferred-work.md` (or a filed issue
   + a `TODO(#issue)`), don't block but don't let them vanish. (This is our `deferred-work.md` discipline.)
 
+## The merge path & the `--admin` accepted-risk determination
+- **Default = plain `gh pr merge --squash`.** The `main` rulesets are already scoped so a PR touching **no
+  CODEOWNERS path** (docs, templates, most of `.github/workflows/`) needs **no review** → it merges plainly.
+  `--admin` is **never** the default (proven: platform-docs #303, gitops #1863 merged with no `--admin`).
+- **`merge-gate` is a REQUIRED status check** (gitops ruleset) — an always-on, zero-false-positive
+  conflict-marker scan on every PR. It blocks the exact class that reached `main` via `--admin` in #1860.
+- **`--admin` on gated PRs — accepted risk (solo, 2026-10-17).** A second *independent human* approver
+  doesn't exist (solo), so a CODEOWNERS-gated PR (prod overlays, `services/*/helm`, `apps/`, `helm-values/`,
+  `.claude/`, security) can't get a non-self approval — and we **don't fake one** (no review-bot, owner's
+  choice; the ready design is `[[reference_review_bot_approve]]` if that ever changes). Closed as an
+  **accepted risk**, not a hidden gap (same style as the DORA tester-independence determination):
+  - Gated PRs merge via **`--admin` as logged break-glass, only after the owner confirms `merge-gate` + CI
+    are green** (because `--admin` bypasses those too → the control is *looking first*).
+  - **Compensating controls:** `merge-gate`/CI (machine) + the fresh-context `/bmad-code-review`
+    (independent perspective) + the owner's pre-merge eyeball.
+  - **Revisit trigger:** a second engineer joins, or a real-prod / real-PII claim → add the review-bot
+    (`[[reference_review_bot_approve]]`) or a human reviewer.
+
 ## Relationship to the gates (don't double-count)
 Review (this) + **CI** (`testing.md` L0–L4) + the **live QA gate** (`qa-gate.md`, L5) + **CODEOWNERS**
 (the merge enforcement) are **distinct** evidence — none replaces another. This file governs *human/AI
