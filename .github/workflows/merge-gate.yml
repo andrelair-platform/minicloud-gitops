@@ -1,0 +1,35 @@
+# Always-on merge gate: a required status check that runs on EVERY PR (no paths filter → never
+# "Expected"-deadlocks a docs-only PR) and blocks the one failure class that reached main via --admin
+# in the #1860 incident: unresolved git conflict markers in a committed file. Deliberately scoped to
+# conflict markers only (universally illegitimate, zero false positives) — Helm/Kargo template YAML is
+# validated by the path-filtered validate-manifests job, not here. See .claude/rules/code-review.md.
+name: Merge Gate
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  merge-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: No unresolved git conflict markers in changed files
+        run: |
+          base='${{ github.event.pull_request.base.sha }}'
+          head='${{ github.event.pull_request.head.sha }}'
+          bad=0
+          # start/end markers are 7 angle-brackets + a space + ref → never legitimate (the bare
+          # ======= middle marker is skipped: it collides with markdown setext headings).
+          while IFS= read -r f; do
+            [ -f "$f" ] || continue
+            if grep -nIE '^(<<<<<<<|>>>>>>>) ' "$f"; then
+              echo "::error file=$f::unresolved git conflict marker in $f"; bad=1
+            fi
+          done < <(git diff --name-only --diff-filter=ACM "$base" "$head")
+          if [ "$bad" -ne 0 ]; then
+            echo "::error::conflict markers present — blocking merge (this is the #1860 class)"; exit 1
+          fi
+          echo "merge-gate: clean — no conflict markers in changed files"
