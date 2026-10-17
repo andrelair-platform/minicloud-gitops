@@ -64,10 +64,22 @@ thesis, and only *partially* relieves Longhorn (non-PG stores stay). See the 202
   Additive cluster → quiesced pg_dump→restore at exact parity → `DATABASE_HOST` drop-in flip →
   verified (backend 0 restarts, IAM 200, role rows match) → 2 instances + R2 PITR. STS kept until a
   soak, then retired. PRs: gitops #1810 (additive) · #1812 (Cluster ignoreDifferences) · #1813 (cutover).
-- **Still plain STS holding *prod business* data → remaining CNPG candidates** ⚠️ (posture checked
-  2026-10-17): **`ktayl` + `retrieva` (prod)** — single-instance alpine STS, no DB failover, no PITR
-  (🟠 — RF=3 + a logical-dump CronJob, so recoverable, less urgent than iam was). Bring up to CNPG
-  (2-instance / RF-1 shape) using the ktayl-iam migration as the template.
+- **`ktayl-policy-service` (prod) — ✅ MIGRATED to CNPG 2026-10-17** (was a 🟠 candidate: single-instance
+  alpine STS, no failover/PITR). Additive `ktayl-cnpg` cluster (2 inst, R2 PITR) → healthy 2/2 →
+  quiesced pg_dump→restore at parity (6 tables) → **cutover via an ESO DSN host-rewrite** (not a Vault
+  edit — `secret/platform/ktayl-prod` needs break-glass root; the ops token has no access): the app's
+  ExternalSecret `target.template` rewrites `ktayl-postgres`→`ktayl-cnpg-rw` (mergePolicy:Merge) →
+  verified (2 live app conns on the CNPG primary, parity confirmed). **Follow-up (owner, non-urgent):**
+  update the Vault DSN host + remove the ES template block (Vault back to single source of truth). STS
+  kept until a soak, then retired. PRs: gitops #1815 (additive) · #1818 (CNPG netpol same-ns :5432) ·
+  #1821 (ESO cutover). Gotcha: adding a `template` to a live ES is an **ArgoCD-SSA no-op** → delete the
+  ES so it recreates WITH the template (the secret then re-renders rewritten).
+- **Still plain STS holding *prod business* data → remaining CNPG candidate** ⚠️ (posture checked
+  2026-10-17): **`retrieva` (prod)** — single-instance STS, no DB failover, no PITR (🟠 — has a
+  logical-dump CronJob, so recoverable, less urgent than iam was). Serialized behind the iam+ktayl STS
+  retirements (cluster under additive pressure — Longhorn climbed to ~20 degraded during this round);
+  needs its flagship quota bump first. Bring up to CNPG (2-instance / RF-1 shape) using the
+  ktayl-iam / ktayl-policy-service migrations as the template.
 - **Plain STS genuinely fine**: dev branches; vendor-coupled regenerable state (backstage catalog, plane
   demo) — exceptions recorded.
 
