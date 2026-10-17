@@ -15,7 +15,7 @@ reality**. Established 2026-10-17. Companion rules: `platform-vs-information-sys
 
 | View | Altitude | Tool | Lives at |
 |---|---|---|---|
-| **Architecture Hub** (entry point) | navigation | Markdown | `minicloud-platform-docs/docs/architecture/index.md` — **referenced from BOTH sidebars** (one hub, not duplicated) + linked from `intro.md` |
+| **Architecture Hub** (entry point) | navigation | Markdown | `minicloud-platform-docs/docs/architecture/index.md` → route **`/platform/architecture`** (lives in the Platform instance); the IS sidebar **cross-LINKS** to it (a doc belongs to one instance) + linked from `intro.md` |
 | **L1 — Enterprise Landscape** | context — Platform ↔ IS relationship (~12 grouped boxes + one `consumes` edge) | **Mermaid** (inline) | in the Hub |
 | **L2 — Platform Topology** | detailed technical capabilities (icons) | **mingrammer `diagrams`** | `docs/developer-platform/production-stack-architecture` + `diagrams/src/platform_overview.py` |
 | **L2 — IS Application Landscape** | business apps grouped by insurance domain, maturity-coloured | **Mermaid** (inline) | `docs/architecture/is-application-landscape.md` |
@@ -54,19 +54,32 @@ complementary deployment/infrastructure view — label them accurately, not all 
 
 ## Gotchas (proven 2026-10-17)
 
+- **Two docs instances (since 2026-10-17): Platform `/platform/*` + IS `/is/*`.** The pillars are two
+  separate Docusaurus `plugin-content-docs` instances (Platform = the preset docs, `routeBasePath:
+  '/platform'`, `docs/`; IS = a second instance `id: 'is'`, `routeBasePath: '/is'`, `docs-is/`, its own
+  `sidebars-is.ts`), so each pillar is its own route section like `/blog` — NOT one root instance with two
+  sidebars. Root `/` is a `src/pages/index.tsx` redirect to `/platform`. **`trailingSlash: false`** →
+  routes have NO trailing slash (`/platform`, not `/platform/` — a trailing slash **404s**; this bit the
+  root redirect once, PR #290). The IS-apps folder is `docs-is/apps/` → `/is/apps/*` (renamed from the
+  double-`is` `/is/is/*`).
+- **Cross-instance links MUST be absolute** — a relative `../other-pillar/x.md` can't resolve across
+  instances. Platform→IS → `/is/<folder>/<slug>`; IS→Platform → `/platform/<folder>/<slug>` (strip the
+  numeric filename prefix + `.md` to match the slug). `onBrokenLinks: 'throw'` catches every miss at build.
+- **The hub is cross-linked, not shared:** it lives in the Platform instance (`/platform/architecture`);
+  the **IS sidebar references it as a `type: 'link'`** to that URL. A doc can only belong to its own
+  instance's sidebar — the old "one `architectureNav` const referenced by BOTH sidebars" pattern does
+  **not** work across instances.
 - **Docusaurus doc links from index/category pages:** use the **real filename + `.md`** (incl. the
   numeric prefix, e.g. `../developer-platform/29-production-stack-architecture.md`). Bare slug-form links
-  (no `.md`) resolve **unreliably from a category-index page** and fail `onBrokenLinks: 'throw'` (they
-  eat into the baseUrl). The category-index route is `/architecture` (no trailing slash).
-- **One hub, both sidebars:** define the nav once (`const architectureNav` in `sidebars.ts`) and
-  reference it in `platformSidebar` **and** `isSidebar` — a doc may appear in multiple sidebars; don't
-  duplicate the content.
+  (no `.md`) resolve **unreliably from a category-index page** and fail `onBrokenLinks: 'throw'`. The
+  Architecture-Hub category-index route is `/platform/architecture`.
 - **De-mixing the platform topology:** remove IS-owned workloads (ERPNext/Nextcloud/Matrix/Jitsi/Plane/
   Docuseal/Paperless/n8n/Temporal/Stalwart/Metabase) from the platform diagram, but **keep the data-infra
   engines** (Postgres/CNPG, MariaDB, NATS, Valkey, ClickHouse, Longhorn/MinIO) — the engine is a platform
   capability; the schema/data is IS (shown in the IS map).
 
 ## Reference implementation
-`minicloud-platform-docs` PR #272: the Hub + L1 (Mermaid) + L2 IS landscape (Mermaid) + dependency matrix
-+ the de-mixed `platform_overview.py` L2 topology + the shared-sidebar wiring. Planned follow-up: ADRs
-under `docs/architecture/` (*why* ArgoCD/Authentik/Cilium/Longhorn + the Platform/IS split).
+`minicloud-platform-docs` PR #272 (the Hub + L1/L2 views + dependency matrix + de-mixed topology) and
+**PR #289 + #290 — the two-instance route split** (Platform `/platform/*`, IS `/is/*` with `/is/apps/*`
+for IS applications, root `/` → `/platform` redirect, all cross-instance links made absolute). Planned
+follow-up: ADRs under `docs/architecture/` (*why* ArgoCD/Authentik/Cilium/Longhorn + the Platform/IS split).
