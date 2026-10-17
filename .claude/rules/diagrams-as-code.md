@@ -55,6 +55,32 @@ regenerates the same picture from a short `.py`: edit, `make generate`, commit.
 5. `Diagram(..., outformat=["png","svg"], show=False, graph_attr=…)` writing to the docs static tree.
    Embed the **SVG** in docs pages, the **PNG** in READMEs (always renders on GitHub).
 
+## Edge semantics, accuracy & legibility (MANDATORY — a diagram must *communicate*, not inventory)
+
+A senior review (2026-10-17) found the platform poster read as a "technology inventory with wires." The
+fixes are now the standard:
+
+- **Every edge carries a VERB** from a fixed vocabulary — a line must *mean* something specific:
+  `provisions · configures · reconciles · builds · pushes · promotes(CODEOWNERS PR) · supplies-secrets ·
+  issues-certs · routes-traffic · authenticates · scrapes · ships-logs/traces · backs-up · scales ·
+  routes-to-LLM`. **Solid arrow = principal control/data flow · dashed = backing dependency.** Put this in
+  a **legend** on the page (boundaries, arrow meaning, statuses).
+- **Accuracy — no invented edges.** Base every relationship on the **actual manifests/config/source**
+  (verify in `minicloud-gitops`), not on what "usually" connects. Edges found wrong in the audit (learn
+  from them): `ESO → ArgoCD` is **inverted** (it's Vault→ESO→*writes Secret*→workloads; ArgoCD only
+  *deploys the ExternalSecret CR*); `Longhorn → MinIO` is false (**Velero backs up to** MinIO, which is
+  **OFF-CLUSTER on the controller** `10.0.0.1:9000`, + R2); `MetalLB` is **removed** (**Cilium** provides
+  CNI *and* the LB IP `10.0.0.200`); Cilium/Gatekeeper/Falco are **cluster-wide substrates**, not edges to
+  one node; alert sink is **SES email + Slack**. Mark inferred/unverified edges as such.
+- **Legibility — prefer a LIGHT / high-contrast theme** for platform diagrams (`_theme.py` is light: white
+  bg, dark text, bold coloured solid/dashed edges, ≥13pt node fonts). Dark backgrounds hide thin dashed
+  edges + small labels and print badly. Icons pop on white.
+- **Altitude — ship complementary views, don't cram one poster:** a **Capability view** (Mermaid, ~8–12
+  groups + principal flows — "understand in 30s"), the **detailed Technology Topology** (mingrammer icons —
+  reference), and a **Physical/Deployment view** (nodes · roles · placement · replication · failure
+  domains). Keep the **logical** topology marked *logical* (a capability map, not a liveness claim — see the
+  maturity-vs-runtime axes in `architecture-views.md`).
+
 ## CI
 
 A **regenerate-and-open-a-bot-PR-on-change** workflow (central:
@@ -65,6 +91,9 @@ canonical → the loop converges (no more noise). `make check` is a *local same-
 
 ## Gotchas (proven 2026-10-17)
 
+- **`gh pr create --body "…"` runs backtick command-substitution** (zsh/bash double quotes execute
+  backticks): any `` `path/file.yaml` `` in the body is silently replaced by command output (usually
+  empty). Write the PR body to a file and use **`gh pr create --body-file`** (or `--body-file -`).
 - **SVGs are NOT self-contained — you MUST inline the icons or the SVG is broken standalone.**
   Graphviz/`diagrams` renders SVG with `<image xlink:href="/abs/local/path/icon.png">` — icons are
   referenced by **filesystem path**, not embedded. The SVG renders only where it was generated and is
