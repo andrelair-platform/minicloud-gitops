@@ -60,3 +60,16 @@ tlsCert:
   dnsName: ""        # per env
 prodExtras:
   enabled: false     # prod: true → dedicated Postgres + app-secret ES + ghcr-pull ES
+
+# CNPG migration (additive, prod-only — rendered when prodExtras.enabled). Stands up ktayl-cnpg
+# alongside the STS; cutover later = edit the Vault DSN host → ktayl-cnpg-rw.
+cnpg:
+  instances: 2
+  storageSize: 5Gi
+  backup:
+    enabled: true
+    retentionPolicy: "14d"
+    bucket: minicloud-cnpg-offsite/ktayl
+    endpointURL: https://4d3a131c84ca31b951cba16a5b7db0c1.r2.cloudflarestorage.com
+    vaultPath: platform/cloudflare
+    schedule: "0 0 5 * * *"   # staggered 05:00
