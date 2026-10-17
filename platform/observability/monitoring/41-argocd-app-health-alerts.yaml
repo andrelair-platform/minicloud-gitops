@@ -1,0 +1,58 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argocd-app-health-alerts
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  groups:
+    # The GitOps control loop self-heals drift it CAN reconcile. These alerts cover the
+    # case it CANNOT — a bad manifest, a stuck PreSync hook, an ImagePullBackOff, an
+    # immutable-field conflict, or drift ArgoCD can't correct. Without them an app sits
+    # silently OutOfSync / Degraded and is only noticed by eye in the ArgoCD UI (the
+    # argocd_app_info metric powers the DORA dashboard, but nothing paged on it).
+    # Metrics are scraped from argocd-{server,application-controller}-metrics.
+    - name: argocd.app-health
+      rules:
+        - alert: ArgoCDAppDegraded
+          expr: max by (name, project, dest_namespace) (argocd_app_info{health_status="Degraded"}) == 1
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ArgoCD app {{ $labels.name }} is Degraded (reconciliation can't make it healthy)"
+            description: >-
+              ArgoCD Application `{{ $labels.name }}` (project `{{ $labels.project }}`, ns
+              `{{ $labels.dest_namespace }}`) has been **Degraded** for 15m — the desired state
+              is applied but the workload is unhealthy (CrashLoop, failed probe, ImagePullBackOff,
+              stuck hook). Self-heal can't fix a broken workload. Investigate:
+              `kubectl --context minicloud get application {{ $labels.name }} -n argocd` and
+              `argocd app get {{ $labels.name }}`.
+
+        - alert: ArgoCDAppSyncStuck
+          expr: max by (name, project, dest_namespace) (argocd_app_info{sync_status="OutOfSync"}) == 1
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ArgoCD app {{ $labels.name }} stuck OutOfSync for 30m (self-heal not converging)"
+            description: >-
+              ArgoCD Application `{{ $labels.name }}` has been **OutOfSync** for 30m. With
+              `selfHeal: true` an app should return to Synced quickly; a sustained OutOfSync
+              means reconciliation keeps failing (immutable field, SSA/ownership conflict,
+              a missing `ignoreDifferences` on an ESO/webhook-mutated field, or a failing sync
+              hook). Check `argocd app diff {{ $labels.name }}` and the app's sync result.
+
+        - alert: ArgoCDAppSyncErrors
+          expr: sum by (name, project) (increase(argocd_app_sync_total{phase=~"Error|Failed"}[15m])) > 2
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ArgoCD app {{ $labels.name }} sync is failing repeatedly"
+            description: >-
+              ArgoCD Application `{{ $labels.name }}` logged more than 2 failed sync operations
+              in 15m (phase Error/Failed). A change merged to Git is not reaching the cluster —
+              the GitOps write path is blocked for this app. Check the latest sync result in the
+              ArgoCD UI / `argocd app get {{ $labels.name }}` for the failing resource + message.
