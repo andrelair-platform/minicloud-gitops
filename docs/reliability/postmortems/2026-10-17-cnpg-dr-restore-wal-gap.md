@@ -44,10 +44,13 @@ WAL segment to archive → the backup becomes restorable. Applied + re-drilled o
 ON FUNCTION pg_switch_wal()` added to each app role to enable a future automated switch.
 
 **Action items.**
-1. **Durable preventive control — periodic WAL-switch CronJob (REQUIRED, confirmed by test).** One per
-   low-write CNPG cluster. Reliable design = exec `pg_switch_wal` **as `postgres` via local peer-auth**
-   (`kubectl exec` from a scoped SA) — NOT app-role TCP, which fails due to CNPG managed-role password
-   drift. Schedule ~hourly (+ shortly after the daily ScheduledBackup). Owner: SEC/SRE. **Status: pending (gitops).**
+1. **Durable preventive control — WAL-keepalive CronJob ✅ DONE (#1849, verified).** One per low-write
+   CNPG cluster: an **app-role heartbeat `INSERT` every 10 min** keeps WAL advancing so `archive_timeout`
+   flushes the base-backup's closing segment. Chosen over `pg_switch_wal` (superuser-only — a plain
+   `INSERT` needs no elevated privilege, no `kubectl`). *Correction to a mid-incident hypothesis: app-role
+   TCP is NOT broken by password drift — the earlier auth failure was a role-name mismatch (`ktayl_iam`
+   vs `ktayl-iam`); app-role TCP works.* Validated (keepalive-only backup restored 68s) + deployed
+   (CronJobs live, manual run SUCCEEDED, Gatekeeper-admitted). Owner: SEC/SRE.
 2. **Recurring DR drill (detective control).** Add scenario-08 restore drill to the quarterly Game Day
    rotation — it is the only thing that catches this class of regression. Reusable drill script committed.
 3. **Correct the record:** `firstRecoverabilityPoint` set ≠ restorable. The programme's results-log must
