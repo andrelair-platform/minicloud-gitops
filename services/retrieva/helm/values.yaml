@@ -92,6 +92,10 @@ postgres:
     enabled: true
     schedule: "30 2 * * *"
     retentionDays: 7
+# Legacy single-instance STS gate — true for DEV (runs on the STS); PROD sets false to retire it
+# after the CNPG cutover. The retrieva-secrets ExternalSecret stays on postgres.enabled → app unaffected.
+legacySts:
+  enabled: true
 # CNPG — the HA + PITR Postgres the STS above is being migrated to (datastore-selection.md).
 # Disabled by default; prod enables it (additive, alongside the STS) via the gated quota-bump PR.
 cnpg:

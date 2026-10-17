@@ -12,7 +12,7 @@
 # same-namespace Postgres (5432) + the MinIO host (10.0.0.1:9000) — least privilege, consistent with
 # retrieva's network-enforced governance (the job label is NOT retrieva-backend/worker, so it is not
 # covered by backend-egress-governed; this policy is its own scope).
-{{- if and .Values.postgres.enabled .Values.postgres.backup.enabled }}
+{{- if and .Values.legacySts.enabled .Values.postgres.backup.enabled }}
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
