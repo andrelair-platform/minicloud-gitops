@@ -1,0 +1,62 @@
+# Retrieva assessment-crew (A2A) alerts (RTV-81b §7). The supervisor delegates the assessment gap node
+# to this crew over A2A; if the crew is down/crashlooping, EVERY delegated assessment halts (the gap
+# node fails → halt-on-doubt → blocked run). These deployment-health alerts use kube-state-metrics.
+#
+# NOTE (honest scope): app-level A2A SLOs — request success rate, p95 latency, the completeness
+# fill-rate (crew.py _modelCoverage) — are NOT yet Prometheus metrics (the backend/crew expose no
+# /metrics endpoint). Those need prom-client instrumentation on the backend's crewClient + the crew
+# executor; tracked as a follow-up. Until then the crew's A2A calls + fill-rate are observable in
+# Langfuse (per-run traces) + the backend logs, and health is covered below.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: retrieva-crew-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: retrieva-assessment-crew
+      rules:
+        - alert: RetrievaCrewProdDown
+          expr: |
+            kube_deployment_status_replicas_available{deployment="retrieva-assessment-crew",namespace="retrieva"} < 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Retrieva assessment-crew is DOWN in prod"
+            description: |
+              The prod assessment-crew has no available replica for 5m. Every supervisor assessment
+              delegated to the crew over A2A will halt (gap node fails → halt-on-doubt → blocked run).
+              Check: kubectl -n retrieva get pods -l app=retrieva-assessment-crew
+                     kubectl -n retrieva logs deploy/retrieva-assessment-crew --tail=50
+              Fallback: set CREW_A2A_ENABLED=false on retrieva-backend (prod) to revert to the
+              in-process engine while the crew is recovered.
+
+        - alert: RetrievaCrewDevDown
+          expr: |
+            kube_deployment_status_replicas_available{deployment="retrieva-assessment-crew",namespace="retrieva-dev"} < 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Retrieva assessment-crew is down in dev"
+            description: |
+              The dev assessment-crew has no available replica for 15m — delegated assessments on dev
+              will halt. Check: kubectl -n retrieva-dev logs deploy/retrieva-assessment-crew --tail=50
+
+        - alert: RetrievaCrewCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace=~"retrieva|retrieva-dev",pod=~"retrieva-assessment-crew-.*"}[15m]) > 2
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Retrieva assessment-crew is crashlooping ({{ $labels.namespace }})"
+            description: |
+              {{ $labels.pod }} restarted {{ $value | printf "%.0f" }} times in 15m. Likely a crew
+              runtime fault (LLM/LiteLLM unreachable, OOM, or a code regression).
+              Check: kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}
+                     kubectl -n {{ $labels.namespace }} logs {{ $labels.pod }} --previous --tail=80
