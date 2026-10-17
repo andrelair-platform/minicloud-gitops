@@ -55,7 +55,9 @@ the code); the org-site page is how it's discovered. Do **not** move the ADR ont
 
 1. **What was done** — the capability/fix in one paragraph.
 2. **Why** — the problem or driver (incident, compliance, gap).
-3. **Architecture / how it works** — a diagram or table; the real components.
+3. **Architecture / how it works** — a diagram or table; the real components. For a big
+   topology/C4 poster, use the **diagram-as-code** standard (`diagrams-as-code.md` — Python
+   `diagrams`, committed + CI-refreshed); small in-page diagrams stay **Mermaid**.
 4. **What was delivered** — a story/change table with concrete outcomes.
 5. **How to operate / verify / audit it** — commands, endpoints, checks.
 6. **Compliance mapping** where relevant (AI-Act/DORA/GDPR/ACPR).
