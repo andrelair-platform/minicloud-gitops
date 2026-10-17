@@ -1,0 +1,134 @@
+# Additive CNPG migration for ktayl-policy-service's DB (datastore-selection.md — prod ktayl-postgres
+# is a single-instance alpine STS, no failover/PITR). Stands up a dedicated HA + PITR-backed CNPG
+# cluster ALONGSIDE the existing STS (postgres.yaml stays under .Values.postgres.enabled) — no
+# data-loss window. Cutover (LATER, checked): edit the app's Vault DSN (platform/ktayl-prod → property
+# DSN) host from ktayl-postgres → ktayl-cnpg-rw; the managed `ktayl` role password = the same Vault
+# postgres-password the STS/DSN already use → drop-in. Prod-only (gated on .Values.prodExtras.enabled,
+# the same prod gate as the STS in postgres.yaml → CNPG renders only in prod, alongside it); 2 instances.
+{{- if .Values.prodExtras.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ktayl-cnpg
+  labels:
+    app.kubernetes.io/name: ktayl-policy-service
+spec:
+  instances: {{ .Values.cnpg.instances }}
+  primaryUpdateStrategy: unsupervised
+  storage:
+    size: {{ .Values.cnpg.storageSize }}
+    storageClass: longhorn
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  monitoring:
+    enablePodMonitor: true
+  managed:
+    roles:
+      - name: ktayl
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: ktayl-cnpg-role
+  bootstrap:
+    initdb:
+      database: ktayl_policy
+      owner: ktayl
+{{- if .Values.cnpg.backup.enabled }}
+  backup:
+    retentionPolicy: {{ .Values.cnpg.backup.retentionPolicy | quote }}
+    barmanObjectStore:
+      destinationPath: s3://{{ .Values.cnpg.backup.bucket }}
+      endpointURL: {{ .Values.cnpg.backup.endpointURL }}
+      s3Credentials:
+        accessKeyId:
+          name: ktayl-cnpg-r2
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: ktayl-cnpg-r2
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+{{- end }}
+---
+# CNPG `ktayl` role password = the SAME Vault value the STS/DSN already use → drop-in at cutover.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ktayl-cnpg-role
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: ktayl-cnpg-role
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: "ktayl"
+        password: "{{ `{{ .pgpass }}` }}"
+  data:
+    - secretKey: pgpass
+      remoteRef:
+        key: platform/ktayl-prod
+        property: postgres-password
+{{- if .Values.cnpg.backup.enabled }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ktayl-cnpg-r2
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: ktayl-cnpg-r2
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: ACCESS_KEY_ID
+      remoteRef: { key: {{ .Values.cnpg.backup.vaultPath }}, property: r2-access-key-id }
+    - secretKey: SECRET_ACCESS_KEY
+      remoteRef: { key: {{ .Values.cnpg.backup.vaultPath }}, property: r2-secret-access-key }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: ktayl-cnpg-daily
+spec:
+  schedule: {{ .Values.cnpg.backup.schedule | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: ktayl-cnpg
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: ktayl-cnpg
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 5432 }
+{{- end }}
