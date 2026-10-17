@@ -80,6 +80,18 @@ Every resource running in the minicloud k3s cluster originates from this repo. A
 
 ## Architecture
 
+**The GitOps workflow system** — humans and Kargo only ever write to **Git (the single source of truth)**;
+**ArgoCD is the only thing that writes to the cluster**, continuously reconciling desired state (Git)
+against live state and self-healing drift (the red loop). This is the control loop this repo implements:
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/andrelair-platform/minicloud-platform-docs/main/static/img/architecture/platform-gitops-system.png"
+       alt="GitOps workflow system — Git is the source of truth, ArgoCD is the only cluster writer" width="560" />
+</p>
+
+> Full system-design set (System Context · Container · Delivery Pipeline · GitOps System) on the
+> [Architecture docs → C4 System Design](https://andrelair-platform.github.io/minicloud-platform-docs/platform/architecture/c4-system-design).
+
 ```
 MacBook Air (dev)              MAAS Controller (ThinkPad X390)
 git push → GitHub             MAAS + OpenTofu (bare metal)
