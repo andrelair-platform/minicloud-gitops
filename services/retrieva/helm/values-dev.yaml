@@ -21,7 +21,7 @@ worker:
 backend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-backend
-    tag: 03b6818
+    tag: dec388b   # RTV-81b §5: persist crew findings as drafts
   workload:
     replicas: 1
   env:

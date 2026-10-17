@@ -60,6 +60,10 @@ spec:
       ports:
         - port: 9090
         - port: 3000
+        # CNPG (langfuse-postgres) metrics. Omitted originally → Prometheus' :9187 scrape timed out
+        # (target down) → CNPG backup/health monitoring was blind (CNPGLangfuseBackupStale could never
+        # fire). The sibling 08-cnpg-networkpolicy.yaml already assumes scrape:9187 is allowed here.
+        - port: 9187
 ---
 # Allow LiteLLM (ai namespace) to call Langfuse web API for tracing
 apiVersion: networking.k8s.io/v1
