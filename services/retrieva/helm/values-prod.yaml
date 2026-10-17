@@ -29,7 +29,7 @@ worker:
 backend:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-backend
-    tag: c99fd4c
+    tag: fe73460   # RTV-81b: crew A2A via direct JSON-RPC message/send
   workload:
     replicas: 2
   env:
@@ -80,6 +80,15 @@ backend:
     - { name: SMTP_FROM_NAME, value: "Retrieva" }
     - { name: FRONTEND_URL, value: "https://retrieva.online" }
     - { name: ALLOWED_ORIGINS, value: "https://retrieva.online" }
+    # RTV-81b — delegate the assessment gap node to the CrewAI crew over A2A. Proven end-to-end on dev
+    # behind the live QA gate (direct JSON-RPC message/send; crew output PROPOSED, human gate stays
+    # authoritative; halt-on-doubt on low confidence). Paired with crewA2A.enabled below.
+    - { name: CREW_A2A_ENABLED, value: "true" }
+    - { name: CREW_A2A_URL, value: "http://retrieva-assessment-crew.retrieva.svc.cluster.local:8080" }
+
+# Opens the least-privilege backend→crew:8080 egress rule (templates/networkpolicy.yaml).
+crewA2A:
+  enabled: true
 
 frontend:
   image:
