@@ -3,7 +3,7 @@ secretsVaultPath: platform/retrieva-dev
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-assessment-crew
-    tag: 3abd7d0   # RTV-81b QA: + run sync crew off the event loop (async executor)
+    tag: 5ca1302   # RTV-81b §2: assess against the real control library
   workload:
     replicas: 1
   env:
