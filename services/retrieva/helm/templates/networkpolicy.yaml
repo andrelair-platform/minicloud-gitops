@@ -179,3 +179,46 @@ spec:
         - ports:
             - { port: "443", protocol: TCP }
 {{- end }}
+{{- if .Values.surveillance.enabled }}
+---
+# CTPP surveillance egress (RTV-94/95/96) — the collector polls external Statuspage incident feeds
+# (`<host>/api/v2/incidents.json`) for the org's tracked providers. These are the ONLY approved external
+# egress for surveillance; a Cilium toFQDNs rule (L7 DNS proxy) pins it to the declared status hosts :443
+# without opening the internet. The governance NetworkPolicy still drops every other external egress.
+# Keep this host list in lockstep with config/surveillanceSources.ts (the curated source map).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: backend-egress-surveillance
+spec:
+  endpointSelector:
+    matchExpressions:
+      - { key: app, operator: In, values: [retrieva-backend, retrieva-worker] }
+  egress:
+    # DNS visibility so Cilium can learn the status hosts' (Statuspage/Fastly-fronted) rotating IPs.
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - { port: "53", protocol: ANY }
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toFQDNs:
+        - matchName: www.githubstatus.com
+        - matchName: status.datadoghq.com
+        - matchName: www.cloudflarestatus.com
+        - matchName: status.stripe.com
+        - matchName: status.twilio.com
+        - matchName: status.sendgrid.com
+        - matchName: status.atlassian.com
+        - matchName: status.digitalocean.com
+        - matchName: www.fastlystatus.com
+        - matchName: status.npmjs.org
+        - matchPattern: "*.statuspage.io"
+      toPorts:
+        - ports:
+            - { port: "443", protocol: TCP }
+{{- end }}

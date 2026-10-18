@@ -129,6 +129,10 @@ authentik:
 # netpol; the backend env (ERPNEXT_BASE_URL/KEY/SECRET) is set per-overlay. Prod stays false.
 erpnext:
   enabled: false
+# RTV-94 — CTPP surveillance. When enabled (dev), opens the backend→status-hosts toFQDNs egress; the
+# backend env (SURVEILLANCE_*) is set per-overlay. Prod stays false until validated on dev.
+surveillance:
+  enabled: false
 secretsVaultPath: platform/retrieva
 ingress:
   host: retrieva.online
