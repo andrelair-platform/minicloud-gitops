@@ -121,14 +121,16 @@ spec:
         - { protocol: TCP, port: 9000 }
 {{- if .Values.authentik.enabled }}
     # Authentik (authentik ns): the RTV-91 discovery connector lists applications from the platform
-    # IdP (read-only REST API) to propose arrangements. Scoped to the authentik-server svc port 80
-    # (internal http, no TLS). Gated by authentik.enabled (dev first) — prod renders no such egress.
+    # IdP (read-only REST API) to propose arrangements. The URL hits the authentik-server svc on :80,
+    # but that svc targets the pod's http containerPort 9000 — and Cilium enforces egress on the
+    # resolved POD port, so this rule MUST allow 9000, not the svc port 80 (verified live: :80 drops,
+    # :9000 → HTTP 200). Internal http, no TLS. Gated by authentik.enabled (dev first) — prod renders none.
     - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: authentik
       ports:
-        - { protocol: TCP, port: 80 }
+        - { protocol: TCP, port: 9000 }
 {{- end }}
 {{- if .Values.email.enabled }}
 ---
