@@ -28,7 +28,10 @@ configs:
     server.insecure: true
   cm:
     # Enable resource exclusions / inclusions later if needed
-    timeout.reconciliation: 180s
+    # The GitHub webhook (argocd.devandre.sbs/api/webhook, path-scoped via the Cloudflare tunnel)
+    # delivers instant syncs on push, so this poll is now only a safety-net for a missed webhook —
+    # backed off 180s → 1h to cut git/cluster load (ArgoCD-documented pattern when webhooks are wired).
+    timeout.reconciliation: 1h
     resource.customizations.health.argoproj.io_Rollout: |
       hs = {}
       if obj.status ~= nil then
