@@ -55,6 +55,31 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: observability
 ---
+# RTV-92 — allow the Retrieva ERPNext AP discovery connector (retrieva-dev backend + worker) to reach
+# the ERPNext web frontend (nginx :8080, read-only Frappe REST — lists Purchase Invoices). This is the
+# erp-side half of a two-sided netpol: the retrieva egress is opened by the wrapper chart's
+# `backend-egress-governed` policy (gated by erpnext.enabled), and erp's default-deny-ingress needs
+# this matching allow. Scoped to the nginx pod + port 8080, from the retrieva-dev namespace only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-retrieva-discovery
+  namespace: erp
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: erpnext-nginx
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: retrieva-dev
+      ports:
+        - protocol: TCP
+          port: 8080
+---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
