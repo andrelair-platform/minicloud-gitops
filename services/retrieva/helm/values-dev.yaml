@@ -88,6 +88,14 @@ backend:
     - { name: DISCOVERY_SCHEDULE_ENABLED, value: "true" }
     - { name: DISCOVERY_SCHEDULE_HOURS, value: "24" }
     - { name: DISCOVERY_SCHEDULE_ORG_ID, value: "d463f7b5-fe98-4414-a2d2-08fa1a783b7a" }
+    # RTV-93 — repeatable register-completeness audit (dev). The API process registers the repeatable
+    # job (ENABLED+HOURS); the worker process runs it for ORG_ID (deterministic, read-only — scans the
+    # Register for structural gaps → findings inbox; a human acknowledges/resolves). Both workloads
+    # reuse this env (worker.yaml re-renders backend.env). Idempotent: open gaps aren't re-raised,
+    # fixed gaps auto-resolve, so a daily re-audit is cheap. ORG_ID = the dev verification org.
+    - { name: COMPLETENESS_SCHEDULE_ENABLED, value: "true" }
+    - { name: COMPLETENESS_SCHEDULE_HOURS, value: "24" }
+    - { name: COMPLETENESS_SCHEDULE_ORG_ID, value: "d463f7b5-fe98-4414-a2d2-08fa1a783b7a" }
 
 # Opens the least-privilege backend→crew:8080 egress rule (templates/networkpolicy.yaml).
 crewA2A:
