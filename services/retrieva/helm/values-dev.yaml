@@ -86,6 +86,9 @@ backend:
     # nothing auto-written). Internal svc (http, no TLS). Creds from Vault platform/retrieva-dev via the
     # retrieva-secrets ES, gated by erpnext.enabled below (which opens the backend→erp:8080 egress).
     - { name: ERPNEXT_BASE_URL, value: "http://erpnext.erp.svc.cluster.local:8080" }
+    # Frappe is multi-tenant + routes by Host → send the site name while dialing the internal svc
+    # (ERPNEXT_HOST_HEADER, RTV-92 fix). Without it Frappe 404s ("site erpnext.erp.svc… does not exist").
+    - { name: ERPNEXT_HOST_HEADER, value: "erp.devandre.sbs" }
     - { name: ERPNEXT_API_KEY, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: erpnext-api-key } } }
     - { name: ERPNEXT_API_SECRET, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: erpnext-api-secret } } }
     # RTV-91d — repeatable discovery sweep (dev). The API process registers the repeatable job
