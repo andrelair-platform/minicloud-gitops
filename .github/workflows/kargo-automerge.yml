@@ -1,9 +1,11 @@
 name: Kargo dev auto-merge
 
 # Kargo's `dev` Stage opens a PR (labelled `automerge`) that bumps a dev overlay
-# image tag. dev overlays are NOT CODEOWNERS-gated, so these can merge without a
-# human — this workflow does it, but ONLY after proving the PR touches nothing but
-# dev overlays. prod/base/apps/kargo changes can never ride an `automerge` label.
+# image tag. dev overlays are NOT CODEOWNERS-gated for a human, but the path IS
+# CODEOWNERS-covered (services/*/helm/), so a plain merge is review-blocked — this
+# workflow admin-merges it, but ONLY after proving the PR touches nothing but dev
+# overlays AND its checks are green. prod/base/apps/kargo changes can never ride an
+# `automerge` label.
 #
 # This is inert until a service's dev Stage auto-promotion is enabled (safe posture:
 # no `automerge` PRs exist until you opt a service in). Prod promotion PRs are NOT
@@ -13,6 +15,14 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, labeled]
 
+# Kargo opens the PR already-labelled, so `opened` + `labeled` (+ `synchronize`) fire
+# near-simultaneously → multiple runs raced on `gh pr merge` and collided with
+# "Merge already in progress", so NONE merged. Serialize per-PR (don't cancel — let the
+# in-flight merge finish; later runs no-op on an already-merged PR).
+concurrency:
+  group: kargo-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -21,20 +31,22 @@ jobs:
   automerge:
     if: contains(github.event.pull_request.labels.*.name, 'automerge')
     runs-on: ubuntu-latest
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      R: ${{ github.repository }}
     steps:
       - name: Guard — PR must touch only dev overlays
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          FILES=$(gh pr view "${{ github.event.pull_request.number }}" \
-            --repo "${{ github.repository }}" --json files -q '.files[].path')
+          FILES=$(gh pr view "$PR" --repo "$R" --json files -q '.files[].path')
           echo "Changed files:"; echo "$FILES"
           # Every changed path must be dev-only — EITHER a legacy dev overlay
           # (services/<svc>/minicloud-1/dev/**) OR the wrapper chart's dev values file
           # (services/<svc>/helm/values-dev.yaml). NOTHING else rides an automerge label:
-          # prod values (helm/values-prod.yaml), common values.yaml, Chart.yaml/lock, prod
-          # overlays, base, apps, kargo all stay CODEOWNERS-gated.
+          # prod values, common values.yaml, Chart.yaml/lock, prod overlays, base, apps,
+          # kargo all stay CODEOWNERS-gated.
           BAD=$(echo "$FILES" | grep -vE '^services/[^/]+/minicloud-1/dev/|^services/[^/]+/helm/values-dev\.yaml$' || true)
           if [ -n "$BAD" ]; then
             echo "::error::Refusing auto-merge — PR touches non-dev paths:"
@@ -43,15 +55,44 @@ jobs:
           fi
           echo "All changes are dev-only (overlay or wrapper values-dev.yaml) — safe to auto-merge."
 
-      - name: Merge (squash)
+      - name: Merge (squash) when checks are green — idempotent + race-safe
         env:
-          # Org token (same one CI uses) can bypass branch protection on dev-only PRs.
+          # Org token (same one CI uses) — its user is a ruleset bypass actor, so --admin
+          # can merge a review-blocked dev-only PR. The merge is a GitHub server-side squash
+          # (web-flow-signed → satisfies the require-signatures rule).
           GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
         run: |
-          # --squash, NOT --merge: Kargo's promotion commits are unsigned, and main's
-          # ruleset requires verified signatures. A squash produces a single
-          # GitHub-signed (verified) commit, satisfying the rule. A plain --merge would
-          # fail with "Commits must have verified signatures".
-          gh pr merge "${{ github.event.pull_request.number }}" \
-            --repo "${{ github.repository }}" \
-            --squash --admin --delete-branch
+          set -uo pipefail
+          for i in $(seq 1 40); do
+            STATE=$(gh pr view "$PR" --repo "$R" --json state -q '.state' 2>/dev/null || echo "")
+            if [ "$STATE" = "MERGED" ]; then echo "PR already merged — done."; exit 0; fi
+            if [ "$STATE" = "CLOSED" ]; then echo "::error::PR is closed, not merging."; exit 1; fi
+
+            # Wait for every check EXCEPT this workflow's own `automerge` check to finish.
+            # (Including it would deadlock: a prior failed run leaves an automerge FAILURE.)
+            # `gh pr checks --json` normalises CheckRuns + legacy status contexts into `bucket`
+            # (pass|fail|pending|skipping|cancel); it exits non-zero while pending → `|| true`.
+            CHECKS=$(gh pr checks "$PR" --repo "$R" --json name,bucket 2>/dev/null || true)
+            [ -z "$CHECKS" ] && CHECKS='[]'
+            SUMMARY=$(echo "$CHECKS" | python3 -c "import sys,json; c=[x for x in json.load(sys.stdin) if x.get('name')!='automerge']; print(sum(1 for x in c if x.get('bucket')=='pending'), sum(1 for x in c if x.get('bucket') in ('fail','cancel')))")
+            set -- $SUMMARY; PENDING=${1:-0}; BAD=${2:-0}
+
+            if [ "$BAD" != "0" ]; then
+              echo "::error::Refusing auto-merge — $BAD non-dev check(s) failed."; exit 1
+            fi
+            if [ "$PENDING" != "0" ]; then
+              echo "Waiting for $PENDING check(s) to finish… ($i/40)"; sleep 15; continue
+            fi
+
+            # Checks green → admin-merge (bypasses only the CODEOWNERS review on a dev-only PR).
+            if OUT=$(gh pr merge "$PR" --repo "$R" --squash --admin --delete-branch 2>&1); then
+              echo "Merged."; exit 0
+            fi
+            echo "$OUT"
+            # Idempotent: another serialized run (or a human) already merged it.
+            echo "$OUT" | grep -qiE "already merged|not open|pull request is in (clean|merged)" && { echo "treating as merged"; exit 0; }
+            # Transient GitHub states → back off and retry.
+            echo "$OUT" | grep -qiE "already in progress|base branch was modified|unexpected" && { sleep 15; continue; }
+            echo "::error::merge failed (non-transient)"; exit 1
+          done
+          echo "::error::auto-merge did not complete within the retry budget."; exit 1
