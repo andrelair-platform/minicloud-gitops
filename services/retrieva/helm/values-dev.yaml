@@ -131,3 +131,5 @@ frontend:
     - { name: NODE_ENV, value: "production" }
     - { name: PORT, value: "3000" }
     - { name: API_URL, value: "https://retrieva-dev.10.0.0.200.nip.io/api/v1" }
+
+# automerge self-test (2026-10-18T11:45 UTC) — verifies kargo-automerge #1887 merges a dev-only PR hands-off.
