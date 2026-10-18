@@ -153,6 +153,20 @@ data:
       - hostname: controller.devandre.sbs
         service: ssh://10.0.0.1:22
 
+      # ── ArgoCD GitHub webhook ONLY (instant GitOps sync, no 3-min poll) ──
+      # The ArgoCD UI/API stays Tailscale-only (tier ① above) — this is a PATH-SCOPED rule that
+      # exposes ONLY the `/api/webhook` endpoint (unauthenticated-by-design, HMAC-validated against
+      # argocd-secret `webhook.github.secret`), so a GitHub push notifies ArgoCD immediately and
+      # auto-sync reconciles in seconds. Any OTHER path on argocd.devandre.sbs matches no rule →
+      # falls through to the 404 catch-all below (UI not re-exposed). The stated reason the tier-①
+      # header requires: webhook delivery needs a public ingress; a path scope keeps the surface minimal.
+      - hostname: argocd.devandre.sbs
+        path: /api/webhook
+        service: https://10.0.0.200
+        originRequest:
+          noTLSVerify: true
+          originServerName: argocd.10.0.0.200.nip.io
+
       # NOTE: `intranet` was re-added (2026-10-03) now that a dedicated service exists — BookStack,
       # the governance/knowledge intranet (ns intranet). `wiki` stays removed (404); its function is
       # covered by BookStack / Nextcloud Collectives / Backstage TechDocs.
