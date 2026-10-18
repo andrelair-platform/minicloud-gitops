@@ -120,6 +120,11 @@ email:
 # own gated flip.
 crewA2A:
   enabled: false
+# RTV-91 — Authentik discovery connector. Off by default; dev flips it on (values-dev). When true it
+# adds authentik-api-token to the retrieva-secrets ExternalSecret and opens the backend→authentik:80
+# egress netpol; the backend env (AUTHENTIK_BASE_URL/TOKEN) is set per-overlay.
+authentik:
+  enabled: false
 secretsVaultPath: platform/retrieva
 ingress:
   host: retrieva.online
