@@ -81,6 +81,13 @@ backend:
     # by authentik.enabled below (which also adds the key + opens the backend→authentik:80 egress).
     - { name: AUTHENTIK_BASE_URL, value: "http://authentik-server.authentik.svc.cluster.local" }
     - { name: AUTHENTIK_API_TOKEN, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: authentik-api-token } } }
+    # RTV-91d — repeatable discovery sweep (dev). The API process registers the repeatable job
+    # (ENABLED+HOURS); the worker process fans it out for ORG_ID across configured sources. Both
+    # workloads reuse this env (worker.yaml re-renders backend.env). Idempotent: apps already in the
+    # inbox are skipped, so a daily re-sweep is cheap. ORG_ID = the dev verification org.
+    - { name: DISCOVERY_SCHEDULE_ENABLED, value: "true" }
+    - { name: DISCOVERY_SCHEDULE_HOURS, value: "24" }
+    - { name: DISCOVERY_SCHEDULE_ORG_ID, value: "d463f7b5-fe98-4414-a2d2-08fa1a783b7a" }
 
 # Opens the least-privilege backend→crew:8080 egress rule (templates/networkpolicy.yaml).
 crewA2A:
