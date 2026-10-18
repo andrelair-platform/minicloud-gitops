@@ -81,6 +81,13 @@ backend:
     # by authentik.enabled below (which also adds the key + opens the backend→authentik:80 egress).
     - { name: AUTHENTIK_BASE_URL, value: "http://authentik-server.authentik.svc.cluster.local" }
     - { name: AUTHENTIK_API_TOKEN, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: authentik-api-token } } }
+    # RTV-92 — ERPNext AP/ERP discovery connector (dev first). The read-only connector lists submitted
+    # Purchase Invoices from the ERP and PROPOSES arrangements from supplier spend (human-confirmed;
+    # nothing auto-written). Internal svc (http, no TLS). Creds from Vault platform/retrieva-dev via the
+    # retrieva-secrets ES, gated by erpnext.enabled below (which opens the backend→erp:8080 egress).
+    - { name: ERPNEXT_BASE_URL, value: "http://erpnext.erp.svc.cluster.local:8080" }
+    - { name: ERPNEXT_API_KEY, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: erpnext-api-key } } }
+    - { name: ERPNEXT_API_SECRET, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: erpnext-api-secret } } }
     # RTV-91d — repeatable discovery sweep (dev). The API process registers the repeatable job
     # (ENABLED+HOURS); the worker process fans it out for ORG_ID across configured sources. Both
     # workloads reuse this env (worker.yaml re-renders backend.env). Idempotent: apps already in the
@@ -104,6 +111,11 @@ crewA2A:
 # RTV-91 — turns on the Authentik discovery connector on dev: adds authentik-api-token to the
 # retrieva-secrets ExternalSecret AND opens the backend→authentik:80 egress netpol. Prod stays off.
 authentik:
+  enabled: true
+
+# RTV-92 — turns on the ERPNext AP connector on dev: opens the backend→erp:8080 egress netpol. The
+# erpnext-api-key/secret live in the retrieva-secrets ES (Vault platform/retrieva-dev). Prod stays off.
+erpnext:
   enabled: true
 
 frontend:

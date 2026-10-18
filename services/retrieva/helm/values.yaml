@@ -125,6 +125,10 @@ crewA2A:
 # egress netpol; the backend env (AUTHENTIK_BASE_URL/TOKEN) is set per-overlay.
 authentik:
   enabled: false
+# RTV-92 — ERPNext AP/ERP discovery connector. When enabled (dev), opens the backend→erp:8080 egress
+# netpol; the backend env (ERPNEXT_BASE_URL/KEY/SECRET) is set per-overlay. Prod stays false.
+erpnext:
+  enabled: false
 secretsVaultPath: platform/retrieva
 ingress:
   host: retrieva.online

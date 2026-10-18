@@ -132,6 +132,19 @@ spec:
       ports:
         - { protocol: TCP, port: 9000 }
 {{- end }}
+{{- if .Values.erpnext.enabled }}
+    # ERPNext (erp ns): the RTV-92 AP connector lists submitted Purchase Invoices from the ERP
+    # (read-only Frappe REST) to propose arrangements from supplier spend. The erpnext svc is :8080
+    # targeting the nginx pod's http containerPort 8080 — Cilium enforces egress on the resolved POD
+    # port, which equals 8080 here (no svc/pod mismatch, unlike authentik's 80→9000). Internal http,
+    # no TLS. Gated by erpnext.enabled (dev first) — prod renders none.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: erp
+      ports:
+        - { protocol: TCP, port: 8080 }
+{{- end }}
 {{- if .Values.email.enabled }}
 ---
 # Transactional/notification email egress (#475) — the ONLY approved EXTERNAL egress from
