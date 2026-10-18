@@ -160,12 +160,20 @@ data:
       # auto-sync reconciles in seconds. Any OTHER path on argocd.devandre.sbs matches no rule →
       # falls through to the 404 catch-all below (UI not re-exposed). The stated reason the tier-①
       # header requires: webhook delivery needs a public ingress; a path scope keeps the surface minimal.
+      # The ArgoCD Ingress declares ONLY argocd.10.0.0.200.nip.io (it stays Tailscale-only), so
+      # ingress-nginx routes on the HTTP Host header — the public argocd.devandre.sbs matches no
+      # Ingress and hits nginx's default-backend 404. `originServerName` only sets the TLS SNI, not
+      # the Host. So rewrite the Host to the internal name with `httpHostHeader` → nginx matches the
+      # ArgoCD Ingress and the webhook reaches argocd-server (verified: Host=nip.io → 400, the
+      # handler rejecting an unsigned test body = alive; Host=devandre.sbs → 404). Only this
+      # /api/webhook path is proxied + rewritten; the UI/API stay off the tunnel.
       - hostname: argocd.devandre.sbs
         path: /api/webhook
         service: https://10.0.0.200
         originRequest:
           noTLSVerify: true
           originServerName: argocd.10.0.0.200.nip.io
+          httpHostHeader: argocd.10.0.0.200.nip.io
 
       # NOTE: `intranet` was re-added (2026-10-03) now that a dedicated service exists — BookStack,
       # the governance/knowledge intranet (ns intranet). `wiki` stays removed (404); its function is
