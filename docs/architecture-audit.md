@@ -364,3 +364,5 @@ For each stage: **changes** (above), **risk** (noted), **dependencies** (Stage 2
 9. **Rules so it doesn't rot again?** The 8 rules in §18 — anchored on the `platform-vs-information-system.md` litmus, one-packaging-pattern-per-type, no-code-in-repo (hook-enforced), apps-mirror-layers, and **freeze `manifests/`** so new config is forced into a layer.
 
 > This was read-only analysis — **no cluster or Application resources were modified.** When ready, Stage 1 (evict stray code + delete dead scaffold + env-naming) is the safe, high-signal starting point; it can be executed one reviewed PR at a time with an `argocd app diff` gate on each.
+
+<!-- webhook instant-sync verification: 2026-10-18T07:05:12 UTC -->
