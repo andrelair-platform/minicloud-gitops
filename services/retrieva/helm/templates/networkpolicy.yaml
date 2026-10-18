@@ -119,6 +119,17 @@ spec:
         - ipBlock: { cidr: 10.0.0.1/32 }
       ports:
         - { protocol: TCP, port: 9000 }
+{{- if .Values.authentik.enabled }}
+    # Authentik (authentik ns): the RTV-91 discovery connector lists applications from the platform
+    # IdP (read-only REST API) to propose arrangements. Scoped to the authentik-server svc port 80
+    # (internal http, no TLS). Gated by authentik.enabled (dev first) — prod renders no such egress.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: authentik
+      ports:
+        - { protocol: TCP, port: 80 }
+{{- end }}
 {{- if .Values.email.enabled }}
 ---
 # Transactional/notification email egress (#475) — the ONLY approved EXTERNAL egress from

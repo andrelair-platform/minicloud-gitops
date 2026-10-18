@@ -75,9 +75,20 @@ backend:
     # with crewA2A.enabled below (opens the backend→crew:8080 egress netpol).
     - { name: CREW_A2A_ENABLED, value: "true" }
     - { name: CREW_A2A_URL, value: "http://retrieva-assessment-crew.retrieva-dev.svc.cluster.local:8080" }
+    # RTV-91 — Authentik discovery connector (dev first). The read-only connector lists apps from
+    # the platform IdP and PROPOSES arrangements (human-confirmed; nothing auto-written). Internal
+    # svc (http, no TLS). Token from Vault platform/retrieva-dev via the retrieva-secrets ES, gated
+    # by authentik.enabled below (which also adds the key + opens the backend→authentik:80 egress).
+    - { name: AUTHENTIK_BASE_URL, value: "http://authentik-server.authentik.svc.cluster.local" }
+    - { name: AUTHENTIK_API_TOKEN, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: authentik-api-token } } }
 
 # Opens the least-privilege backend→crew:8080 egress rule (templates/networkpolicy.yaml).
 crewA2A:
+  enabled: true
+
+# RTV-91 — turns on the Authentik discovery connector on dev: adds authentik-api-token to the
+# retrieva-secrets ExternalSecret AND opens the backend→authentik:80 egress netpol. Prod stays off.
+authentik:
   enabled: true
 
 frontend:
