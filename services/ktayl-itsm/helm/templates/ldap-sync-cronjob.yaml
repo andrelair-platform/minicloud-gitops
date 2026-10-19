@@ -1,0 +1,100 @@
+# Keep GLPI's user base in sync with Authentik: a daily LDAP reconcile against the shared outpost so
+# JOINERS appear as requesters, MOVERS get refreshed attributes, and LEAVERS are handled per GLPI's
+# configured deleted-user strategy — without anyone logging in first. Mirrors the nextcloud-mail-
+# provisioner pattern: the console command runs INSIDE the live glpi pod (needs its DB env + the
+# CA-trust bundle + the LDAP egress netpol), so this CronJob only needs pods/exec on ns itsm.
+#
+# The LDAP directory row itself (bind creds, filter = members of Workplace Users, login_field=cn,
+# email1_field=mail) is provisioned out-of-band by minicloud-ops/scripts/glpi/configure-ldap-directory.sh
+# (GLPI encrypts the bind password with its instance key → can't be a plain SQL/manifest value).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: glpi-ldap-sync
+  namespace: itsm
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: glpi-ldap-sync
+  namespace: itsm
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: glpi-ldap-sync
+  namespace: itsm
+subjects:
+  - kind: ServiceAccount
+    name: glpi-ldap-sync
+    namespace: itsm
+roleRef:
+  kind: Role
+  name: glpi-ldap-sync
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: glpi-ldap-sync
+  namespace: itsm
+  annotations:
+    checkov.io/skip1: CKV_K8S_38=SA token required — the job calls the k8s API (kubectl exec into the glpi pod)
+spec:
+  schedule: "30 2 * * *"            # daily 02:30 UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels: { app: glpi-ldap-sync }
+        spec:
+          serviceAccountName: glpi-ldap-sync
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: sync
+              image: docker.io/alpine/k8s:1.36.1
+              imagePullPolicy: IfNotPresent
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: KUBECACHEDIR, value: /tmp/.kube-cache }
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  NS=itsm
+                  POD=$(kubectl get pod -n "$NS" -l app=glpi -o jsonpath='{.items[0].metadata.name}')
+                  [ -n "$POD" ] || { echo "no glpi pod found"; exit 1; }
+                  echo "glpi pod: $POD — running LDAP reconcile (server id 1)"
+                  # full reconcile: create new + update existing + apply the configured deleted-user
+                  # strategy. Matches by login_field (cn) so it never duplicates an existing account.
+                  kubectl exec -n "$NS" "$POD" -c glpi -- \
+                    php /var/www/glpi/bin/console glpi:ldap:synchronize_users -s 1 -n
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              resources:
+                requests: { cpu: 25m, memory: 64Mi }
+                limits: { cpu: 200m, memory: 256Mi }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - { name: tmp, emptyDir: {} }
