@@ -40,6 +40,22 @@ roleRef:
   name: glpi-ldap-sync
   apiGroup: rbac.authorization.k8s.io
 ---
+# The sync pod exec's into the glpi pod via the k8s API. itsm is default-deny-egress, and under Cilium
+# a plain ipBlock does NOT match the kube-apiserver identity → a CiliumNetworkPolicy toEntities
+# kube-apiserver is the sanctioned allow (feedback_cilium_apiserver_netpol). DNS is already permitted by
+# the namespace allow-dns-egress (podSelector {}); egress allows are additive (union) across policies.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: glpi-ldap-sync-apiserver
+  namespace: itsm
+spec:
+  endpointSelector:
+    matchLabels: { app: glpi-ldap-sync }
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
