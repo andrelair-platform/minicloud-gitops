@@ -108,3 +108,22 @@ spec:
         - ipBlock: { cidr: 10.0.0.200/32 }
       ports:
         - { port: 443, protocol: TCP }
+---
+# S003 (employee ingestion): GLPI LDAP directory sync against the shared Authentik LDAP outpost
+# (ktayl-ldap-outpost in ns authentik) → imports employees as ticket requesters. Mirror of the mail
+# federation path; the outpost's own ingress netpol allows ns itsm (authentik-ldap-outpost/04).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-egress-ldap-outpost }
+spec:
+  podSelector:
+    matchLabels: { app: glpi }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: authentik
+      ports:
+        - { port: 3389, protocol: TCP }
+        - { port: 6636, protocol: TCP }
