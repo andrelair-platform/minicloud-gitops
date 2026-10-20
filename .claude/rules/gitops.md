@@ -93,7 +93,7 @@ replaces only CI's overlay image-bump — all testing/build/scan/sign/SBOM stays
 ### Helm golden path — GAP wrapper-chart standard (since 2026-09-12, supersedes multi-source)
 
 A custom app is **its own thin Helm chart** that `dependencies:` on the shared
-**`minicloud-app-deployment`** library chart (this is HDI's GAP model — ref sample
+**`minicloud-app-deployment`** library chart (this is an enterprise GAP model — ref sample
 `~/Developer/cloudplateform/deployment-acc082-french-ai-poc`). The library renders the reusable
 workload; the app's **own `templates/`** hold the service-specific extras. **One Helm render, ONE
 ArgoCD Helm source — no kustomize, no multi-source `$values`, no separate satellites source.**
