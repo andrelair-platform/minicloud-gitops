@@ -6,7 +6,7 @@
 The platform authenticates ~30 internal tools (ArgoCD, Grafana, Vault, Harbor, Backstage, Plane,
 ERPNext, Open WebUI, …) through **Authentik**, self-hosted on the k3s cluster (OIDC + ingress-nginx
 forward-auth; login `kanmegnea` + TOTP). The question was raised: *should we replace Authentik with
-Microsoft Entra ID* (the IdP used at HDI and most enterprises)?
+Microsoft Entra ID* (the IdP used at most enterprises)?
 
 "Replace" is the wrong framing. Workforce SSO and customer identity are two different problems, and
 the platform's sovereignty/availability/cost constraints make the *core* IdP choice non-obvious.
@@ -42,7 +42,7 @@ the platform's sovereignty/availability/cost constraints make the *core* IdP cho
 - **Federation** (Authentik ← Entra upstream) is the sanctioned way to show "enterprise login with
   Microsoft"; it adds a *source*, not a dependency.
 - Skill coverage stays complementary: Authentik internals here (flows, outposts, LDAP, SCIM, property
-  mappings) + managed Entra at HDI.
+  mappings) + managed Entra at a typical enterprise.
 
 ## Federation spike — verified 2026-09-12
 

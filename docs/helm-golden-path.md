@@ -9,7 +9,7 @@
 > `minicloud-app-deployment:` values key, and carries its service-specific extras in its **own
 > `templates/`**. The ArgoCD app is a **single Helm source** (`helm dependency build` resolves the OCI
 > dep via the `ghcr-oci-repo` cred; `Chart.lock` committed). This supersedes the earlier **multi-source
-> + `$values` + separate satellites** shape — it is pure Helm, locally renderable, and matches HDI's
+> + `$values` + separate satellites** shape — it is pure Helm, locally renderable, and matches an enterprise
 > GAP model (sample: `deployment-acc082-french-ai-poc`). Converted: platform-demo, minicloud-agent,
 > minicloud-crew-agent, minicloud-plane, ktayl-policy-service. Operational rules + gotchas
 > (Chart.lock, `releaseName`, `.helmignore` no-`charts/`, `{{ }}` escaping, `selectorLabels` in-place
@@ -18,7 +18,7 @@
 
 ## Context
 Custom services used **Kustomize** (base + overlays); third-party apps use **Helm**. Two paradigms.
-A shared, reusable golden path is awkward in Kustomize (patch-based, template-free). The HDI
+A shared, reusable golden path is awkward in Kustomize (patch-based, template-free). A reference enterprise
 Application Platform proves the better pattern: **one shared Helm chart + a thin per-app values file**.
 
 ## Decision
@@ -46,7 +46,7 @@ state). This per-env OCI split is how dev=Harbor / prod=ghcr is achieved for the
 - **Prod gate (CODEOWNERS):** `services/*/helm/values-prod.yaml`, `charts/minicloud-app-deployment/**`
   (a chart change → new version → all-prod blast radius → must be gated), `apps/`, `manifests/kargo/`.
 - **Envs:** exactly **dev + prod on the same cluster** (different namespaces). No uat, no multi-cluster —
-  the HDI dev/uat/prod × region depth is flattened to `values-dev.yaml` / `values-prod.yaml`.
+  a typical enterprise dev/uat/prod × region depth is flattened to `values-dev.yaml` / `values-prod.yaml`.
 
 ## The chart's config surface (hardened defaults)
 `workload.kind: Deployment|Rollout` (Rollout = Argo canary/blueGreen, for plane/retrieva) · image ·
@@ -63,7 +63,7 @@ service's Kustomize overlays until its Helm cutover is verified; rollback = poin
 at the overlay.
 
 ## Consequences
-- One paradigm; a service = a values file. Mirrors the HDI enterprise standard (portfolio/RNCP value).
+- One paradigm; a service = a values file. Mirrors a real enterprise standard (portfolio/RNCP value).
 - New maintained artifact = the library chart (blast radius managed by CODEOWNERS + gradual rollout +
   per-app canary brake).
 - Third-party charts unchanged; single-env custom images (backstage/webui/onlyoffice/erpnext/ktayl-web)
