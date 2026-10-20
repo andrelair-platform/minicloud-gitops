@@ -138,7 +138,7 @@ surveillance:
 frontend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-frontend
-    tag: 721610b
+    tag: 19abfe9
   workload:
     replicas: 1
   env:
