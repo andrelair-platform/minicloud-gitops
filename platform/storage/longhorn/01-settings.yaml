@@ -14,20 +14,22 @@ spec:
   credentialSecret: longhorn-backup-credentials
   pollInterval: 5m0s
 ---
-# Kept at least-effort (the conservative default: moves one replica at a time, only when a
-# healthier placement exists). best-effort was TRIALLED 2026-10-02 (Objective 2) and proved
-# INERT on this topology — 4 active storage nodes (set-hog + swift-mac are allowScheduling=
-# false) + soft-anti-affinity + mostly-3r volumes leave it no placement it deems "strictly
-# healthier", so it moved ZERO replicas in ~1h (loving-gannet stayed at 41). Reverted — no
-# reason to run a non-default that earns nothing. The Objective-2 exposure win came from
-# TARGETED manual levers instead: harbor-registry 3r->2r (-33 GiB total) + relocating the
-# star-kitten hotspot copy (113->80 GiB). See docs/reliability-longhorn-upgrade.md.
+# DISABLED — the Longhorn default. (least-effort was set here and WRONGLY commented as "the
+# conservative default"; it is a NON-default that moves replicas whenever it deems a "healthier"
+# placement exists.) It LOOKED inert while the topology was static (best-effort trial 2026-10-02
+# moved ZERO replicas in ~1h on 4 static active nodes), but on 2026-10-24 — when fast-skunk was
+# re-admitted after the power-incident recovery — it immediately THRASHED: it queued ~15 replica
+# moves onto the rejoined node, driving transient degraded + a 9-volume faulted blip on prod DBs.
+# Policy (docs/storage-hardening/phase1-execution-plan.md): auto-balance is a thrash on this
+# topology — do NOT use it as the rebalance mechanism; de-concentrate via TARGETED, OBSERVED
+# manual relocation instead (e.g. 2026-10-02 harbor-registry 3r->2r + the star-kitten hotspot
+# move). See docs/reliability-longhorn-upgrade.md.
 apiVersion: longhorn.io/v1beta2
 kind: Setting
 metadata:
   name: replica-auto-balance
   namespace: longhorn-system
-value: "least-effort"
+value: "disabled"
 ---
 # Run a lightweight data-integrity check immediately after every snapshot
 # (daily at 01:00 UTC via the daily-snapshot recurring job).
