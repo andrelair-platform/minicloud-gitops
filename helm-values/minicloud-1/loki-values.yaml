@@ -85,10 +85,11 @@ singleBinary:
   resources:
     limits:
       cpu: "1"
-      memory: 1Gi
+      # WAL/TSDB recovery reached the previous 1Gi limit and was OOM-killed.
+      memory: 2Gi
     requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 512Mi
   # Pass alertmanager URL via CLI flag: the Loki chart v7.0.0 generates the
   # ruler: config block in its Helm template and overwrites any loki.ruler.*
   # values set in values.yaml. The -ruler.alertmanager-url flag bypasses this.
