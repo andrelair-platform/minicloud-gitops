@@ -25,10 +25,20 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: observability
+  ignoreDifferences:
+    # StatefulSet claim templates are immutable after creation. The separately
+    # managed storage-loki-0 PVC below owns online capacity expansion.
+    - group: apps
+      kind: StatefulSet
+      name: loki
+      namespace: observability
+      jsonPointers:
+        - /spec/volumeClaimTemplates
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
       - ServerSideApply=true
