@@ -61,16 +61,16 @@ spec:
                 - name: PGPASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: ktayl-postgres-secret
-                      key: postgres-password
+                      name: ktayl-cnpg-role
+                      key: password
               command: ["/bin/bash", "-c"]
               args:
                 - |
                   set -euo pipefail
                   export PATH=/opt/bitnami/postgresql/bin:$PATH
                   TS=$(date +%Y%m%d-%H%M%S)
-                  echo "pg_dump ktayl_policy@ktayl-postgres -> /work/ktayl-${TS}.sql.gz"
-                  pg_dump -h ktayl-postgres -U ktayl -d ktayl_policy --no-owner --no-privileges \
+                  echo "pg_dump ktayl_policy@ktayl-cnpg-rw -> /work/ktayl-${TS}.sql.gz"
+                  pg_dump -h ktayl-cnpg-rw -U ktayl -d ktayl_policy --no-owner --no-privileges \
                     | gzip -c > "/work/ktayl-${TS}.sql.gz"
                   ls -la /work
               volumeMounts:
