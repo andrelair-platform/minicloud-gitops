@@ -120,3 +120,31 @@ metadata:
   name: concurrent-automatic-engine-upgrade-per-node-limit
   namespace: longhorn-system
 value: "3"
+---
+# Default replica factor for NEW volumes = 2 (was the chart default 3, undeclared → implicitly 3).
+# Lowered 3 -> 2 on 2026-10-24 after the per-workload RF rightsizing (see the RF POLICY below): a
+# plain new volume should be DURABLE-by-default (2 copies = survives one node/disk loss) but not pay
+# the 3-copy footprint that, on this 6-laptop cluster, drove the rebuild/scheduling churn during the
+# power-incident recovery. 3-copy is reserved for nothing by default; app-HA stores DROP to 1 by hand.
+#
+# RF POLICY (per-workload, applied to existing volumes 2026-10-24 as live volume-CR patches — Longhorn
+# persists numberOfReplicas per volume, so those values are NOT reverted by this default; this default
+# only governs NEWLY created volumes):
+#   * app-HA stores  -> RF1  : the app already keeps an independent copy per instance, so block-level
+#                              replication is redundant. CNPG 2-instance clusters (authentik, ktayl,
+#                              ktayl-iam, retrieva, underwriting-prod), Vault Raft (x3), NATS JetStream
+#                              (x3), langfuse-zookeeper (x3), alertmanager (x2). (datastore-selection.md
+#                              "App-HA 1r" tier.) Set these to 1 explicitly when the volume is created.
+#   * single-copy durable -> RF2 : block RF is the ONLY redundancy (single-instance DBs/stores:
+#                              synapse, backstage, erp, glpi, nextcloud, loki, mail, grafana, temporal,
+#                              harbor-db, data-platform, sign, vaultwarden, n8n, plane-pgdb/minio...).
+#                              NEVER below 2. This is what the new default 2 gives them for free.
+#   * dev / regenerable -> RF1 : dev namespaces + caches/scratch (redis, valkey, rabbitmq, trivy, tempo).
+# Reducing RF is the SAFE churn direction (deletes excess replicas, no rebuild); raising it rebuilds.
+# Rationale + the incident: docs/storage-hardening/phase1-execution-plan.md.
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: default-replica-count
+  namespace: longhorn-system
+value: "2"
