@@ -80,6 +80,18 @@ metadata:
   namespace: longhorn-system
 value: "2"
 ---
+# Give a loaded instance manager enough time to answer its exec health check.
+# During the 2026-10-24 recovery, fast-skunk repeatedly missed six 10-second
+# probes while restarting 35 replicas; kubelet then killed the manager and
+# reset every rebuild. This keeps failure detection bounded (~3 minutes with
+# Longhorn's failureThreshold=6) without increasing rebuild concurrency.
+apiVersion: longhorn.io/v1beta2
+kind: Setting
+metadata:
+  name: instance-manager-pod-liveness-probe-timeout
+  namespace: longhorn-system
+value: "30"
+---
 # Over-provisioning cap raised 100 -> 200 (2026-10-11). During the post-incident rebuild recovery,
 # loving-gannet (the node that survived the cascade and accumulated ~47 replicas) hit the 100% cap
 # (ScheduledTotal > StorageMax-StorageReserved) -> its disk went Schedulable=False -> stuck rebuilds
