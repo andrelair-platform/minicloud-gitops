@@ -270,9 +270,10 @@ controller:
         release: kps
   resources:
     requests: { cpu: 100m, memory: 512Mi }
-    # Trimmed 3Gi -> 2Gi (P5): app-controller uses ~1Gi; 2Gi keeps 2x headroom
-    # (its memory scales with app count — 2Gi is ample for the current ~101 apps).
-    limits:   { cpu: 1000m, memory: 2Gi }
+    # Restored 2Gi -> 3Gi after the controller was OOM-killed while reconciling
+    # 116 applications on 2026-10-24 (anon RSS reached ~2.08Gi). Controller memory
+    # scales with application/resource count; 2Gi no longer provides safe headroom.
+    limits:   { cpu: 1000m, memory: 3Gi }
 
 applicationSet:
   resources:
