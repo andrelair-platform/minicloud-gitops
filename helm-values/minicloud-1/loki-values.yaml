@@ -75,7 +75,9 @@ singleBinary:
     accessModes:
     - ReadWriteOnce
     enabled: true
-    size: 30Gi
+    # Recovery headroom: the 30Gi volume filled while Loki rebuilt TSDB indexes
+    # from WAL after the 2026-10-24 storage incident.
+    size: 50Gi
     storageClass: longhorn
   replicas: 1
   podAnnotations:
