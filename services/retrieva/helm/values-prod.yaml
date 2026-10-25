@@ -87,9 +87,17 @@ backend:
     # authoritative; halt-on-doubt on low confidence). Paired with crewA2A.enabled below.
     - { name: CREW_A2A_ENABLED, value: "true" }
     - { name: CREW_A2A_URL, value: "http://retrieva-assessment-crew.retrieva.svc.cluster.local:8080" }
+    # ADR-0003 (E5) — enable the dev-validated public-research enrichment agent in prod. Fetches are
+    # SSRF-guarded and restricted to the curated vendor domains by the toFQDNs policy enabled below.
+    - { name: ENABLE_VENDOR_RESEARCH, value: "true" }
 
 # Opens the least-privilege backend→crew:8080 egress rule (templates/networkpolicy.yaml).
 crewA2A:
+  enabled: true
+
+# ADR-0003 (E5) — opens only the curated vendor trust-domain egress on TCP 443. Paired with
+# ENABLE_VENDOR_RESEARCH above; all other external egress remains denied.
+vendorResearch:
   enabled: true
 
 frontend:
