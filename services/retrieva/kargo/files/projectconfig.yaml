@@ -17,3 +17,7 @@ spec:
       autoPromotionEnabled: true
     - stage: crew-dev
       autoPromotionEnabled: true
+    # Assemble the newest verified component Freight and run the cross-component live-dev gate.
+    # product-prod remains manual/CODEOWNERS-gated.
+    - stage: product-dev
+      autoPromotionEnabled: true

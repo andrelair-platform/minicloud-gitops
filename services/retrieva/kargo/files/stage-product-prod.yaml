@@ -1,6 +1,6 @@
-# Product-level release gate: prod moves backend + frontend + assessment crew together. Each selected
-# Freight must already be verified in its dev Stage. The release manifest is updated in the same PR,
-# and CI rejects any mismatch between that manifest and the three prod values.
+# Product-level release gate: prod moves backend + frontend + assessment crew together. Every selected
+# Freight must belong to the same product-dev combination that passed the live integration analysis.
+# The release manifest is updated in the same PR, and CI rejects any mismatch with the prod values.
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
@@ -9,11 +9,11 @@ metadata:
 spec:
   requestedFreight:
     - origin: { kind: Warehouse, name: retrieva-backend }
-      sources: { stages: [backend-dev] }
+      sources: { stages: [product-dev] }
     - origin: { kind: Warehouse, name: retrieva-frontend }
-      sources: { stages: [frontend-dev] }
+      sources: { stages: [product-dev] }
     - origin: { kind: Warehouse, name: retrieva-assessment-crew }
-      sources: { stages: [crew-dev] }
+      sources: { stages: [product-dev] }
   promotionTemplate:
     spec:
       vars:
