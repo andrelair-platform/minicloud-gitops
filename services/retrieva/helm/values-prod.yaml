@@ -31,7 +31,7 @@ worker:
 backend:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-backend
-    tag: fe73460   # RTV-81b: crew A2A via direct JSON-RPC message/send
+    tag: 7ddef00
   workload:
     replicas: 2
   env:
