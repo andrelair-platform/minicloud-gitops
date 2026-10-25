@@ -61,6 +61,7 @@ def main() -> int:
             errors.append(f"{name}: tag must be an immutable hexadecimal SHA, got {declared!r}")
 
     stage = (ROOT / "services/retrieva/kargo/files/stage-product-prod.yaml").read_text()
+    product_dev = (ROOT / "services/retrieva/kargo/files/stage-product-dev.yaml").read_text()
     required_stage_tokens = {
         "backend": ("name: retrieva-backend", "components.backend.tag"),
         "frontend": ("name: retrieva-frontend", "components.frontend.tag"),
@@ -73,6 +74,16 @@ def main() -> int:
         for token in tokens:
             if token not in stage:
                 errors.append(f"product-prod omits {name}: missing {token!r}")
+        origin_token = tokens[0]
+        if origin_token not in product_dev:
+            errors.append(f"product-dev omits {name}: missing {origin_token!r}")
+
+    if stage.count("sources: { stages: [product-dev] }") != len(EXPECTED):
+        errors.append("product-prod must source all three components from product-dev")
+
+    analysis = ROOT / "services/retrieva/kargo/files/analysis-product-dev.yaml"
+    if not analysis.exists() or "message/send" not in analysis.read_text():
+        errors.append("product-dev must have a live A2A integration AnalysisTemplate")
 
     for legacy in ("stage-backend-prod.yaml", "stage-frontend-prod.yaml", "stage-crew-prod.yaml"):
         if (ROOT / "services/retrieva/kargo/files" / legacy).exists():
