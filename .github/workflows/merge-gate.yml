@@ -33,3 +33,6 @@ jobs:
             echo "::error::conflict markers present — blocking merge (this is the #1860 class)"; exit 1
           fi
           echo "merge-gate: clean — no conflict markers in changed files"
+
+      - name: Retrieva product release completeness
+        run: python3 scripts/check_retrieva_release.py

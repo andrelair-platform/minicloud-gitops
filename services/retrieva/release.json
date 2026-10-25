@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "product": "retrieva",
+  "environment": "prod",
+  "components": {
+    "backend": {
+      "repository": "ghcr.io/andrelair-platform/retrieva-backend",
+      "tag": "7ddef00"
+    },
+    "frontend": {
+      "repository": "ghcr.io/andrelair-platform/retrieva-frontend",
+      "tag": "dfe0847"
+    },
+    "assessment-crew": {
+      "repository": "ghcr.io/andrelair-platform/retrieva-assessment-crew",
+      "tag": "89b174a"
+    }
+  }
+}
