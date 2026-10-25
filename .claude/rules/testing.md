@@ -96,54 +96,7 @@ tests/
 6. Test file names mirror the module: `dsn_generator.py` → `test_dsn_generator.py`
 7. Fixtures live in `tests/fixtures/` — never inline large data blobs in test functions
 
-## Rollout Plan
-
-| Week | Repo | Tier | Deliverable |
-|---|---|---|---|
-| 1 | `minicloud-erpnext` | A | L0 + L1 — ruff/mypy + pytest (108 tests, 76% cov) ✅ |
-| 2 | `platform-demo` | A | L0 + L1 — golangci-lint + go test |
-| 3 | `minicloud-plane` | A | L0 + L1 — golangci-lint + go test |
-| 4 | `minicloud-gitops` | B | L0 — yamllint + kubeconform + helm lint |
-| 5+ | remaining repos | C/D | L0 + L1 in parallel |
-
-## Reference: minicloud-erpnext (Tier A, Python/Frappe)
-
-Pattern for all Tier A Python repos.
-
-```
-tests/
-  conftest.py              # mock frappe via sys.modules (no bench needed)
-  fixtures/
-    employees.py           # JEAN_DUPONT, MARIE_LECLERC, MISSING_NIR, DARTAGNAN, FLOAT_AMOUNTS
-    crm_responses.py       # ACCEPTE, REJETE, SOAP_FAULT, EMPTY, TRAITEMENT_SANS_ERREUR
-  unit/
-    test_dsn_generator.py  # 55 tests — CRLF, UTF-8, S10/S20/S90 blocks
-    test_dsn_submitter.py  # 23 tests — CRM XML parsing, submit_dsn() with mocked requests.post
-    test_api_helpers.py    # 15 tests — contract type codes, warnings collection
-    test_facturx.py        # 15 tests — CII XML (Factur-X Minimum profile)
-```
-
-**Key pattern — mock frappe without a running bench:**
-```python
-# tests/conftest.py
-import sys
-from unittest.mock import MagicMock
-_frappe = MagicMock(name="frappe")
-for _mod in ("frappe", "frappe.utils", "frappe.utils.file_manager", "frappe.utils.pdf"):
-    sys.modules.setdefault(_mod, _frappe)
-```
-
-**Local commands:**
-```bash
-pip install -r requirements-test.txt
-make lint       # L0: ruff + mypy
-make test-cov   # L1: pytest --cov --cov-fail-under=70
-make fmt        # auto-fix formatting
-```
-
-**CI jobs (`.github/workflows/test.yml`):**
-```yaml
-jobs:
-  lint:       # ruff check + ruff format --check + mypy  (every push)
-  test-unit:  # pytest tests/unit/ --cov --cov-fail-under=70  (needs: lint)
-```
+> **HOW to set it up → the `test-pyramid-setup` skill** (the directory layout, make targets, the L2
+> real-Postgres service-container pattern, the per-language L0–L4 matrix, the L3 contract-test recipe, and
+> the Tier-A reference pattern from `minicloud-erpnext`). Pulled on demand when wiring a repo's tests.
+> The live **QA gate** (L5) is the separate pre-prod backstop → `qa-gate.md` + the `prod-promotion-qa-gate` skill.

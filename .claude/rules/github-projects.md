@@ -163,18 +163,8 @@ gh issue create \
 
 Use the board `Status` field — update it as work progresses. Status flow mirrors Scrum:
 `Backlog → This Sprint → In Progress → Blocked → In Review → Done`. **Each product board has its own
-field + option IDs** — query them per board (there is no shared roll-up any more):
-
-```bash
-# discover a board's Status field id + option ids
-gh project field-list <board-number> --owner andrelair-platform --format json \
-  | python3 -c "import sys,json;[print(f['id'],f['name'],[o['name'] for o in f.get('options',[])]) for f in json.load(sys.stdin)['fields'] if f['name']=='Status']"
-# board node id
-gh project view <board-number> --owner andrelair-platform --format json --jq .id
-# then set it
-gh project item-edit --id <ITEM_ID> --project-id <BOARD_NODE_ID> \
-  --field-id <STATUS_FIELD_ID> --single-select-option-id <OPTION_ID>
-```
+field + option IDs** — query them per board (there is no shared roll-up any more). The `gh` commands to
+discover field/option IDs and set a value are in the **`github-board-ops` skill**.
 
 ### 4. Set Priority + Sprint when promoting an issue to active work
 
@@ -197,16 +187,10 @@ glance use org-level issue search (e.g. `org:andrelair-platform is:issue is:open
 
 ## Board field IDs
 
-There is **no shared roll-up board**; each product board carries its own field + option IDs. Query
-them per board as needed:
-
-```bash
-gh project view <n> --owner andrelair-platform --format json --jq .id          # board node id
-gh project field-list <n> --owner andrelair-platform --format json             # fields + option ids
-```
-
-Every product board (#2–#25) has a **Priority** single-select (`P1 — Critical … P5 — Deferred`) and
-the default **Status** field; boards created via the API were given Priority explicitly (2026-09-10).
+There is **no shared roll-up board**; each product board carries its own field + option IDs — query them
+per board (the `gh project view/field-list` commands are in the **`github-board-ops` skill**). Every
+product board (#2–#25) has a **Priority** single-select (`P1 — Critical … P5 — Deferred`) and the default
+**Status** field; boards created via the API were given Priority explicitly (2026-09-10).
 
 ## Standard board schema + views — the "project constitution" (2026-09-15)
 
