@@ -1,0 +1,52 @@
+# Kargo verification for the assessment crew. It proves the internal A2A service is reachable and
+# advertises the assess-arrangement skill before its Freight becomes eligible for product-prod.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: retrieva-crew-dev-verify
+  namespace: retrieva-kargo
+spec:
+  metrics:
+    - name: crew-dev-smoke
+      count: 1
+      provider:
+        job:
+          spec:
+            backoffLimit: 3
+            activeDeadlineSeconds: 240
+            ttlSecondsAfterFinished: 300
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/part-of: retrieva
+                  kargo.akuity.io/verify: crew-dev-smoke
+              spec:
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile: { type: RuntimeDefault }
+                containers:
+                  - name: smoke
+                    image: docker.io/curlimages/curl:8.11.1
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities: { drop: [ALL] }
+                    resources:
+                      requests: { cpu: 25m, memory: 32Mi }
+                      limits: { cpu: 100m, memory: 64Mi }
+                    command: [/bin/sh, -c]
+                    args:
+                      - |
+                        set -eu
+                        C=http://retrieva-assessment-crew.retrieva-dev.svc.cluster.local:8080
+                        i=0
+                        until body=$(curl -fsS --max-time 5 "$C/healthz" 2>/dev/null); do
+                          i=$((i+1)); [ "$i" -lt 30 ] || { echo "crew unavailable"; exit 1; }
+                          sleep 3
+                        done
+                        echo "$body" | grep -q '"status":"ok"'
+                        card=$(curl -fsS --max-time 10 "$C/.well-known/agent-card.json")
+                        echo "$card" | grep -q '"id":"assess-arrangement"'
+                        echo "assessment crew health + A2A agent card verified"

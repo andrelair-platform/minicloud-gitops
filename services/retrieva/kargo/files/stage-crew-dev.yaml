@@ -1,42 +1,40 @@
 apiVersion: kargo.akuity.io/v1alpha1
 kind: Stage
 metadata:
-  name: backend-prod
+  name: crew-dev
   namespace: retrieva-kargo
 spec:
-  # Prod: only backend Freight already verified in backend-dev is promotable (the dev->prod
-  # gate). Bumps only backend.image.tag in values-prod.yaml (ghcr SHA). PR is CODEOWNERS-gated;
-  # ArgoCD auto-syncs prod once merged (squash — signed-commit rule).
   requestedFreight:
-    - origin: { kind: Warehouse, name: retrieva-backend }
-      sources: { stages: [backend-dev] }
+    - origin: { kind: Warehouse, name: retrieva-assessment-crew }
+      sources: { direct: true }
+  verification:
+    analysisTemplates:
+      - name: retrieva-crew-dev-verify
   promotionTemplate:
     spec:
       vars:
         - name: gitopsRepo
           value: https://github.com/andrelair-platform/minicloud-gitops.git
-        - name: img
-          value: ghcr.io/andrelair-platform/retrieva-backend
+        - name: crewRepo
+          value: https://github.com/andrelair-platform/retrieva-assessment-crew.git
       steps:
         - uses: git-clone
           as: clone
           config:
             repoURL: ${{ vars.gitopsRepo }}
-            checkout:
-              - branch: main
-                path: ./repo
+            checkout: [{ branch: main, path: ./repo }]
         - uses: yaml-update
           as: set-image
           config:
-            path: ./repo/services/retrieva/helm/values-prod.yaml
+            path: ./repo/services/retrieva-assessment-crew/helm/values-dev.yaml
             updates:
-              - key: backend.image.tag
-                value: '${{ quote(imageFrom(vars.img).Tag) }}'
+              - key: minicloud-app-deployment.image.tag
+                value: '${{ quote(commitFrom(vars.crewRepo).ID[0:7]) }}'
         - uses: git-commit
           as: commit
           config:
             path: ./repo
-            message: 'kargo(retrieva): promote backend ${{ imageFrom(vars.img).Tag }} to prod'
+            message: 'kargo(retrieva): promote crew ${{ commitFrom(vars.crewRepo).ID[0:7] }} to dev'
         - uses: git-push
           as: push
           if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
@@ -49,9 +47,8 @@ spec:
             sourceBranch: ${{ outputs.push.branch }}
             targetBranch: main
             provider: github
-            title: 'kargo(retrieva): promote backend ${{ imageFrom(vars.img).Tag }} to PROD'
-            description: 'Promotion opened by Kargo — retrieva BACKEND @ ${{ imageFrom(vars.img).Tag }} to prod (retrieva.online). CODEOWNERS-gated; ArgoCD auto-syncs prod once merged.'
-            labels: [kargo, env-prod]
+            title: 'kargo(retrieva): promote crew ${{ commitFrom(vars.crewRepo).ID[0:7] }} to dev'
+            labels: [kargo, env-dev, automerge]
         - uses: git-wait-for-pr
           as: wait-pr
           if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}

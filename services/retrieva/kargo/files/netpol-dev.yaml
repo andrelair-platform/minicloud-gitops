@@ -1,5 +1,6 @@
 # Variant C: let the AnalysisRun Job (in the retrieva-kargo project ns) reach the dev Services
-# (backend :3007, frontend :3000) cross-namespace. retrieva-dev is default-deny-ingress.
+# (backend :3007, frontend :3000, assessment crew :8080) cross-namespace. retrieva-dev is
+# default-deny-ingress.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -17,4 +18,6 @@ spec:
         - port: 3007
           protocol: TCP
         - port: 3000
+          protocol: TCP
+        - port: 8080
           protocol: TCP

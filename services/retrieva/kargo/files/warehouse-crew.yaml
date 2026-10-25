@@ -1,0 +1,18 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: retrieva-assessment-crew
+  namespace: retrieva-kargo
+spec:
+  # Git Warehouse: the Python image build is keyed to the source commit, avoiding image timestamp
+  # ranking ambiguity. The build workflow dual-pushes the same seven-character SHA to Harbor + GHCR.
+  interval: 5m
+  freightCreationPolicy: Automatic
+  subscriptions:
+    - git:
+        repoURL: https://github.com/andrelair-platform/retrieva-assessment-crew.git
+        branch: main
+        # Phantom-commit guard: mirror build.yml paths-ignore so Freight always has an image.
+        excludePaths:
+          - docs
+          - "regex:.*\\.md$"
