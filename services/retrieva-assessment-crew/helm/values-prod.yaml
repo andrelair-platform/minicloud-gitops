@@ -5,7 +5,7 @@ prodExtras:
 minicloud-app-deployment:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-assessment-crew
-    tag: 3abd7d0   # RTV-81b: Langfuse + catalog + verdict rule + runtime fixes (HOME/CA/async)
+    tag: 89b174a   # RTV-81b §2a: real control library + completeness metric + 0-clause guard
   imagePullSecrets: [{ name: ghcr-pull }]
   workload:
     replicas: 1
