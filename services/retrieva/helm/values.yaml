@@ -133,6 +133,11 @@ erpnext:
 # backend env (SURVEILLANCE_*) is set per-overlay. Prod stays false until validated on dev.
 surveillance:
   enabled: false
+# ADR-0003 (E5) — public-research enrichment agent. When enabled (dev), opens the backend→vendor-trust-
+# hosts toFQDNs egress netpol AND the backend env sets ENABLE_VENDOR_RESEARCH=true (per-overlay). This is
+# the cluster half of the double-gate (the app half is the urlGuard allow-list). Prod stays false.
+vendorResearch:
+  enabled: false
 secretsVaultPath: platform/retrieva
 ingress:
   host: retrieva.online

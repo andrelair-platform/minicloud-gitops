@@ -222,3 +222,69 @@ spec:
         - ports:
             - { port: "443", protocol: TCP }
 {{- end }}
+{{- if .Values.vendorResearch.enabled }}
+---
+# Vendor-research enrichment egress (ADR-0003, E5) — the public-research agent fetches a vendor's OWN
+# trust-centre / sub-processor page to pre-fill vendor facts (provenanced, unconfirmed, human-merged).
+# These curated vendor domains are the ONLY approved external egress for research; a Cilium toFQDNs
+# rule (L7 DNS proxy) pins it to them :443 without opening the internet, and the governance
+# NetworkPolicy above still drops every other external egress. This is the cluster half of the
+# double-gate — the app half is ENABLE_VENDOR_RESEARCH + the urlGuard allow-list. KEEP THIS HOST LIST
+# IN LOCKSTEP with the backend config/vendorResearch.ts DEFAULT_ALLOWLIST. dev enables first.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: backend-egress-vendor-research
+spec:
+  endpointSelector:
+    matchExpressions:
+      - { key: app, operator: In, values: [retrieva-backend, retrieva-worker] }
+  egress:
+    # DNS visibility so Cilium can learn the vendor hosts' (often CDN-fronted) rotating IPs.
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - { port: "53", protocol: ANY }
+          rules:
+            dns:
+              - matchPattern: "*"
+    # Curated vendor trust domains (apex + subdomains, e.g. trust.notion.so, security.stripe.com).
+    # Lockstep with config/vendorResearch.ts DEFAULT_ALLOWLIST.
+    - toFQDNs:
+        - matchName: notion.so
+        - matchPattern: "*.notion.so"
+        - matchName: notion.com
+        - matchPattern: "*.notion.com"
+        - matchName: stripe.com
+        - matchPattern: "*.stripe.com"
+        - matchName: atlassian.com
+        - matchPattern: "*.atlassian.com"
+        - matchName: slack.com
+        - matchPattern: "*.slack.com"
+        - matchName: github.com
+        - matchPattern: "*.github.com"
+        - matchName: openai.com
+        - matchPattern: "*.openai.com"
+        - matchName: anthropic.com
+        - matchPattern: "*.anthropic.com"
+        - matchName: cloudflare.com
+        - matchPattern: "*.cloudflare.com"
+        - matchName: datadoghq.com
+        - matchPattern: "*.datadoghq.com"
+        - matchName: zoom.us
+        - matchPattern: "*.zoom.us"
+        - matchName: salesforce.com
+        - matchPattern: "*.salesforce.com"
+        - matchName: microsoft.com
+        - matchPattern: "*.microsoft.com"
+        - matchName: google.com
+        - matchPattern: "*.google.com"
+        - matchName: amazon.com
+        - matchPattern: "*.amazon.com"
+      toPorts:
+        - ports:
+            - { port: "443", protocol: TCP }
+{{- end }}

@@ -115,6 +115,11 @@ backend:
     - { name: SURVEILLANCE_SCHEDULE_ENABLED, value: "true" }
     - { name: SURVEILLANCE_SCHEDULE_HOURS, value: "6" }
     - { name: SURVEILLANCE_SCHEDULE_ORG_ID, value: "a0b9e56e-c986-4d62-9fc0-a280d20cee3c" }
+    # ADR-0003 (E5) — public-research enrichment agent (dev first). The agent fetches a vendor's own
+    # trust-centre page (allow-listed + SSRF-guarded) to pre-fill vendor facts, provenanced + unconfirmed
+    # (human-merged). External egress is pinned to the curated vendor domains by the vendor-research
+    # toFQDNs netpol (gated by vendorResearch.enabled below). Prod stays off until validated on dev.
+    - { name: ENABLE_VENDOR_RESEARCH, value: "true" }
 
 # Opens the least-privilege backend→crew:8080 egress rule (templates/networkpolicy.yaml).
 crewA2A:
@@ -133,6 +138,12 @@ erpnext:
 # RTV-94 — turns on CTPP surveillance on dev: opens the backend→status-hosts toFQDNs egress netpol
 # (external, pinned to the curated status pages). Read-only, no secrets. Prod stays off until validated.
 surveillance:
+  enabled: true
+
+# ADR-0003 (E5) — turns on the public-research agent on dev: opens the backend→vendor-trust-hosts toFQDNs
+# egress netpol (external, pinned to the curated vendor domains). Paired with ENABLE_VENDOR_RESEARCH above.
+# Read-only, no secrets; output is provenanced + human-merged. Prod stays off until validated.
+vendorResearch:
   enabled: true
 
 frontend:
