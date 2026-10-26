@@ -4,28 +4,45 @@ on:
   pull_request:
     branches: [main]
     types: [opened, reopened, synchronize, labeled]
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: Repository containing the constrained documentation PR
+        required: true
+        type: choice
+        options:
+          - andrelair-platform/minicloud-platform-docs
+      pr_number:
+        description: Pull request number to sign after allowlist validation
+        required: true
+        type: number
 
 permissions:
   contents: write
   pull-requests: read
 
 concurrency:
-  group: kargo-prod-sign-${{ github.event.pull_request.number }}
+  group: kargo-prod-sign-${{ github.event.pull_request.number || inputs.pr_number }}
   cancel-in-progress: false
 
 jobs:
   sign:
     if: >-
+      (github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       startsWith(github.head_ref, 'kargo/promotion/') &&
       contains(github.event.pull_request.labels.*.name, 'kargo') &&
-      contains(github.event.pull_request.labels.*.name, 'env-prod')
+      contains(github.event.pull_request.labels.*.name, 'env-prod')) ||
+      (github.event_name == 'workflow_dispatch' &&
+      github.actor == 'AndreLiar' &&
+      inputs.target_repo == 'andrelair-platform/minicloud-platform-docs')
     runs-on: ubuntu-latest
     steps:
       - name: Check out the promotion branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ inputs.target_repo || github.repository }}
+          ref: ${{ github.event.pull_request.head.ref || 'main' }}
           token: ${{ secrets.GITOPS_TOKEN }}
           fetch-depth: 0
 
@@ -33,29 +50,91 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+          TARGET_REPO: ${{ inputs.target_repo || github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
           GPG_KEY_ID: FD6D39D681DEFA34
         run: |
           set -euo pipefail
 
-          # Only Kargo's own production PRs and this workflow's bootstrap PR are eligible.
-          test "$PR_AUTHOR" = "AndreLiar"
-          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
-            --jq '.head.repo.full_name == .base.repo.full_name' | grep -qx true
+          # Read current PR metadata from its target repository for both event types.
+          pr=$(gh api "repos/$TARGET_REPO/pulls/$PR_NUMBER")
+          PR_BRANCH=$(echo "$pr" | jq -r '.head.ref')
+          PR_HEAD_SHA=$(echo "$pr" | jq -r '.head.sha')
+          PR_AUTHOR=$(echo "$pr" | jq -r '.user.login')
+          PR_TITLE=$(echo "$pr" | jq -r '.title')
+          BASE_REPO=$(echo "$pr" | jq -r '.base.repo.full_name')
+          BASE_REF=$(echo "$pr" | jq -r '.base.ref')
 
-          mapfile -t files < <(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[].filename')
+          test "$PR_AUTHOR" = "AndreLiar"
+          test "$BASE_REF" = "main"
+          test "$BASE_REPO" = "$TARGET_REPO"
+          test "$(echo "$pr" | jq -r '.head.repo.full_name')" = "$BASE_REPO"
+
+          mapfile -t files < <(gh api --paginate "repos/$TARGET_REPO/pulls/$PR_NUMBER/files" --jq '.[].filename')
           test "${#files[@]}" -gt 0
-          if [[ "$PR_TITLE" == "kargo(policy): sign prod promotion commits" ]]; then
-            test "${#files[@]}" -eq 1
-            test "${files[0]}" = ".github/workflows/kargo-prod-sign.yml"
-          else
+          if [ "$TARGET_REPO" = "andrelair-platform/minicloud-platform-docs" ]; then
+            test "$EVENT_NAME" = "workflow_dispatch"
+            test "$PR_TITLE" = "docs(policy): solo-maintainer production controls"
+            [[ "$PR_BRANCH" == docs/solo-maintainer-policy-* ]]
+            test "${#files[@]}" -eq 26
             for file in "${files[@]}"; do
-              [[ "$file" =~ ^services/[^/]+/(helm/values-prod\.yaml|minicloud-1/prod/.*|overlays/prod/.*|release\.json)$ ]]
+              case "$file" in
+                diagrams/src/platform_delivery_pipeline.py|\
+                diagrams/src/platform_gitops_system.py|\
+                diagrams/src/platform_overview.py|\
+                docs/ai-ml/44-ai-act-gate.md|\
+                docs/app-deployment/01-overview.md|\
+                docs/app-deployment/04-deploy-argocd.md|\
+                docs/app-deployment/06-cicd-pipeline.md|\
+                docs/app-deployment/09-enterprise-gitops-controls.md|\
+                docs/app-deployment/11-new-business-service.md|\
+                docs/architecture/c4-system-design.md|\
+                docs/developer-platform/16-branch-strategy-cicd.md|\
+                docs/developer-platform/29-production-stack-architecture.md|\
+                docs/developer-platform/34-kargo-promotion.md|\
+                docs/developer-platform/35-delivery-workflow.md|\
+                docs/engineering-standards/bmad-operating-model.md|\
+                docs/engineering-standards/code-review.md|\
+                docs/engineering-standards/decision-records.md|\
+                docs/intro.md|\
+                docs/observability/07-application-monitoring.md|\
+                docs/reliability/03-cluster-stability-assessment.md|\
+                static/img/architecture/minicloud-platform.png|\
+                static/img/architecture/minicloud-platform.svg|\
+                static/img/architecture/platform-delivery-pipeline.png|\
+                static/img/architecture/platform-delivery-pipeline.svg|\
+                static/img/architecture/platform-gitops-system.png|\
+                static/img/architecture/platform-gitops-system.svg) ;;
+                *) echo "Refusing unexpected documentation path: $file"; exit 1 ;;
+              esac
             done
+          elif [ "$TARGET_REPO" = "$GITHUB_REPOSITORY" ]; then
+            [[ "$PR_BRANCH" == kargo/promotion/* ]]
+            gh api "repos/$TARGET_REPO/pulls/$PR_NUMBER" --jq '.labels[].name' | grep -qx kargo
+            gh api "repos/$TARGET_REPO/pulls/$PR_NUMBER" --jq '.labels[].name' | grep -qx env-prod
+            if [[ "$PR_TITLE" == "kargo(policy): sign prod promotion commits" ]]; then
+              test "${#files[@]}" -eq 1
+              test "${files[0]}" = ".github/workflows/kargo-prod-sign.yml"
+            elif [[ "$PR_TITLE" == "kargo(policy): solo-maintainer release controls" ]]; then
+              test "${#files[@]}" -eq 9
+              for file in "${files[@]}"; do
+                case "$file" in
+                  .github/CODEOWNERS|.github/PULL_REQUEST_TEMPLATE.md|\
+                  .github/workflows/kargo-automerge.yml|.github/workflows/renovate.yml|\
+                  AGENTS.md|README.md|apps/retrieva/retrieva-assessment-crew-prod.yaml|\
+                  platform/delivery/kargo/README.md|services/retrieva/kargo/files/projectconfig.yaml) ;;
+                  *) echo "Refusing unexpected policy path: $file"; exit 1 ;;
+                esac
+              done
+            else
+              for file in "${files[@]}"; do
+                [[ "$file" =~ ^services/[^/]+/(helm/values-prod\.yaml|minicloud-1/prod/.*|overlays/prod/.*|release\.json)$ ]]
+              done
+            fi
+          else
+            echo "Refusing unsupported target repository: $TARGET_REPO"
+            exit 1
           fi
 
           test -n "$GPG_PRIVATE_KEY"
@@ -64,11 +143,13 @@ jobs:
           git config user.email "andrelaurelyvan.kanmegnetabouguie@ynov.com"
           git config user.signingkey "$GPG_KEY_ID"
 
-          git fetch origin main "$PR_BRANCH"
+          git fetch origin main "+refs/heads/$PR_BRANCH:refs/remotes/origin/$PR_BRANCH"
+          git checkout --detach "refs/remotes/origin/$PR_BRANCH"
+          test "$(git rev-parse HEAD)" = "$PR_HEAD_SHA"
           needs_signing=false
           if git merge-base --is-ancestor origin/main HEAD; then
             while IFS= read -r commit_sha; do
-              signature_verified=$(gh api "repos/$GITHUB_REPOSITORY/commits/$commit_sha" --jq '.commit.verification.verified')
+              signature_verified=$(gh api "repos/$TARGET_REPO/commits/$commit_sha" --jq '.commit.verification.verified')
               if [ "$signature_verified" != "true" ]; then
                 needs_signing=true
                 break
