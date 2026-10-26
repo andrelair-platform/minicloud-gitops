@@ -18,6 +18,9 @@ spec:
     - stage: crew-dev
       autoPromotionEnabled: true
     # Assemble the newest verified component Freight and run the cross-component live-dev gate.
-    # product-prod remains manual/CODEOWNERS-gated.
     - stage: product-dev
+      autoPromotionEnabled: true
+    # Once that product bundle passes dev verification, Kargo opens the single prod release PR.
+    # The PR remains CODEOWNERS-gated; this automates preparation, not approval or merge.
+    - stage: product-prod
       autoPromotionEnabled: true
