@@ -1,0 +1,81 @@
+name: Sign Kargo production promotion commits
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, labeled]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: kargo-prod-sign-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'kargo/promotion/') &&
+      contains(github.event.pull_request.labels.*.name, 'kargo') &&
+      contains(github.event.pull_request.labels.*.name, 'env-prod')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the promotion branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITOPS_TOKEN }}
+          fetch-depth: 0
+
+      - name: Sign the single approved-shape promotion commit
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          GPG_KEY_ID: FD6D39D681DEFA34
+        run: |
+          set -euo pipefail
+
+          # Only Kargo's own production PRs and this workflow's bootstrap PR are eligible.
+          test "$PR_AUTHOR" = "AndreLiar"
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
+            --jq '.head.repo.full_name == .base.repo.full_name' | grep -qx true
+
+          mapfile -t files < <(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[].filename')
+          test "${#files[@]}" -gt 0
+          if [[ "$PR_TITLE" == "kargo(policy): sign prod promotion commits" ]]; then
+            test "${#files[@]}" -eq 1
+            test "${files[0]}" = ".github/workflows/kargo-prod-sign.yml"
+          else
+            for file in "${files[@]}"; do
+              [[ "$file" =~ ^services/[^/]+/(helm/values-prod\.yaml|minicloud-1/prod/.*|overlays/prod/.*|release\.json)$ ]]
+            done
+          fi
+
+          test -n "$GPG_PRIVATE_KEY"
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          git config user.name "Andre Kanmegne"
+          git config user.email "andrelaurelyvan.kanmegnetabouguie@ynov.com"
+          git config user.signingkey "$GPG_KEY_ID"
+
+          git fetch origin main "$PR_BRANCH"
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            git rebase origin/main
+          fi
+
+          # Kargo emits one commit per promotion. Refuse to sign an unexpected history shape.
+          test "$(git rev-list --count origin/main..HEAD)" -eq 1
+          head_sha=$(git rev-parse HEAD)
+          signature_verified=$(gh api "repos/$GITHUB_REPOSITORY/commits/$head_sha" --jq '.commit.verification.verified')
+          if [ "$signature_verified" = "true" ]; then
+            echo "GitHub has already verified the promotion commit signature."
+            exit 0
+          fi
+
+          git commit --amend --no-edit --gpg-sign="$GPG_KEY_ID"
+          git push --force-with-lease origin "HEAD:$PR_BRANCH"
