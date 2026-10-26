@@ -1,54 +1,51 @@
-# Production overlay paths — any PR touching prod requires @AndreLair review.
-# This IS the promotion gate: Kargo opens the prod PR, CODEOWNERS approves it.
-# Standard = 2 environments only: dev (auto) + prod (CODEOWNERS-gated PR). No staging.
-# Platform Helm values — all require @AndreLair review.
+# Ownership map for routing/review suggestions. GitHub does not require a CODEOWNER
+# approval because this is a solo-maintainer repository. Production changes still require
+# a PR, the required merge-gate check, all applicable CI checks, and signed commits.
+# Kargo prepares production PRs; the maintainer reviews the diff and merges after checks pass.
 
 # Production overlays (all services)
-services/*/overlays/prod/     @AndreLair
-services/*/minicloud-1/prod/  @AndreLair
+services/*/overlays/prod/     @AndreLiar
+services/*/minicloud-1/prod/  @AndreLiar
 
-# Base (shared) — prod overlays inherit base/, so a base change reaches prod.
-# Gate it too or base becomes a prod-review bypass.
-services/*/base/              @AndreLair
+# Base (shared) — prod overlays inherit base/, so ownership applies to shared changes too.
+services/*/base/              @AndreLiar
 
 # Helm wrapper charts (GAP golden path) — values-prod.yaml carries the prod image tag + prod
 # config, and Chart.yaml pins the library version. This is the prod config location since the
-# wrapper migration, so it IS the prod gate (Kargo opens the prod PR here → CODEOWNERS approves).
-services/*/helm/              @AndreLair
+# wrapper migration, so it is a key production configuration path.
+services/*/helm/              @AndreLiar
 
-# Kargo Project/Warehouse/Stage manifests define the promotion machinery — gate them
-# (a Stage's promotionTemplate can write to any overlay, so it needs review too).
-services/*/kargo/             @AndreLair
-platform/delivery/kargo/      @AndreLair
+# Kargo Project/Warehouse/Stage manifests define the promotion machinery; retain ownership mapping.
+services/*/kargo/             @AndreLiar
+platform/delivery/kargo/      @AndreLiar
 
 # ArgoCD Application manifests — these DEFINE the deploy gate (syncPolicy,
-# targetRevision, source path). Changing one can bypass every other control,
-# so they require review. (CI bumps image newTags in overlays, never apps/.)
-apps/                         @AndreLair
+# targetRevision, source path). (CI bumps image newTags in overlays, never apps/.)
+apps/                         @AndreLiar
 
 # Production quota and network-policy manifests
-platform/security/quotas/*-prod.yaml  @AndreLair
-platform/security/network-policies/*-prod.yaml @AndreLair
+platform/security/quotas/*-prod.yaml  @AndreLiar
+platform/security/network-policies/*-prod.yaml @AndreLiar
 
 # Helm values — any change here affects running platform tools
-helm-values/                  @AndreLair
-helm-values/minicloud-1/      @AndreLair
+helm-values/                  @AndreLiar
+helm-values/minicloud-1/      @AndreLiar
 
 # Bootstrap — changing root-app.yaml affects the entire cluster
-bootstrap/                    @AndreLair
+bootstrap/                    @AndreLiar
 
 # RBAC — security-sensitive
-platform/security/rbac/       @AndreLair
+platform/security/rbac/       @AndreLiar
 
 # Agent operating config — the Claude Code hooks (deterministic guardrails / approval
 # gates) and the auto-loaded rules constitution. A change here alters what the agent is
-# allowed to do, so it is security-relevant and requires review (agentic-guardrails.md).
-.claude/settings.json         @AndreLair
-.claude/hooks/                @AndreLair
-.claude/rules/                @AndreLair
-.claude/skills/               @AndreLair
-.claude/commands/             @AndreLair
-.claude/agents/               @AndreLair
-REVIEW.md                     @AndreLair
-evals/                        @AndreLair
-.github/workflows/agent-config-evals.yml @AndreLair
+# allowed to do, so keep its ownership visible (agentic-guardrails.md).
+.claude/settings.json         @AndreLiar
+.claude/hooks/                @AndreLiar
+.claude/rules/                @AndreLiar
+.claude/skills/               @AndreLiar
+.claude/commands/             @AndreLiar
+.claude/agents/               @AndreLiar
+REVIEW.md                     @AndreLiar
+evals/                        @AndreLiar
+.github/workflows/agent-config-evals.yml @AndreLiar

@@ -1,15 +1,13 @@
 name: Kargo dev auto-merge
 
 # Kargo's `dev` Stage opens a PR (labelled `automerge`) that bumps a dev overlay
-# image tag. dev overlays are NOT CODEOWNERS-gated for a human, but the path IS
-# CODEOWNERS-covered (services/*/helm/), so a plain merge is review-blocked — this
-# workflow admin-merges it, but ONLY after proving the PR touches nothing but dev
-# overlays AND its checks are green. prod/base/apps/kargo changes can never ride an
-# `automerge` label.
+# image tag. This workflow auto-merges only after proving that the PR touches dev
+# values and every applicable check passes. Production/base/apps/Kargo changes can
+# never ride an `automerge` label. The normal main-branch ruleset remains enforced.
 #
 # This is inert until a service's dev Stage auto-promotion is enabled (safe posture:
 # no `automerge` PRs exist until you opt a service in). Prod promotion PRs are NOT
-# labelled `automerge` and always fall through to the CODEOWNERS gate.
+# labelled `automerge` and require the maintainer's normal PR merge after checks.
 
 on:
   pull_request:
@@ -45,8 +43,8 @@ jobs:
           # Every changed path must be dev-only — EITHER a legacy dev overlay
           # (services/<svc>/minicloud-1/dev/**) OR the wrapper chart's dev values file
           # (services/<svc>/helm/values-dev.yaml). NOTHING else rides an automerge label:
-          # prod values, common values.yaml, Chart.yaml/lock, prod overlays, base, apps,
-          # kargo all stay CODEOWNERS-gated.
+            # prod values, common values.yaml, Chart.yaml/lock, prod overlays, base, apps,
+            # and Kargo configuration are refused.
           BAD=$(echo "$FILES" | grep -vE '^services/[^/]+/minicloud-1/dev/|^services/[^/]+/helm/values-dev\.yaml$' || true)
           if [ -n "$BAD" ]; then
             echo "::error::Refusing auto-merge — PR touches non-dev paths:"
@@ -57,9 +55,8 @@ jobs:
 
       - name: Merge (squash) when checks are green — idempotent + race-safe
         env:
-          # Org token (same one CI uses) — its user is a ruleset bypass actor, so --admin
-          # can merge a review-blocked dev-only PR. The merge is a GitHub server-side squash
-          # (web-flow-signed → satisfies the require-signatures rule).
+          # The merge is a GitHub server-side squash (web-flow-signed → satisfies the
+          # require-signatures rule). Normal branch protections remain enforced.
           GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
         run: |
           set -uo pipefail
@@ -84,8 +81,8 @@ jobs:
               echo "Waiting for $PENDING check(s) to finish… ($i/40)"; sleep 15; continue
             fi
 
-            # Checks green → admin-merge (bypasses only the CODEOWNERS review on a dev-only PR).
-            if OUT=$(gh pr merge "$PR" --repo "$R" --squash --admin --delete-branch 2>&1); then
+            # Checks green → normal merge; required checks and signed-commit rules stay enforced.
+            if OUT=$(gh pr merge "$PR" --repo "$R" --squash --delete-branch 2>&1); then
               echo "Merged."; exit 0
             fi
             echo "$OUT"

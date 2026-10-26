@@ -18,12 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Mint a short-lived token for the andrelair-renovate GitHub App so PRs are
-      # authored by andrelair-renovate[bot], NOT a human PAT. This lets the sole
-      # code owner (@AndreLair) actually Approve Renovate PRs on CODEOWNERS-gated
-      # paths (services/*/helm/ etc.) — GitHub forbids approving your own PR, which
-      # deadlocked the old GITOPS_TOKEN (=AndreLiar) setup. Scoped to the whole org
-      # (repository selection: all) so the global config's repo list resolves.
+      # Mint a short-lived token for the andrelair-renovate GitHub App so dependency
+      # PRs have a dedicated automation identity instead of using a human PAT. The
+      # separate identity improves attribution and token scope; it is not used to
+      # manufacture or bypass a required review. Scoped to the whole org (repository
+      # selection: all) so the global config's repo list resolves.
       - name: Mint Renovate bot token (GitHub App andrelair-renovate)
         id: app-token
         uses: actions/create-github-app-token@v2
