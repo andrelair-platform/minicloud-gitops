@@ -78,8 +78,10 @@ def main() -> int:
         if origin_token not in product_dev:
             errors.append(f"product-dev omits {name}: missing {origin_token!r}")
 
-    if stage.count("sources: { stages: [product-dev] }") != len(EXPECTED):
+    if stage.count("stages: [product-dev]") != len(EXPECTED):
         errors.append("product-prod must source all three components from product-dev")
+    if stage.count("selectionPolicy: MatchUpstream") != len(EXPECTED):
+        errors.append("product-prod must match each component to the current product-dev bundle")
 
     analysis = ROOT / "services/retrieva/kargo/files/analysis-product-dev.yaml"
     if not analysis.exists() or "message/send" not in analysis.read_text():
