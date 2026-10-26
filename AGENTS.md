@@ -21,9 +21,10 @@ platform manifests, env overlays) + ADRs. **No application source, notebooks, or
 
 ## Hard rules (never violate — the platform enforces these)
 - **Git is the only write path.** Never `kubectl apply`/`argocd app sync` a managed workload by hand —
-  change Git, let ArgoCD reconcile. Promotion is **Kargo → CODEOWNERS-gated prod PR → ArgoCD**.
-- **Prod is CODEOWNERS-gated** (`@AndreLair`): `services/*/helm|base|kargo/`, `apps/`, `helm-values/`,
-  `manifests/{quotas,network-policies}/*-prod`. Prod change = a PR on that gate, never a direct edit.
+  change Git, let ArgoCD reconcile. Promotion is **Kargo → protected PR with required checks → ArgoCD**.
+- **Prod changes require a PR and checks, not CODEOWNER approval.** CODEOWNERS is advisory because this
+  is a solo-maintainer repository. `merge-gate` is the required main check; production PRs also run
+  path-relevant checks such as Checkov and kubeconform. Signed commits and no force pushes remain enforced.
 - **Secrets via ESO→Vault only.** Never hardcode/commit a secret; `MINICLOUD_CA_CERT` is raw PEM (never base64-decode).
 - **Smallest safe change.** Don't rewrite working architecture, delete tests, or refactor unrelated modules.
 
@@ -34,6 +35,6 @@ platform manifests, env overlays) + ADRs. **No application source, notebooks, or
 
 ## Start-of-task
 `git status` → read the one relevant `.claude/rules/*.md` → make the smallest safe change → run the
-relevant checks (`testing.md` L0–L4; `helm template` for charts) → PR (CODEOWNERS gate does the rest).
+relevant checks (`testing.md` L0–L4; `helm template` for charts) → PR (required checks gate the merge).
 Pick a **BMAD delivery path** by size (A small / B feature / C new product / E hotfix — see
 `bmad-compliance.md`); a one-line fix does not need a PRD.

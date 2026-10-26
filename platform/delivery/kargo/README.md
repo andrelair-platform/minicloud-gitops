@@ -4,7 +4,7 @@ Kargo sits **on top of** Argo CD. Argo CD's job is "make the cluster match Git f
 one environment." Kargo's job is the thing Argo CD does *not* do: **move a verified
 artifact from stage to stage**, and write the Git commit/PR that Argo CD then
 reconciles. It never touches the cluster directly — it only produces Git changes,
-so our GitOps model (and the CODEOWNERS prod gate) stays intact.
+so the GitOps repository remains the deployment source of truth.
 
 - Install: `apps/platform/kargo.yaml` (Helm chart `oci://ghcr.io/akuity/kargo-charts/kargo`).
 - Per-service pipelines: `services/<svc>/kargo/` — a `Project`, a `Warehouse`
@@ -18,12 +18,14 @@ Warehouse (watches ghcr prod image) ──► Freight (an immutable artifact set
         │
    Stage: dev   promotionTemplate → bump dev overlay → open PR (auto-merge) → Argo syncs dev
         │  (freight must be live in dev before it can go to prod)
-   Stage: prod  promotionTemplate → bump prod overlay → open **CODEOWNERS-gated PR** → review → Argo syncs prod
+   Stage: prod  promotionTemplate → bump prod overlay → open PR → checks + maintainer review/merge → Argo syncs prod
 ```
 
-Every overlay change still lands via a PR against protected `main` — exactly like
-today. Kargo just *opens* those PRs. The prod PR is the promotion gate (CODEOWNERS),
-and the live canary Rollout + AnalysisTemplate remain the runtime safety brake.
+Every overlay change still lands via a PR against protected `main`. Kargo just
+*opens* those PRs. For this solo-maintainer repository, GitHub does not require a
+CODEOWNER approval that the PR author cannot give. Production merges still require
+the `merge-gate` status and green path-relevant CI checks, signed commits, and a maintainer
+diff review; the live canary Rollout + AnalysisTemplate remain the runtime safety brake.
 
 ## Safe-by-default posture (this spike)
 

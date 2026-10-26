@@ -1,7 +1,7 @@
 # Auto-promotion: Kargo is the sole promoter of dev. There are three
 # component Warehouses (backend + frontend + assessment crew), each with its own dev Stage
 # that auto-promotes + verifies independently. One product-prod Stage then promotes one verified
-# Freight from every component in a single CODEOWNERS-gated release PR.
+# Freight from every component in a single checks-gated release PR.
 # NOTE: ProjectConfig is a singleton whose name MUST equal the Kargo Project name = the project
 # namespace. retrieva's project ns is `retrieva-kargo` (not the bare `retrieva`), so both must be it.
 apiVersion: kargo.akuity.io/v1alpha1
@@ -21,6 +21,6 @@ spec:
     - stage: product-dev
       autoPromotionEnabled: true
     # Once that product bundle passes dev verification, Kargo opens the single prod release PR.
-    # The PR remains CODEOWNERS-gated; this automates preparation, not approval or merge.
+    # This automates preparation; the maintainer reviews and merges after required checks pass.
     - stage: product-prod
       autoPromotionEnabled: true

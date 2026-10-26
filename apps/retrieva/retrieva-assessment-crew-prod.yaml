@@ -9,7 +9,7 @@ metadata:
 spec:
   project: minicloud-platform
   # GAP wrapper chart (single workload) in the retrieva (prod) ns — ghcr SHA image + ghcr-pull.
-  # Git-gated auto-sync (CODEOWNERS on services/*/ + apps/ is the approval gate upstream).
+  # Git-gated auto-sync (protected PR and required checks are the merge gate upstream).
   source:
     repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
     targetRevision: main

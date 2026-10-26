@@ -6,8 +6,8 @@
 
 **Type:**
 - [ ] `standard` — pre-approved routine change (config value update, image tag bump, dependency update)
-- [ ] `normal` — requires review and approval (new workload, topology change, security policy update)
-- [ ] `emergency` — urgent fix, expedited approval (active incident, critical vulnerability)
+- [ ] `normal` — maintainer diff review required (new workload, topology change, security policy update)
+- [ ] `emergency` — urgent fix, expedited maintainer review (active incident, critical vulnerability)
 
 **Risk level:**
 - [ ] `low` — isolated change, easy rollback, no user impact
@@ -38,7 +38,7 @@
 
 <!-- What did you verify before opening this PR? -->
 - [ ] Helm chart renders without error (`helm template` / `helm dependency build`)
-- [ ] Tested in dev before promoting to prod (Kargo dev→prod, CODEOWNERS-gated)
+- [ ] Tested in dev before promoting to prod (Kargo dev→prod, required checks, maintainer merge)
 - [ ] Regression check passes (or scoped check for affected components)
 
 ---

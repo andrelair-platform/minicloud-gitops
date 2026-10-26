@@ -61,10 +61,10 @@ The layout encodes a single ownership boundary (the law is [`ARCHITECTURE.md`](A
 > **CI builds & proves the artifact · Kargo promotes it · ArgoCD deploys it.** No single tool does all three — that separation is exactly what keeps the GitOps guarantee (Git is the only cluster write path) intact. Deep dive: [delivery-workflow](https://andrelair-platform.github.io/minicloud-platform-docs/platform/developer-platform/delivery-workflow).
 
 1. **Build & prove** *(the app's own repo — never this one)* — test → build → **Trivy** scan → **cosign** keyless sign → **SBOM** → push an immutable `:<sha>` image to Harbor (dev) and ghcr (prod).
-2. **Promote** *(Kargo)* — a Warehouse detects the new image → **Freight** (an immutable artifact set). Kargo auto-promotes to **dev** and runs a verification `AnalysisRun`; **only dev-verified Freight** becomes promotable to prod. Prod promotion opens a **CODEOWNERS-gated PR** — a human decides *when*. Kargo writes **Git**, never the cluster.
+2. **Promote** *(Kargo)* — a Warehouse detects the new image → **Freight** (an immutable artifact set). Kargo auto-promotes to **dev** and runs a verification `AnalysisRun`; **only dev-verified Freight** becomes promotable to prod. Prod promotion opens a PR; the maintainer reviews and merges it after required checks pass. Kargo writes **Git**, never the cluster.
 3. **Deploy** *(ArgoCD)* — reconciles the merged change; production rolls out as a **canary** whose analysis gate **auto-aborts** on bad metrics.
 
-This is **continuous *deployment* to dev** (automatic) and **continuous *delivery* to prod** (human-gated) from one pipeline.
+This is **continuous *deployment* to dev** (automatic) and **continuous *delivery* to prod** (maintainer-confirmed after automated checks) from one pipeline.
 
 - **Environment model** — exactly **two environments** (dev + prod) running the **same artifact**; images are **env-agnostic** (config read at runtime), so dev/prod parity is *structural*, not hoped-for. Staging was deliberately removed.
 - **Rollback** — `git revert` (ArgoCD reconciles the previous state) or re-promote the previous Freight. The prior state is always one commit away.
@@ -77,7 +77,7 @@ No single control is trusted; a change must clear every layer. **The gate is on 
 
 | Layer | Control | What it prevents |
 |---|---|---|
-| **Git merge** | PR + **CODEOWNERS** (`@AndreLair`) on `apps/`, `services/*/helm`, `services/*/kargo`, `helm-values/`, `bootstrap/`, prod quotas/netpols, RBAC, and `.claude/` ; **GPG-signed** commits; branch protection | an unreviewed or unsigned change reaching prod — *this PR gate is the promotion gate* |
+| **Git merge** | PR + required `merge-gate`; production paths run relevant CI such as **Checkov** and **kubeconform**; **GPG-signed** commits; branch protection; CODEOWNERS records ownership but is not a required approval | an unchecked or unsigned change reaching prod |
 | **Admission** | **OPA Gatekeeper** (deny mode, 0 violations: no-privileged / no-root / no-latest / allowed-registries / resource-limits / ingress-TLS / no-hostpath / no-hostname-pin) + Pod Security Admission `restricted` | a non-compliant workload ever being admitted, even if it merged |
 | **Pre-merge CI** | `validate-manifests` (**kubeconform** + `helm template`) · **checkov** · **architecture-guard** (blocks taxonomy drift) · **pr-manifest-diff** (renders the real diff on the PR) | broken manifests, structural rot, and blind merges |
 | **Client-side hooks** | `.claude/hooks` deny manual `argocd sync/rollback/patch`, `kubectl delete ns`, force-push to `main`, and **secrets written to files** | mistakes caught at the keystroke, before a PR exists |
