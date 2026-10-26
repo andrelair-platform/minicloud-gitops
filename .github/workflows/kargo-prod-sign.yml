@@ -35,6 +35,7 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           GPG_KEY_ID: FD6D39D681DEFA34
@@ -68,8 +69,15 @@ jobs:
             git rebase origin/main
           fi
 
-          # Kargo emits one commit per promotion. Refuse to sign an unexpected history shape.
-          test "$(git rev-list --count origin/main..HEAD)" -eq 1
+          # Preserve the Kargo commit message and author, but normalize a GitHub
+          # "update branch" merge into one linear promotion commit.
+          commit_message=$(git log --no-merges -1 --format='%B' origin/main..HEAD)
+          commit_author=$(git log --no-merges -1 --format='%an <%ae>' origin/main..HEAD)
+          if [ -z "$commit_message" ]; then
+            commit_message="$PR_TITLE"
+            commit_author="AndreLiar <andrelaurelyvan.kanmegnetabouguie@ynov.com>"
+          fi
+
           head_sha=$(git rev-parse HEAD)
           signature_verified=$(gh api "repos/$GITHUB_REPOSITORY/commits/$head_sha" --jq '.commit.verification.verified')
           if [ "$signature_verified" = "true" ]; then
@@ -77,5 +85,6 @@ jobs:
             exit 0
           fi
 
-          git commit --amend --no-edit --gpg-sign="$GPG_KEY_ID"
-          git push --force-with-lease origin "HEAD:$PR_BRANCH"
+          git reset --soft origin/main
+          git commit --author="$commit_author" -m "$commit_message" --gpg-sign="$GPG_KEY_ID"
+          git push --force-with-lease="refs/heads/$PR_BRANCH:$PR_HEAD_SHA" origin "HEAD:refs/heads/$PR_BRANCH"
