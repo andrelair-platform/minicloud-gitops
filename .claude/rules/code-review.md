@@ -96,6 +96,34 @@ gate** (`qa-gate.md`), the **test pyramid** (`testing.md`), and the **docs DoD g
   - **Revisit trigger:** a second engineer joins, or a real-prod / real-PII claim → add the review-bot
     (`[[reference_review_bot_approve]]`) or a human reviewer.
 
+## The solo merge-readiness sequence (review runs WITH CI; merge waits for ALL gates)
+The enterprise PR rule is *review and CI run in parallel, but merge needs both green.* **Solo, the
+"second independent human" axis collapses onto the FRESH-CONTEXT pass** (`/bmad-code-review`, which has
+no memory of writing the code — this *is* the peer-review substitute, not a nicety). Sequence per PR,
+scaled by delivery path:
+1. **Fast checks first (fail-fast).** L0 lint/format/compile + the `merge-gate` conflict-scan gate
+   **before** the expensive L2–L4 jobs spin up (`testing.md` fail-fast rule) — don't spend a review pass
+   *or* wall-clock on a diff that fails `ruff` in 20s. (The solo win isn't a reviewer's time — it's yours.)
+2. **Review in PARALLEL with CI** — start `/review-pr` (local, no CI/API cost) or the fresh-context
+   `/bmad-code-review` the moment the diff exists; **do not wait for CI to finish** to begin reading.
+   Path B/C: the fresh-context pass is **required before merge** (`bmad-compliance.md` review layer 2).
+3. **Full CI green on the LATEST sha** — L0–L4 (`testing.md`); required checks evaluate the head commit,
+   never a stale one.
+4. **Live QA gate (L5)** for a service heading to prod — `qa-gate.md`, against the running dev deploy;
+   blockers gate the promotion PR. Green CI is **not** sufficient to promote.
+5. **Owner eyeball → merge.** Non-gated / docs PR → plain `gh pr merge --squash` (no `--admin`).
+   CODEOWNERS-gated PR → `--admin` as **logged break-glass, only after confirming `merge-gate` + CI are
+   green** (it bypasses them → the control is *looking first*; the accepted-risk determination above).
+
+**New commits after a review pass** re-trigger CI on the new sha **and** require re-running the
+fresh-context pass on the **changed surface** — a prior "clean" verdict does **not** carry to a changed
+diff. (This is the solo analogue of team "dismiss stale approvals": there's no
+`required_approving_review_count` to auto-dismiss — the discipline is manual, so it's stated here.)
+
+**Deliberately NOT adopted (team-only — no solo value):** a human merge queue · 2-reviewer-for-critical ·
+iteration/stale-approval automation. The **CODEOWNERS-on-prod-paths gate + the live QA gate** substitute
+for them (same reasoning as the `--admin` determination — we don't fake a second approver).
+
 ## Relationship to the gates (don't double-count)
 Review (this) + **CI** (`testing.md` L0–L4) + the **live QA gate** (`qa-gate.md`, L5) + **CODEOWNERS**
 (the merge enforcement) are **distinct** evidence — none replaces another. This file governs *human/AI
