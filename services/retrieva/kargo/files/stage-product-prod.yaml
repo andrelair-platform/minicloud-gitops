@@ -1,0 +1,95 @@
+# Product-level release gate: prod moves backend + frontend + assessment crew together. Every selected
+# Freight must belong to the same product-dev combination that passed the live integration analysis.
+# The release manifest is updated in the same PR, and CI rejects any mismatch with the prod values.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: product-prod
+  namespace: retrieva-kargo
+spec:
+  requestedFreight:
+    - origin: { kind: Warehouse, name: retrieva-backend }
+      sources:
+        stages: [product-dev]
+        autoPromotionOptions:
+          selectionPolicy: MatchUpstream
+    - origin: { kind: Warehouse, name: retrieva-frontend }
+      sources:
+        stages: [product-dev]
+        autoPromotionOptions:
+          selectionPolicy: MatchUpstream
+    - origin: { kind: Warehouse, name: retrieva-assessment-crew }
+      sources:
+        stages: [product-dev]
+        autoPromotionOptions:
+          selectionPolicy: MatchUpstream
+  promotionTemplate:
+    spec:
+      vars:
+        - name: gitopsRepo
+          value: https://github.com/andrelair-platform/minicloud-gitops.git
+        - name: backendImg
+          value: ghcr.io/andrelair-platform/retrieva-backend
+        - name: frontendImg
+          value: ghcr.io/andrelair-platform/retrieva-frontend
+        - name: crewRepo
+          value: https://github.com/andrelair-platform/retrieva-assessment-crew.git
+      steps:
+        - uses: git-clone
+          as: clone
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            checkout: [{ branch: main, path: ./repo }]
+        - uses: yaml-update
+          as: set-retrieva-images
+          config:
+            path: ./repo/services/retrieva/helm/values-prod.yaml
+            updates:
+              - key: backend.image.tag
+                value: '${{ quote(imageFrom(vars.backendImg).Tag) }}'
+              - key: frontend.image.tag
+                value: '${{ quote(imageFrom(vars.frontendImg).Tag) }}'
+        - uses: yaml-update
+          as: set-crew-image
+          config:
+            path: ./repo/services/retrieva-assessment-crew/helm/values-prod.yaml
+            updates:
+              - key: minicloud-app-deployment.image.tag
+                value: '${{ quote(commitFrom(vars.crewRepo).ID[0:7]) }}'
+        - uses: json-update
+          as: set-release-manifest
+          config:
+            path: ./repo/services/retrieva/release.json
+            updates:
+              - key: components.backend.tag
+                value: '${{ quote(imageFrom(vars.backendImg).Tag) }}'
+              - key: components.frontend.tag
+                value: '${{ quote(imageFrom(vars.frontendImg).Tag) }}'
+              - key: components.assessment-crew.tag
+                value: '${{ quote(commitFrom(vars.crewRepo).ID[0:7]) }}'
+        - uses: git-commit
+          as: commit
+          config:
+            path: ./repo
+            message: 'kargo(retrieva): promote product release to prod'
+        - uses: git-push
+          as: push
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config: { path: ./repo, generateTargetBranch: true }
+        - uses: git-open-pr
+          as: open-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            sourceBranch: ${{ outputs.push.branch }}
+            targetBranch: main
+            provider: github
+            title: 'kargo(retrieva): promote complete product release to PROD'
+            description: 'One Retrieva product release: backend + frontend + assessment crew, each verified in dev. services/retrieva/release.json records the exact component set.'
+            labels: [kargo, env-prod]
+        - uses: git-wait-for-pr
+          as: wait-pr
+          if: ${{ outputs.commit.commit != outputs.clone.commits['./repo'] }}
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            prNumber: ${{ outputs['open-pr'].pr.id }}

@@ -1,4 +1,5 @@
-# prod (ns retrieva) — ghcr SHA images, 2 replicas. Kargo bumps both image.tag (git Warehouse → same SHA).
+# prod (ns retrieva) — immutable GHCR SHA images. The product-prod Kargo Stage promotes backend,
+# frontend, and assessment crew together and records the component set in services/retrieva/release.json.
 secretsVaultPath: platform/retrieva
 # Enable Resend email in prod — the ExternalSecret pulls `resend-api-key` from
 # Vault (platform/retrieva) into retrieva-secrets. Requires the key to exist in Vault
@@ -31,7 +32,7 @@ worker:
 backend:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-backend
-    tag: fe73460   # RTV-81b: crew A2A via direct JSON-RPC message/send
+    tag: 7ddef00
   workload:
     replicas: 2
   env:
@@ -95,7 +96,7 @@ crewA2A:
 frontend:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-frontend
-    tag: f008671
+    tag: dfe0847
   workload:
     replicas: 2
   env:

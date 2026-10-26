@@ -4,7 +4,8 @@ metadata:
   # retrieva gets a DEDICATED Kargo app (not the kargo-projects ApplicationSet) because
   # its prod workload owns the bare `retrieva` namespace, so the Kargo project must live
   # in a separate ns (retrieva-kargo) — which the ApplicationSet's ns=<dir> convention
-  # can't express. dev→prod pipeline, git Warehouse (2 images); see services/retrieva/kargo/.
+  # can't express. The product pipeline covers backend, frontend, and assessment crew; see
+  # services/retrieva/kargo/ and services/retrieva/release.json.
   name: kargo-retrieva
   namespace: argocd
   labels:
@@ -28,7 +29,7 @@ spec:
         - .spec.data[].remoteRef.decodingStrategy
         - .spec.data[].remoteRef.metadataPolicy
         - .spec.target.deletionPolicy
-    # Kargo's webhook defaults strictSemvers/discoveryLimit on the subscription +
+    # Kargo's webhook defaults strictSemvers/discoveryLimit/commitSelectionStrategy +
     # normalises spec.interval (5m→5m0s) — never in git → permanent SSA OutOfSync.
     # Ignore them (RespectIgnoreDifferences already set). Same block as kargo-projects.
     - group: kargo.akuity.io
@@ -39,6 +40,7 @@ spec:
         - .spec.subscriptions[].image.discoveryLimit
         - .spec.subscriptions[].git.strictSemvers
         - .spec.subscriptions[].git.discoveryLimit
+        - .spec.subscriptions[].git.commitSelectionStrategy
   syncPolicy:
     automated:
       prune: true

@@ -1,0 +1,29 @@
+# Aggregates the exact backend, frontend, and crew Freight already verified by their component dev
+# Stages. The benign read-only clone establishes the promotion, then verification tests the assembled
+# live-dev product. No deployment file changes occur here: component dev Stages own those.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: product-dev
+  namespace: retrieva-kargo
+spec:
+  requestedFreight:
+    - origin: { kind: Warehouse, name: retrieva-backend }
+      sources: { stages: [backend-dev] }
+    - origin: { kind: Warehouse, name: retrieva-frontend }
+      sources: { stages: [frontend-dev] }
+    - origin: { kind: Warehouse, name: retrieva-assessment-crew }
+      sources: { stages: [crew-dev] }
+  verification:
+    analysisTemplates:
+      - name: retrieva-product-dev-verify
+  promotionTemplate:
+    spec:
+      # Kargo requires at least one Promotion step. This read-only clone has no Git or cluster write;
+      # its purpose is to bind the three selected Freight into one verifiable product release.
+      steps:
+        - uses: git-clone
+          as: read-release-source
+          config:
+            repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+            checkout: [{ branch: main, path: ./repo }]
