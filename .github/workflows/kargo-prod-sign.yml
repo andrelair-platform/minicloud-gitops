@@ -78,10 +78,16 @@ jobs:
             commit_author="AndreLiar <andrelaurelyvan.kanmegnetabouguie@ynov.com>"
           fi
 
-          head_sha=$(git rev-parse HEAD)
-          signature_verified=$(gh api "repos/$GITHUB_REPOSITORY/commits/$head_sha" --jq '.commit.verification.verified')
-          if [ "$signature_verified" = "true" ]; then
-            echo "GitHub has already verified the promotion commit signature."
+          needs_signing=false
+          while IFS= read -r commit_sha; do
+            signature_verified=$(gh api "repos/$GITHUB_REPOSITORY/commits/$commit_sha" --jq '.commit.verification.verified')
+            if [ "$signature_verified" != "true" ]; then
+              needs_signing=true
+              break
+            fi
+          done < <(git rev-list origin/main..HEAD)
+          if [ "$needs_signing" = false ]; then
+            echo "GitHub has verified every commit in the promotion branch."
             exit 0
           fi
 
