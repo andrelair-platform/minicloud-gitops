@@ -65,6 +65,25 @@ jobs:
           git config user.signingkey "$GPG_KEY_ID"
 
           git fetch origin main "$PR_BRANCH"
+          needs_signing=false
+          if git merge-base --is-ancestor origin/main HEAD; then
+            while IFS= read -r commit_sha; do
+              signature_verified=$(gh api "repos/$GITHUB_REPOSITORY/commits/$commit_sha" --jq '.commit.verification.verified')
+              if [ "$signature_verified" != "true" ]; then
+                needs_signing=true
+                break
+              fi
+            done < <(git rev-list origin/main..HEAD)
+          else
+            # A branch behind main must be rebased and re-signed even if its old
+            # commits were signed, because rebasing changes their commit objects.
+            needs_signing=true
+          fi
+          if [ "$needs_signing" = false ]; then
+            echo "GitHub has verified every commit in the promotion branch."
+            exit 0
+          fi
+
           if ! git merge-base --is-ancestor origin/main HEAD; then
             git rebase origin/main
           fi
@@ -76,19 +95,6 @@ jobs:
           if [ -z "$commit_message" ]; then
             commit_message="$PR_TITLE"
             commit_author="AndreLiar <andrelaurelyvan.kanmegnetabouguie@ynov.com>"
-          fi
-
-          needs_signing=false
-          while IFS= read -r commit_sha; do
-            signature_verified=$(gh api "repos/$GITHUB_REPOSITORY/commits/$commit_sha" --jq '.commit.verification.verified')
-            if [ "$signature_verified" != "true" ]; then
-              needs_signing=true
-              break
-            fi
-          done < <(git rev-list origin/main..HEAD)
-          if [ "$needs_signing" = false ]; then
-            echo "GitHub has verified every commit in the promotion branch."
-            exit 0
           fi
 
           git reset --soft origin/main
