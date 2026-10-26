@@ -56,7 +56,7 @@ spec:
             updates:
               - key: minicloud-app-deployment.image.tag
                 value: '${{ quote(commitFrom(vars.crewRepo).ID[0:7]) }}'
-        - uses: yaml-update
+        - uses: json-update
           as: set-release-manifest
           config:
             path: ./repo/services/retrieva/release.json
