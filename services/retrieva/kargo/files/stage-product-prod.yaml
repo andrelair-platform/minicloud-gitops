@@ -9,11 +9,20 @@ metadata:
 spec:
   requestedFreight:
     - origin: { kind: Warehouse, name: retrieva-backend }
-      sources: { stages: [product-dev] }
+      sources:
+        stages: [product-dev]
+        autoPromotionOptions:
+          selectionPolicy: MatchUpstream
     - origin: { kind: Warehouse, name: retrieva-frontend }
-      sources: { stages: [product-dev] }
+      sources:
+        stages: [product-dev]
+        autoPromotionOptions:
+          selectionPolicy: MatchUpstream
     - origin: { kind: Warehouse, name: retrieva-assessment-crew }
-      sources: { stages: [product-dev] }
+      sources:
+        stages: [product-dev]
+        autoPromotionOptions:
+          selectionPolicy: MatchUpstream
   promotionTemplate:
     spec:
       vars:
