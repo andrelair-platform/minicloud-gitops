@@ -1,29 +1,26 @@
 ---
-# Direction IT group → cluster-admin (full kubectl access)
+# Dedicated Kubernetes administrators → cluster-admin (full kubectl access).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: oidc-cluster-admin
 subjects:
   - kind: Group
-    name: "oidc:Direction IT"
+    name: "oidc:k8s-cluster-admins"
     apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: ClusterRole
   name: cluster-admin
   apiGroup: rbac.authorization.k8s.io
 ---
-# Cybersécurité + Audit groups → read-only across all namespaces
+# Dedicated Kubernetes viewers → read-only across all namespaces.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: oidc-cluster-viewer
 subjects:
   - kind: Group
-    name: "oidc:Cybersécurité"
-    apiGroup: rbac.authorization.k8s.io
-  - kind: Group
-    name: "oidc:Audit"
+    name: "oidc:k8s-cluster-viewers"
     apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: ClusterRole
