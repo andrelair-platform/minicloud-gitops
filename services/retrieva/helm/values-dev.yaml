@@ -81,6 +81,14 @@ backend:
     # by authentik.enabled below (which also adds the key + opens the backend→authentik:80 egress).
     - { name: AUTHENTIK_BASE_URL, value: "http://authentik-server.authentik.svc.cluster.local" }
     - { name: AUTHENTIK_API_TOKEN, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: authentik-api-token } } }
+    # ADR-0004 — governed IS M2M service principal. Lets the ktayl-solution IS call /api/v1/evaluations
+    # as a SERVICE principal (client-credentials) to run software evaluations as a governed tenant.
+    # ISSUER must equal the token `iss` EXACTLY (incl. the trailing /); JWKS is fetched in-cluster over
+    # http (same authentik:9000 egress the discovery connector above uses — no new netpol); AUDIENCE =
+    # the Authentik client_id (tokens carry aud=client_id). Dev first; prod renders none (RTV-54 isolation).
+    - { name: AUTHENTIK_M2M_ISSUER, value: "https://auth.10.0.0.200.nip.io/application/o/retrieva-is-evaluator/" }
+    - { name: AUTHENTIK_M2M_JWKS_URL, value: "http://authentik-server.authentik.svc.cluster.local/application/o/retrieva-is-evaluator/jwks/" }
+    - { name: AUTHENTIK_M2M_AUDIENCE, value: "MpcHeR5H1iUVZEHqOvOBBagRuVuMm1qKnLU6M99J" }
     # RTV-92 — ERPNext AP/ERP discovery connector (dev first). The read-only connector lists submitted
     # Purchase Invoices from the ERP and PROPOSES arrangements from supplier spend (human-confirmed;
     # nothing auto-written). Internal svc (http, no TLS). Creds from Vault platform/retrieva-dev via the
