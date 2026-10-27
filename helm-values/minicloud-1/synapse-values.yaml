@@ -6,7 +6,7 @@ signingkey:
     enabled: false  # key generated on first install — disable to avoid repeated job OutOfSync
     generateImage:
       repository: ghcr.io/element-hq/synapse
-      tag: v1.127.1
+      tag: v1.160.0
     publishImage:
       repository: docker.io/bitnami/kubectl
       tag: latest
