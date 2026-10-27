@@ -26,18 +26,3 @@ roleRef:
   kind: ClusterRole
   name: view
   apiGroup: rbac.authorization.k8s.io
----
-# Authentik identity 100001 (kanmegnea) → cluster-admin.
-# Kubernetes sees the provider's preferred_username claim as the stable employee ID.
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: oidc-cluster-admin-kanmegnea
-subjects:
-  - kind: User
-    name: "oidc:100001"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  kind: ClusterRole
-  name: cluster-admin
-  apiGroup: rbac.authorization.k8s.io
