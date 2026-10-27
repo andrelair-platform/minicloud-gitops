@@ -5,17 +5,26 @@ name: Kargo dev auto-merge
 # the Kargo promotion path, (b) touches ONLY dev values, and (c) passes every required
 # check on the exact commit being merged. Production/base/apps/Kargo changes can never
 # ride an `automerge` label. The normal main-branch ruleset stays fully enforced —
-# including `strict_required_status_checks_policy` (branches must be up-to-date).
+# strict required checks (branches up-to-date), required signatures, CODEOWNERS.
 #
-# Strict mode means a promotion PR that falls BEHIND main can never merge until its
-# branch is updated and the required checks re-run on the new head. So this workflow
-# brings the PR up to date with `gh pr update-branch` (a normal server-side merge of
-# main INTO the PR branch — no force-push, no branch-protection bypass), waits for the
-# required checks to re-run green on the updated head, then merges only that exact head
-# (`--match-head-commit`). If main advances again mid-flight it re-updates, bounded.
+# Two things make this reliable under the strict ruleset:
+#
+#  1. BEHIND → `gh pr update-branch` (a normal server-side merge of main INTO the PR
+#     branch — no force-push, no bypass). That re-triggers the required checks on the
+#     new head. Bounded by MAX_UPDATES.
+#
+#  2. MERGE via the authoritative REST endpoint, NOT `gh pr merge`. `gh pr merge`
+#     refuses *client-side* whenever it sees a stale/conservative `mergeStateStatus:
+#     BLOCKED` (printing the misleading "base branch policy prohibits the merge"),
+#     even when the PR is genuinely mergeable. The REST `PUT /pulls/{n}/merge` endpoint
+#     re-evaluates branch protection SERVER-SIDE and merges iff the rules actually pass
+#     — it is NOT a bypass (our token has no ruleset bypass; a genuine rule failure
+#     returns 405/409 and we fail-closed). `sha=<head>` makes it atomic (409 if the
+#     head moved). Squash → GitHub creates one signed commit (satisfies required_signatures).
 #
 # Fail-closed: a merge conflict, any non-dev file, a failed/absent required check, a
-# moved head, or an exhausted retry budget all stop the run without merging.
+# genuine 405 after exhausting the bounded rounds, or any unexpected error — all stop
+# the run WITHOUT merging. Nothing uses --admin.
 #
 # Inert until a service's dev Stage auto-promotion is enabled. Prod promotion PRs are
 # NOT labelled `automerge` and require the maintainer's normal PR merge after checks.
@@ -24,10 +33,9 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, labeled]
 
-# Kargo opens the PR already-labelled, so `opened` + `labeled` (+ `synchronize`, which
-# our own `update-branch` also triggers) fire near-simultaneously. Serialize per-PR so
-# two runs never manipulate the same PR at once; don't cancel — let the in-flight run
-# finish and later runs no-op on an already-merged/updated PR.
+# Kargo opens the PR already-labelled, and our own update-branch triggers `synchronize`,
+# so several runs fire near-simultaneously. Serialize per-PR so two runs never manipulate
+# the same PR at once; don't cancel — later runs no-op on an already-merged PR.
 concurrency:
   group: kargo-automerge-${{ github.event.pull_request.number }}
   cancel-in-progress: false
@@ -45,17 +53,16 @@ jobs:
       R: ${{ github.repository }}
       HEAD_REF: ${{ github.event.pull_request.head.ref }}
       # Bounds (fail-closed if exceeded):
+      MAX_ROUNDS: "10"      # total merge-eval rounds (each ends in a backoff sleep)
       MAX_UPDATES: "6"      # how many times we re-sync to a fast-moving main
-      CHECK_TRIES: "40"     # per-wait check polls (×15s ≈ 10 min)
+      CHECK_TRIES: "40"     # per-round check polls (×15s ≈ 10 min)
+      ROUND_BACKOFF: "15"   # seconds between rounds (backoff; no tight loop)
     steps:
       - name: Validate origin — must be a Kargo promotion branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # The `automerge` label alone isn't trusted as the origin signal: require the
-          # Kargo promotion branch naming too. A human cannot auto-merge by slapping the
-          # label on an arbitrary branch.
           case "$HEAD_REF" in
             kargo/promotion/*) echo "Origin OK — Kargo promotion branch: $HEAD_REF" ;;
             *) echo "::error::Refusing auto-merge — head '$HEAD_REF' is not a kargo/promotion/* branch."; exit 1 ;;
@@ -68,34 +75,26 @@ jobs:
           set -euo pipefail
           FILES=$(gh pr view "$PR" --repo "$R" --json files -q '.files[].path')
           echo "Changed files:"; echo "$FILES"
-          # Fail-closed: an empty/garbled file list is NOT "no bad paths".
           if [ -z "${FILES//[$'\t\r\n ']/}" ]; then
             echo "::error::Refusing auto-merge — could not determine changed files."; exit 1
           fi
-          # Every changed path must be dev-only — EITHER a legacy dev overlay
+          # Every changed path must be dev-only — a legacy dev overlay
           # (services/<svc>/minicloud-1/dev/**) OR the wrapper chart's dev values file
-          # (services/<svc>/helm/values-dev.yaml). NOTHING else rides an automerge label:
-          # prod values, common values.yaml, Chart.yaml/lock, prod overlays, base, apps,
-          # and Kargo configuration are refused.
+          # (services/<svc>/helm/values-dev.yaml). Prod values, common values.yaml,
+          # Chart.yaml/lock, prod overlays, base, apps and Kargo config are all refused.
           BAD=$(echo "$FILES" | grep -vE '^services/[^/]+/minicloud-1/dev/|^services/[^/]+/helm/values-dev\.yaml$' || true)
           if [ -n "$BAD" ]; then
-            echo "::error::Refusing auto-merge — PR touches non-dev paths:"
-            echo "$BAD"
-            exit 1
+            echo "::error::Refusing auto-merge — PR touches non-dev paths:"; echo "$BAD"; exit 1
           fi
           echo "All changes are dev-only (overlay or wrapper values-dev.yaml)."
 
-      - name: Update-branch when behind, then merge the exact validated head
+      - name: Update-branch when behind, then REST-merge the exact validated head
         env:
-          # Server-side squash + server-side update-branch are both GitHub web-flow
-          # operations (signed → satisfy the require-signatures rule). Normal branch
-          # protections (strict required checks, CODEOWNERS on gated paths) stay enforced.
           GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
         run: |
           set -uo pipefail
 
-          # Re-assert the dev-only invariant against the CURRENT head (defence in depth:
-          # the head may have moved since the guard step, e.g. a human pushed to it).
+          # Re-assert the dev-only invariant against the CURRENT head (defence in depth).
           assert_dev_only() {
             local files bad
             files=$(gh pr view "$PR" --repo "$R" --json files -q '.files[].path' 2>/dev/null || echo "")
@@ -105,9 +104,7 @@ jobs:
             return 0
           }
 
-          # Wait for every required check EXCEPT our own `automerge` to finish on the
-          # CURRENT head. Echoes "<pending> <bad>". (Including `automerge` would deadlock:
-          # a prior failed run leaves an automerge FAILURE.)
+          # "<pending> <bad>" over required checks, EXCLUDING our own `automerge` check.
           check_summary() {
             local checks
             checks=$(gh pr checks "$PR" --repo "$R" --json name,bucket 2>/dev/null || true)
@@ -116,21 +113,21 @@ jobs:
           }
 
           updates=0
-          while :; do
+          for round in $(seq 1 "$MAX_ROUNDS"); do
+            echo "──── round $round/$MAX_ROUNDS ────"
             STATE=$(gh pr view "$PR" --repo "$R" --json state -q '.state' 2>/dev/null || echo "")
             [ "$STATE" = "MERGED" ] && { echo "PR already merged — done."; exit 0; }
             [ "$STATE" = "CLOSED" ] && { echo "::error::PR is closed, not merging."; exit 1; }
 
             MSS=$(gh pr view "$PR" --repo "$R" --json mergeStateStatus -q '.mergeStateStatus' 2>/dev/null || echo "")
-            echo "mergeStateStatus=$MSS (update $updates/$MAX_UPDATES)"
+            echo "mergeStateStatus=$MSS (updates $updates/$MAX_UPDATES)"
 
             # Hard conflict → fail-closed, never try to resolve.
             if [ "$MSS" = "DIRTY" ]; then
               echo "::error::PR has a merge conflict with main — fail-closed."; exit 1
             fi
 
-            # Behind main (the strict-mode case) → bring it up to date with a server-side
-            # merge of main into the branch (no force-push). This re-triggers checks.
+            # Behind main (strict mode) → bring it up to date (server-side, no force-push).
             if [ "$MSS" = "BEHIND" ]; then
               updates=$((updates+1))
               if [ "$updates" -gt "$MAX_UPDATES" ]; then
@@ -139,42 +136,44 @@ jobs:
               echo "Behind main → gh pr update-branch (attempt $updates)…"
               if ! OUT=$(gh pr update-branch "$PR" --repo "$R" 2>&1); then
                 echo "$OUT"
-                # Race: already up to date, or it just became a conflict.
                 echo "$OUT" | grep -qiE "already up.to.date|up to date" && { sleep 5; continue; }
-                echo "$OUT" | grep -qiE "conflict|merge conflict" && { echo "::error::update-branch hit a conflict — fail-closed."; exit 1; }
-                echo "update-branch transient error — backing off"; sleep 15; continue
+                echo "$OUT" | grep -qiE "conflict|merge conflict"       && { echo "::error::update-branch hit a conflict — fail-closed."; exit 1; }
+                echo "update-branch transient error — backing off"; sleep "$ROUND_BACKOFF"; continue
               fi
-              sleep 10   # let GitHub recompute mergeStateStatus + start the re-run
-              continue
+              sleep 10; continue   # recompute + re-run checks on the new head
             fi
 
-            # Not behind (BLOCKED/UNSTABLE/CLEAN/UNKNOWN) → wait for required checks to
-            # finish on THIS head, then merge. Required checks re-ran after update-branch.
-            merged=0
+            # Not behind → wait (bounded) for required checks to finish on THIS head.
+            ready=0
             for i in $(seq 1 "$CHECK_TRIES"); do
-              # If it slipped behind while we waited, go back to the top to re-update.
               MSS2=$(gh pr view "$PR" --repo "$R" --json mergeStateStatus -q '.mergeStateStatus' 2>/dev/null || echo "")
               [ "$MSS2" = "BEHIND" ] && { echo "Slipped behind while waiting → re-update."; break; }
-              [ "$MSS2" = "DIRTY" ] && { echo "::error::Became conflicted while waiting — fail-closed."; exit 1; }
-
+              [ "$MSS2" = "DIRTY" ]  && { echo "::error::Became conflicted while waiting — fail-closed."; exit 1; }
               read -r PENDING BAD <<<"$(check_summary)"; PENDING=${PENDING:-0}; BAD=${BAD:-0}
               if [ "$BAD" != "0" ]; then echo "::error::Refusing auto-merge — $BAD required check(s) failed."; exit 1; fi
               if [ "$PENDING" != "0" ]; then echo "Waiting for $PENDING check(s)… ($i/$CHECK_TRIES)"; sleep 15; continue; fi
-
-              # All checks green → revalidate dev-only + pin the exact head, then merge.
-              assert_dev_only || exit 1
-              HEAD_SHA=$(gh pr view "$PR" --repo "$R" --json headRefOid -q '.headRefOid' 2>/dev/null || echo "")
-              [ -z "$HEAD_SHA" ] && { echo "::error::could not read head SHA — fail-closed."; exit 1; }
-              echo "Merging exact head $HEAD_SHA (squash)…"
-              if OUT=$(gh pr merge "$PR" --repo "$R" --squash --delete-branch --match-head-commit "$HEAD_SHA" 2>&1); then
-                echo "Merged."; merged=1; break
-              fi
-              echo "$OUT"
-              echo "$OUT" | grep -qiE "already merged|not open|pull request is in (clean|merged)" && { echo "treating as merged"; merged=1; break; }
-              # Head moved / base moved / not up-to-date → re-evaluate from the top.
-              echo "$OUT" | grep -qiE "head (branch|commit) was modified|base branch was modified|not mergeable|required status|head sha|out of date|not up to date|already in progress" && { echo "state moved under us → re-evaluate."; break; }
-              echo "::error::merge failed (non-transient)"; exit 1
+              ready=1; break
             done
-            [ "$merged" = "1" ] && exit 0
-            # Loop re-evaluates (re-update if behind, re-wait if a new check is running).
+            [ "$ready" = "1" ] || { echo "checks did not settle this round — backing off"; sleep "$ROUND_BACKOFF"; continue; }
+
+            # Checks green → revalidate dev-only + pin the exact head, then merge via the
+            # AUTHORITATIVE REST endpoint (server-side rule eval; NOT a bypass; 405/409 if
+            # a rule genuinely fails or the head moved).
+            assert_dev_only || exit 1
+            HEAD_SHA=$(gh pr view "$PR" --repo "$R" --json headRefOid -q '.headRefOid' 2>/dev/null || echo "")
+            [ -z "$HEAD_SHA" ] && { echo "::error::could not read head SHA — fail-closed."; exit 1; }
+            echo "Merging exact head $HEAD_SHA (squash, REST)…"
+            if RESP=$(gh api -X PUT "repos/$R/pulls/$PR/merge" -f merge_method=squash -f sha="$HEAD_SHA" 2>&1); then
+              echo "$RESP" | grep -qi "successfully merged" && { echo "Merged."; exit 0; }
+              echo "$RESP"; echo "::error::unexpected merge response — fail-closed."; exit 1
+            fi
+            echo "$RESP"
+            # Classify the REST error:
+            echo "$RESP" | grep -qiE "already merged|not open" && { echo "treating as merged"; exit 0; }
+            # Head/base moved, or a transient 405 while GitHub settles → re-evaluate next round.
+            if echo "$RESP" | grep -qiE "Head branch was modified|Base branch was modified|not mergeable|HTTP 40(5|9)|Required status|sha"; then
+              echo "state moved / not-yet-mergeable → backing off and re-evaluating."; sleep "$ROUND_BACKOFF"; continue
+            fi
+            echo "::error::merge failed (unexpected, non-transient) — fail-closed."; exit 1
           done
+          echo "::error::auto-merge did not complete within $MAX_ROUNDS rounds — fail-closed."; exit 1
