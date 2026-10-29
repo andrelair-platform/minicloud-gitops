@@ -157,7 +157,7 @@ vendorResearch:
 frontend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/retrieva-frontend
-    tag: 824cc2f
+    tag: 47ff393
   workload:
     replicas: 1
   env:
