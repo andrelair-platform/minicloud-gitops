@@ -85,6 +85,8 @@ down a level. The structure is a **portfolio of products**:
 | Insurance LOB | **ktayl Risk Engineering** (#21) | `ktayl-risk-engineering` | `ktayl-risk-engineering` (site audits, inspections, prevention recommendations, risk-quality scoring) |
 | Insurance LOB | **ktayl Reinsurance** (#22) | `ktayl-reinsurance` | `ktayl-reinsurance` (treaty & facultative, cessions, capacity, bordereaux, recoveries) |
 | Insurance LOB | **ktayl International Programs** (#23) | `ktayl-international-programs` | `ktayl-international-programs` (master + local policies, PO/SO network, cross-border premium/claims flows) |
+| Insurance LOB | **ktayl Investment & Treasury (ALM)** (#29) | `ktayl-investment` *(repo to create)* | investment-portfolio mgmt (bonds/equities backing reserves), **ALM** (asset↔liability duration matching), treasury (cash/FX/liquidity), Solvency-II market-risk capital. **Blind-spot identified 2026-10-30** (B2B gap analysis T1 — the insurer's "second business", absent from the 19-domain blueprint). Build decision deferred → likely **ADOPT** specialist tooling (portfolio/ALM engines are not hand-built). |
+| Insurance LOB | **ktayl Complaints & Disputes** (#30) | `ktayl-complaints` *(repo to create)* | complaints register, statutory deadlines, ombudsman escalation, root-cause reporting (ACPR/EIOPA/IDD obligation). **Blind-spot identified 2026-10-30** (T2). Build decision deferred → likely a **`ktayl-core` module**. |
 | IS Foundations | **GitOps — Platform Engineering** (#3) | `minicloud-gitops` | `-gitops`, `-ansible`, `-opentofu`, `-backstage`, `-ops`, `platform-demo` |
 | IS Foundations | **AI Platform** (#4) | `minicloud-agent` | `-agent`, `-crew-agent`, `-open-webui`, `-plane` |
 | IS Foundations | **Data Platform** (#5) | `minicloud-gitops` | (data pipeline / BI work) |
@@ -93,6 +95,7 @@ down a level. The structure is a **portfolio of products**:
 | IS Foundations | **Access Governance (IAM/IGA)** (#17) | `ktayl-iam` | `ktayl-iam` (MidPoint IGA, role/entitlement, certification, PAM, SCIM, SoD) |
 | IS Foundations | **ktayl Documents & DMS** (#24) | `ktayl-dms` | `ktayl-dms` (GED/records-mgmt, archiving, doc generation, OCR/IDP, templates, e-sign) — the Documents transversal layer |
 | IS Foundations | **ktayl Integration Platform** (#25) | `ktayl-integration` | `ktayl-integration` (API gateway, events, ETL, MFT/SFTP, EDI, broker APIs, batch) — the Integration transversal layer |
+| IS Foundations | **ktayl Procurement & Contract Management** (#31) | `ktayl-procurement` *(repo to create)* | business (**non-ICT**) procurement, vendor management, Contract Lifecycle Mgmt (broker/coverholder/TPA/reinsurance/supplier contracts). **Blind-spot identified 2026-10-30** (T3). **Boundary:** Retrieva owns the *ICT*-third-party graph only (DORA) — this is the business-vendor/contract SoR Retrieva deliberately excludes. Build decision deferred → adopt-or-`ktayl-core`-module. |
 
 **ktayl-IS split (2026-09-09→10):** the vague "ktayl Insurance LOB" catch-all (#9) was broken into
 real products — **Digital Workplace** (#10), **Claims** (#11), **Underwriting & Pricing** (#12),
