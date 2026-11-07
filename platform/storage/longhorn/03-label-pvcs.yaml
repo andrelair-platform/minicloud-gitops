@@ -55,7 +55,7 @@ spec:
           args:
             - |
               set -e
-              apk add --no-cache curl -q
+              apk add --no-cache curl jq -q
               TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
               CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
               API=https://kubernetes.default.svc
@@ -68,7 +68,7 @@ spec:
                 volname=$(curl -sf --cacert "$CA" \
                   -H "Authorization: Bearer $TOKEN" \
                   "$API/api/v1/namespaces/$ns/persistentvolumeclaims/$pvc" \
-                  | grep -o '"volumeName":"[^"]*"' | cut -d'"' -f4)
+                  | jq -r '.spec.volumeName // empty')
                 if [ -z "$volname" ]; then echo "SKIP $ns/$pvc (not found)"; return; fi
                 curl -sf --cacert "$CA" \
                   -H "Authorization: Bearer $TOKEN" \
@@ -92,7 +92,7 @@ spec:
                 volname=$(curl -sf --cacert "$CA" \
                   -H "Authorization: Bearer $TOKEN" \
                   "$API/api/v1/namespaces/$ns/persistentvolumeclaims/$pvc" \
-                  | grep -o '"volumeName":"[^"]*"' | cut -d'"' -f4)
+                  | jq -r '.spec.volumeName // empty')
                 if [ -z "$volname" ]; then echo "SKIP $ns/$pvc (not found)"; return; fi
                 curl -sf --cacert "$CA" \
                   -H "Authorization: Bearer $TOKEN" \
