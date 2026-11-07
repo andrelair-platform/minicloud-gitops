@@ -9,7 +9,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-claims
-    tag: 49c8161
+    tag: 019f4c7
   workload:
     replicas: 1
   env:
@@ -38,7 +38,7 @@ minicloud-app-deployment:
 frontend:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-claims-frontend
-    tag: 49c8161
+    tag: 019f4c7
   workload:
     replicas: 1
   ingress:
