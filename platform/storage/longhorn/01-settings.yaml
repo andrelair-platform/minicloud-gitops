@@ -147,4 +147,7 @@ kind: Setting
 metadata:
   name: default-replica-count
   namespace: longhorn-system
-value: "2"
+# Longhorn v1.13 stores this setting per data engine. Declaring the canonical
+# representation prevents the controller's scalar-to-map normalization from
+# causing perpetual Argo CD drift.
+value: '{"v1":"2","v2":"2"}'
