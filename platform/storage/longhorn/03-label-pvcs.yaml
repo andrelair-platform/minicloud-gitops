@@ -130,6 +130,10 @@ spec:
               # 2026-10-01). Small (2Gi).
               labelVol ai           qdrant-storage-qdrant-0
 
+              # Observability — Tempo traces are locally persisted and cannot be
+              # reconstructed once their source telemetry has expired.
+              labelVol observability storage-tempo-0
+
               # Automation — n8n workflows (mandatory: workflows are authored state, not
               # reconstructable). 5Gi.
               labelVol automation   n8n-data
