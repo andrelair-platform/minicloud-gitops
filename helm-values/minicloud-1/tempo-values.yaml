@@ -61,8 +61,16 @@ persistence:
 podAnnotations:
   reloader.stakater.com/auto: "true"
 
-tolerations:
-  - operator: Exists
+# Keep the RWO workload on general workers without tolerating cordoned nodes.
+# A catch-all toleration previously left Tempo targeting cordoned swift-mac,
+# whose Longhorn instance manager could not be recreated.
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: node-role.kubernetes.io/worker
+              operator: Exists
 
 serviceMonitor:
   enabled: true
