@@ -1,0 +1,21 @@
+# TLS Certificate (single-owner, both envs). Name kept = ktayl-core-tls (matches the library Ingress
+# tls.secretName); dnsName differs per env (set in values-{dev,prod}.yaml). cert-manager ClusterIssuer.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ktayl-core-tls
+  labels:
+    app: ktayl-core
+spec:
+  secretName: ktayl-core-tls
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+    - {{ .Values.tlsCert.dnsName | quote }}
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256

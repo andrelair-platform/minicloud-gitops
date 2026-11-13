@@ -1,0 +1,33 @@
+# prod — ghcr SHA image, 2 replicas, ns ktayl-core-prod. NOT yet wired to an ArgoCD app (prod promotion
+# is a later slice); present so Kargo's prod Stage has a target overlay to bump. Refine the NATS URL +
+# enable the CNPG R2 backup at prod-hardening. DB creds come from the prod-ns CNPG `-app` secret.
+minicloud-app-deployment:
+  selectorLabels:
+    app: ktayl-core
+  image:
+    repository: ghcr.io/andrelair-platform/ktayl-core
+    tag: "845bdb7"          # Kargo bumps to the promoted commit short-SHA
+  workload:
+    replicas: 2
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  ingress:
+    host: ktayl-core-prod.10.0.0.200.nip.io
+  env:
+    - name: DATABASE_URL
+      value: "jdbc:postgresql://ktayl-core-cnpg-rw.ktayl-core-prod.svc:5432/ktayl_core"
+    - name: DATABASE_USER
+      valueFrom:
+        secretKeyRef: { name: ktayl-core-cnpg-app, key: username }
+    - name: DATABASE_PASSWORD
+      valueFrom:
+        secretKeyRef: { name: ktayl-core-cnpg-app, key: password }
+    - name: BILLING_NATS_URL
+      value: "nats://nats.nats.svc:4222"   # prod = the authoritative ingest consumer
+tlsCert:
+  dnsName: ktayl-core-prod.10.0.0.200.nip.io
+cnpg:
+  instances: 2
+  backup:
+    enabled: false   # enable R2 (needs the Vault r2 creds + ScheduledBackup) at prod-hardening

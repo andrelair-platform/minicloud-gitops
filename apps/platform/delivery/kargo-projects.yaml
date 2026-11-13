@@ -18,6 +18,11 @@ spec:
           # convention here can't express. Excluded so it isn't generated twice.
           - path: services/retrieva/kargo
             exclude: true
+          # ktayl-core: dedicated app (kargo-ktayl-core.yaml) — dev owns ns ktayl-core, prod
+          # ktayl-core-prod, so its Kargo project needs a separate ns (ktayl-core-kargo) the ns=<dir>
+          # convention can't express. Excluded so it isn't generated twice.
+          - path: services/ktayl-core/kargo
+            exclude: true
   template:
     metadata:
       # services/<svc>/kargo  →  segments[1] == <svc>

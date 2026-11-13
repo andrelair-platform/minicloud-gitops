@@ -1,0 +1,72 @@
+# Dedicated CNPG Postgres for ktayl-core (the modular monolith's primary store). The bootstrap creates
+# the `ktayl_core` database owned by the `ktayl_core` role; CNPG auto-generates the `ktayl-core-cnpg-app`
+# secret (username/password) that the Deployment reads (values-{dev,prod}.yaml) — no Vault on dev. The
+# billing + complaints SCHEMAS are created by Flyway on boot, not here (schema-per-module, ADR-006).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ktayl-core-cnpg
+  labels:
+    app.kubernetes.io/name: ktayl-core
+spec:
+  instances: {{ .Values.cnpg.instances }}
+  primaryUpdateStrategy: unsupervised
+  storage:
+    size: {{ .Values.cnpg.storageSize }}
+    storageClass: longhorn
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  monitoring:
+    enablePodMonitor: true
+  bootstrap:
+    initdb:
+      database: ktayl_core
+      owner: ktayl_core
+{{- if .Values.cnpg.backup.enabled }}
+  backup:
+    retentionPolicy: {{ .Values.cnpg.backup.retentionPolicy | default "14d" | quote }}
+    barmanObjectStore:
+      destinationPath: s3://{{ .Values.cnpg.backup.bucket }}
+      endpointURL: {{ .Values.cnpg.backup.endpointURL }}
+      s3Credentials:
+        accessKeyId:
+          name: ktayl-core-cnpg-r2
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: ktayl-core-cnpg-r2
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+{{- end }}
+---
+# CNPG pods are isolated once a netpol selects them → this allows the operator (cnpg-system) to reach
+# instance status (:8000) + Postgres (:5432), same-namespace streaming replication + the app → DB
+# (:5432). Self-sufficient in any namespace (dev + prod).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: ktayl-core-cnpg
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 5432 }
+    - from:
+        - podSelector: {}
+      ports:
+        - { protocol: TCP, port: 5432 }

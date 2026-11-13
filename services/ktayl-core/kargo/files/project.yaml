@@ -1,0 +1,7 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  # Dedicated Kargo project ns (ktayl-core-kargo) — dev owns ns ktayl-core, prod owns ktayl-core-prod,
+  # so the Kargo project lives in its own ns (like ktayl-iam-kargo / retrieva-kargo). Wired via the
+  # dedicated apps/platform/delivery/kargo-ktayl-core.yaml, EXCLUDED from the kargo-projects ApplicationSet.
+  name: ktayl-core-kargo

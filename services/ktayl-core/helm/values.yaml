@@ -1,0 +1,68 @@
+# ktayl-core wrapper chart — common values.
+# (1) `minicloud-app-deployment:` = the library subchart (workload + Service + Ingress; cert disabled);
+# (2) top-level keys drive THIS chart's templates/ (TLS cert both envs; the dedicated CNPG Postgres).
+# Env-specific values (image, host, the full env list, replicas) live in values-{dev,prod}.yaml — Helm
+# REPLACES list values per overlay, so the whole `env:` list is set there, never split.
+minicloud-app-deployment:
+  serviceAccount:
+    create: true
+    name: ktayl-core
+    automountServiceAccountToken: false
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-core   # overridden per env
+    pullPolicy: IfNotPresent
+  ports:
+    - { name: http, containerPort: 8080, protocol: TCP }
+  service:
+    ports:
+      - { name: http, port: 80, targetPort: http }
+  # JVM (Spring Boot) — heavier than the Go services; give it real headroom.
+  resources:
+    requests: { cpu: 250m, memory: 640Mi }
+    limits:   { cpu: "1", memory: 1Gi }
+  # Startup is slow (JVM + Flyway + EAGER OIDC issuer discovery) → generous startupProbe gates liveness;
+  # the actuator health endpoints are permitted unauthenticated in SecurityConfig.
+  startupProbe:
+    httpGet: { path: /actuator/health/readiness, port: http }
+    failureThreshold: 40
+    periodSeconds: 5          # up to ~200s to boot before liveness takes over
+  readinessProbe:
+    httpGet: { path: /actuator/health/readiness, port: http }
+    periodSeconds: 10
+  livenessProbe:
+    httpGet: { path: /actuator/health/liveness, port: http }
+    periodSeconds: 15
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels: { app: ktayl-core }
+            topologyKey: kubernetes.io/hostname
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    servicePort: 80
+    tls:
+      enabled: true
+      secretName: ktayl-core-tls
+    # host set per env
+  certificate:
+    enabled: false   # cert is a wrapper template (name kept = ktayl-core-tls)
+
+# ---- wrapper-local (drives templates/) ----
+tlsCert:
+  dnsName: ""        # per env
+
+# Dedicated CNPG Postgres (the modular monolith's primary store; the billing + complaints schemas are
+# created by Flyway ON BOOT — the DB only supplies the database + owner role, whose generated creds land
+# in the CNPG `ktayl-core-cnpg-app` secret that the Deployment reads). dev = 1 instance, no offsite
+# backup; prod raises instances + enables R2 backup at prod-hardening.
+cnpg:
+  instances: 1
+  storageSize: 5Gi
+  backup:
+    enabled: false

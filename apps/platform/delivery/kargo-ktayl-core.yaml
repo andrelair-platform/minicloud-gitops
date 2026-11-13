@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # Dedicated Kargo app (NOT the kargo-projects ApplicationSet) — dev owns ns ktayl-core, prod owns
+  # ktayl-core-prod, so the Kargo project lives in its own ns ktayl-core-kargo (the ns=<dir> convention
+  # of the ApplicationSet can't express that). Excluded from that ApplicationSet. git-Warehouse
+  # (Java/temurin base → NewestBuild can't rank); dev→prod stages. See services/ktayl-core/kargo/.
+  name: kargo-ktayl-core
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: kargo
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/ktayl-core/kargo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ktayl-core-kargo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+    - group: kargo.akuity.io
+      kind: Warehouse
+      jqPathExpressions:
+        - .spec.interval
+        - .spec.subscriptions[].git.strictSemvers
+        - .spec.subscriptions[].git.discoveryLimit
+        - .spec.subscriptions[].git.commitSelectionStrategy

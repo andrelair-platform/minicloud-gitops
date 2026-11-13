@@ -1,0 +1,6 @@
+# Patterns to ignore when packaging. NOTE: must NOT list charts/ — that makes Helm treat the vendored
+# library dependency as missing at render time (HGP gotcha). charts/ is gitignored instead.
+.git
+.DS_Store
+*.tmp
+*.bak
