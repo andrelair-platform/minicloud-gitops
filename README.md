@@ -50,7 +50,7 @@ The layout encodes a single ownership boundary (the law is [`ARCHITECTURE.md`](A
 | `apps/` | ArgoCD **`Application`** manifests (the taxonomy projection): `platform/<layer>/` · `is/<group>/` · `retrieva/` · `previews/`. |
 | `platform/<layer>/` | Platform capabilities by layer — `foundation` · `networking` · `secrets` · `security` · `observability` · `data` · `ai` · `delivery` · `storage` · `shared-services`. Also holds raw CRDs/policies (netpols, quotas, gatekeeper). |
 | `is/<group>/` | Information-System resources — `insurance` · `erp` · `workplace`. |
-| `services/<svc>/` | Per-custom-app packaging: `helm/` (GAP **wrapper chart**) + `kargo/` (promotion). **Helm-only — zero kustomize.** |
+| `services/<svc>/` | Per-custom-app packaging: `helm/` (Helm **wrapper chart**) + `kargo/` (promotion). **Helm-only — zero kustomize.** |
 | `charts/` · `helm-values/` | The shared `minicloud-app-deployment` **library chart** (golden path) · values for third-party charts. |
 | `docs/` · `.claude/` | In-repo ADRs (design coupled to code) · the agent guardrails + rules constitution. |
 
@@ -133,9 +133,11 @@ kubectl --context minicloud get applications -n argocd    # verify
 ```
 All later changes go through **git → PR → ArgoCD**.
 
-### Adding a new service (GAP wrapper-chart golden path)
+### Adding a new service (Helm wrapper-chart golden path)
 
 Each custom app is its own thin Helm chart depending on the shared `minicloud-app-deployment` library (one ArgoCD source, no kustomize). Reference: `services/platform-demo/helm/` · design: [`docs/helm-golden-path.md`](docs/helm-golden-path.md).
+
+> **Fast path:** the Backstage **`wrapper-service`** template (Create → *"Deployment — Helm wrapper-chart service"*) scaffolds the whole `services/<name>/helm/` chart + the two ArgoCD apps (+ optional CNPG DB / app-secret) as one PR — gotchas baked in. The manual steps below are what it produces.
 
 1. Copy a reference chart (e.g. `services/platform-demo/helm/`) → `services/<name>/helm/`; `helm dependency update .` → commit `Chart.lock`.
 2. Fill `values.yaml` + `values-{dev,prod}.yaml` (block-style `image.tag` — Kargo rewrites it).
