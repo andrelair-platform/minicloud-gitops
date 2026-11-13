@@ -137,7 +137,7 @@ No single control is trusted; a change must clear every layer. **The gate is on 
 | **Storage** | Longhorn (replicated: `fast-heron` / `loving-gannet` / `swift-mac`) |
 | **Registry** | Hybrid — Harbor (dev) · ghcr.io (prod, immutable SHA, signed) |
 | **AI** | LiteLLM gateway · Qdrant (RAG) · Langfuse |
-| **Network** | Tailscale mesh (internal) + Cloudflare Tunnel (public `*.devandre.sbs`) |
+| **Network** | Tailscale mesh (internal) + Cloudflare Tunnel (public `*.devandre.sbs`, SSO-gated where sensitive) |
 
 ---
 
