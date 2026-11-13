@@ -51,7 +51,7 @@ Default criteria (re-weight per evaluation):
 | Observability hooks (Prometheus/Loki/OTel) | Day-2 operability |
 | **DORA third-party-ICT** class + **data class (P0–P3)** | regulated-insurer obligation; drives the security review depth |
 | **Exit / portability** | the `cloud-adoption.md` exit test — can we leave in one command? |
-| Operational **TCO** | cluster footprint vs quotas (`manifests/quotas/`), maintenance burden (solo) |
+| Operational **TCO** | cluster footprint vs quotas (`platform/security/quotas/`), maintenance burden (solo) |
 
 ## Scale & don't
 - **Path-A utility:** steps 1–2 + a one-line note — **skip** the full scorecard/PoC/ADR.
