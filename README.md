@@ -83,7 +83,7 @@ The layout encodes a single ownership boundary (the law is [`ARCHITECTURE.md`](A
 2. **Promote** *(Kargo)* — a Warehouse detects the new image → Freight (an immutable artifact set). Kargo auto-promotes to dev and runs a verification `AnalysisRun`; only dev-verified Freight becomes promotable to prod. Prod promotion opens a PR; the maintainer reviews and merges it after required checks pass. Kargo writes Git, never the cluster.
 3. **Deploy** *(ArgoCD)* — reconciles the merged change; production rolls out as a canary whose analysis gate auto-aborts on bad metrics.
 
-This is continuous *deployment* to dev (automatic) and continuous *delivery* to prod (maintainer-confirmed after automated checks) from one pipeline.
+**One pipeline, two release disciplines: continuous *deployment* to dev + continuous *delivery* to prod.** dev is fully automatic (every validated change auto-promoted and deployed, no human); prod is kept continuously release-ready and ships on a maintainer's merge of the Kargo-prepared PR — a deliberate human go/no-go on the exact artifact already proven in dev.
 
 - **Environment model** — exactly two environments (dev + prod) running the same artifact; images are env-agnostic (config read at runtime), so dev/prod parity is *structural*, not hoped-for. Staging was deliberately removed.
 - **Rollback** — `git revert` (ArgoCD reconciles the previous state) or re-promote the previous Freight. The prior state is always one commit away.
