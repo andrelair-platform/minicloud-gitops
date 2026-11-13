@@ -67,7 +67,7 @@ The layout encodes a single ownership boundary (the law is [`ARCHITECTURE.md`](A
 |---|---|
 | `bootstrap/` | The app-of-apps seed (`root-app.yaml`) — the only thing ever applied by hand. |
 | `apps/` | ArgoCD `Application` manifests (the taxonomy projection): `platform/<layer>/` · `is/<group>/` · `retrieva/` · `previews/`. |
-| `platform/<layer>/` | Platform capabilities by layer — `foundation` · `networking` · `secrets` · `security` · `observability` · `data` · `ai` · `delivery` · `storage` · `shared-services`. Also holds raw CRDs/policies (netpols, quotas, gatekeeper). |
+| `platform/<layer>/` | Platform capabilities by layer — `foundation` · `networking` · `secrets` · `security` · `observability` · `data` · `ai` · `automation` · `delivery` · `storage` · `shared-services`. Also holds raw CRDs/policies (netpols, quotas, gatekeeper). |
 | `is/<group>/` | Information-System resources — `insurance` · `erp` · `workplace`. |
 | `services/<svc>/` | Per-custom-app packaging: `helm/` (Helm wrapper chart) + `kargo/` (promotion). Helm-only — zero kustomize. |
 | `charts/` · `helm-values/` | The shared `minicloud-app-deployment` library chart (golden path) · values for third-party charts. |
