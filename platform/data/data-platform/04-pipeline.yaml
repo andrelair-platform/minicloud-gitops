@@ -50,10 +50,13 @@ spec:
                 - { name: ANALYTICS_PG_DB,   value: "analytics" }
                 - { name: ANALYTICS_PG_USER, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
                 - { name: ANALYTICS_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
-                - { name: POLICY_PG_HOST,     valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_HOST } } }
+                # host+db are NOT secrets → plain env (version-controlled, self-healing). The CNPG
+                # migration left a stale POLICY_PG_HOST in Vault (ktayl-postgres.ktayl-prod, a dead host)
+                # → raw.policies silently loaded 0. Source of truth is now the live CNPG rw service.
+                - { name: POLICY_PG_HOST,     value: "ktayl-cnpg-rw.ktayl-prod.svc.cluster.local" }
+                - { name: POLICY_PG_DB,       value: "ktayl_policy" }
                 - { name: POLICY_PG_USER,     valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_USER } } }
                 - { name: POLICY_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_PASSWORD } } }
-                - { name: POLICY_PG_DB,       valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_DB } } }
                 - { name: UW_PG_HOST,         valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_HOST } } }
                 - { name: UW_PG_USER,         valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_USER } } }
                 - { name: UW_PG_PASSWORD,     valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_PASSWORD } } }
