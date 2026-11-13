@@ -103,6 +103,20 @@ ArgoCD Helm source — no kustomize, no multi-source `$values`, no separate sate
 Kargo promotes by editing `minicloud-app-deployment.image.tag` in the values file. Full model +
 rationale: ADR `docs/helm-golden-path.md`.
 
+> **The library-wrapper is the default for STATELESS custom services only — a whole-app standalone
+> chart is the sanctioned exception when the app ITSELF is stateful.** The library renders a stateless
+> `Deployment`/`Rollout` (interchangeable, disposable replicas); it does **not** fit an app that owns a
+> PVC + its own datastore. When the *whole workload* is stateful (not just a backing DB authored as a
+> `templates/` extra — that stays a wrapper, e.g. ktayl-policy-service's CNPG), author the workload
+> directly in `templates/` and **skip the library dependency** (no `Chart.lock` to commit, since there's
+> no dep). **Reference: `ktayl-itsm`** (GLPI = its own PVC + a dedicated MariaDB → standalone chart). This
+> is a *justified deviation, not drift* — do NOT "fix" such a chart onto the stateless library (it would
+> break it). It still lives in `services/<svc>/helm/` + is deployed by its ArgoCD app like any other —
+> only the *inner* pattern differs. The **`wrapper-service` Backstage scaffolder emits the stateless
+> path**; a stateful app is hand-authored. **Revisit trigger:** build a `stateful-service` template (or a
+> `stateful` toggle on the scaffolder) only when there are **2–3** stateful custom services — at N=1
+> (itsm) a one-off chart is proportionate (need-first; don't scaffold structure ahead of the need).
+
 ```
 services/<svc>/helm/
   Chart.yaml        # dependencies: [{name: minicloud-app-deployment, version: 0.2.0,
