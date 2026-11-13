@@ -176,7 +176,7 @@ backstage:
         - type: url
           target: https://raw.githubusercontent.com/andrelair-platform/ktayl-policy-service/main/catalog-info.yaml
         - type: url
-          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/go-service/template.yaml
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/wrapper-service/template.yaml
         - type: url
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/custom-image/template.yaml
         - type: url
