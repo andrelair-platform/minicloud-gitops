@@ -80,6 +80,15 @@ down a level. The structure is a **portfolio of products**:
 | Insurance LOB | **ktayl Distribution & CRM** (#13) | `ktayl-distribution` | `ktayl-distribution` (broker portal, CRM, DUA/binders, co-insurance, commissions) |
 | Insurance LOB | **ktayl Insurance Finance & Billing** (#14) | `ktayl-finance` | `ktayl-finance` scaffold (IFRS 17, reserving, reinsurance). **NOTE: premium *Billing* is being built as a MODULE in `ktayl-core` (#28), not here** — the modular-monolith decision (ADR-001/architecture-strategy.md), 2026-10-05. This board tracks the remaining finance-LOB scope; revisit whether it folds into ktayl-core too. |
 | Insurance LOB | **ktayl-core — Insurance LOB (modular monolith)** (#28) | `ktayl-core` | `ktayl-core` — the **modular monolith** home for custom insurance business domains as *modules* (Spring Boot + Spring Modulith). **One board for the whole monolith** (per `architecture-strategy.md` — revisit if a module graduates to a service). First module: **Billing** (premium→cash→GL; epic BILL-01). |
+
+> **SI consolidation (2026-11-13) — the LOB scaffold boards below (#13 Distribution · #14 Finance · #15
+> Compliance · #21 Risk-Eng · #22 Reinsurance · #23 Intl · #20 MDM · #24 DMS · #27 Submission · #30
+> Complaints · #31 Procurement) are now `ktayl-core` MODULES, not own-service builds.** Their scaffold
+> repos are retained but the *build target is a module inside `ktayl-core` (#28)*, per the modular-monolith
+> decision (`architecture-strategy.md` → `ktayl-core/docs/modernization-roadmap.md` + ADR-004..011).
+> Work for these domains is authored as ktayl-core modules/epics; the boards track the business scope.
+> **No scaffold repo is deleted until its module ships + the Phase-6 acceptance gate passes** (non-destruction
+> freeze). Existing *live* services (policy/underwriting/claims/iam) stay — migration is evidence-gated (ADR-004).
 | Insurance LOB | **ktayl Insurance LOB — Product Lines** (#9) | `ktayl-solution-web` | the actual LOB lines (Marine, Engineering, Financial Lines, Collaborateurs, International, ART) until each graduates |
 | Insurance LOB | **Regulatory & Compliance** (#15) | `ktayl-compliance` | GDPR/AML-KYC/PIA/BCP/ACPR (the insurer's regulatory obligations) |
 | Insurance LOB | **ktayl Risk Engineering** (#21) | `ktayl-risk-engineering` | `ktayl-risk-engineering` (site audits, inspections, prevention recommendations, risk-quality scoring) |

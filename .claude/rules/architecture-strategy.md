@@ -11,13 +11,17 @@ platform infra, not the AI/data products, which are governed separately.)
   risk-engineering, international-programs, mdm, billing, …) is built as a **module inside
   `ktayl-core`** — `src/<domain>/` with its own API/interface + its own logical data boundary
   (schema-per-module in one Postgres) — **NOT** a new repo / service / board / Kargo pipeline.
-- **`ktayl-core` is NEED-FIRST — do NOT scaffold it empty.** It does not exist yet (verified
-  2026-09-30). Create it the day the **first genuinely-custom greenfield domain** is actively built
-  (likely **Distribution/CRM**), **born WITH that module** — never ahead of a domain (that is the
-  structure-ahead-of-need anti-pattern). Its **stack is chosen fit-for-purpose THEN, NOT pre-locked**
-  — the modular-monolith pattern is framework-agnostic; pick one that supports module boundaries +
-  DI + in-process events, against the actual solution (candidates to evaluate: **NestJS** ·
-  **Spring Boot + Spring Modulith** · **.NET** · …). The `tech-stack-selection.md` mindset applies.
+- **`ktayl-core` EXISTS and is the default home (created 2026-10; first module = Billing).** Stack is
+  **decided: Java 21 + Spring Boot + Spring Modulith** (ADR-001) — boundaries **enforced** by
+  `ApplicationModules.verify()` in CI. (The earlier "need-first, not yet created, stack not pre-locked"
+  framing is **superseded** — it was born with Billing, as the rule intended.) **The full SI
+  consolidation plan + decisions live in `ktayl-core/docs`:** the modernization roadmap (7 evidence-gated
+  phases), the Phase-0 inventory, and **ADR-004..011** (modular-monolith target · bounded contexts +
+  the two-level context↔sub-capability model · schema-per-module · internal-events-vs-NATS · extraction
+  criteria · strangler/rollback · jobs/idempotency · Product-Configure). New custom business domains are
+  **modules inside `ktayl-core`** — not new repos/services. **Existing-service migration is
+  evidence-gated** (ADR-004): the 4 live services stay until evidence justifies folding in; **no
+  destructive change until a phase gate passes.**
 - **Adopt-vs-build first.** Much of a "domain" is already an **adopted tool** — ERPNext (GL/finance
   close/HR), GLPI (ITSM), data-platform/Metabase (reporting), Paperless/DMS (documents), `ktayl-iam`
   (identity). `ktayl-core` **integrates** with these; it hosts only the **custom insurance LOB no
