@@ -33,6 +33,10 @@ spec:
         - .spec.target.template
     # CNPG operator injects spec defaults into the additive ktayl-cnpg Cluster → SSA drift (mirrors
     # cnpg-authentik / ktayl-iam-prod, which use managed.roles too).
+    # NB: do NOT ignore .spec.managed.roles[].<field> here — a list-item ignoreDifferences combined
+    # with RespectIgnoreDifferences=true makes ArgoCD DROP newly-added list items from the SSA patch,
+    # so a new managed role (analytics_ro) silently never applies. Instead the chart sets the CNPG
+    # defaults (connectionLimit:-1, inherit:true) explicitly on each role → no drift, no ignore needed.
     - group: postgresql.cnpg.io
       kind: Cluster
       jqPathExpressions:
@@ -40,8 +44,6 @@ spec:
         - .spec.monitoring.customQueriesConfigMap
         - .spec.monitoring.disableDefaultQueries
         - .spec.backup.target
-        - .spec.managed.roles[].connectionLimit
-        - .spec.managed.roles[].inherit
         - .spec.bootstrap.initdb.encoding
         - .spec.bootstrap.initdb.localeCType
         - .spec.bootstrap.initdb.localeCollate
