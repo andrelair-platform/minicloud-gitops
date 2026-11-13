@@ -51,7 +51,7 @@ apps/
   is/{workplace,iam,erp,insurance,itsm,data-products}/
   retrieva/                # RNCP39583 cert product's Application files (neither platform/ nor is/ — §14)
   previews/
-helm-values/ · charts/ · environments/        # UNCHANGED
+helm-values/ · charts/                         # UNCHANGED  (environments/ retired 2026-11-13 — unused)
 docs/ · scripts/ · .claude/ · ARCHITECTURE.md
 ```
 
@@ -64,7 +64,6 @@ docs/ · scripts/ · .claude/ · ARCHITECTURE.md
 | `is/*` | business apps/data (consumers) | workplace/ERP/LOB/ITSM/data products | **platform infra**, **app source code** | App/Domain |
 | `services/` | packaging of custom-built services | wrapper charts + `/kargo` | vendor charts, raw infra | Platform Eng |
 | `apps/` | Argo CD Applications (taxonomy) | Application/ApplicationSet/AppProject under `platform/*`, `is/*`, `retrieva/` (cert product) or `previews/` | workload manifests; `apps/workloads/` (retired) | Platform Eng |
-| `environments/` | per-env config | values, quota, limitrange, namespace | app definitions | Platform + env |
 
 ## Canonical homes for ambiguous components (deterministic placement, not philosophical perfection)
 

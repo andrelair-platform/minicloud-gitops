@@ -90,15 +90,14 @@ jobs:
                 -summary
 
       # Validate the dependency-free Helm charts that replaced the former kustomize dirs:
-      # the Kargo pipelines (services/*/kargo + manifests/kargo) and the environment
-      # bootstraps (environments/overlays/*/*). They vendor no library dependency, so a plain
-      # `helm template` renders them; pipe to kubeconform (same rules as the overlays). This is
-      # the render-validation the kustomize dirs used to get, now on the Helm equivalents.
-      - name: Validate Helm charts render (kargo + environments)
+      # the Kargo pipelines (services/*/kargo + manifests/kargo). They vendor no library
+      # dependency, so a plain `helm template` renders them; pipe to kubeconform (same rules
+      # as the overlays). (The environments/ bootstraps were retired 2026-11-13 — unused.)
+      - name: Validate Helm charts render (kargo)
         run: |
           set -euo pipefail
           shopt -s nullglob
-          charts=(services/*/kargo platform/delivery/kargo environments/overlays/*/*)
+          charts=(services/*/kargo platform/delivery/kargo)
           FAILED=0
           for c in "${charts[@]}"; do
             [ -f "$c/Chart.yaml" ] || continue
