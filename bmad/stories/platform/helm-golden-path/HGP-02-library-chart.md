@@ -1,7 +1,7 @@
 ---
 id: HGP-02
 title: "minicloud-app-deployment library chart (Deployment/Rollout + core resources)"
-status: In Progress
+status: Done
 type: Story
 epic: helm-golden-path
 milestone: "HGP — Helm golden path"

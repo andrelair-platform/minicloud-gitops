@@ -1,7 +1,7 @@
 ---
 id: HGP-05
 title: "Kargo: promote via yaml-update on values files"
-status: Ready
+status: Done
 type: Story
 epic: helm-golden-path
 milestone: "HGP — Helm golden path"
@@ -17,6 +17,6 @@ project: 3
 Change Kargo promotion image-bump from kustomize-set-image to a yaml-update on the values files.
 
 ## AC
-- [ ] dev/prod Stage promotionTemplate sets .image.tag in values-dev.yaml / values-prod.yaml
-- [ ] dev auto-promote + prod CODEOWNERS PR + squash unchanged
-- [ ] Verified on platform-demo freight
+- [x] dev/prod Stage promotionTemplate sets .image.tag in values-dev.yaml / values-prod.yaml
+- [x] dev auto-promote + prod CODEOWNERS PR + squash unchanged
+- [x] Verified on platform-demo freight

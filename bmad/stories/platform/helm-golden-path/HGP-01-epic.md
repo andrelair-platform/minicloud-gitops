@@ -1,7 +1,7 @@
 ---
 id: HGP-01
 title: "EPIC: Helm library-chart golden path for custom apps"
-status: Ready
+status: Done
 type: Epic
 epic: helm-golden-path
 milestone: "HGP — Helm golden path"

@@ -1,7 +1,7 @@
 ---
 id: HGP-09
 title: "Migrate retrieva to the golden path (2 images, git Warehouse)"
-status: Ready
+status: Done
 type: Story
 epic: helm-golden-path
 milestone: "HGP — Helm golden path"
@@ -17,6 +17,6 @@ project: 3
 Convert retrieva last — most complex (backend+frontend images, git Warehouse, runtime-config frontend).
 
 ## AC
-- [ ] retrieva-dev/prod on the shared chart (two workloads or two releases)
-- [ ] git-Warehouse promotion adapted to values; runtime __ENV__ preserved
-- [ ] verified dev→prod; overlays retired
+- [x] retrieva-dev/prod on the shared chart (two workloads or two releases)
+- [x] git-Warehouse promotion adapted to values; runtime __ENV__ preserved
+- [x] verified dev→prod; overlays retired
