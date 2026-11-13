@@ -141,7 +141,12 @@ service *deployments* were migrated to the GAP wrapper-chart golden path earlier
 `services/retrieva/helm/` too. The final kustomize residue — which was never app deployments, only
 static resource bundles — was then converted to Helm:
 - **`services/*/kargo/`** (7) + **`manifests/kargo/`** — the Kargo Project/Warehouse/Stage CRs.
-- **`environments/overlays/{dev,prod}/{collab,insurance}/`** (4) — namespace + quota + limitrange (+ rolebinding).
+- ~~`environments/overlays/{dev,prod}/{collab,insurance}/` (4) — namespace + quota + limitrange~~ —
+  **RETIRED 2026-11-13.** This was an early *team-env* namespace model (insurance/collab × dev/prod)
+  that nothing ever deployed into (the 4 namespaces sat empty); dev/prod separation is done
+  **per-product** (a `<product>`/`<product>-prod` namespace pair + two ArgoCD apps reading
+  `values-dev/prod.yaml`), with quotas in `manifests/quotas/` + netpols in `manifests/network-policies/`.
+  Removed the dir + `apps/platform/environments.yaml` (the ApplicationSet); the finalizer cascade pruned the namespaces.
 
 **The pattern for raw-CR bundles = a `.Files.Get` packaging shim (NOT templated Helm).** Kargo CRs carry
 many `${{ … }}` promotion exprs + ESO `{{ … }}` output templates; templating them through Helm would
