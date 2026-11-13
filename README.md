@@ -27,7 +27,7 @@ with an SBOM, SHA-pinned · dev→prod promotion automated + gated (Kargo), neve
 > **The core invariant:** **ArgoCD is the only process that writes to the cluster.** People and automation change the system by changing Git; the cluster is continuously reconciled to match. No snowflakes, no manual `kubectl apply`.
 
 **Docs:** [platform docs](https://andrelair-platform.github.io/minicloud-platform-docs/) ·
-**Architecture (C4):** [system design](https://andrelair-platform.github.io/minicloud-platform-docs/platform/architecture/c4-system-design) ·
+**Architecture (C4):** [GitOps delivery & reconcile loop](https://andrelair-platform.github.io/minicloud-platform-docs/platform/architecture/c4-system-design#the-gitops-workflow-system-the-reconcile-loop) ·
 **Live ArgoCD:** [argocd.devandre.sbs](https://argocd.devandre.sbs)
 
 ---
