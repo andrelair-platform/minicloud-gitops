@@ -34,6 +34,19 @@ spec:
         superuser: false
         passwordSecret:
           name: ktayl-cnpg-role
+      # Read-only role for the Data Platform ingest (dp-ingest-policy copies raw.policies from here).
+      # The old ktayl-postgres STS created this role IMPERATIVELY → it was lost at the CNPG migration,
+      # silently breaking the policy ingest (raw.policies=0). Declared here so it's version-controlled
+      # and recreated on any rebuild. Password = Vault platform/data-platform/policy-pg-password (the
+      # SAME key the ingest reads → both sides stay in sync). GRANTs (CONNECT/USAGE/SELECT) are applied
+      # once out-of-band: CNPG reconciles managed roles AFTER initdb, so postInitApplicationSQL can't
+      # grant to a role that doesn't exist yet — see docs/runbook-dp-ingest-analytics-ro.md.
+      - name: analytics_ro
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: analytics-ro-cnpg-role
   bootstrap:
     initdb:
       database: ktayl_policy
@@ -81,6 +94,33 @@ spec:
       remoteRef:
         key: platform/ktayl-prod
         property: postgres-password
+---
+# Password for the read-only `analytics_ro` managed role (above). Same Vault key the Data Platform
+# ingest reads (platform/data-platform/policy-pg-password) → the CNPG role password and the ingest's
+# POLICY_PG_PASSWORD are guaranteed identical. CNPG sets the role password FROM this secret.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: analytics-ro-cnpg-role
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: analytics-ro-cnpg-role
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: "analytics_ro"
+        password: "{{ `{{ .pw }}` }}"
+  data:
+    - secretKey: pw
+      remoteRef:
+        key: platform/data-platform
+        property: policy-pg-password
 {{- if .Values.cnpg.backup.enabled }}
 ---
 apiVersion: external-secrets.io/v1beta1
@@ -139,6 +179,14 @@ spec:
     # self-sufficient in any namespace.
     - from:
         - podSelector: {}
+      ports:
+        - { protocol: TCP, port: 5432 }
+    # Data Platform ingest (dp-ingest-policy, ns data-platform) → Postgres (:5432) as the read-only
+    # analytics_ro role. The isolation above blocks cross-namespace by default; this allows the ingest in.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-platform
       ports:
         - { protocol: TCP, port: 5432 }
 ---
