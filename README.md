@@ -1,7 +1,7 @@
 # minicloud-gitops
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![ArgoCD: app-of-apps](https://img.shields.io/badge/ArgoCD-app--of--apps-blue)](https://argocd.devandre.sbs)
+[![ArgoCD: app-of-apps](https://img.shields.io/badge/ArgoCD-app--of--apps-blue)](https://argo-cd.readthedocs.io/)
 [![Promotion: Kargo](https://img.shields.io/badge/promotion-Kargo%20dev%E2%86%92prod-0ea5e9)](https://kargo.akuity.io)
 [![Supply chain: cosign](https://img.shields.io/badge/supply%20chain-cosign%20%2B%20SBOM-green)](https://github.com/sigstore/cosign)
 [![Gatekeeper: deny mode](https://img.shields.io/badge/Gatekeeper-deny%20mode%20%E2%80%94%200%20violations-brightgreen)](https://open-policy-agent.github.io/gatekeeper)
@@ -27,8 +27,9 @@ with an SBOM, SHA-pinned · dev→prod promotion automated + gated (Kargo), neve
 > **The core invariant:** **ArgoCD is the only process that writes to the cluster.** People and automation change the system by changing Git; the cluster is continuously reconciled to match. No snowflakes, no manual `kubectl apply`.
 
 **Docs:** [platform docs](https://andrelair-platform.github.io/minicloud-platform-docs/) ·
-**Architecture (C4):** [GitOps delivery & reconcile loop](https://andrelair-platform.github.io/minicloud-platform-docs/platform/architecture/c4-system-design#the-gitops-workflow-system-the-reconcile-loop) ·
-**Live ArgoCD:** [argocd.devandre.sbs](https://argocd.devandre.sbs)
+**Architecture (C4):** [GitOps delivery & reconcile loop](https://andrelair-platform.github.io/minicloud-platform-docs/platform/architecture/c4-system-design#the-gitops-workflow-system-the-reconcile-loop)
+<!-- running instances (ArgoCD, Backstage, …) are internal only — Tailscale + Authentik SSO — so no public demo URL -->
+
 
 ---
 
@@ -188,7 +189,7 @@ Each custom app is its own thin Helm chart depending on the shared `minicloud-ap
 [minicloud-litellm-custom](https://github.com/andrelair-platform/minicloud-litellm-custom) ·
 [platform-demo](https://github.com/andrelair-platform/platform-demo)
 
-`tech-radar.json` (root) feeds the Backstage [Tech Radar](https://backstage.devandre.sbs/tech-radar) live. Releases via release-please; deps via Renovate.
+`tech-radar.json` (root) feeds an internal Backstage Tech Radar. Releases via release-please; deps via Renovate.
 
 ## License
 
