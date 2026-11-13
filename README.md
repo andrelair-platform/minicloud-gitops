@@ -28,8 +28,8 @@ with an SBOM, SHA-pinned · dev→prod promotion automated + gated (Kargo), neve
 
 **Docs:** [platform docs](https://andrelair-platform.github.io/minicloud-platform-docs/) ·
 **Architecture (C4):** [GitOps delivery & reconcile loop](https://andrelair-platform.github.io/minicloud-platform-docs/platform/architecture/c4-system-design#the-gitops-workflow-system-the-reconcile-loop)
-<!-- running instances (ArgoCD, Backstage, …) are internal only — Tailscale + Authentik SSO — so no public demo URL -->
 
+> *No public demo URL by design.* The running instances (ArgoCD, Backstage, Grafana, …) are **internal only** — reachable solely over Tailscale + Authentik SSO (identity is the perimeter). The evidence here is the architecture, the diagrams, and the live docs, not an exposed dashboard.
 
 ---
 
