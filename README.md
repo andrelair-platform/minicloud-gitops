@@ -6,6 +6,25 @@
 [![Supply chain: cosign](https://img.shields.io/badge/supply%20chain-cosign%20%2B%20SBOM-green)](https://github.com/sigstore/cosign)
 [![Gatekeeper: deny mode](https://img.shields.io/badge/Gatekeeper-deny%20mode%20%E2%80%94%200%20violations-brightgreen)](https://open-policy-agent.github.io/gatekeeper)
 
+> **What this is —** a **self-built, production-grade GitOps platform**: a **domain-agnostic** delivery +
+> reconciliation workflow (CI → Kargo → ArgoCD, defense-in-depth guardrails, DR) that would run **any
+> organization's workloads** — **swap the apps, keep the platform.** Nothing in the control plane knows or
+> cares what business runs on top: the build→promote→deploy→reconcile→recover machinery, the security
+> admission layer, the secrets flow and the DR plan are all **tenant-independent**. Point it at your
+> services tomorrow and it deploys them unchanged.
+>
+> It's proven end-to-end on a 6-node k3s cluster by a **simulated** regulated European insurer running on
+> it as a realistic tenant (synthetic data, no real customers — the evidence is the *operation*, not
+> traffic). But the insurer is **just the proof-load**: stop building that Information System tomorrow and
+> the entire GitOps platform stands and keeps working. **That separability is the repo's core law** —
+> **`platform/`** = capabilities provided (domain-agnostic, reusable), **`is/`** = the business that merely
+> *consumes* them.
+
+**Proof at a glance:** disaster recovery **rehearsed** (CNPG primary-kill failover + PITR restore from
+off-site R2 — zero data loss) · OPA Gatekeeper **deny mode, 0 violations** · every prod image
+**cosign-signed with an SBOM**, SHA-pinned · dev→prod promotion **automated + gated** (Kargo), never a
+hand-edited tag.
+
 > **The declarative source of truth for the minicloud platform.** One Git repository defines every workload — the platform's technical capabilities and the insurance Information System alike — and **ArgoCD is the only process that writes to the cluster.** People and automation change the system by changing Git; the cluster is continuously reconciled to match. There are no snowflakes and no manual `kubectl apply`.
 
 **Docs:** [platform docs](https://andrelair-platform.github.io/minicloud-platform-docs/) ·
