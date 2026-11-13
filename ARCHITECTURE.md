@@ -21,8 +21,9 @@ apps/       → WHERE does Argo CD classify and deploy everything?  (the taxonom
 
 ```
 bootstrap/                 # root app-of-apps only
-clusters/minicloud-1/      # cluster-scoped: namespaces, quotas, limitranges, cluster RBAC, storage classes
-platform/
+platform/                  # (cluster-scoped resources live WITHIN a layer: quotas → security/quotas,
+                           #  storage classes → storage/, netpols → security/network-policies — there is
+                           #  no separate clusters/ dir)
   foundation/              # cilium, cert-manager, kured, vpa, system-upgrade, priority
   storage/                 # longhorn, external-snapshotter, backup-dr (velero + CNPG backups)
   networking/              # ingress-nginx, external-dns, cloudflare-tunnel, metallb
@@ -31,24 +32,22 @@ platform/
   security/                # gatekeeper-policies, network-policies, falco, rbac, polaris, quotas
   observability/           # kube-prometheus-stack, grafana, loki, tempo, otelcol, monitoring
   data/                    # CNPG operator + shared data engine (kafka/clickhouse)   [per-app DBs stay with the app]
-  messaging/               # nats (shared eventing bus)
-  autoscaling/             # keda (event/metric-driven scaling)
   automation/              # temporal (durable, code-first workflow/orchestration engine)
   ai/                      # litellm, qdrant, langfuse(+base), open-webui
-  shared-services/         # authentik(+ldap-outpost, cnpg-authentik), adminer, homer, ghproj-exporter
-  _demos/                  # TEMPORARY holding: whoami, podinfo, event-demo, chaos-engineering — non-prod
-                           #   examples/validation. Long-term: move to examples/ or remove; NOT a 1st-class layer.
-is/
+  shared-services/         # authentik(+ldap-outpost, cnpg-authentik), adminer, homer, ghproj-exporter,
+                           #   nats (shared eventing bus), keda (event/metric-driven scaling)
+  _demos/                  # non-prod examples/validation: whoami, podinfo, event-demo, chaos-engineering
+                           #   (sanctioned, kept — all live/Synced; a working demo of a path, not a 1st-class layer)
+is/                        # raw/vendor IS manifests (custom IS services live in services/, deployed via apps/is/)
   workplace/               # nextcloud, stalwart, matrix, jitsi, docuseal, n8n, bookstack, searxng, vaultwarden
-  iam/                     # ktayl-iam (Identity & Access Governance / IGA — transverse IS capability)
   erp/                     # erpnext
   insurance/               # raw/vendor LOB bundles (custom LOB services stay in services/)
-  itsm/                    # glpi
-  data-products/           # policy_portfolio / metabase provisioning CONFIG (code in ktayl-data-platform)
+                           #   NB iam (ktayl-iam) + itsm (glpi/ktayl-itsm) are custom SERVICES → services/,
+                           #   with their Application files under apps/is/{iam,itsm}; not raw is/ subdirs.
 services/                  # custom wrapper charts (+ /kargo) — UNCHANGED, flat, packaging only
 apps/
-  platform/{foundation,storage,networking,secrets,delivery,security,observability,data,messaging,autoscaling,automation,ai,shared-services,_demos}/
-  is/{workplace,iam,erp,insurance,itsm,data-products}/
+  platform/{foundation,storage,networking,secrets,delivery,security,observability,data,automation,ai,shared-services,_demos}/
+  is/{workplace,iam,erp,insurance,itsm}/
   retrieva/                # RNCP39583 cert product's Application files (neither platform/ nor is/ — §14)
   previews/
 helm-values/ · charts/                         # UNCHANGED  (environments/ retired 2026-11-13 — unused)
@@ -59,8 +58,7 @@ docs/ · scripts/ · .claude/ · ARCHITECTURE.md
 
 | Dir | Purpose | Allowed | Forbidden | Owner |
 |---|---|---|---|---|
-| `clusters/` | cluster-scoped bootstrap | ns, quota, limitrange, cluster RBAC, SC | app workloads | Platform/SRE |
-| `platform/*` | shared technical capabilities | infra/delivery/secrets/obs/security/data-engine/ai/shared-svc | **any business/IS app** | Platform Eng |
+| `platform/*` | shared technical capabilities (incl. cluster-scoped resources within a layer — quotas → `security/quotas`, SCs → `storage/`) | infra/delivery/secrets/obs/security/data-engine/ai/shared-svc + ns/quota/limitrange/cluster-RBAC/SC | **any business/IS app** | Platform Eng |
 | `is/*` | business apps/data (consumers) | workplace/ERP/LOB/ITSM/data products | **platform infra**, **app source code** | App/Domain |
 | `services/` | packaging of custom-built services | wrapper charts + `/kargo` | vendor charts, raw infra | Platform Eng |
 | `apps/` | Argo CD Applications (taxonomy) | Application/ApplicationSet/AppProject under `platform/*`, `is/*`, `retrieva/` (cert product) or `previews/` | workload manifests; `apps/workloads/` (retired) | Platform Eng |
@@ -81,7 +79,10 @@ n8n stays IS (currently `is/workplace/n8n`; promote to `is/automation/` if it gr
 
 ## FREEZE (in force — enforced, Stage 6)
 
-- **`manifests/` is FROZEN** — no new subdirectories. New config goes to `platform/<layer>/` or `is/<group>/`.
+- **`manifests/` is fully migrated and GONE** (LOT E, 2026-10 — PRs #1780–1782 moved every dir to
+  `platform/<layer>/`). The FREEZE succeeded: new config goes to `platform/<layer>/` or `is/<group>/`,
+  **never** a recreated `manifests/`. (The guard-write hook + architecture-guard CI still refuse a new
+  `manifests/<subdir>` — now a belt-and-braces guard against the dir ever coming back.)
 - **`apps/platform/` (flat) is FROZEN** — new Argo Applications go under `apps/platform/<layer>/` or `apps/is/<group>/`.
 - A **new top-level directory requires an ADR.**
 - **No application source code in this repo** — code lives in the product repo; a runtime Job clones it.
@@ -89,10 +90,15 @@ n8n stays IS (currently `is/workplace/n8n`; promote to `is/automation/` if it gr
 > **Enforced on two layers (remediation-plan.md Stage 6):** the agent-layer hook
 > `.claude/hooks/guard-write.py` (rules 5–6, keystroke-time) **and** the server-side CI check
 > `.github/workflows/architecture-guard.yml` (every PR). Both inspect only *new* entries
-> (creation / PR-added files) so the legacy residue (`apps/workloads/`, the `manifests/` LOT E
-> residue) is grandfathered — the FREEZE blocks adding to the entropy, not the existing state.
+> (creation / PR-added files) so any remaining legacy residue (e.g. the emptied `apps/workloads/`) is
+> grandfathered — the FREEZE blocks adding to the entropy, not the existing state.
 
 ## Migration invariant (every refactor PR)
+
+> **Note — the taxonomy refactor is COMPLETE** (manifests/ fully migrated, 2026-10). The three sections
+> below — Migration invariant · Non-regression oracle · Scope guardrails — are the **playbook that was
+> run**, kept as the historical record + the pattern for any *future* path refactor. They are not a
+> live-work queue. The **two pillars + FREEZE above remain in force.**
 
 A refactor PR changes **paths only**. **Do NOT** change simultaneously: `metadata.name`, namespace, Helm
 values, chart contents, Kubernetes resources, image versions, or any configuration.
