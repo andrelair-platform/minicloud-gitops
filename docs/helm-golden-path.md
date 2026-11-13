@@ -44,7 +44,7 @@ state). This per-env OCI split is how dev=Harbor / prod=ghcr is achieved for the
   that sets `.image.tag` in `values-dev.yaml` / `values-prod.yaml`. All else (dev auto-promote, prod
   CODEOWNERS PR, squash, verification) unchanged. Env-agnostic image + immutable SHA tag still required.
 - **Prod gate (CODEOWNERS):** `services/*/helm/values-prod.yaml`, `charts/minicloud-app-deployment/**`
-  (a chart change → new version → all-prod blast radius → must be gated), `apps/`, `manifests/kargo/`.
+  (a chart change → new version → all-prod blast radius → must be gated), `apps/`, `platform/delivery/kargo/`.
 - **Envs:** exactly **dev + prod on the same cluster** (different namespaces). No uat, no multi-cluster —
   a typical enterprise dev/uat/prod × region depth is flattened to `values-dev.yaml` / `values-prod.yaml`.
 
