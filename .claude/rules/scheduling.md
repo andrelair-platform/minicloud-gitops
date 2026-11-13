@@ -19,10 +19,10 @@ down, the pod can't schedule and its Service goes to 503 (2026-09-25: grafana pi
 - **Stateful pod that must move:** `strategy: Recreate` (RWO Longhorn — avoid multi-attach).
 
 ## Guardrails (enforced)
-- **Gatekeeper `k8snohostnamepin`** (`manifests/gatekeeper-policies/22..23`) denies hostname pins on
+- **Gatekeeper `k8snohostnamepin`** (`platform/security/gatekeeper-policies/22..23`) denies hostname pins on
   Deploy/STS/DaemonSet/Rollout. It ships in **`enforcementAction: dryrun`** (audit-only) until the 20
   existing pins are remediated, then flips to **`deny`**. The `hostname-pin-allowed` label is the opt-out.
-- **Alert `KubePodStuckPending`** (`manifests/monitoring/35-scheduling-alerts.yaml`) fires at 10 min
+- **Alert `KubePodStuckPending`** (`platform/observability/monitoring/35-scheduling-alerts.yaml`) fires at 10 min
   (warning) / 30 min (critical) so a scheduling failure surfaces fast, not via a 503.
 
 ## Removing an existing pin (the remediation, staged post-convergence)

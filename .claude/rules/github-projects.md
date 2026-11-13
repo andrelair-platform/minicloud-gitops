@@ -250,7 +250,7 @@ the standard fields + the 4 role-tailored views + the Sprint iteration + the Bur
 - **Existing boards (#2–#25) are intentionally NOT retro-fitted.** They pre-date the template; they
   carry the standard **fields** (pushed via API) + backfilled values, but **not** the views — accepted,
   because GitHub can't propagate views to an existing board. The **cross-board view for all of them is
-  Grafana** (*Delivery Portfolio (GitHub Projects)* dashboard, `manifests/ghproj-exporter/`). If you
+  Grafana** (*Delivery Portfolio (GitHub Projects)* dashboard, `platform/shared-services/ghproj-exporter/`). If you
   want native views on a *specific* active board (retrieva #2 / policy #6 / underwriting #12), hand-build
   the 4 views on it once — do **not** delete+recreate a board (changes its number, breaks every
   `project:` reference + the exporter + this doc).

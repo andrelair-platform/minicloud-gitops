@@ -3,8 +3,9 @@
 ## Deployment repo vs code repo — strict separation (MANDATORY)
 
 **`minicloud-gitops` is the DEPLOYMENT repo, never a code repo.** It holds only *deployment config*:
-`apps/` (ArgoCD Applications), `manifests/`, `helm-values/`, `services/*/helm` (GAP wrapper charts),
-`bmad/stories/`, `docs/` (ADRs), `.claude/`, repo-ops `scripts/`. **Application / source code lives in
+`apps/` (ArgoCD Applications), `platform/<layer>/` + `is/<group>/` (platform & IS manifests — the
+former flat `manifests/` was migrated here, LOT E 2026-10), `helm-values/`, `charts/`, `services/*/helm`
+(Helm wrapper charts), `bmad/stories/`, `docs/` (ADRs), `.claude/`, repo-ops `scripts/`. **Application / source code lives in
 its own per-product repo** (`ktayl-policy-service`, `retrieva`, `ktayl-data-platform`, …), which CI
 builds and Kargo/ArgoCD deploy.
 
