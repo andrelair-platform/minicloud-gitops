@@ -1,7 +1,7 @@
 ---
 id: HGP-08
 title: "Migrate plane, agent, crew, ktayl-policy to the golden path"
-status: Ready
+status: Done
 type: Story
 epic: helm-golden-path
 milestone: "HGP — Helm golden path"
@@ -17,5 +17,5 @@ project: 3
 Convert the remaining single/standard services (one at a time) to values-only on the shared chart.
 
 ## AC
-- [ ] minicloud-plane (Rollout mode), minicloud-agent + minicloud-crew-agent (ghcr-pull + ESO), ktayl-policy-service
-- [ ] each verified dev→prod, kustomize overlays retired, rollback proven
+- [x] minicloud-plane (Rollout mode), minicloud-agent + minicloud-crew-agent (ghcr-pull + ESO), ktayl-policy-service
+- [x] each verified dev→prod, kustomize overlays retired, rollback proven
