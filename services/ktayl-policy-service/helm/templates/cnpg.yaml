@@ -32,6 +32,11 @@ spec:
         ensure: present
         login: true
         superuser: false
+        # Set the CNPG-injected defaults explicitly (connectionLimit:-1, inherit:true) so the live
+        # Cluster matches git with NO per-role ignoreDifferences — a list-item ignoreDifferences +
+        # RespectIgnoreDifferences=true makes ArgoCD drop newly-added roles from the SSA patch.
+        connectionLimit: -1
+        inherit: true
         passwordSecret:
           name: ktayl-cnpg-role
       # Read-only role for the Data Platform ingest (dp-ingest-policy copies raw.policies from here).
@@ -45,6 +50,8 @@ spec:
         ensure: present
         login: true
         superuser: false
+        connectionLimit: -1
+        inherit: true
         passwordSecret:
           name: analytics-ro-cnpg-role
   bootstrap:
