@@ -19,7 +19,7 @@ authentication directory to it.
 
 - **Onboarding (ktayl-iam #73/#74):** the Joiner sets the employee's **Authentik** password (+ mailbox)
   to a shared default, once, via a **scoped elevated token** (`reset_user_password` only).
-- **B1 — Authentik LDAP outpost (GitOps):** `manifests/authentik-ldap-outpost/` — Deployment
+- **B1 — Authentik LDAP outpost (GitOps):** `platform/shared-services/authentik-ldap-outpost/` — Deployment
   (`ghcr.io/goauthentik/ldap:2026.5.3`, non-root/readOnlyRootFS/drop-ALL) + Service `:3389/:6636` +
   outpost token via ESO + a `mail→outpost` NetworkPolicy. Provider `ktayl-ldap`, base DN `dc=devandre,dc=sbs`.
 - **B2 — cutover (done):** Stalwart webadmin → **Settings → Authentication → Authentication Directory** =
@@ -106,5 +106,5 @@ Final verification 2026-10-07 (4/4 PASS): `testbox` GONE · `kanmegnea` INBOX=73
 
 ## Rollback
 Clear the Stalwart **Authentication Directory** field (→ internal auth; captured pre-change). The recovery
-admin guarantees access meanwhile. Remove `manifests/authentik-ldap-outpost/` + the Authentik LDAP objects
+admin guarantees access meanwhile. Remove `platform/shared-services/authentik-ldap-outpost/` + the Authentik LDAP objects
 to abandon. The ktayl-iam onboarding code is inert without its env (gated).

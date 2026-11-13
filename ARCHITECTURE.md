@@ -2,7 +2,8 @@
 
 > **This file is the law for where things live in this repo.** It is the human map; the enforced decision
 > rule is `.claude/rules/platform-vs-information-system.md`; the migration that establishes this layout is
-> `docs/remediation-plan.md` (diagnosis: `docs/architecture-audit.md`).
+> `docs/remediation-plan.md` (diagnosis: `docs/architecture-audit.md`). Discoverable summary on the hub:
+> [Repository taxonomy contract](https://andrelair-platform.github.io/minicloud-platform-docs/platform/architecture/repo-taxonomy-contract).
 
 ## The two pillars (the one boundary that must never blur)
 
