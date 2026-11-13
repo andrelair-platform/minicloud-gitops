@@ -24,7 +24,7 @@ The home is decided by **what the script operates on**, not by which repo you ha
 | The script operates on… | Home | Examples |
 |---|---|---|
 | **The platform / the controller / the cluster** (Authentik/Vault provisioning, recovery checks, MAAS/power, node ops, systemd units) | **`minicloud-ops/scripts/<area>/`** — the controller-cloned platform-ops repo (has `install.sh`, runs on the controller) | `scripts/authentik/oidc-provider*.sh`, `scripts/bind9-guard.py`, `scripts/maas-power-broker.py` |
-| **This repo / its own workflow** (GitHub-project board ops, the BMAD bridge, manifest/validation helpers) | `minicloud-gitops/scripts/<area>/` — genuine *repo-ops* for gitops | `scripts/github-project/`, `scripts/bmad-to-github.sh` |
+| **This repo / its own workflow** (a CI-gate helper, a manifest/validation helper) | `minicloud-gitops/scripts/<area>/` — genuine *repo-ops* for gitops | `scripts/check_retrieva_release.py` (the merge-gate release-completeness check) |
 | **An application** (would run in a container or be unit-tested) | the **product's own repo** (`<repo>/scripts/` or its source tree) | dbt runners, app provisioners |
 | One-off *data* piped once and never needed again | `/tmp` (throwaway) | a parsed export consumed in the same task |
 
@@ -34,7 +34,7 @@ though the app it provisions is deployed from gitops. This keeps `minicloud-gito
 (`conventions.md`) and stops it accreting every ops helper. Do **not** spin up a *third* "scripts" repo —
 `minicloud-ops` already is the reusable-platform-ops home; a new one just fragments ops tooling.
 
-Group by area (`scripts/authentik/`, `scripts/github-project/`, …), matching the existing layout.
+Group by area (`scripts/authentik/`, `scripts/bind9/`, …), matching the existing layout.
 `minicloud-ops` is controller-cloned (`~/minicloud-ops`) **and** mirrored on the Mac
 (`~/Developer/cloudplateform/minicloud-ops`); edit+commit on the Mac (GPG-signed), `git pull` on the controller.
 
