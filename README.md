@@ -40,8 +40,8 @@ This repo is a faithful [OpenGitOps](https://opengitops.dev) implementation — 
 | Principle | How it is implemented here |
 |---|---|
 | **Declarative** | Every resource is a Helm wrapper chart or raw manifest under `platform/` / `is/` — desired state, never imperative scripts. |
-| **Versioned & immutable** | State lives in Git with **GPG-signed commits** + branch protection; production runs **immutable, SHA-pinned, cosign-signed images** — never `:latest`. |
-| **Pulled automatically** | ArgoCD's **app-of-apps** root (`recurse: true`) discovers and pulls every `Application`. **No CI system holds cluster credentials** — the pipeline cannot push to the cluster. |
+| **Versioned & immutable** | State lives in Git with GPG-signed commits + branch protection; production runs immutable, SHA-pinned, cosign-signed images — never `:latest`. |
+| **Pulled automatically** | ArgoCD's app-of-apps root (`recurse: true`) discovers and pulls every `Application`. No CI system holds cluster credentials — the pipeline cannot push to the cluster. |
 | **Continuously reconciled** | `selfHeal: true` + `prune: true` — ArgoCD detects drift and corrects it on a loop; the live cluster cannot diverge from Git. |
 
 **The one invariant that ties it together:** *the only write path to the cluster is a merged commit.* Manual `kubectl apply`/`argocd sync` on managed workloads is forbidden — it fights self-heal — and is blocked at the keystroke by a client-side hook.
@@ -57,20 +57,20 @@ This repo is a faithful [OpenGitOps](https://opengitops.dev) implementation — 
 
 The layout encodes a single ownership boundary (the law is [`ARCHITECTURE.md`](ARCHITECTURE.md)):
 
-- **`platform/`** — technical **capabilities** the platform *provides* (domain-agnostic: delivery, secrets, SSO, networking, observability, AI, data, storage).
-- **`is/`** — the **Information System** that *consumes* them: the insurance business apps and the digital workplace.
-- **`services/`** = *how* custom apps are packaged (Helm wrapper chart + Kargo); **`apps/`** = *where* ArgoCD classifies and deploys them.
+- **`platform/`** — technical capabilities the platform *provides* (domain-agnostic: delivery, secrets, SSO, networking, observability, AI, data, storage).
+- **`is/`** — the Information System that *consumes* them: the insurance business apps and the digital workplace.
+- **`services/`** — *how* custom apps are packaged (Helm wrapper chart + Kargo); **`apps/`** — *where* ArgoCD classifies and deploys them.
 
-> **Litmus test:** *if the company stopped selling insurance tomorrow, would this still exist?* **Yes → `platform/` · No → `is/`.**
+> **Litmus test:** *if the company stopped selling insurance tomorrow, would this still exist?* Yes → `platform/` · No → `is/`.
 
 | Path | Role |
 |---|---|
-| `bootstrap/` | The app-of-apps **seed** (`root-app.yaml`) — the only thing ever applied by hand. |
-| `apps/` | ArgoCD **`Application`** manifests (the taxonomy projection): `platform/<layer>/` · `is/<group>/` · `retrieva/` · `previews/`. |
+| `bootstrap/` | The app-of-apps seed (`root-app.yaml`) — the only thing ever applied by hand. |
+| `apps/` | ArgoCD `Application` manifests (the taxonomy projection): `platform/<layer>/` · `is/<group>/` · `retrieva/` · `previews/`. |
 | `platform/<layer>/` | Platform capabilities by layer — `foundation` · `networking` · `secrets` · `security` · `observability` · `data` · `ai` · `delivery` · `storage` · `shared-services`. Also holds raw CRDs/policies (netpols, quotas, gatekeeper). |
 | `is/<group>/` | Information-System resources — `insurance` · `erp` · `workplace`. |
-| `services/<svc>/` | Per-custom-app packaging: `helm/` (Helm **wrapper chart**) + `kargo/` (promotion). **Helm-only — zero kustomize.** |
-| `charts/` · `helm-values/` | The shared `minicloud-app-deployment` **library chart** (golden path) · values for third-party charts. |
+| `services/<svc>/` | Per-custom-app packaging: `helm/` (Helm wrapper chart) + `kargo/` (promotion). Helm-only — zero kustomize. |
+| `charts/` · `helm-values/` | The shared `minicloud-app-deployment` library chart (golden path) · values for third-party charts. |
 | `docs/` · `.claude/` | In-repo ADRs (design coupled to code) · the agent guardrails + rules constitution. |
 
 ---
@@ -79,13 +79,13 @@ The layout encodes a single ownership boundary (the law is [`ARCHITECTURE.md`](A
 
 > **CI builds & proves the artifact · Kargo promotes it · ArgoCD deploys it.** No single tool does all three — that separation is exactly what keeps the GitOps guarantee (Git is the only cluster write path) intact. Deep dive: [delivery-workflow](https://andrelair-platform.github.io/minicloud-platform-docs/platform/developer-platform/delivery-workflow).
 
-1. **Build & prove** *(the app's own repo — never this one)* — test → build → **Trivy** scan → **cosign** keyless sign → **SBOM** → push an immutable `:<sha>` image to Harbor (dev) and ghcr (prod).
-2. **Promote** *(Kargo)* — a Warehouse detects the new image → **Freight** (an immutable artifact set). Kargo auto-promotes to **dev** and runs a verification `AnalysisRun`; **only dev-verified Freight** becomes promotable to prod. Prod promotion opens a PR; the maintainer reviews and merges it after required checks pass. Kargo writes **Git**, never the cluster.
-3. **Deploy** *(ArgoCD)* — reconciles the merged change; production rolls out as a **canary** whose analysis gate **auto-aborts** on bad metrics.
+1. **Build & prove** *(the app's own repo — never this one)* — test → build → Trivy scan → cosign keyless sign → SBOM → push an immutable `:<sha>` image to Harbor (dev) and ghcr (prod).
+2. **Promote** *(Kargo)* — a Warehouse detects the new image → Freight (an immutable artifact set). Kargo auto-promotes to dev and runs a verification `AnalysisRun`; only dev-verified Freight becomes promotable to prod. Prod promotion opens a PR; the maintainer reviews and merges it after required checks pass. Kargo writes Git, never the cluster.
+3. **Deploy** *(ArgoCD)* — reconciles the merged change; production rolls out as a canary whose analysis gate auto-aborts on bad metrics.
 
-This is **continuous *deployment* to dev** (automatic) and **continuous *delivery* to prod** (maintainer-confirmed after automated checks) from one pipeline.
+This is continuous *deployment* to dev (automatic) and continuous *delivery* to prod (maintainer-confirmed after automated checks) from one pipeline.
 
-- **Environment model** — exactly **two environments** (dev + prod) running the **same artifact**; images are **env-agnostic** (config read at runtime), so dev/prod parity is *structural*, not hoped-for. Staging was deliberately removed.
+- **Environment model** — exactly two environments (dev + prod) running the same artifact; images are env-agnostic (config read at runtime), so dev/prod parity is *structural*, not hoped-for. Staging was deliberately removed.
 - **Rollback** — `git revert` (ArgoCD reconciles the previous state) or re-promote the previous Freight. The prior state is always one commit away.
 
 ---
@@ -96,18 +96,18 @@ No single control is trusted; a change must clear every layer. **The gate is on 
 
 | Layer | Control | What it prevents |
 |---|---|---|
-| **Git merge** | PR + required `merge-gate`; production paths run relevant CI such as **Checkov** and **kubeconform**; **GPG-signed** commits; branch protection; CODEOWNERS records ownership but is not a required approval | an unchecked or unsigned change reaching prod |
-| **Admission** | **OPA Gatekeeper** (deny mode, 0 violations: no-privileged / no-root / no-latest / allowed-registries / resource-limits / ingress-TLS / no-hostpath / no-hostname-pin) + Pod Security Admission `restricted` | a non-compliant workload ever being admitted, even if it merged |
-| **Pre-merge CI** | `validate-manifests` (**kubeconform** + `helm template`) · **checkov** · **architecture-guard** (blocks taxonomy drift) · **pr-manifest-diff** (renders the real diff on the PR) | broken manifests, structural rot, and blind merges |
-| **Client-side hooks** | `.claude/hooks` deny manual `argocd sync/rollback/patch`, `kubectl delete ns`, force-push to `main`, and **secrets written to files** | mistakes caught at the keystroke, before a PR exists |
-| **Audit** | one **`[CHANGE]` record** issue per prod PR (ITIL/DORA change log) | an unaccountable prod change — every one is reviewed, signed, recorded |
+| **Git merge** | PR + required `merge-gate`; production paths run relevant CI such as Checkov and kubeconform; GPG-signed commits; branch protection; CODEOWNERS records ownership but is not a required approval | an unchecked or unsigned change reaching prod |
+| **Admission** | OPA Gatekeeper (deny mode, 0 violations: no-privileged / no-root / no-latest / allowed-registries / resource-limits / ingress-TLS / no-hostpath / no-hostname-pin) + Pod Security Admission `restricted` | a non-compliant workload ever being admitted, even if it merged |
+| **Pre-merge CI** | `validate-manifests` (kubeconform + `helm template`) · checkov · architecture-guard (blocks taxonomy drift) · pr-manifest-diff (renders the real diff on the PR) | broken manifests, structural rot, and blind merges |
+| **Client-side hooks** | `.claude/hooks` deny manual `argocd sync/rollback/patch`, `kubectl delete ns`, force-push to `main`, and secrets written to files | mistakes caught at the keystroke, before a PR exists |
+| **Audit** | one `[CHANGE]` record issue per prod PR (ITIL/DORA change log) | an unaccountable prod change — every one is reviewed, signed, recorded |
 
 ---
 
 ## Secrets & supply chain
 
-- **Secrets never live in Git.** HashiCorp Vault (AWS **KMS auto-unseal**) is the source of truth; **External Secrets Operator** renders them into Kubernetes Secrets at runtime; a write-guard hook blocks committing key material.
-- **Software supply chain.** Every custom image is **Trivy-scanned**, **cosign keyless-signed** (GitHub OIDC → Sigstore Fulcio) and ships a **CycloneDX SBOM** as an OCI referrer — produced in the app repo's CI. This repo deploys **only** those signed, immutable SHAs (prod → ghcr), with Gatekeeper's `allowed-registries` refusing anything else.
+- **Secrets never live in Git.** HashiCorp Vault (AWS KMS auto-unseal) is the source of truth; External Secrets Operator renders them into Kubernetes Secrets at runtime; a write-guard hook blocks committing key material.
+- **Software supply chain.** Every custom image is Trivy-scanned, cosign keyless-signed (GitHub OIDC → Sigstore Fulcio) and ships a CycloneDX SBOM as an OCI referrer — produced in the app repo's CI. This repo deploys only those signed, immutable SHAs (prod → ghcr), with Gatekeeper's `allowed-registries` refusing anything else.
 
 ---
 
@@ -115,14 +115,14 @@ No single control is trusted; a change must clear every layer. **The gate is on 
 
 - **Self-heal + prune** hold the cluster exactly at Git; an out-of-band change is reverted automatically and anything removed from Git is pruned.
 - **Autoscaler-aware self-heal.** Where KEDA/HPA own `.spec.replicas`, it is placed in `ignoreDifferences` with `RespectIgnoreDifferences=true` so reconciliation doesn't fight the autoscaler — the common footgun, handled.
-- **Visibility.** ArgoCD surfaces per-app **Sync/Health**; Prometheus · Grafana · Loki · Tempo · OTel cover the workloads; a controller-side control-band detector (`sdlc_loop`) watches SLO bands and opens an issue on sustained breach.
+- **Visibility.** ArgoCD surfaces per-app Sync/Health; Prometheus · Grafana · Loki · Tempo · OTel cover the workloads; a controller-side control-band detector (`sdlc_loop`) watches SLO bands and opens an issue on sustained breach.
 
 ---
 
 ## Disaster recovery & bootstrap
 
 - **Rebuild from Git.** A single `kubectl apply -f bootstrap/root-app.yaml` reconstructs the entire platform through app-of-apps — the repo *is* the recovery plan.
-- **State.** Velero (cluster objects + PVs), **CloudNativePG** streaming replicas with **PITR to off-site R2**, and kine/raft snapshots protect stateful data.
+- **State.** Velero (cluster objects + PVs), CloudNativePG streaming replicas with PITR to off-site R2, and kine/raft snapshots protect stateful data.
 - **Unattended cold-start.** Vault auto-unseals via AWS KMS — a full reboot needs no human keys.
 
 ---
@@ -132,10 +132,10 @@ No single control is trusted; a change must clear every layer. **The gate is on 
 | Layer | Choice |
 |---|---|
 | **Kubernetes** | k3s — 6 nodes: 1 control plane (`set-hog`) + 5 workers (`fast-skunk`, `fast-heron`, `star-kitten`, `loving-gannet`, `swift-mac`) |
-| **CNI / LB** | **Cilium** — CNI + LB-IPAM (`10.0.0.200`) + Hubble |
+| **CNI / LB** | Cilium — CNI + LB-IPAM (`10.0.0.200`) + Hubble |
 | **Identity** | Authentik — OIDC + TOTP (SSO for every app) |
 | **Storage** | Longhorn (replicated: `fast-heron` / `loving-gannet` / `swift-mac`) |
-| **Registry** | **Hybrid** — Harbor (dev) · ghcr.io (prod, immutable SHA, signed) |
+| **Registry** | Hybrid — Harbor (dev) · ghcr.io (prod, immutable SHA, signed) |
 | **AI** | LiteLLM gateway · Qdrant (RAG) · Langfuse |
 | **Network** | Tailscale mesh (internal) + Cloudflare Tunnel (public `*.devandre.sbs`) |
 
