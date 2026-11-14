@@ -1,0 +1,78 @@
+# ktayl-core app-pod network policy (Phase-5 hardening). Selects ONLY the app pod (app: ktayl-core) —
+# the CNPG pods keep their own allow-cnpg-operator policy (cnpg.yaml). Applied in both envs.
+#
+# INGRESS: default-deny + reachable only via ingress-nginx (+ same-namespace). Mirrors ktayl-iam.
+# EGRESS:  default-deny + an explicit allow-list. Going further than ktayl-iam (which deferred egress):
+#   verified against the live QA gate so a too-tight rule is caught, not shipped.
+#   - DNS (kube-dns)                         — resolve service + auth.devandre.sbs
+#   - same-ns CNPG :5432                     — the Postgres primary/replica
+#   - observability :4318                    — OTLP traces → otelcol → Tempo (ADR-012)
+#   - ingress-nginx :443 (+ 10.0.0.200/32)   — Authentik OIDC discovery + JWKS (split-horizon → the
+#                                              internal ingress; the issuer host resolves to 10.0.0.200)
+#   - nats :4222                             — Billing's JetStream ingest consumer (active in prod)
+#   - public :443 (world, private excluded)  — Stripe (test mode) + any public TLS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ktayl-core-app
+  labels:
+    app: ktayl-core
+spec:
+  podSelector:
+    matchLabels:
+      app: ktayl-core
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+    - from:
+        - podSelector: {}
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # same-namespace: CNPG Postgres (+ any sidecar)
+    - to:
+        - podSelector: {}
+      ports:
+        - { protocol: TCP, port: 5432 }
+    # OTLP traces → otelcol (observability)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - { protocol: TCP, port: 4318 }
+    # Authentik OIDC discovery + JWKS via the internal (split-horizon) ingress
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - ipBlock:
+            cidr: 10.0.0.200/32
+      ports:
+        - { protocol: TCP, port: 443 }
+    # NATS JetStream (Billing ingest consumer — active in prod)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nats
+      ports:
+        - { protocol: TCP, port: 4222 }
+    # public TLS (Stripe test mode / external APIs); private ranges excluded (handled by the rules above)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+      ports:
+        - { protocol: TCP, port: 443 }
