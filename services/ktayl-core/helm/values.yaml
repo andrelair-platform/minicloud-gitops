@@ -71,3 +71,9 @@ cnpg:
   storageSize: 5Gi
   backup:
     enabled: false
+
+# Stripe payment (BILL-013) — OFF by default (dev stays dormant → payment returns 503). Prod enables it
+# + points at the Vault path for the test-mode keys (see values-prod.yaml).
+stripe:
+  enabled: false
+  vaultPath: platform/ktayl-core
