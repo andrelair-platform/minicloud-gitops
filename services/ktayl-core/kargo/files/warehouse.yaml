@@ -8,8 +8,11 @@ spec:
   # whose base layer has a FIXED date → NewestBuild can't rank tags across commits (the ktayl-claims /
   # ktayl-policy-service trap, gitops.md) → auto-promotion would stall. Keying Freight on the git COMMIT
   # is timestamp-independent → immune. Stages pin image.tag = commitFrom(...).ID[0:7] (== the CI 7-char
-  # short-SHA tag). Public source repo → no git credential for the subscription. Phantom-commit guard:
-  # exclude the paths that DON'T build an image (docs/bmad/catalog-info/*.md — a superset of the CI skips).
+  # short-SHA tag). Public source repo → no git credential for the subscription.
+  # Phantom-commit guard via INCLUDEPATHS (allowlist) — the EXACT mirror of the CI `code` paths-filter
+  # (the set that triggers build-and-push). Freight is created ONLY for commits that actually build an
+  # image, so a tests-/docs-/api-only commit never phantom-promotes a non-existent tag. (A denylist
+  # excludePaths can't mirror an allowlist filter — it missed tests/ → 7db08ea ErrImagePull, 2026-11-14.)
   interval: 5m
   freightCreationPolicy: Automatic
   subscriptions:
@@ -17,8 +20,11 @@ spec:
         repoURL: https://github.com/andrelair-platform/ktayl-core.git
         branch: main
         commitSelectionStrategy: NewestFromBranch
-        excludePaths:
-          - docs
-          - bmad
-          - catalog-info.yaml
-          - "regex:.*\\.md$"
+        includePaths:
+          - src
+          - pom.xml
+          - Dockerfile
+          - .github/workflows/ci.yml
+          - .tbls.yml
+          - .trivyignore
+          - docs/data-model
