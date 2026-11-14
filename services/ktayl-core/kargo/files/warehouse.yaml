@@ -1,0 +1,24 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: ktayl-core
+  namespace: ktayl-core-kargo
+spec:
+  # GIT-Warehouse model (Freight = a commit), NOT image/NewestBuild. ktayl-core is a Java/temurin image
+  # whose base layer has a FIXED date → NewestBuild can't rank tags across commits (the ktayl-claims /
+  # ktayl-policy-service trap, gitops.md) → auto-promotion would stall. Keying Freight on the git COMMIT
+  # is timestamp-independent → immune. Stages pin image.tag = commitFrom(...).ID[0:7] (== the CI 7-char
+  # short-SHA tag). Public source repo → no git credential for the subscription. Phantom-commit guard:
+  # exclude the paths that DON'T build an image (docs/bmad/catalog-info/*.md — a superset of the CI skips).
+  interval: 5m
+  freightCreationPolicy: Automatic
+  subscriptions:
+    - git:
+        repoURL: https://github.com/andrelair-platform/ktayl-core.git
+        branch: main
+        commitSelectionStrategy: NewestFromBranch
+        excludePaths:
+          - docs
+          - bmad
+          - catalog-info.yaml
+          - "regex:.*\\.md$"

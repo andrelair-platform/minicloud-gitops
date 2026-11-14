@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ktayl-core-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  # HGP golden path (GAP wrapper chart, dev): ONE Helm source. The wrapper depends on the library chart
+  # (OCI) for the workload + Ingress; the TLS cert + the dedicated CNPG Postgres are wrapper templates.
+  # releaseName = ktayl-core (mandatory — the library uses it for fullname/selector). DB creds come from
+  # the CNPG-generated ktayl-core-cnpg-app secret (no ESO on dev).
+  #
+  # ⚠️ Go-live prerequisite: the app's resource-server does EAGER OIDC discovery against AUTHENTIK_ISSUER
+  # (…/application/o/ktayl-core/), so the pod will NOT become healthy until the Authentik ktayl-core
+  # provider exists (CMPL-014 Phase 4). Merge this after the provider is created.
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/ktayl-core/helm
+    helm:
+      releaseName: ktayl-core
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ktayl-core
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

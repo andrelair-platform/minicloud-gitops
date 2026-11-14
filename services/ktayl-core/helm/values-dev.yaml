@@ -1,0 +1,28 @@
+# dev — Harbor image, ns ktayl-core. The FULL env list lives here (Helm replaces list values per
+# overlay). DB creds come from the CNPG-generated `ktayl-core-cnpg-app` secret (no Vault on dev);
+# DATABASE_URL is built from the deterministic -rw service host. BILLING_NATS_URL is BLANK → the ingest
+# consumer is disabled (exactly one env consumes the shared UNDERWRITING_EVENTS stream). AUTHENTIK_ISSUER
+# / OTEL endpoint / LOG_STRUCTURED_FORMAT / COMPLAINTS_ACK_WINDOW use the application.yml defaults.
+minicloud-app-deployment:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/ktayl-core
+    tag: "845bdb7"          # set to the latest built dev SHA at deploy; Kargo owns it thereafter
+  podLabels:
+    app: ktayl-core
+  workload:
+    replicas: 1
+  ingress:
+    host: ktayl-core.10.0.0.200.nip.io
+  env:
+    - name: DATABASE_URL
+      value: "jdbc:postgresql://ktayl-core-cnpg-rw.ktayl-core.svc:5432/ktayl_core"
+    - name: DATABASE_USER
+      valueFrom:
+        secretKeyRef: { name: ktayl-core-cnpg-app, key: username }
+    - name: DATABASE_PASSWORD
+      valueFrom:
+        secretKeyRef: { name: ktayl-core-cnpg-app, key: password }
+    - name: BILLING_NATS_URL
+      value: ""
+tlsCert:
+  dnsName: ktayl-core.10.0.0.200.nip.io
