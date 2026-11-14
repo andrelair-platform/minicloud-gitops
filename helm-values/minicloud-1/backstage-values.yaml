@@ -178,6 +178,8 @@ backstage:
         - type: url
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/wrapper-service/template.yaml
         - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/kargo-wiring/template.yaml
+        - type: url
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/custom-image/template.yaml
         - type: url
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/onboard-employee/template.yaml
