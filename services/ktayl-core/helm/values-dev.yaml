@@ -6,7 +6,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/ktayl-core
-    tag: 416aeee
+    tag: 01cdbfc
   podLabels:
     app: ktayl-core
   workload:
