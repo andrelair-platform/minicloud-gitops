@@ -9,7 +9,7 @@
 #   - observability :4318                    — OTLP traces → otelcol → Tempo (ADR-012)
 #   - ingress-nginx :443 (+ 10.0.0.200/32)   — Authentik OIDC discovery + JWKS (split-horizon → the
 #                                              internal ingress; the issuer host resolves to 10.0.0.200)
-#   - nats :4222                             — Billing's JetStream ingest consumer (active in prod)
+#   - messaging :4222                        — Billing's JetStream ingest consumer (NATS, active in prod)
 #   - public :443 (world, private excluded)  — Stripe (test mode) + any public TLS
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -62,11 +62,11 @@ spec:
             cidr: 10.0.0.200/32
       ports:
         - { protocol: TCP, port: 443 }
-    # NATS JetStream (Billing ingest consumer — active in prod)
+    # NATS JetStream (Billing ingest consumer — active in prod). Service `nats` lives in ns `messaging`.
     - to:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: nats
+              kubernetes.io/metadata.name: messaging
       ports:
         - { protocol: TCP, port: 4222 }
     # public TLS (Stripe test mode / external APIs); private ranges excluded (handled by the rules above)
