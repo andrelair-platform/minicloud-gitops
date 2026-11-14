@@ -6,7 +6,7 @@ minicloud-app-deployment:
     app: ktayl-core
   image:
     repository: ghcr.io/andrelair-platform/ktayl-core
-    tag: "c7055a2"          # CA-baked image (QA-verified on dev); Kargo bumps to the promoted short-SHA
+    tag: 9684b71
   workload:
     replicas: 2
   podDisruptionBudget:
