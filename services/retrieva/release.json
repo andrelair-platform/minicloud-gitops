@@ -5,7 +5,7 @@
   "components": {
     "backend": {
       "repository": "ghcr.io/andrelair-platform/retrieva-backend",
-      "tag": "181c018"
+      "tag": "da2d05c"
     },
     "frontend": {
       "repository": "ghcr.io/andrelair-platform/retrieva-frontend",
