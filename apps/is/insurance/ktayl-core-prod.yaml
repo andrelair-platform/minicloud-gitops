@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ktayl-core-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  # HGP golden path (prod): ONE Helm source, values-prod.yaml. Same CA-baked artifact promoted from dev
+  # (Kargo). Billing's NATS ingest consumer is ACTIVE here (prod = the single authoritative consumer).
+  # CNPG has R2 PITR backup. Prod moves only via a CODEOWNERS-gated PR (apps/ + prod overlay) → Kargo's
+  # prod Stage opens that PR; ArgoCD then auto-syncs.
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/ktayl-core/helm
+    helm:
+      releaseName: ktayl-core
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ktayl-core-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy

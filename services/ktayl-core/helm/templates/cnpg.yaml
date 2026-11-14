@@ -70,3 +70,35 @@ spec:
         - podSelector: {}
       ports:
         - { protocol: TCP, port: 5432 }
+{{- if .Values.cnpg.backup.enabled }}
+---
+# R2 credentials for the barmanObjectStore backup (Vault platform/cloudflare). Prod-only (backup.enabled).
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ktayl-core-cnpg-r2
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: ktayl-core-cnpg-r2
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: ACCESS_KEY_ID
+      remoteRef: { key: {{ .Values.cnpg.backup.vaultPath }}, property: r2-access-key-id }
+    - secretKey: SECRET_ACCESS_KEY
+      remoteRef: { key: {{ .Values.cnpg.backup.vaultPath }}, property: r2-secret-access-key }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: ktayl-core-cnpg-daily
+spec:
+  schedule: {{ .Values.cnpg.backup.schedule | default "0 0 4 * * *" | quote }}
+  backupOwnerReference: self
+  cluster:
+    name: ktayl-core-cnpg
+{{- end }}
