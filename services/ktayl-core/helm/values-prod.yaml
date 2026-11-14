@@ -24,7 +24,7 @@ minicloud-app-deployment:
       valueFrom:
         secretKeyRef: { name: ktayl-core-cnpg-app, key: password }
     - name: BILLING_NATS_URL
-      value: "nats://nats.nats.svc:4222"   # prod = the authoritative ingest consumer
+      value: "nats://nats.messaging.svc:4222"   # prod = the authoritative ingest consumer (NATS svc `nats` in ns `messaging`)
 tlsCert:
   dnsName: ktayl-core-prod.10.0.0.200.nip.io
 cnpg:
