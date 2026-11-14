@@ -20,6 +20,11 @@ minicloud-app-deployment:
   resources:
     requests: { cpu: 250m, memory: 640Mi }
     limits:   { cpu: "1", memory: 1Gi }
+  # readOnlyRootFilesystem is on (library default, Gatekeeper) → embedded Tomcat can't create its
+  # tempDir under the read-only /tmp. Mount a writable emptyDir there (JVM java.io.tmpdir=/tmp).
+  # [[feedback_readonlyrootfs_writable_dirs]]
+  writableDirs:
+    - { name: tmp, mountPath: /tmp }
   # Startup is slow (JVM + Flyway + EAGER OIDC issuer discovery) → generous startupProbe gates liveness;
   # the actuator health endpoints are permitted unauthenticated in SecurityConfig.
   startupProbe:
