@@ -77,3 +77,9 @@ cnpg:
 stripe:
   enabled: false
   vaultPath: platform/ktayl-core
+
+# ERPNext GL posting (BILL-014) — OFF by default (dev: outbox accumulates, drainer no-ops). Prod enables
+# the ESO secret + env (ERPNext API creds from Vault secret/platform/erpnext; see values-prod.yaml).
+ledger:
+  enabled: false
+  vaultPath: platform/erpnext

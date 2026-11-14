@@ -33,12 +33,40 @@ minicloud-app-deployment:
     - name: BILLING_STRIPE_WEBHOOK_SECRET
       valueFrom:
         secretKeyRef: { name: ktayl-core-stripe, key: webhook-secret, optional: true }
+    # ERPNext GL (BILL-014) — reach ERPNext at erp.devandre.sbs (split-horizon → 10.0.0.200, already allowed
+    # by the netpol; the minicloud CA is baked so TLS is trusted; Frappe serves the site by Host header).
+    # Creds from the ktayl-core-ledger ESO secret (Vault secret/platform/erpnext); `optional` → the outbox
+    # just accumulates until they exist. Accounts map to the live French PCG CoA (company Ktayl Solutions).
+    - name: LEDGER_ERPNEXT_BASE_URL
+      value: "https://erp.devandre.sbs"
+    - name: LEDGER_ERPNEXT_API_KEY
+      valueFrom:
+        secretKeyRef: { name: ktayl-core-ledger, key: api-key, optional: true }
+    - name: LEDGER_ERPNEXT_API_SECRET
+      valueFrom:
+        secretKeyRef: { name: ktayl-core-ledger, key: api-secret, optional: true }
+    - name: LEDGER_ERPNEXT_COMPANY
+      value: "Ktayl Solutions"
+    - name: LEDGER_ACC_PREMIUM_RECEIVABLE
+      value: "4111 - Clients - Ventes de biens ou de prestations de services - KS"
+    - name: LEDGER_ACC_PREMIUM_INCOME
+      value: "706 - Prestations de services - KS"
+    - name: LEDGER_ACC_CASH
+      value: "5121 - Comptes en euros - KS"
+    - name: LEDGER_ERPNEXT_PARTY_ACCOUNT
+      value: "4111 - Clients - Ventes de biens ou de prestations de services - KS"
+    - name: LEDGER_ERPNEXT_PARTY
+      value: "Ktayl Policyholders"
 tlsCert:
   dnsName: ktayl-core-prod.10.0.0.200.nip.io
 # Stripe payment (BILL-013) — prod is where the live test-mode PSP + the public webhook route run.
 stripe:
   enabled: true
   vaultPath: platform/ktayl-core
+# ERPNext GL posting (BILL-014) — prod posts balanced Journal Entries to the live ERPNext.
+ledger:
+  enabled: true
+  vaultPath: platform/erpnext
 cnpg:
   instances: 2
   storageSize: 5Gi
