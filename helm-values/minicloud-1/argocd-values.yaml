@@ -249,8 +249,22 @@ repoServer:
   pdb:
     enabled: true
     minAvailable: 1
+  # Liveness relaxed (2026-11-15): the chart default probe (/healthz?full=true,
+  # timeoutSeconds:1, failureThreshold:3) was killing a busy-but-healthy repo-server. Under
+  # CPU throttling during helm dependency-build / ghcr registry-login renders on the
+  # overcommitted set-hog node, the full=true healthz exceeds the 1s timeout -> 3 misses ->
+  # SIGTERM (graceful exit-0) -> restart (both replicas flapped ~31x/35d; each kill mid-
+  # GenerateManifest flaps every app's sync with a repo-server "connection refused"
+  # ComparisonError). 5s timeout / 5 failures tolerates the render spikes. Helm deep-merges,
+  # so only the two changed fields are set (initialDelay/period/successThreshold keep defaults).
+  livenessProbe:
+    timeoutSeconds: 5
+    failureThreshold: 5
   resources:
-    requests: { cpu: 50m,  memory: 256Mi }
+    # CPU request 50m -> 250m (2026-11-15): a guaranteed slice so repo-server isn't fighting
+    # for scraps on the overcommitted node during helm renders (the throttling that made the
+    # 1s liveness probe time out). Paired with the relaxed probe above.
+    requests: { cpu: 250m, memory: 256Mi }
     # Trimmed 2500Mi -> 1Gi (P5): repo-server uses ~100-200Mi; 1Gi is 5-10x headroom
     # (still fine for helm-render/dep-build spikes) and bounds the OOM blast radius.
     limits:   { cpu: 1000m, memory: 1Gi }
