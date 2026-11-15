@@ -4,7 +4,7 @@
 # Artifact store: /mlflow-artifacts (Longhorn PVC, 10Gi).
 #   → Upgrade path: replace with s3://mlflow-artifacts pointing to MinIO when ready.
 #
-# Image: harbor.10.0.0.200.nip.io/library/mlflow:v2.16.0-psycopg2
+# Image: ghcr.io/andrelair-platform/mlflow:v2.16.0-psycopg2
 #   FROM ghcr.io/mlflow/mlflow:v2.16.0 + psycopg2-binary + /usr/local/bin/server wrapper
 #   Base image has CMD ["python3"] not ENTRYPOINT — command: ["mlflow"] is required here.
 #
@@ -57,7 +57,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: mlflow
-          image: harbor.10.0.0.200.nip.io/library/mlflow:v2.16.0-psycopg2
+          image: ghcr.io/andrelair-platform/mlflow:v2.16.0-psycopg2
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
