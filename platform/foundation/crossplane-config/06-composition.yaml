@@ -1,0 +1,130 @@
+# The Composition behind PostgresInstance — a function-patch-and-transform pipeline that renders two
+# provider-kubernetes Objects (created in the XR's namespace): a CNPG Cluster and a NetworkPolicy
+# locking the DB to its namespace. Patches wire the XR's name/namespace/size/storageSize through.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: postgresinstance-cnpg
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  compositeTypeRef:
+    apiVersion: platform.minicloud/v1alpha1
+    kind: PostgresInstance
+  mode: Pipeline
+  pipeline:
+    - step: render
+      functionRef:
+        name: crossplane-contrib-function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          # ── 1. CNPG Cluster (the database) ──────────────────────────────
+          - name: cnpg-cluster
+            base:
+              apiVersion: kubernetes.m.crossplane.io/v1alpha1
+              kind: Object
+              spec:
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: default
+                forProvider:
+                  manifest:
+                    apiVersion: postgresql.cnpg.io/v1
+                    kind: Cluster
+                    metadata:
+                      name: placeholder
+                      namespace: placeholder
+                    spec:
+                      instances: 1
+                      storage:
+                        size: 1Gi
+                        storageClass: longhorn
+                      resources:
+                        requests: { cpu: 100m, memory: 256Mi }
+                        limits: { cpu: 500m, memory: 512Mi }
+                      affinity:
+                        enablePodAntiAffinity: true
+                        topologyKey: kubernetes.io/hostname
+                      bootstrap:
+                        initdb:
+                          database: app
+                          owner: app
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { type: Format, fmt: "%s-cnpg" }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.manifest.metadata.name
+                transforms:
+                  - type: string
+                    string: { type: Format, fmt: "%s-cnpg" }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.namespace
+                toFieldPath: spec.forProvider.manifest.metadata.namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.size
+                toFieldPath: spec.forProvider.manifest.spec.instances
+                transforms:
+                  - type: map
+                    map: { small: 1, medium: 2 }
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.storageSize
+                toFieldPath: spec.forProvider.manifest.spec.storage.size
+              - type: ToCompositeFieldPath
+                fromFieldPath: spec.forProvider.manifest.metadata.name
+                toFieldPath: status.clusterName
+          # ── 2. NetworkPolicy (lock the DB to its namespace) ─────────────
+          - name: netpol
+            base:
+              apiVersion: kubernetes.m.crossplane.io/v1alpha1
+              kind: Object
+              spec:
+                providerConfigRef:
+                  kind: ClusterProviderConfig
+                  name: default
+                forProvider:
+                  manifest:
+                    apiVersion: networking.k8s.io/v1
+                    kind: NetworkPolicy
+                    metadata:
+                      name: placeholder
+                      namespace: placeholder
+                    spec:
+                      podSelector:
+                        matchLabels:
+                          cnpg.io/cluster: placeholder
+                      policyTypes: ["Ingress"]
+                      ingress:
+                        - from:
+                            - podSelector: {}
+                          ports:
+                            - protocol: TCP
+                              port: 5432
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string: { type: Format, fmt: "%s-netpol" }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.manifest.metadata.name
+                transforms:
+                  - type: string
+                    string: { type: Format, fmt: "%s-db-netpol" }
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.namespace
+                toFieldPath: spec.forProvider.manifest.metadata.namespace
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.manifest.spec.podSelector.matchLabels['cnpg.io/cluster']
+                transforms:
+                  - type: string
+                    string: { type: Format, fmt: "%s-cnpg" }

@@ -1,0 +1,42 @@
+# XPostgresInstance — the self-service API (IDP Core Component #2, Infrastructure Orchestration).
+# Crossplane v2 NAMESPACED composite: a developer applies `kind: PostgresInstance` in their own
+# namespace and the Composition provisions a CNPG Cluster + a NetworkPolicy. The connection secret
+# is CNPG's native <name>-cnpg-app (host/user/password/dbname). No PR to the DB internals.
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: postgresinstances.platform.minicloud
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  scope: Namespaced
+  group: platform.minicloud
+  names:
+    kind: PostgresInstance
+    plural: postgresinstances
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                size:
+                  type: string
+                  description: Instance count — small=1 (single), medium=2 (HA primary+replica).
+                  enum: ["small", "medium"]
+                  default: "small"
+                storageSize:
+                  type: string
+                  description: Longhorn volume size per instance.
+                  default: "1Gi"
+            status:
+              type: object
+              properties:
+                clusterName:
+                  type: string
+                  description: The CNPG Cluster name (connection secret is <clusterName>-app).
