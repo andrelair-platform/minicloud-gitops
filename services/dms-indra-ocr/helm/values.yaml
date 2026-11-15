@@ -1,0 +1,45 @@
+# dms-indra-ocr wrapper chart — common values (ADR-002). Internal-only OCR service: no ingress, no SSO,
+# no ESO, no secrets. Reached in-cluster by the Phase-2 classifier (ns allow-same-namespace netpol).
+minicloud-app-deployment:
+  serviceAccount:
+    create: true
+    name: dms-indra-ocr
+    automountServiceAccountToken: false     # no k8s API access
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000                         # the indra image's appuser owns the baked model (/opt/indra)
+    seccompProfile: { type: RuntimeDefault }
+  # securityContext default kept: readOnlyRootFilesystem true, drop ALL caps, no-priv-esc (Gatekeeper-clean).
+  # The service writes uploaded docs to /tmp → one writable emptyDir (proven RO-rootfs-safe: the model
+  # loads offline from the baked HF cache under a read-only rootfs).
+  writableDirs:
+    - { name: tmp, mountPath: /tmp }
+  podLabels:
+    app: dms-indra-ocr
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/indra-ocr
+  ports:
+    - { name: http, containerPort: 8000, protocol: TCP }
+  service:
+    ports:
+      - { name: http, port: 8000, targetPort: http }
+  # Model loads at startup (lifespan) → generous startup window for slow nodes.
+  startupProbe:
+    httpGet: { path: /health, port: http }
+    failureThreshold: 40
+    periodSeconds: 5
+  readinessProbe:
+    httpGet: { path: /health, port: http }
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  livenessProbe:
+    httpGet: { path: /health, port: http }
+    initialDelaySeconds: 15
+    periodSeconds: 20
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits:   { cpu: "1", memory: 1536Mi }  # onnxruntime + opencv + the model in RAM
+  ingress:
+    enabled: false
+  certificate:
+    enabled: false

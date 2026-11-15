@@ -1,0 +1,9 @@
+# dev — Harbor image, 1 replica, ns ktayl-dms. No Kargo yet (the DMS is dev-only); the tag is pinned
+# by hand (quoted, block style) and bumped per build until a prod env + Kargo are wired.
+minicloud-app-deployment:
+  image:
+    tag: "7e79e86"
+  workload:
+    replicas: 1
+  podDisruptionBudget:
+    enabled: false
