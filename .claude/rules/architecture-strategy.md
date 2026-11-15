@@ -23,7 +23,8 @@ platform infra, not the AI/data products, which are governed separately.)
   evidence-gated** (ADR-004): the 4 live services stay until evidence justifies folding in; **no
   destructive change until a phase gate passes.**
 - **Adopt-vs-build first.** Much of a "domain" is already an **adopted tool** — ERPNext (GL/finance
-  close/HR), GLPI (ITSM), data-platform/Metabase (reporting), Paperless/DMS (documents), `ktayl-iam`
+  close/HR), GLPI (ITSM), data-platform/Metabase (reporting), a **DMS** (documents — an adopt-candidate for
+  #24, e.g. Paperless; **not yet deployed**), `ktayl-iam`
   (identity). `ktayl-core` **integrates** with these; it hosts only the **custom insurance LOB no
   tool does** (Distribution/CRM, the finance-LOB layer, compliance-workflow, MDM). Don't rebuild ERPNext.
 - **Do NOT create a new service, repo, or board for a business domain** without running the

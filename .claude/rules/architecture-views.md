@@ -74,7 +74,7 @@ complementary deployment/infrastructure view — label them accurately, not all 
   (no `.md`) resolve **unreliably from a category-index page** and fail `onBrokenLinks: 'throw'`. The
   Architecture-Hub category-index route is `/platform/architecture`.
 - **De-mixing the platform topology:** remove IS-owned workloads (ERPNext/Nextcloud/Matrix/Jitsi/Plane/
-  Docuseal/Paperless/n8n/Temporal/Stalwart/Metabase) from the platform diagram, but **keep the data-infra
+  Docuseal/n8n/Temporal/Stalwart/Metabase) from the platform diagram, but **keep the data-infra
   engines** (Postgres/CNPG, MariaDB, NATS, Valkey, ClickHouse, Longhorn/MinIO) — the engine is a platform
   capability; the schema/data is IS (shown in the IS map).
 
