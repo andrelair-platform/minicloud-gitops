@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: preview-pd-49
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/platform-demo/helm
+    helm:
+      releaseName: platform-demo
+      valueFiles:
+        - values-preview.yaml
+      valuesObject:
+        minicloud-app-deployment:
+          image:
+            tag: "pr-49-78cfba8"
+          ingress:
+            hosts:
+              - demo-pr-49.10.0.0.200.nip.io
+            tls:
+              secretName: preview-pd-49-tls
+        tlsCert:
+          name: preview-pd-49-tls
+          secretName: preview-pd-49-tls
+          dnsName: demo-pr-49.10.0.0.200.nip.io
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: preview-pd-49
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ServerSideDiff=true
+      - RespectIgnoreDifferences=true
+      - SkipDryRunOnMissingResource=true
