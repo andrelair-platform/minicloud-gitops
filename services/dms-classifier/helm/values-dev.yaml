@@ -1,0 +1,9 @@
+# dev — ghcr image (same artifact dev+prod), 1 replica (always-on for now; KEDA scale-to-zero is a
+# follow-up — it needs the durable consumer pre-created to avoid the read-lag chicken-and-egg).
+minicloud-app-deployment:
+  image:
+    tag: "8420447"
+  workload:
+    replicas: 1
+  podDisruptionBudget:
+    enabled: false

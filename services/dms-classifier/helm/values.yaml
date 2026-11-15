@@ -1,0 +1,77 @@
+# dms-classifier wrapper chart — common values (spec-dms-classifier). Internal worker (no ingress/SSO).
+# Pulls the PRIVATE ghcr package via ghcr-pull; calls NATS/Paperless/indra/Presidio/LiteLLM/lookups.
+minicloud-app-deployment:
+  serviceAccount:
+    create: true
+    name: dms-classifier
+    automountServiceAccountToken: false
+  imagePullSecrets:
+    - ghcr-pull                      # dms-classifier ghcr package is Internal/private
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000                  # the image runs as appuser 1000
+    seccompProfile: { type: RuntimeDefault }
+  # keep the hardened default securityContext (RO rootfs, drop ALL, no-priv-esc) + a writable /tmp.
+  writableDirs:
+    - { name: tmp, mountPath: /tmp }
+  podLabels:
+    app: dms-classifier
+  image:
+    repository: ghcr.io/andrelair-platform/dms-classifier
+  ports:
+    - { name: http, containerPort: 8000, protocol: TCP }
+  service:
+    ports:
+      - { name: http, port: 8000, targetPort: http }
+  startupProbe:
+    httpGet: { path: /health, port: http }
+    failureThreshold: 30
+    periodSeconds: 5
+    timeoutSeconds: 5
+  readinessProbe:
+    httpGet: { path: /health, port: http }
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+  livenessProbe:
+    httpGet: { path: /health, port: http }
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 5
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  env:
+    - { name: NATS_URL, value: "nats://nats.messaging.svc:4222" }
+    - { name: NATS_STREAM, value: "DMS_DOC" }
+    - { name: NATS_SUBJECT, value: "dms.doc.consumed" }
+    - { name: NATS_DURABLE, value: "dms-classifier" }
+    - { name: PAPERLESS_URL, value: "http://paperless:80" }
+    - { name: PAPERLESS_ADMIN_USER, value: "admin" }
+    - name: PAPERLESS_ADMIN_PASSWORD
+      valueFrom: { secretKeyRef: { name: paperless-secrets, key: admin-password } }
+    - { name: INDRA_OCR_URL, value: "http://dms-indra-ocr:8000" }
+    - { name: PRESIDIO_ANALYZER_URL, value: "http://presidio-analyzer.ai.svc.cluster.local:3000" }
+    - { name: PRESIDIO_ANONYMIZER_URL, value: "http://presidio-anonymizer.ai.svc.cluster.local:3000" }
+    - { name: LITELLM_BASE_URL, value: "http://litellm.ai.svc.cluster.local:4000" }
+    - name: LITELLM_API_KEY
+      valueFrom: { secretKeyRef: { name: dms-classifier-litellm, key: master-key } }
+    - { name: CLASSIFIER_MODEL, value: "tier-economy" }
+    # Systems of record (validate the candidate) — confirm the exact dev routes at QA time.
+    - { name: CLAIMS_LOOKUP_URL, value: "http://ktayl-claims.ktayl-claims.svc:8080/api/claims" }
+    - { name: POLICY_LOOKUP_URL, value: "http://ktayl-core.ktayl-core.svc:8080/api/billing/policies" }
+    - { name: CONFIDENCE_THRESHOLD, value: "0.7" }
+    - { name: ENVIRONMENT, value: "development" }
+    # Langfuse (LLMOps) — keys wired as a follow-up (dedicated project); tracing no-ops until then.
+  # The library creates the LiteLLM key secret from Vault (the ghcr-pull ES is a wrapper template).
+  externalSecret:
+    enabled: true
+    target: dms-classifier-litellm
+    data:
+      - secretKey: master-key
+        remoteRef: { key: platform/litellm, property: master-key }
+  ingress:
+    enabled: false
+  certificate:
+    enabled: false
