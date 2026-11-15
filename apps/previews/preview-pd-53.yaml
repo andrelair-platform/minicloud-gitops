@@ -21,13 +21,13 @@ spec:
             tag: "pr-53-9861dc8"
           ingress:
             hosts:
-              - demo-pr-53.10-0-0-200.nip.io
+              - pr53-preview.10.0.0.200.nip.io
             tls:
               secretName: preview-pd-53-tls
         tlsCert:
           name: preview-pd-53-tls
           secretName: preview-pd-53-tls
-          dnsName: demo-pr-53.10-0-0-200.nip.io
+          dnsName: pr53-preview.10.0.0.200.nip.io
   destination:
     server: https://kubernetes.default.svc
     namespace: preview-pd-53
