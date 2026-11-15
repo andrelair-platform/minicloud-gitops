@@ -67,3 +67,8 @@ spec:
       - "ecr-public.aws.com/"
       # Plane CE — makeplane's own registry, no Harbor mirror available
       - "artifacts.plane.so/"
+      # Crossplane ecosystem — core images (xpkg.crossplane.io) + provider/function
+      # packages (xpkg.upbound.io). Official OCI registries for the infrastructure
+      # control plane (IDP Core Component #2); no Harbor mirror for OCI packages.
+      - "xpkg.crossplane.io/"
+      - "xpkg.upbound.io/"
