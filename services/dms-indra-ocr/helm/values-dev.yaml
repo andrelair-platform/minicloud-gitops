@@ -2,7 +2,7 @@
 # by hand (quoted, block style) and bumped per build until a prod env + Kargo are wired.
 minicloud-app-deployment:
   image:
-    tag: "7e79e86"
+    tag: "7e709e6"
   workload:
     replicas: 1
   podDisruptionBudget:
