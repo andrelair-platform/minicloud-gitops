@@ -1,0 +1,96 @@
+# Idempotent bootstrap of the Paperless custom-field schema + tags the Phase-2 classifier writes to:
+#   custom fields: policy_number, claim_number, client (string)
+#   tags:          filed (confident+validated match), needs-review (HITL — low-confidence/ambiguous)
+# Runs via the Paperless REST API with a token minted from the admin creds (ESO paperless-secrets).
+# Idempotent (get-or-create) + retries until the Paperless API is up — safe to re-run every sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: paperless-custom-fields-init
+  labels:
+    app.kubernetes.io/name: ktayl-dms
+    app.kubernetes.io/component: custom-fields-init
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"   # after Paperless is up
+spec:
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ktayl-dms
+        app.kubernetes.io/component: custom-fields-init
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: custom-fields-init
+          image: docker.io/library/python:3.12-slim   # fully-qualified (Gatekeeper); stdlib only, no pip
+          env:
+            - { name: PAPERLESS_URL, value: "http://paperless:80" }
+            - { name: ADMIN_USER, value: admin }
+            - name: ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: paperless-secrets, key: admin-password } }
+            - { name: HOME, value: /tmp }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits:   { cpu: 200m, memory: 128Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          command: [python3]
+          args:
+            - -c
+            - |
+              import json, os, time, urllib.request, urllib.error
+
+              BASE = os.environ["PAPERLESS_URL"].rstrip("/")
+              USER = os.environ["ADMIN_USER"]
+              PW = os.environ["ADMIN_PASSWORD"]
+
+              def call(method, path, data=None, token=None):
+                  body = json.dumps(data).encode() if data is not None else None
+                  req = urllib.request.Request(BASE + path, data=body, method=method)
+                  req.add_header("Content-Type", "application/json")
+                  if token:
+                      req.add_header("Authorization", "Token " + token)
+                  return urllib.request.urlopen(req, timeout=15)
+
+              # Wait for the Paperless API + mint an auth token from the admin creds.
+              token = None
+              for _ in range(60):
+                  try:
+                      token = json.load(call("POST", "/api/token/", {"username": USER, "password": PW}))["token"]
+                      break
+                  except Exception as exc:
+                      print("waiting for Paperless API...", repr(exc))
+                      time.sleep(5)
+              if not token:
+                  raise SystemExit("could not obtain a Paperless API token")
+
+              def ensure(path, name, extra):
+                  items = json.load(call("GET", path + "?page_size=200", token=token))
+                  results = items.get("results", items) if isinstance(items, dict) else items
+                  if any(it.get("name") == name for it in results):
+                      print("exists:", name)
+                      return
+                  payload = {"name": name}
+                  payload.update(extra)
+                  call("POST", path, payload, token=token)
+                  print("created:", name)
+
+              for field in ("policy_number", "claim_number", "client"):
+                  ensure("/api/custom_fields/", field, {"data_type": "string"})
+              for tag in ("filed", "needs-review"):
+                  ensure("/api/tags/", tag, {})
+              print("custom-fields-init done")
+      volumes:
+        - name: tmp
+          emptyDir: {}
