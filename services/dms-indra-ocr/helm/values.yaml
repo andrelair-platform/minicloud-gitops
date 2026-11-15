@@ -17,7 +17,7 @@ minicloud-app-deployment:
   podLabels:
     app: dms-indra-ocr
   image:
-    repository: harbor.10.0.0.200.nip.io/library/indra-ocr
+    repository: ghcr.io/andrelair-platform/indra-ocr
   ports:
     - { name: http, containerPort: 8000, protocol: TCP }
   service:

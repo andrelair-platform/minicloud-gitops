@@ -8,7 +8,7 @@
 # Tag QUOTED (a 7-hex all-decimal SHA parses as a YAML number → InvalidImageName).
 minicloud-app-deployment:
   image:
-    repository: harbor.10.0.0.200.nip.io/library/ktayl-claims
+    repository: ghcr.io/andrelair-platform/ktayl-claims
     tag: 019f4c7
   workload:
     replicas: 1
@@ -37,7 +37,7 @@ minicloud-app-deployment:
 # Frontend (Angular adjuster workbench) — same commit SHA as the backend (git-Warehouse pins both).
 frontend:
   image:
-    repository: harbor.10.0.0.200.nip.io/library/ktayl-claims-frontend
+    repository: ghcr.io/andrelair-platform/ktayl-claims-frontend
     tag: 019f4c7
   workload:
     replicas: 1

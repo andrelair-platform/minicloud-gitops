@@ -9,7 +9,7 @@ minicloud-app-deployment:
     name: ktayl-core
     automountServiceAccountToken: false
   image:
-    repository: harbor.10.0.0.200.nip.io/library/ktayl-core   # overridden per env
+    repository: ghcr.io/andrelair-platform/ktayl-core   # overridden per env
     pullPolicy: IfNotPresent
   ports:
     - { name: http, containerPort: 8080, protocol: TCP }
