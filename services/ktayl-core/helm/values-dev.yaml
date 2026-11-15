@@ -5,7 +5,7 @@
 # / OTEL endpoint / LOG_STRUCTURED_FORMAT / COMPLAINTS_ACK_WINDOW use the application.yml defaults.
 minicloud-app-deployment:
   image:
-    repository: harbor.10.0.0.200.nip.io/library/ktayl-core
+    repository: ghcr.io/andrelair-platform/ktayl-core
     tag: e42bf7d
   podLabels:
     app: ktayl-core

@@ -20,7 +20,7 @@ worker:
 
 backend:
   image:
-    repository: harbor.10.0.0.200.nip.io/library/retrieva-backend
+    repository: ghcr.io/andrelair-platform/retrieva-backend
     tag: f401d85
   workload:
     replicas: 1
@@ -156,7 +156,7 @@ vendorResearch:
 
 frontend:
   image:
-    repository: harbor.10.0.0.200.nip.io/library/retrieva-frontend
+    repository: ghcr.io/andrelair-platform/retrieva-frontend
     tag: 47ff393
   workload:
     replicas: 1
