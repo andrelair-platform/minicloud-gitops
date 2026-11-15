@@ -19,6 +19,7 @@ jobs:
       matrix:
         include:
           - { context: images/k3s-backup, image: k3s-backup, tag: "1.0" }
+          - { context: images/k3s-backup, image: k3s-backup, tag: "2.0" }   # 2.0 = +age (current Dockerfile); 01-k3s-sqlite-backup uses it
           - { context: images/mlflow,     image: mlflow,     tag: "v2.16.0-psycopg2" }
     steps:
       - uses: actions/checkout@v4
