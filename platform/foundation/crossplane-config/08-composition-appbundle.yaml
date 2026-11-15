@@ -47,17 +47,9 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.storageSize
                 toFieldPath: spec.storageSize
-              # surface the connection secret the app mounts (<appName>-cnpg-app)
-              - type: CombineFromComposite
-                combine:
-                  variables:
-                    - fromFieldPath: spec.appName
-                  strategy: string
-                  string:
-                    fmt: "%s-cnpg-app"
-                toFieldPath: status.databaseSecret
-                policy:
-                  fromFieldPath: Required
+              # (the connection secret the app mounts is deterministic — <appName>-cnpg-app; it's
+              #  documented in the XRD rather than surfaced via a patch, which would try to write to
+              #  the composed PostgresInstance's status, a field not in ITS schema.)
           # ── 2. Baseline app NetworkPolicy (provider-kubernetes Object) ─────────────────────
           - name: app-netpol
             base:
