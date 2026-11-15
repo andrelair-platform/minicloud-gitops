@@ -44,7 +44,12 @@ minicloud-app-deployment:
     - name: DATABASE_URL
       value: "postgresql+psycopg://$(PGUSER):$(PGPASSWORD)@$(PGHOST):$(PGPORT)/$(PGDATABASE)"
     - name: POLICY_SERVICE_URL
-      value: "http://ktayl-policy-service.ktayl-prod.svc:80"   # PROD override (dev = ns ktayl)
+      # PROD cutover (ADR-014 Phase 4b, 2026-11-15): prod underwriting binds into KTAYL-CORE-PROD (the policy
+      # PAS folded in as the `policy` module), not the Go ktayl-policy-service. REST contract carried forward
+      # verbatim → base-URL change only; ktayl-core-prod accepts the same client-creds token via the multi-issuer
+      # allowlist (ktayl-core ADR-016, verified live on prod). Prod policies were backfilled (Phase 4). The Go
+      # PAS stays running (idle) as the rollback path until Phase 5 retirement.
+      value: "http://ktayl-core.ktayl-core-prod.svc:80"
     - name: NATS_URL
       value: "nats://nats.messaging.svc:4222"
     - name: OIDC_TOKEN_URL
