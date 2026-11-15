@@ -722,6 +722,38 @@ spec:
         basicAuth: { type: http, scheme: basic }
 ---
 apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: nextcloud
+  description: |
+    Nextcloud — files/groupware for the Digital Workplace. OCS provisioning +
+    sharing API and WebDAV; the Nextcloud Mail auto-provisioning CronJob drives
+    it via occ, clients via WebDAV/OCS. (The OnlyOffice document-editor sidecar
+    has its own Component: minicloud-onlyoffice.)
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    argocd/app-name: nextcloud
+    backstage.io/kubernetes-id: nextcloud
+  tags:
+    - files
+    - groupware
+    - workplace
+  links:
+    - url: https://cloud.devandre.sbs
+      title: Nextcloud UI
+      icon: web
+    - url: https://argocd.devandre.sbs/applications/nextcloud
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: ktayl-solution
+  providesApis:
+    - nextcloud-api
+---
+apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
   name: nextcloud-api
