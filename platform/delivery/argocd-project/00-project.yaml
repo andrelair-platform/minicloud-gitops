@@ -17,6 +17,7 @@ spec:
     - https://backstage.github.io/charts
     - https://charts.bitnami.com/bitnami
     - https://charts.chaos-mesh.org
+    - https://charts.crossplane.io/stable
     - https://charts.external-secrets.io
     - https://charts.fairwinds.com/stable
     - https://charts.jetstack.io
