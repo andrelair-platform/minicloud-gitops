@@ -1,0 +1,26 @@
+# Crossplane core (v2.4.3) — the composition-based "infrastructure control plane" (IDP Core
+# Component #2, Infrastructure Orchestration). Phase 1 = install core + provider-kubernetes only;
+# the ProviderConfig/RBAC + the XPostgresInstance XRD/Composition land in Phase 2 (verified against
+# the live provider). Resource limits sized for the constrained 5-node cluster.
+resourcesCrossplane:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+resourcesRBACManager:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+# Declaratively install the provider that composes IN-CLUSTER resources (CNPG Cluster +
+# NetworkPolicy + ESO ExternalSecret) — no cloud credentials needed. v1.4.1 pins the Crossplane
+# runtime to v2.4.0 (matches the core chart) and ships the namespaced kubernetes.m.crossplane.io APIs.
+provider:
+  packages:
+    - xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v1.4.1

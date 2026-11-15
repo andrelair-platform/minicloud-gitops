@@ -113,6 +113,18 @@ spec:
     # trust-manager Bundle is cluster-scoped — distributes the minicloud CA to all namespaces
     - group: "trust.cert-manager.io"
       kind: "Bundle"
+    # Crossplane — the infrastructure control plane (IDP Core Component #2). Its packages
+    # (Provider/Function/Configuration/DeploymentRuntimeConfig) and composition APIs
+    # (CompositeResourceDefinition/Composition) + provider-kubernetes (ProviderConfig/Object,
+    # cluster + namespaced m.* variants) are cluster-scoped.
+    - group: "pkg.crossplane.io"
+      kind: "*"
+    - group: "apiextensions.crossplane.io"
+      kind: "*"
+    - group: "kubernetes.crossplane.io"
+      kind: "*"
+    - group: "kubernetes.m.crossplane.io"
+      kind: "*"
 
   # Explicit group allowlist — group: "*" wildcard removed
   namespaceResourceWhitelist:
