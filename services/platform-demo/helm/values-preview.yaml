@@ -1,0 +1,63 @@
+# preview — ephemeral per-PR environment overlay (IDP Core Component #3, Environment Management).
+# A labelled PR on andrelair-platform/platform-demo triggers .github/workflows/preview.yml, which
+# builds a pr-<n>-<sha> image and writes an ArgoCD Application into apps/previews/ that renders THIS
+# chart with values-preview.yaml + a per-PR valuesObject (image.tag + host + tlsCert names).
+#
+# A preview is deliberately a SIMPLIFIED, cheap variant of the real chart — it proves the PR's app
+# CODE, not the platform scaffolding (which dev/prod already demonstrate). vs dev/prod it DROPS:
+#   - Vault agent injection  (the preview ns isn't in the Vault k8s-auth role → the agent-init would
+#     fail and block the pod; the Go app only needs PORT, never the injected secret → safe to disable)
+#   - SSO forward-auth        (preview is Tailscale-gated already; a plain ingress is enough)
+#   - KEDA scale-to-zero      (ingress backends straight onto the app Service; 1 tiny replica instead)
+#   - canary Rollout / ServiceMonitor / PDB  (a throwaway env needs none of them)
+# → footprint is ~1 pod at 100m/64Mi: negligible when a preview exists, zero when none do.
+minicloud-app-deployment:
+  image:
+    repository: harbor.10.0.0.200.nip.io/library/platform-demo
+    # tag is injected per-PR by the Application's helm.valuesObject (pr-<n>-<sha>)
+
+  # Plain Deployment — no canary Rollout (the AnalysisTemplate wrapper template still renders but is
+  # inert without a Rollout referencing it).
+  workload:
+    kind: Deployment
+    replicas: 1
+
+  # Disable Vault agent injection for previews (see header). agent-inject=false makes the webhook skip
+  # the sidecar entirely; the other vault.* annotations become no-ops.
+  podAnnotations:
+    vault.hashicorp.com/agent-inject: "false"
+
+  # No KEDA scale-to-zero in a preview.
+  scaledObject:
+    http:
+      enabled: false
+
+  # Ingress straight onto the app Service (not the KEDA interceptor), plain — SSO snippets nulled out.
+  ingress:
+    enabled: true
+    className: nginx
+    backendService: platform-demo
+    servicePort: 80
+    tls:
+      enabled: true
+      # secretName injected per-PR (preview-pd-<n>-tls)
+    annotations:
+      nginx.ingress.kubernetes.io/server-snippet: null
+      nginx.ingress.kubernetes.io/configuration-snippet: null
+    # hosts injected per-PR (demo-pr-<n>.10.0.0.200.nip.io)
+
+  serviceMonitor:
+    enabled: false
+  podDisruptionBudget:
+    enabled: false
+
+# env ConfigMap — dummy values (the app doesn't read them; keeps the envFrom reference satisfied).
+appConfig:
+  APP_ENV: preview
+  LOG_LEVEL: info
+
+# TLS Certificate (wrapper template templates/certificate.yaml) — name/secret/dnsName injected per-PR.
+tlsCert:
+  name: ""
+  secretName: ""
+  dnsName: ""
