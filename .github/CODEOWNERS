@@ -19,6 +19,10 @@ services/*/helm/              @AndreLiar
 services/*/kargo/             @AndreLiar
 platform/delivery/kargo/      @AndreLiar
 
+# Self-service DB claims (Backstage "Provision a Database"): gated — a database holds persistent
+# data, so unlike ephemeral previews the claim PR is reviewed before merge (governed self-service).
+platform/foundation/crossplane-claims/ @AndreLiar
+
 # ArgoCD Application manifests — these DEFINE the deploy gate (syncPolicy,
 # targetRevision, source path). (CI bumps image newTags in overlays, never apps/.)
 apps/                         @AndreLiar
