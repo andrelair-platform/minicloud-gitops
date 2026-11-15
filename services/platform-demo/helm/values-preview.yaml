@@ -42,8 +42,13 @@ minicloud-app-deployment:
       enabled: true
       # secretName injected per-PR (preview-pd-<n>-tls)
     annotations:
-      nginx.ingress.kubernetes.io/server-snippet: null
-      nginx.ingress.kubernetes.io/configuration-snippet: null
+      # Neutralise the SSO forward-auth snippets (preview = no SSO). Empty strings, NOT null:
+      # Helm SUBCHART value-coalescing doesn't delete null keys (only top-level merging does), so
+      # `null` leaves the key with a <nil> value → ArgoCD's Ingress annotation accessor rejects it
+      # ("contains non-string value"). "" is a valid no-op snippet. (Rendered clean locally with a
+      # single -f, but ArgoCD's base-values + overlay + valuesObject path exposed the subchart nil.)
+      nginx.ingress.kubernetes.io/server-snippet: ""
+      nginx.ingress.kubernetes.io/configuration-snippet: ""
     # hosts injected per-PR (demo-pr-<n>.10.0.0.200.nip.io)
 
   serviceMonitor:
