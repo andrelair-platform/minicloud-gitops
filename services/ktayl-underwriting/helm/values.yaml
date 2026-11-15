@@ -42,12 +42,15 @@ minicloud-app-deployment:
       valueFrom: { secretKeyRef: { name: underwriting-postgres-app, key: dbname } }
     - name: DATABASE_URL
       value: "postgresql+psycopg://$(PGUSER):$(PGPASSWORD)@$(PGHOST):$(PGPORT)/$(PGDATABASE)"
-    # --- bind (ADR-006): live policy-service handoff + bound-risk event + OIDC client-credentials ---
-    # URLs point at the DEV targets (ns ktayl / messaging / authentik). When a prod app is wired, a
-    # values-prod env override must repoint POLICY_SERVICE_URL → ktayl-prod. OIDC internal HTTP svc so
-    # no CA to bake; token carries scope policy:write (Authentik provider ktayl-underwriting).
+    # --- bind: policy handoff + bound-risk event + OIDC client-credentials ---
+    # DEV repoint (ADR-014 Phase 3, 2026-11-15): the policy PAS is folded into ktayl-core as the `policy`
+    # module, so dev underwriting binds into KTAYL-CORE (ns ktayl-core, svc :80 → :8080), not the Go
+    # ktayl-policy-service. The REST contract is carried forward verbatim → base-URL change only. ktayl-core
+    # accepts the same client-creds token via the multi-issuer allowlist (ktayl-core ADR-016). PROD still
+    # points at the Go PAS (values-prod) until the Phase-4 soak+backfill gate. Token scope policy:write
+    # (Authentik provider ktayl-underwriting); OIDC is internal HTTP so no CA to bake.
     - name: POLICY_SERVICE_URL
-      value: "http://ktayl-policy-service.ktayl.svc:80"
+      value: "http://ktayl-core.ktayl-core.svc:80"
     - name: NATS_URL
       value: "nats://nats.messaging.svc:4222"
     - name: OIDC_TOKEN_URL

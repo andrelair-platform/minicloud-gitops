@@ -1,0 +1,79 @@
+name: Helm Chart.lock
+
+# Closes the last manual step in the wrapper-service golden path: a scaffolded service's
+# Chart.yaml ships WITHOUT a Chart.lock (Backstage can't run helm), but ArgoCD's repo-server
+# needs the lock to `helm dependency build`. This job generates the missing/stale lock and
+# commits it back to the PR branch — so a developer no longer runs `helm dependency update`
+# locally. The library dependency (oci://ghcr.io/andrelair-platform/minicloud-app-deployment)
+# is anonymously pullable, so no registry login is needed.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/*/helm/Chart.yaml'
+      - 'services/*/helm/Chart.lock'
+
+permissions:
+  contents: write   # commit the generated Chart.lock back to the PR branch
+
+concurrency:
+  group: chart-lock-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  chart-lock:
+    runs-on: ubuntu-latest
+    # Same-repo PRs only — a fork branch can't be pushed back to.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Check out the PR BRANCH (not the merge ref) and use the PAT so the follow-up
+          # push re-triggers the validation workflows (merge-gate, validate-manifests).
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Install helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+          token: ${{ secrets.GITHUB_TOKEN }}   # avoid the unauthenticated GitHub API rate limit
+
+      - name: Generate missing/stale Chart.lock for wrapper charts
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for c in services/*/helm; do
+            [ -f "$c/Chart.yaml" ] || continue
+            grep -q '^dependencies:' "$c/Chart.yaml" || continue   # wrapper charts only (library dep)
+            echo "── $c"
+            # `helm dependency build` creates the lock if missing (mirrors `update`) and leaves a
+            # VALID lock byte-identical (no `generated:` timestamp churn). It FAILS only when the
+            # lock is stale vs Chart.yaml (e.g. the library version bumped) → then regenerate.
+            if helm dependency build "$c" >/dev/null 2>&1; then
+              echo "   lock present + valid"
+            else
+              echo "   lock missing/stale → regenerating"
+              helm dependency update "$c"
+            fi
+            rm -rf "$c/charts"          # the vendored .tgz is gitignored — never stage it
+            git add "$c/Chart.lock"
+          done
+          if git diff --cached --quiet; then
+            echo "No Chart.lock changes — nothing to commit."
+          else
+            echo "changed=1" >> "$GITHUB_ENV"
+            echo "Chart.lock changes staged:"
+            git diff --cached --name-only
+          fi
+
+      - name: Commit + push the generated Chart.lock
+        if: env.changed == '1'
+        run: |
+          set -euo pipefail
+          git config user.name  "minicloud-ci[bot]"
+          git config user.email "minicloud-ci@users.noreply.github.com"
+          git commit -m "ci(helm): generate Chart.lock for wrapper chart(s)" \
+                     -m "Auto-committed by the helm-chart-lock workflow so ArgoCD's helm dependency build has the lock — no local 'helm dependency update' needed (wrapper-service golden-path last mile)."
+          git push origin "HEAD:${{ github.head_ref }}"
