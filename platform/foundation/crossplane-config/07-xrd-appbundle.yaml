@@ -1,0 +1,50 @@
+# AppBundle — the per-app INFRASTRUCTURE bundle (IDP #2, composite-of-composites demo). One claim
+# gives an app its baseline infra: a Postgres database (by NESTING the PostgresInstance XR) + a
+# default-deny baseline NetworkPolicy for the app's pods. It does NOT deploy the app — that's the
+# wrapper-service Helm golden path (deploy vs infra boundary); the two compose (the Deployment mounts
+# the <appName>-cnpg-app secret and its pods are selected by the baseline netpol via app=<appName>).
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: appbundles.platform.minicloud
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  scope: Namespaced
+  group: platform.minicloud
+  names:
+    kind: AppBundle
+    plural: appbundles
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: ["appName"]
+              properties:
+                appName:
+                  type: string
+                  description: >
+                    The app's base name AND pod label (the baseline netpol selects app=<appName>, so it
+                    must match the app Deployment's label). The DB (<appName>-cnpg), its connection
+                    secret (<appName>-cnpg-app) and the netpol (<appName>-baseline) all derive from it.
+                size:
+                  type: string
+                  description: DB instance count — small=1 (single), medium=2 (HA primary+replica).
+                  enum: ["small", "medium"]
+                  default: "small"
+                storageSize:
+                  type: string
+                  description: DB Longhorn volume size per instance.
+                  default: "1Gi"
+            status:
+              type: object
+              properties:
+                databaseSecret:
+                  type: string
+                  description: The connection secret the app mounts — <appName>-cnpg-app.
