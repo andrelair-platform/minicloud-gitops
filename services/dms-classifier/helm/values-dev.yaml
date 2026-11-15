@@ -2,7 +2,7 @@
 # follow-up — it needs the durable consumer pre-created to avoid the read-lag chicken-and-egg).
 minicloud-app-deployment:
   image:
-    tag: "8420447"
+    tag: "3b7f048"
   workload:
     replicas: 1
   podDisruptionBudget:
