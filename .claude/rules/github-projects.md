@@ -99,7 +99,7 @@ down a level. The structure is a **portfolio of products**:
 | IS Foundations | **GitOps — Platform Engineering** (#3) | `minicloud-gitops` | `-gitops`, `-ansible`, `-opentofu`, `-backstage`, `-ops`, `platform-demo` |
 | IS Foundations | **AI Platform** (#4) | `minicloud-agent` | `-agent`, `-crew-agent`, `-open-webui`, `-plane` |
 | IS Foundations | **Data Platform** (#5) | `minicloud-gitops` | (data pipeline / BI work) |
-| IS Foundations | **Digital Workplace (M365 Alternative)** (#10) | `ktayl-workplace` | `ktayl-workplace`, `minicloud-onlyoffice` (+ Stalwart/Nextcloud/Matrix/Jitsi/Docuseal/n8n/Authentik/Vaultwarden/Homer/Paperless/Asterisk via `minicloud-gitops`) |
+| IS Foundations | **Digital Workplace (M365 Alternative)** (#10) | `ktayl-workplace` | `ktayl-workplace`, `minicloud-onlyoffice` (+ Stalwart/Nextcloud/Matrix/Jitsi/Docuseal/n8n/Authentik/Vaultwarden/Homer via `minicloud-gitops`). **NOT part of the stack (2026-11-15 reconciliation):** ~~Asterisk~~ (desk telephony is **out of scope** — BYOD, `project-governance.md`), ~~Paperless~~ (never shipped — a **DMS #24 adopt-candidate**, not deployed). |
 | IS Foundations | **ktayl ITSM (GLPI)** (#16) | `ktayl-itsm` | `ktayl-itsm` (GLPI ITIL v4, CMDB, SLA/KPI, helpdesk) |
 | IS Foundations | **Access Governance (IAM/IGA)** (#17) | `ktayl-iam` | `ktayl-iam` (MidPoint IGA, role/entitlement, certification, PAM, SCIM, SoD) |
 | IS Foundations | **ktayl Documents & DMS** (#24) | `ktayl-dms` | `ktayl-dms` (GED/records-mgmt, archiving, doc generation, OCR/IDP, templates, e-sign) — the Documents transversal layer |
