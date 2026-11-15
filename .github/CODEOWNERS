@@ -23,6 +23,14 @@ platform/delivery/kargo/      @AndreLiar
 # targetRevision, source path). (CI bumps image newTags in overlays, never apps/.)
 apps/                         @AndreLiar
 
+# EXCEPTION: ephemeral per-PR preview Applications are machine-generated, deploy a
+# simplified app into an isolated throwaway namespace (no prod reach), and are torn
+# down on PR close. They are intentionally NOT review-gated so the preview pipeline is
+# self-service (no --admin break-glass in automation). The deterministic required checks
+# — merge-gate, architecture-guard, checkov, kubeconform — still gate every preview PR.
+# A no-owner line un-sets ownership for this subtree. See developer-platform/ephemeral-preview-environments.
+apps/previews/
+
 # Production quota and network-policy manifests
 platform/security/quotas/*-prod.yaml  @AndreLiar
 platform/security/network-policies/*-prod.yaml @AndreLiar
