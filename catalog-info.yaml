@@ -428,6 +428,8 @@ spec:
   lifecycle: production
   owner: andrelair-platform
   system: minicloud-platform
+  providesApis:
+    - n8n-api
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Component
@@ -526,3 +528,448 @@ spec:
     email: kanmegnea@gmail.com
   memberOf:
     - andrelair-platform
+# ----------------------------------------------------------------------------
+# User-facing vendor APIs (ADR-0001 API-management strategy, step 1 for vendors).
+# Registered only where the app has a REAL API role in our architecture; the
+# definitions are CURATED-MINIMAL + accurate (primary endpoints + auth) with an
+# externalDocs link to the vendor's authoritative full reference — NOT a scraped
+# or fabricated full spec. Same house pattern as litellm-api / minicloud-plane-api.
+# Deliberately NOT registered: GLPI (we integrate via LDAP, not its REST API),
+# Matrix/Temporal (async/gRPC → AsyncAPI later), and the no-integration UIs
+# (BookStack/Docuseal/Vaultwarden/Adminer/Homer/SearXNG/Metabase/Jitsi/OnlyOffice).
+# ----------------------------------------------------------------------------
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: authentik
+  description: |
+    Authentik — the platform identity provider. OIDC/OAuth2 SSO for every app,
+    M2M client-credentials for service-to-service, and the REST v3 admin API
+    used by the provisioning scripts (OIDC providers, LDAP outpost, users/groups).
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    argocd/app-name: authentik
+    backstage.io/kubernetes-id: authentik
+  tags:
+    - identity
+    - sso
+    - oidc
+  links:
+    - url: https://auth.devandre.sbs
+      title: Authentik admin UI
+      icon: web
+    - url: https://argocd.devandre.sbs/applications/authentik
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+  providesApis:
+    - authentik-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: authentik-api
+  title: Authentik — Identity API (OIDC + REST v3)
+  description: Platform SSO (OIDC/OAuth2), M2M client-credentials, and the REST v3 admin API.
+  tags:
+    - openapi
+    - identity
+    - oidc
+  links:
+    - url: https://docs.goauthentik.io/developer-docs/api/
+      title: Authentik API reference (authoritative)
+      icon: docs
+spec:
+  type: openapi
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+  definition: |
+    openapi: "3.0.3"
+    info:
+      title: Authentik — Identity API
+      version: "2026.5"
+      description: >
+        Curated subset. OIDC endpoints back every app's SSO + service M2M;
+        the REST v3 API is consumed by the platform provisioning scripts.
+        Full reference: https://docs.goauthentik.io/developer-docs/api/
+    externalDocs:
+      url: https://docs.goauthentik.io/developer-docs/api/
+      description: Full Authentik API
+    servers:
+      - url: https://auth.devandre.sbs
+    paths:
+      /application/o/token/:
+        post:
+          summary: OIDC token endpoint (authorization_code / client_credentials)
+          responses:
+            "200": { description: Access/ID token }
+      /application/o/{slug}/.well-known/openid-configuration:
+        get:
+          summary: OIDC discovery document
+          parameters:
+            - { name: slug, in: path, required: true, schema: { type: string } }
+          responses:
+            "200": { description: OIDC provider metadata }
+      /api/v3/core/users/:
+        get:
+          summary: List users (admin API, Bearer token)
+          security: [{ bearerAuth: [] }]
+          responses:
+            "200": { description: Paginated users }
+      /api/v3/core/applications/:
+        get:
+          summary: List applications
+          security: [{ bearerAuth: [] }]
+          responses:
+            "200": { description: Paginated applications }
+    components:
+      securitySchemes:
+        bearerAuth: { type: http, scheme: bearer, description: Authentik API token }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: harbor
+  description: |
+    Harbor — the dev container registry. Its REST API v2.0 is consumed by CI
+    (image push/scan) and the retention/GC automation (tag-retention + scheduled GC).
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    argocd/app-name: harbor
+    backstage.io/kubernetes-id: harbor
+  tags:
+    - registry
+    - containers
+  links:
+    - url: https://harbor.10.0.0.200.nip.io
+      title: Harbor UI
+      icon: web
+    - url: https://argocd.devandre.sbs/applications/harbor
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+  providesApis:
+    - harbor-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: harbor-api
+  title: Harbor — Registry API v2.0
+  description: Container registry REST API (projects, repositories, retention, GC) consumed by CI + retention automation.
+  tags:
+    - openapi
+    - registry
+  links:
+    - url: https://harbor.10.0.0.200.nip.io/devcenter-api-2.0
+      title: Harbor Swagger (live)
+      icon: docs
+spec:
+  type: openapi
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+  definition: |
+    openapi: "3.0.3"
+    info:
+      title: Harbor — Registry API
+      version: "2.0"
+      description: >
+        Curated subset of the Harbor v2.0 API. Full live spec is served by Harbor
+        itself at /api/v2.0/swagger.json (link above). Basic-auth (admin / robot).
+    externalDocs:
+      url: https://goharbor.io/docs/latest/build-customize-contribute/configure-swagger/
+      description: Harbor API docs
+    servers:
+      - url: https://harbor.10.0.0.200.nip.io/api/v2.0
+    security:
+      - basicAuth: []
+    paths:
+      /health:
+        get:
+          summary: Overall system health
+          responses:
+            "200": { description: Component health list }
+      /projects:
+        get:
+          summary: List projects
+          responses:
+            "200": { description: Project list }
+      /projects/{project_name}/repositories:
+        get:
+          summary: List repositories in a project
+          parameters:
+            - { name: project_name, in: path, required: true, schema: { type: string } }
+          responses:
+            "200": { description: Repository list }
+      /systeminfo:
+        get:
+          summary: General system info
+          responses:
+            "200": { description: System info }
+    components:
+      securitySchemes:
+        basicAuth: { type: http, scheme: basic }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: erpnext
+  description: |
+    ERPNext (Frappe) — HR/Finance ERP for the ktayl-solution IS. Its REST API
+    is the GL integration target for ktayl-core Billing (post Journal Entries).
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-erpnext
+    github.com/project-slug: andrelair-platform/minicloud-erpnext
+    argocd/app-name: erpnext
+    backstage.io/kubernetes-id: erpnext
+  tags:
+    - erp
+    - finance
+    - frappe
+  links:
+    - url: https://erp.devandre.sbs
+      title: ERPNext UI
+      icon: web
+    - url: https://argocd.devandre.sbs/applications/erpnext
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: ktayl-solution
+  providesApis:
+    - erpnext-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: erpnext-api
+  title: ERPNext — Frappe REST API
+  description: Frappe document (resource) + method API; the GL posting target for ktayl-core Billing.
+  tags:
+    - openapi
+    - erp
+    - frappe
+  links:
+    - url: https://frappeframework.com/docs/user/en/api/rest
+      title: Frappe REST API reference (authoritative)
+      icon: docs
+spec:
+  type: openapi
+  lifecycle: production
+  owner: andrelair-platform
+  system: ktayl-solution
+  definition: |
+    openapi: "3.0.3"
+    info:
+      title: ERPNext (Frappe) — REST API
+      version: "15"
+      description: >
+        Curated subset. Frappe exposes every DocType generically under /api/resource
+        and whitelisted server methods under /api/method. Token auth
+        (Authorization: token <api_key>:<api_secret>). Full ref:
+        https://frappeframework.com/docs/user/en/api/rest
+    externalDocs:
+      url: https://frappeframework.com/docs/user/en/api/rest
+      description: Frappe REST API
+    servers:
+      - url: https://erp.devandre.sbs
+    security:
+      - tokenAuth: []
+    paths:
+      /api/resource/{doctype}:
+        get:
+          summary: List documents of a DocType
+          parameters:
+            - { name: doctype, in: path, required: true, schema: { type: string } }
+          responses:
+            "200": { description: Document list }
+        post:
+          summary: Create a document (e.g. a Journal Entry)
+          parameters:
+            - { name: doctype, in: path, required: true, schema: { type: string } }
+          responses:
+            "200": { description: Created document }
+      /api/resource/{doctype}/{name}:
+        get:
+          summary: Fetch one document
+          parameters:
+            - { name: doctype, in: path, required: true, schema: { type: string } }
+            - { name: name, in: path, required: true, schema: { type: string } }
+          responses:
+            "200": { description: Document }
+      /api/method/{method}:
+        post:
+          summary: Call a whitelisted server method
+          parameters:
+            - { name: method, in: path, required: true, schema: { type: string } }
+          responses:
+            "200": { description: Method result }
+    components:
+      securitySchemes:
+        tokenAuth:
+          type: apiKey
+          in: header
+          name: Authorization
+          description: "token <api_key>:<api_secret>"
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: nextcloud
+  description: |
+    Nextcloud — files/groupware for the Digital Workplace. OCS provisioning +
+    sharing API and WebDAV; the Nextcloud Mail auto-provisioning CronJob drives
+    it via occ, clients via WebDAV/OCS.
+  annotations:
+    backstage.io/source-location: url:https://github.com/andrelair-platform/minicloud-gitops
+    argocd/app-name: nextcloud
+    backstage.io/kubernetes-id: nextcloud
+  tags:
+    - files
+    - groupware
+    - workplace
+  links:
+    - url: https://cloud.devandre.sbs
+      title: Nextcloud UI
+      icon: web
+    - url: https://argocd.devandre.sbs/applications/nextcloud
+      title: ArgoCD Application
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: andrelair-platform
+  system: ktayl-solution
+  providesApis:
+    - nextcloud-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: nextcloud-api
+  title: Nextcloud — OCS + WebDAV API
+  description: OCS provisioning/sharing API + WebDAV file access for the Digital Workplace.
+  tags:
+    - openapi
+    - files
+    - workplace
+  links:
+    - url: https://docs.nextcloud.com/server/latest/developer_manual/client_apis/index.html
+      title: Nextcloud client APIs (authoritative)
+      icon: docs
+spec:
+  type: openapi
+  lifecycle: production
+  owner: andrelair-platform
+  system: ktayl-solution
+  definition: |
+    openapi: "3.0.3"
+    info:
+      title: Nextcloud — OCS + WebDAV
+      version: "31"
+      description: >
+        Curated subset. OCS endpoints require the header OCS-APIRequest: true and
+        basic auth (user + app password). WebDAV serves file access. Full ref:
+        https://docs.nextcloud.com/server/latest/developer_manual/client_apis/index.html
+    externalDocs:
+      url: https://docs.nextcloud.com/server/latest/developer_manual/client_apis/index.html
+      description: Nextcloud client APIs
+    servers:
+      - url: https://cloud.devandre.sbs
+    security:
+      - basicAuth: []
+    paths:
+      /ocs/v2.php/cloud/users:
+        get:
+          summary: List users (provisioning API)
+          responses:
+            "200": { description: User list (OCS envelope) }
+        post:
+          summary: Create a user
+          responses:
+            "200": { description: Created (OCS envelope) }
+      /ocs/v2.php/apps/files_sharing/api/v1/shares:
+        get:
+          summary: List shares
+          responses:
+            "200": { description: Shares (OCS envelope) }
+      /remote.php/dav/files/{user}/:
+        get:
+          summary: WebDAV file access (PROPFIND/GET/PUT)
+          parameters:
+            - { name: user, in: path, required: true, schema: { type: string } }
+          responses:
+            "207": { description: WebDAV multistatus }
+    components:
+      securitySchemes:
+        basicAuth: { type: http, scheme: basic, description: user + app password }
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: n8n-api
+  title: n8n — Public REST API + Webhooks
+  description: Workflow/execution management (REST v1) + webhook triggers; the IS integration hub.
+  tags:
+    - openapi
+    - automation
+    - workflows
+  links:
+    - url: https://docs.n8n.io/api/
+      title: n8n public API reference (authoritative)
+      icon: docs
+spec:
+  type: openapi
+  lifecycle: production
+  owner: andrelair-platform
+  system: minicloud-platform
+  definition: |
+    openapi: "3.0.3"
+    info:
+      title: n8n — Public API + Webhooks
+      version: "1"
+      description: >
+        Curated subset. The REST v1 API manages workflows/executions
+        (header X-N8N-API-KEY); /webhook/{path} endpoints trigger workflows
+        from external events. Full ref: https://docs.n8n.io/api/
+    externalDocs:
+      url: https://docs.n8n.io/api/
+      description: n8n public API
+    servers:
+      - url: https://n8n.devandre.sbs
+    paths:
+      /api/v1/workflows:
+        get:
+          summary: List workflows
+          security: [{ apiKeyAuth: [] }]
+          responses:
+            "200": { description: Workflow list }
+      /api/v1/executions:
+        get:
+          summary: List executions
+          security: [{ apiKeyAuth: [] }]
+          responses:
+            "200": { description: Execution list }
+      /webhook/{path}:
+        post:
+          summary: Trigger a workflow via its webhook node
+          parameters:
+            - { name: path, in: path, required: true, schema: { type: string } }
+          responses:
+            "200": { description: Workflow response }
+    components:
+      securitySchemes:
+        apiKeyAuth: { type: apiKey, in: header, name: X-N8N-API-KEY }
