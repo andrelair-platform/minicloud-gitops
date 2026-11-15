@@ -108,7 +108,13 @@ spec:
             periodSeconds: 10
             failureThreshold: 60
           readinessProbe:
-            httpGet: { path: /accounts/login/, port: 8000 }
+            # Django rejects the probe's default Host (the pod IP) with DisallowedHost → send the
+            # allowed ingress host so the probe verifies a real 200, not a 400.
+            httpGet:
+              path: /accounts/login/
+              port: 8000
+              httpHeaders:
+                - { name: Host, value: "{{ .Values.host }}" }
             periodSeconds: 15
           livenessProbe:
             tcpSocket: { port: 8000 }
