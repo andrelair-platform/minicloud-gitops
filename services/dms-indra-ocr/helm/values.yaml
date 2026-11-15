@@ -24,18 +24,24 @@ minicloud-app-deployment:
     ports:
       - { name: http, port: 8000, targetPort: http }
   # Model loads at startup (lifespan) → generous startup window for slow nodes.
+  # timeoutSeconds: 5 (not the 1s default) — single-core OCR nodes serve /health a touch slowly under
+  # load even with the OCR threadpooled; 1s was too tight and flapped readiness/liveness on first deploy.
   startupProbe:
     httpGet: { path: /health, port: http }
     failureThreshold: 40
     periodSeconds: 5
+    timeoutSeconds: 5
   readinessProbe:
     httpGet: { path: /health, port: http }
     initialDelaySeconds: 5
     periodSeconds: 10
+    timeoutSeconds: 5
   livenessProbe:
     httpGet: { path: /health, port: http }
     initialDelaySeconds: 15
     periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 5
   resources:
     requests: { cpu: 100m, memory: 512Mi }
     limits:   { cpu: "1", memory: 1536Mi }  # onnxruntime + opencv + the model in RAM
