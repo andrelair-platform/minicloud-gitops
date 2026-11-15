@@ -71,7 +71,7 @@ down a level. The structure is a **portfolio of products**:
 | Initiative | Product board | BMAD home repo | Member repos / scope |
 |---|---|---|---|
 | Certification | **Retrieva — RNCP39583** (#2) | `retrieva` | `retrieva`, `retrieva-backend` |
-| Insurance LOB | **ktayl Policy Service** (#6) | `ktayl-policy-service` | `ktayl-policy-service` |
+| Insurance LOB | **ktayl Policy Service** (#6) | ~~`ktayl-policy-service`~~ → folded into `ktayl-core` | **RETIRED 2026-11-15** — the Go PAS was folded into `ktayl-core` as the `policy` module (ADR-014) + the repo archived; policy work now tracked on **ktayl-core #28**. Board #6 is historical. |
 | Insurance LOB | **ktayl Public Web** (#7) | `ktayl-solution-web` | `ktayl-solution-web` |
 | Insurance LOB | **ERPNext (HR/Finance)** (#8) | `minicloud-erpnext` | `minicloud-erpnext` |
 | Insurance LOB | **ktayl Claims** (#11) | `ktayl-claims` | `ktayl-claims` (FNOL/lifecycle, adjusters, subrogation, fraud/SIU, litigation) |
