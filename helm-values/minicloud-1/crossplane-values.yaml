@@ -18,9 +18,12 @@ resourcesRBACManager:
     cpu: 50m
     memory: 128Mi
 
-# Declaratively install the provider that composes IN-CLUSTER resources (CNPG Cluster +
-# NetworkPolicy + ESO ExternalSecret) — no cloud credentials needed. v1.4.1 pins the Crossplane
-# runtime to v2.4.0 (matches the core chart) and ships the namespaced kubernetes.m.crossplane.io APIs.
-provider:
+# provider-kubernetes is installed as a Provider CR (platform/foundation/crossplane-config/) rather
+# than here, so it can reference a DeploymentRuntimeConfig that pins its ServiceAccount name
+# (provider-kubernetes) — a stable target for the scoped RBAC that lets it manage CNPG/netpol/ESO.
+# (The chart-managed install uses a revision-hash SA name, which a ClusterRoleBinding can't track.)
+
+# The composition function that renders the XPostgresInstance Composition pipeline.
+function:
   packages:
-    - xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v1.4.1
+    - xpkg.crossplane.io/crossplane-contrib/function-patch-and-transform:v0.11.0
