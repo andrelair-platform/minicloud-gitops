@@ -53,3 +53,4 @@ spec:
             - temporal          # schema Job init containers don't set runAsNonRoot — Helm chart doesn't expose containerSecurityContext for schema Job
             - node-problem-detector  # NPD DaemonSet runs as root to read kernel logs and /dev/kmsg
             - intranet          # BookStack (linuxserver/* s6-overlay image) must start as root then drops to PUID/PGID 1000; all other controls kept (read-only rootfs, no SA token, NET_RAW dropped, seccomp, limits)
+            - ktayl-dms         # Paperless-ngx (s6-overlay image) must start as root then drops to USERMAP_UID/GID 1000 (same as BookStack); all other controls kept (no SA token, NET_RAW dropped, no-priv-esc, seccomp, limits, default-deny ingress netpols, OIDC-gated)

@@ -18,6 +18,8 @@ metadata:
   name: paperless
   annotations:
     checkov.io/skip1: CKV_K8S_22=Paperless-ngx writes runtime rootfs paths (/tmp, processing); persistent data on PVCs; RO-rootfs is a hardening follow-on
+    checkov.io/skip2: CKV_K8S_23=Paperless-ngx s6-overlay requires root start; drops to USERMAP_UID/GID 1000 (ns exempt from require-non-root, like BookStack)
+    checkov.io/skip3: CKV_K8S_37=s6 init needs the default caps (chown/setuid/setgid/net_bind); NET_RAW dropped
 spec:
   replicas: {{ .Values.paperless.replicas }}
   strategy:
@@ -30,10 +32,10 @@ spec:
     spec:
       automountServiceAccountToken: false
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000          # so the paperless user (1000) owns the RWO PVCs
+        # Paperless-ngx (s6-overlay) MUST start as root to set up /run, then drops to USERMAP_UID/GID 1000
+        # for the app — it cannot satisfy runAsNonRoot (ns exempt from require-non-root, same as BookStack).
+        # fsGroup lets the dropped-to user (1000) own the RWO PVCs. All other controls kept.
+        fsGroup: 1000
         seccompProfile: { type: RuntimeDefault }
       initContainers:
         # Runtime CA trust: append the minicloud CA (trust-manager minicloud-ca-bundle configmap, canonical
@@ -45,7 +47,7 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
-            capabilities: { drop: [ALL] }
+            capabilities: { drop: [NET_RAW] }   # s6-overlay needs chown/setuid/setgid/net_bind; NET_RAW dropped
           resources:
             requests: { cpu: 10m, memory: 32Mi }
             limits:   { cpu: 100m, memory: 64Mi }
@@ -99,7 +101,7 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
-            capabilities: { drop: [ALL] }
+            capabilities: { drop: [NET_RAW] }   # s6-overlay needs chown/setuid/setgid/net_bind; NET_RAW dropped
           # First boot runs migrations + the superuser bootstrap before gunicorn binds 8000 → generous startupProbe.
           startupProbe:
             tcpSocket: { port: 8000 }
