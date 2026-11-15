@@ -1,0 +1,32 @@
+# Paperless-ngx DMS engine — common values (env overlays in values-dev.yaml / values-prod.yaml).
+paperless:
+  image:
+    repository: ghcr.io/paperless-ngx/paperless-ngx
+    tag: "2.20.15"       # stock upstream (public ghcr → anonymous pull). Verify tag before first sync.
+  replicas: 1
+  resources:
+    requests: { cpu: 150m, memory: 512Mi }
+    limits:   { cpu: "1", memory: 1536Mi }
+  # Longhorn RWO PVCs (dev RF=1). media = the documents (the durable one); data = index+classifier;
+  # consume = the inbox. Recreate strategy (RWO single-attach).
+  mediaStorage: 5Gi
+  dataStorage: 2Gi
+  consumeStorage: 1Gi
+  ocrLanguage: "fra+eng"   # French + English (insurance docs)
+  timezone: Europe/Paris
+
+redis:
+  image: docker.io/library/redis:7.4-alpine
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits:   { cpu: 100m, memory: 128Mi }
+
+cnpg:
+  instances: 1             # dev; prod raises + enables R2 backup
+  storageSize: 5Gi
+  db: paperless
+  owner: paperless
+
+# per-env (values-dev.yaml / values-prod.yaml)
+host: ""                   # e.g. paperless.10.0.0.200.nip.io
+publicHost: ""             # e.g. paperless.devandre.sbs (cert SAN) — omit in dev

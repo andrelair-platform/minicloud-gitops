@@ -1,0 +1,135 @@
+{{- range $name, $size := dict "media" .Values.paperless.mediaStorage "data" .Values.paperless.dataStorage "consume" .Values.paperless.consumeStorage }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperless-{{ $name }}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: {{ $size }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless
+  annotations:
+    checkov.io/skip1: CKV_K8S_22=Paperless-ngx writes runtime rootfs paths (/tmp, processing); persistent data on PVCs; RO-rootfs is a hardening follow-on
+spec:
+  replicas: {{ .Values.paperless.replicas }}
+  strategy:
+    type: Recreate            # RWO PVCs — single-attach
+  selector:
+    matchLabels: { app: paperless }
+  template:
+    metadata:
+      labels: { app: paperless }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000          # so the paperless user (1000) owns the RWO PVCs
+        seccompProfile: { type: RuntimeDefault }
+      initContainers:
+        # Runtime CA trust: append the minicloud CA (trust-manager minicloud-ca-bundle configmap, canonical
+        # PEM) to the base bundle → mounted over the main container's ca-certificates.crt so Paperless's OIDC
+        # back-channel to auth.devandre.sbs (split-horizon → 10.0.0.200, minicloud-CA) verifies.
+        - name: ca-trust
+          image: {{ .Values.paperless.image.repository }}:{{ .Values.paperless.image.tag }}
+          command: ["sh", "-c", "cp /etc/ssl/certs/ca-certificates.crt /ca-shared/ca-certificates.crt && cat /ca-src/ca.crt >> /ca-shared/ca-certificates.crt"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits:   { cpu: 100m, memory: 64Mi }
+          volumeMounts:
+            - { name: ca-src, mountPath: /ca-src, readOnly: true }
+            - { name: ca-shared, mountPath: /ca-shared }
+      containers:
+        - name: paperless
+          image: {{ .Values.paperless.image.repository }}:{{ .Values.paperless.image.tag }}
+          ports:
+            - containerPort: 8000
+          env:
+            # --- run as the fixed non-root uid (entrypoint skips the root-gosu drop) ---
+            - { name: USERMAP_UID, value: "1000" }
+            - { name: USERMAP_GID, value: "1000" }
+            # --- DB (CNPG paperless-cnpg-app secret) ---
+            - { name: PAPERLESS_DBHOST, value: paperless-cnpg-rw }
+            - { name: PAPERLESS_DBPORT, value: "5432" }
+            - name: PAPERLESS_DBNAME
+              valueFrom: { secretKeyRef: { name: paperless-cnpg-app, key: dbname } }
+            - name: PAPERLESS_DBUSER
+              valueFrom: { secretKeyRef: { name: paperless-cnpg-app, key: username } }
+            - name: PAPERLESS_DBPASS
+              valueFrom: { secretKeyRef: { name: paperless-cnpg-app, key: password } }
+            # --- broker ---
+            - { name: PAPERLESS_REDIS, value: "redis://paperless-redis:6379" }
+            # --- app ---
+            - name: PAPERLESS_SECRET_KEY
+              valueFrom: { secretKeyRef: { name: paperless-secrets, key: secret-key } }
+            - { name: PAPERLESS_URL, value: "https://{{ .Values.host }}" }
+            - { name: PAPERLESS_ALLOWED_HOSTS, value: "{{ .Values.host }}{{ if .Values.publicHost }},{{ .Values.publicHost }}{{ end }}" }
+            - { name: PAPERLESS_CSRF_TRUSTED_ORIGINS, value: "https://{{ .Values.host }}{{ if .Values.publicHost }},https://{{ .Values.publicHost }}{{ end }}" }
+            - { name: PAPERLESS_PORT, value: "8000" }
+            - { name: PAPERLESS_OCR_LANGUAGE, value: {{ .Values.paperless.ocrLanguage | quote }} }
+            - { name: PAPERLESS_TIKA_ENABLED, value: "false" }   # Phase 1: no office-doc OCR (PDF/image OCR is built-in)
+            - { name: PAPERLESS_TIME_ZONE, value: {{ .Values.paperless.timezone | quote }} }
+            # --- bootstrap superuser (break-glass; SSO is the normal path) ---
+            - { name: PAPERLESS_ADMIN_USER, value: admin }
+            - name: PAPERLESS_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: paperless-secrets, key: admin-password } }
+            # --- SSO (Authentik OIDC via django-allauth) ---
+            - { name: PAPERLESS_APPS, value: "allauth.socialaccount.providers.openid_connect" }
+            - name: PAPERLESS_SOCIALACCOUNT_PROVIDERS
+              valueFrom: { secretKeyRef: { name: paperless-secrets, key: socialaccount-providers } }
+            - { name: PAPERLESS_SOCIAL_AUTO_SIGNUP, value: "true" }
+            - { name: PAPERLESS_ACCOUNT_ALLOW_SIGNUPS, value: "false" }   # no self-signup; SSO or the admin only
+            # --- CA trust for the OIDC back-channel ---
+            - { name: REQUESTS_CA_BUNDLE, value: /etc/ssl/certs/ca-certificates.crt }
+            - { name: SSL_CERT_FILE, value: /etc/ssl/certs/ca-certificates.crt }
+          resources: {{ .Values.paperless.resources | toYaml | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities: { drop: [ALL] }
+          # First boot runs migrations + the superuser bootstrap before gunicorn binds 8000 → generous startupProbe.
+          startupProbe:
+            tcpSocket: { port: 8000 }
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /accounts/login/, port: 8000 }
+            periodSeconds: 15
+          livenessProbe:
+            tcpSocket: { port: 8000 }
+            periodSeconds: 20
+            failureThreshold: 6
+          volumeMounts:
+            - { name: media, mountPath: /usr/src/paperless/media }
+            - { name: data, mountPath: /usr/src/paperless/data }
+            - { name: consume, mountPath: /usr/src/paperless/consume }
+            - { name: ca-shared, mountPath: /etc/ssl/certs/ca-certificates.crt, subPath: ca-certificates.crt, readOnly: true }
+      volumes:
+        - { name: media, persistentVolumeClaim: { claimName: paperless-media } }
+        - { name: data, persistentVolumeClaim: { claimName: paperless-data } }
+        - { name: consume, persistentVolumeClaim: { claimName: paperless-consume } }
+        - { name: ca-src, configMap: { name: minicloud-ca-bundle } }
+        - { name: ca-shared, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paperless
+  labels: { app: paperless }
+spec:
+  selector: { app: paperless }
+  ports:
+    - { name: http, port: 80, targetPort: 8000 }

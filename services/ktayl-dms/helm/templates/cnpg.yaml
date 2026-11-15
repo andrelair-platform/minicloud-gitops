@@ -1,0 +1,23 @@
+---
+# Dedicated CNPG Postgres for Paperless (datastore-selection.md — CNPG is the standard). dev = 1
+# instance, RF=1, no offsite backup. CNPG publishes the `paperless-cnpg-app` secret (username/password/
+# dbname) + the `paperless-cnpg-rw` service the app reads. Egress is UNRESTRICTED in this ns (see
+# network-policies.yaml) so initdb can reach the kube-apiserver — a default-deny-egress would hang it
+# under Cilium (the ipBlock-doesn't-match-apiserver gotcha).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: paperless-cnpg
+spec:
+  instances: {{ .Values.cnpg.instances }}
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.4   # platform standard (PG 17), same as every other CNPG cluster
+
+  storage:
+    size: {{ .Values.cnpg.storageSize }}
+    storageClass: longhorn
+  bootstrap:
+    initdb:
+      database: {{ .Values.cnpg.db }}
+      owner: {{ .Values.cnpg.owner }}
+  affinity:
+    podAntiAffinityType: preferred
