@@ -78,7 +78,9 @@ spec:
             - name: PAPERLESS_SECRET_KEY
               valueFrom: { secretKeyRef: { name: paperless-secrets, key: secret-key } }
             - { name: PAPERLESS_URL, value: "https://{{ .Values.host }}" }
-            - { name: PAPERLESS_ALLOWED_HOSTS, value: "{{ .Values.host }}{{ if .Values.publicHost }},{{ .Values.publicHost }}{{ end }}" }
+            # `paperless` (the in-cluster Service name) is allowed so the custom-fields Job + the Phase-2
+            # classifier can call the API over http://paperless:80 (Host: paperless) without a DisallowedHost 400.
+            - { name: PAPERLESS_ALLOWED_HOSTS, value: "{{ .Values.host }},paperless{{ if .Values.publicHost }},{{ .Values.publicHost }}{{ end }}" }
             - { name: PAPERLESS_CSRF_TRUSTED_ORIGINS, value: "https://{{ .Values.host }}{{ if .Values.publicHost }},https://{{ .Values.publicHost }}{{ end }}" }
             - { name: PAPERLESS_PORT, value: "8000" }
             - { name: PAPERLESS_OCR_LANGUAGE, value: {{ .Values.paperless.ocrLanguage | quote }} }
