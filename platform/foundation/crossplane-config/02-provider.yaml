@@ -1,0 +1,13 @@
+# provider-kubernetes — composes IN-CLUSTER resources (CNPG Cluster + NetworkPolicy + ESO
+# ExternalSecret) from a namespaced Object, no cloud credentials. runtimeConfigRef pins its SA
+# (01-runtimeconfig.yaml) so the scoped RBAC (03-rbac.yaml) can bind to it.
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-kubernetes
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v1.4.1
+  runtimeConfigRef:
+    name: provider-kubernetes

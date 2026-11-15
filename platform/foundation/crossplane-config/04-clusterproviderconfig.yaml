@@ -1,0 +1,12 @@
+# Cluster-scoped ProviderConfig so the composed namespaced Objects (any namespace) resolve to the
+# in-cluster provider identity (InjectedIdentity = the pinned provider SA + its scoped RBAC).
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: ClusterProviderConfig
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  credentials:
+    source: InjectedIdentity

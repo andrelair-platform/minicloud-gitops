@@ -1,0 +1,12 @@
+# Pin the provider-kubernetes ServiceAccount to a stable name so a ClusterRoleBinding can target it
+# (the chart-managed install uses a revision-hash SA name that changes on every provider upgrade).
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-kubernetes
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  serviceAccountTemplate:
+    metadata:
+      name: provider-kubernetes
