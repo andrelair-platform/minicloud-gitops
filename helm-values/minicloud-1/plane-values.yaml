@@ -39,7 +39,7 @@ minio:
   # running as the controller MinIO) into Harbor (library/minio) and pull from there.
   # Same pattern as library/postgresql-noavx512 — an on-platform copy immune to upstream
   # removal. Harbor re-wraps the manifest so the digest differs (0812…) but content is identical.
-  image: harbor.10.0.0.200.nip.io/library/minio:RELEASE.2025-09-07T16-13-09Z@sha256:0812f09f2a024d2e06192c911f280356c8ed9c37d8d3a9cd4c76420a75ef6862
+  image: ghcr.io/andrelair-platform/minio:RELEASE.2025-09-07T16-13-09Z@sha256:0812f09f2a024d2e06192c911f280356c8ed9c37d8d3a9cd4c76420a75ef6862
   # image_mc left on docker.io: it's only used by a one-time bucket-setup job that already
   # completed (bucket "uploads" exists); no running/scheduled workload pulls it. If that job
   # ever needs to re-run, mirror minio/mc into Harbor the same way (the controller has no mc image cached).
