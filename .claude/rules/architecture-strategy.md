@@ -32,11 +32,14 @@ platform infra, not the AI/data products, which are governed separately.)
   isolation · different SLA · consumed by several apps · clear stable business boundary. One or two
   yes ≠ a service. This is a **security/architecture-boundary decision** → the governance gate
   (`bmad-compliance.md`), recorded in an ADR.
-- **The 4 existing services are deliberate, justified extractions, kept — not the default:**
+- **The 3 remaining existing services are deliberate, justified extractions, kept — not the default:**
   `ktayl-iam` (company-wide identity, consumed by all), `ktayl-claims` (ACL/Strangler over the
   frozen `globalcore` legacy — different stack + lifecycle), `ktayl-underwriting` (Python/FastAPI —
-  pricing math is Python-native). `ktayl-policy-service` (Go/gRPC core PAS) is kept but is **the
-  coupling seam to watch** (underwriting calls it synchronously 3× at bind).
+  pricing math is Python-native). **`ktayl-policy-service` (the Go PAS) was FOLDED into `ktayl-core`
+  as the `policy` module and RETIRED (2026-11-15 — ADR-014/015/016; repo archived):** the "coupling
+  seam to watch" (underwriting's synchronous bind calls) is **resolved** — underwriting now binds into
+  the in-process module, dev + prod. **`ktayl-claims` is the next fold candidate** (Java→Java absorption,
+  post-legacy-strangler). See [[project_policy_fold_into_core]].
 
 ## Module discipline (what keeps ktayl-core a modular monolith, not a big ball of mud)
 - **High cohesion, low coupling + SRP** — one module = one business capability, one reason to change.

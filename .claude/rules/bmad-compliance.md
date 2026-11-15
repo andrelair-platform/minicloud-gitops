@@ -398,7 +398,7 @@ In addition to the conventions.md repo standardization checklist, every new cust
 
 | Repo | BMAD Installed | project-context.md | PRD | Architecture | Epics | Sprint Gate |
 |---|---|---|---|---|---|---|
-| ktayl-policy-service | ✅ 2026-08-16 | ✅ | ✅ (local) | ✅ (local) | ✅ (local) | ✅ 2026-08-16 PASS |
+| ktayl-policy-service _(RETIRED 2026-11-15 — folded into ktayl-core, repo archived; artifacts preserved in `ktayl-core/docs/policy-pas-legacy/`)_ | ✅ 2026-08-16 | ✅ | ✅ (local) | ✅ (local) | ✅ (local) | ✅ 2026-08-16 PASS |
 | minicloud-plane | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | platform-demo | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | minicloud-agent | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
