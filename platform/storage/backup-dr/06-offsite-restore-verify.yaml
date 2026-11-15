@@ -58,7 +58,7 @@ spec:
               emptyDir: {}
           containers:
             - name: verify
-              image: harbor.10.0.0.200.nip.io/library/k3s-backup:1.0
+              image: ghcr.io/andrelair-platform/k3s-backup:1.0
               env:
                 - name: HOME
                   value: /tmp

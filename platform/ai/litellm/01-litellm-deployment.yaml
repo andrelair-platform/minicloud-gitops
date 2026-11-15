@@ -30,7 +30,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: litellm
-          image: harbor.10.0.0.200.nip.io/library/litellm-custom:1.90.3-prisma-v5
+          image: ghcr.io/andrelair-platform/litellm-custom:1.90.3-prisma-v5
           args:
             - "--config"
             - "/app/config.yaml"

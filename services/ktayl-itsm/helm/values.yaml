@@ -1,7 +1,7 @@
 # GLPI ITSM wrapper chart — common values (env overlays in values-dev.yaml / values-prod.yaml).
 glpi:
   image:
-    repository: harbor.10.0.0.200.nip.io/library/ktayl-itsm
+    repository: ghcr.io/andrelair-platform/ktayl-itsm
     tag: ""            # set per env (the CI-built SHA)
   replicas: 1
   resources:

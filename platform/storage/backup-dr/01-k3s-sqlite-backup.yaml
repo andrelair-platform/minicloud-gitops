@@ -55,7 +55,7 @@ spec:
               # 2026-08-19 the backup was broken for days because bind9 flapping
               # blocked the Alpine package fetch). A DR backup must not depend on
               # the internet. :2.0 adds age for client-side encryption.
-              image: harbor.10.0.0.200.nip.io/library/k3s-backup:2.0
+              image: ghcr.io/andrelair-platform/k3s-backup:2.0
               command:
                 - /bin/sh
                 - -c

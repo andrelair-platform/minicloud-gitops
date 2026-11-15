@@ -26,7 +26,7 @@ spec:
           # INSERT INTO document_chunk in ragdb — but ragdb has no pgvector extension / no such
           # table, and Open WebUI reads Qdrant, so it crashlooped (KeyError PG_HOST) and its RAG
           # path was incoherent. Keep on Qdrant until an intended pgvector migration is planned.
-          image: harbor.10.0.0.200.nip.io/library/rag-ingest:dev-6d249b5-amd64
+          image: ghcr.io/andrelair-platform/rag-ingest:dev-6d249b5-amd64
           ports:
             - containerPort: 8001
           env:

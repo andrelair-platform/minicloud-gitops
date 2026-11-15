@@ -1,0 +1,64 @@
+# The JetStream stream that DURABLY captures the Paperless post-consume event. Paperless's post-consume
+# script does a core NATS PUB to `dms.doc.consumed` (fire-and-forget); a JetStream stream captures
+# matching subjects even from a core publish, so the Phase-2 classifier's durable consumer never loses a
+# document (replay anything consumed before the classifier was live). NATS is open in-cluster (no auth);
+# the messaging netpol allow-cluster-clients lets any ns reach :4222.
+#
+# Idempotent create-if-absent PLAIN Job (no PreSync hook / no Replace — a stable body is a clean no-op
+# each sync; a completed Job is Healthy). Pattern: ktayl-core underwriting-events-stream-init.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dms-doc-stream-init
+  labels:
+    app.kubernetes.io/name: ktayl-dms
+    app.kubernetes.io/component: stream-init
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ktayl-dms
+        app.kubernetes.io/component: stream-init
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false   # talks only to NATS; no kube-API access
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: stream-init
+          image: docker.io/natsio/nats-box:0.14.5   # fully-qualified: Gatekeeper denies a bare name
+          workingDir: /tmp
+          env:
+            - { name: HOME, value: /tmp }
+            - { name: XDG_CONFIG_HOME, value: /tmp }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits:   { cpu: 100m, memory: 64Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -eu
+              S=nats://nats.messaging.svc:4222
+              ST=DMS_DOC
+              SUBJ="dms.doc.consumed"
+              if nats --no-context -s "$S" stream info "$ST" >/dev/null 2>&1; then
+                echo "$ST already exists"
+              else
+                nats --no-context -s "$S" stream add "$ST" --subjects "$SUBJ" --defaults
+              fi
+              nats --no-context -s "$S" stream info "$ST"
+      volumes:
+        - name: tmp
+          emptyDir: {}

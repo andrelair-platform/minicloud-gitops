@@ -12,7 +12,7 @@ minicloud-app-deployment:
     runAsUser: 10001
     seccompProfile: { type: RuntimeDefault }
   image:
-    repository: harbor.10.0.0.200.nip.io/library/ktayl-claims
+    repository: ghcr.io/andrelair-platform/ktayl-claims
     # tag set per env (values-{dev,prod}.yaml)
   # Tomcat creates its work/temp dir under /tmp on startup; readOnlyRootFilesystem:true (library
   # default) makes /tmp read-only → "Unable to create tempDir … Read-only file system" crash. Give it
@@ -78,7 +78,7 @@ frontend:
   securityContext:
     readOnlyRootFilesystem: false   # nginx writes its temp/pid dirs
   image:
-    repository: harbor.10.0.0.200.nip.io/library/ktayl-claims-frontend
+    repository: ghcr.io/andrelair-platform/ktayl-claims-frontend
     # tag set per env (values-{dev,prod}.yaml)
   ports:
     - { name: http, containerPort: 8080, protocol: TCP }

@@ -1,0 +1,47 @@
+# Paperless post-consume script: on every consumed document, publish its id to NATS so the Phase-2
+# classifier wakes and files it. Uses ONLY the Python stdlib (socket) to do a core NATS PUB — so the
+# stock Paperless image needs NO extra package and NO sidecar (ADR-001 keeps Paperless stock). The
+# JetStream stream DMS_DOC (nats-stream-init.yaml) captures the subject durably; a core PUB is enough.
+# Paperless injects DOCUMENT_ID (+ other DOCUMENT_* vars) into the post-consume environment.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: paperless-post-consume
+  labels:
+    app.kubernetes.io/name: ktayl-dms
+    app.kubernetes.io/component: post-consume
+data:
+  post_consume.py: |
+    #!/usr/bin/env python3
+    """Publish {"document_id": <id>} to NATS subject dms.doc.consumed (core PUB, stdlib only)."""
+    import json
+    import os
+    import socket
+    import sys
+
+    doc_id = os.environ.get("DOCUMENT_ID", "").strip()
+    if not doc_id:
+        # Nothing to do (e.g. a non-document consume) — never fail the consume pipeline.
+        sys.exit(0)
+
+    url = os.environ.get("NATS_URL", "nats://nats.messaging.svc:4222")
+    hostport = url.split("://", 1)[-1]
+    host, _, port = hostport.partition(":")
+    port = int(port or "4222")
+    subject = os.environ.get("NATS_SUBJECT", "dms.doc.consumed")
+    payload = json.dumps({"document_id": doc_id}).encode()
+
+    try:
+        conn = socket.create_connection((host, port), timeout=10)
+        conn.settimeout(10)
+        conn.recv(4096)  # server INFO line
+        conn.sendall(b'CONNECT {"verbose":false,"name":"paperless-post-consume"}\r\n')
+        conn.sendall(b"PUB " + subject.encode() + b" " + str(len(payload)).encode() + b"\r\n")
+        conn.sendall(payload + b"\r\n")
+        conn.sendall(b"PING\r\n")
+        conn.recv(4096)  # wait for PONG → ensures the PUB flushed before we close
+        conn.close()
+        print("published dms.doc.consumed for document", doc_id)
+    except Exception as exc:  # never break Paperless's consume on a publish hiccup
+        print("WARN: NATS publish failed for document", doc_id, ":", repr(exc), file=sys.stderr)
+        sys.exit(0)

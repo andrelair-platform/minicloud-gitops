@@ -189,6 +189,8 @@ backstage:
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/bmad-sprint/template.yaml
         - type: url
           target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/provision-database/template.yaml
+        - type: url
+          target: https://raw.githubusercontent.com/andrelair-platform/minicloud-backstage/main/templates/provision-app-bundle/template.yaml
     proxy:
       endpoints:
         '/minicloud-plane':

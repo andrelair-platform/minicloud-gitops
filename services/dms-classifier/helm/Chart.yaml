@@ -1,0 +1,13 @@
+apiVersion: v2
+name: dms-classifier
+description: >-
+  DMS document classifier (ktayl-dms #24 Phase 2) — GAP wrapper chart. A NATS JetStream worker that
+  matches a scanned doc to its claim#/policy#/client and files it in Paperless (HITL on uncertain).
+  Depends on the minicloud-app-deployment library for the hardened stateless workload.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: minicloud-app-deployment
+    version: 0.4.0
+    repository: oci://ghcr.io/andrelair-platform

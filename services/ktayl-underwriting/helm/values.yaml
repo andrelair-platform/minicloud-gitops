@@ -21,7 +21,7 @@ minicloud-app-deployment:
     runAsUser: 10001
     seccompProfile: { type: RuntimeDefault }
   image:
-    repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting
+    repository: ghcr.io/andrelair-platform/ktayl-underwriting
     # tag set per env (values-{dev,prod}.yaml)
   ports:
     - { name: http, containerPort: 8000, protocol: TCP }
@@ -122,7 +122,7 @@ frontend:
   securityContext:
     readOnlyRootFilesystem: false
   image:
-    repository: harbor.10.0.0.200.nip.io/library/ktayl-underwriting-frontend
+    repository: ghcr.io/andrelair-platform/ktayl-underwriting-frontend
     # tag set per env (values-{dev,prod}.yaml)
   ports:
     - { name: http, containerPort: 3000, protocol: TCP }
