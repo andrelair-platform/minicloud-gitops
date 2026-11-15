@@ -20,6 +20,7 @@ spec:
             - kube-node-lease
             - gatekeeper-system
             - cert-manager
+            - crossplane-system
             - longhorn-system
             - monitoring       # prometheus-operator sidecars don't set limits by design
             - observability    # loki/tempo infra
