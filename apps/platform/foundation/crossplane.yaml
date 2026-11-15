@@ -1,0 +1,40 @@
+---
+# Crossplane — the composition-based infrastructure control plane (IDP Core Component #2).
+# Phase 1: install core (v2.4.3) + provider-kubernetes (v1.4.1) only. Verify the provider reaches
+# Healthy before Phase 2 (ClusterProviderConfig + RBAC + the XPostgresInstance XRD/Composition).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  sources:
+    - repoURL: https://charts.crossplane.io/stable
+      chart: crossplane
+      targetRevision: "2.4.3"
+      helm:
+        releaseName: crossplane
+        valueFiles:
+          - $values/helm-values/minicloud-1/crossplane-values.yaml
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
