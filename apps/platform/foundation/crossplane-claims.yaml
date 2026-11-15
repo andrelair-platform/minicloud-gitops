@@ -1,0 +1,43 @@
+---
+# Self-service infrastructure CLAIMS home (IDP #1/#2 — self-service surface over the Crossplane
+# orchestration). Syncs every PostgresInstance (and future) claim committed under
+# platform/foundation/crossplane-claims/. Claims are authored by the Backstage "Provision a Database"
+# golden-path scaffolder (a PR), reviewed (CODEOWNERS-gated — a DB holds persistent data), then merged
+# here → Crossplane provisions the CNPG Cluster + NetworkPolicy + the <name>-cnpg-app connection secret.
+#
+# Each claim carries its own metadata.namespace (the consuming app's namespace); ArgoCD routes it there
+# (the AppProject allows all non-system namespaces). The dir starts empty (README only) — a claim-less
+# sync is Healthy. recurse:true so claims may be grouped in sub-dirs later.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-claims
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"   # after the XRD/Composition (crossplane-config, wave 3/4)
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: platform/foundation/crossplane-claims
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system   # default only; each claim sets its own metadata.namespace
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 5m
