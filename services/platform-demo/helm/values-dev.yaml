@@ -2,7 +2,7 @@
 minicloud-app-deployment:
   image:
     repository: harbor.10.0.0.200.nip.io/library/platform-demo
-    tag: 6dd304e
+    tag: ed45430
   scaledObject:
     http:
       hosts:
