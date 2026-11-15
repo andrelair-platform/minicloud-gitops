@@ -32,6 +32,7 @@ spec:
             - longhorn-system
             - nfs-provisioner
             - cert-manager
+            - crossplane-system
             - ingress-nginx
             - chaos-mesh
             - velero
