@@ -29,6 +29,18 @@ spec:
               kubernetes.io/metadata.name: ingress-nginx
     - from:
         - podSelector: {}
+    # the policy module's M2M consumer — underwriting's bind client calls /v1/policies cross-namespace
+    # (create→submit→activate, ADR-014 Phase 3). Port-scoped to the app port 8080 (svc :80 → targetPort).
+    # Both envs' underwriting ns are allowed (the POLICY_SERVICE_URL governs which actually connects).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: underwriting
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: underwriting-prod
+      ports:
+        - { protocol: TCP, port: 8080 }
   egress:
     # DNS
     - to:
