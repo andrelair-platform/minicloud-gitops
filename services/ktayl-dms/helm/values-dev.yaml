@@ -1,0 +1,3 @@
+# dev overlay — ns ktayl-dms, internal host only (SSO via Authentik OIDC).
+host: paperless.10.0.0.200.nip.io
+# publicHost omitted in dev (no Cloudflare tunnel route yet).

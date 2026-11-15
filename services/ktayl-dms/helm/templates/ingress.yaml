@@ -1,0 +1,57 @@
+---
+# Paperless gates itself via NATIVE Authentik OIDC (django-allauth) — not forward-auth; its own login
+# page is the gate. Internal host (dev); a publicHost (Cloudflare tunnel) is added per-env later.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: paperless-tls
+spec:
+  secretName: paperless-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: minicloud-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.host }}
+{{- if .Values.publicHost }}
+    - {{ .Values.publicHost }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: paperless
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"   # document uploads
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - {{ .Values.host }}
+{{- if .Values.publicHost }}
+        - {{ .Values.publicHost }}
+{{- end }}
+      secretName: paperless-tls
+  rules:
+    - host: {{ .Values.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: paperless
+                port: { number: 80 }
+{{- if .Values.publicHost }}
+    - host: {{ .Values.publicHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: paperless
+                port: { number: 80 }
+{{- end }}

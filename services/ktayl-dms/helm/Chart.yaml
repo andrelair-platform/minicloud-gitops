@@ -1,0 +1,11 @@
+apiVersion: v2
+name: ktayl-dms
+description: >-
+  Paperless-ngx DMS engine (board #24 — Documents & DMS, ADR-001 role B: the transversal
+  capture/OCR/search/records layer). Stateful app (document PVCs) + a dedicated CNPG Postgres
+  + a tiny Redis broker → authored in templates/ (the stateless library subchart doesn't fit a
+  PVC-backed app; mirrors ktayl-itsm/GLPI). Phase 1 = the engine (OCR+search built-in, no
+  Gotenberg/Tika/ES). Stock upstream image (ghcr.io/paperless-ngx) — no custom build.
+type: application
+version: 0.1.0
+appVersion: "2.20.15"

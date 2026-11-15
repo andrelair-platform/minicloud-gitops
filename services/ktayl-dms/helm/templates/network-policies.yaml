@@ -1,0 +1,64 @@
+---
+# INGRESS default-deny + explicit allows. EGRESS is intentionally UNRESTRICTED (ns-wide): a default-deny-
+# egress would hang CNPG initdb reaching the kube-apiserver — under Cilium a NetworkPolicy ipBlock does
+# NOT match the apiserver identity (the known gotcha; same posture as ktayl-underwriting). Egress
+# hardening = a later CiliumNetworkPolicy (toEntities [kube-apiserver, world] + DNS + authentik + same-ns).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+# intra-namespace (paperless → redis/cnpg; CNPG replication)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-same-namespace }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: {} }]
+---
+# ingress-nginx → paperless (:8000)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-ingress-nginx }
+spec:
+  podSelector:
+    matchLabels: { app: paperless }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
+      ports:
+        - { protocol: TCP, port: 8000 }
+---
+# CNPG operator → the Postgres instances (:8000 status + :5432) — without this the cluster never reports healthy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-cnpg-operator }
+spec:
+  podSelector:
+    matchLabels: { cnpg.io/cluster: paperless-cnpg }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: cnpg-system }
+      ports:
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 5432 }
+---
+# monitoring scrape (CNPG podmonitor :9187 + any app metrics)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-monitoring-scrape }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
