@@ -42,6 +42,9 @@ spec:
           ports:
             - containerPort: 8000
           env:
+            # OpenSearch (not Elasticsearch): the ES client's product-check rejects OpenSearch with
+            # UnsupportedProductError, so yente MUST be told to use the opensearch-py provider.
+            - { name: YENTE_INDEX_TYPE, value: "opensearch" }
             - { name: YENTE_INDEX_URL, value: "http://yente-opensearch:9200" }
             - { name: YENTE_MANIFEST, value: "/manifest/manifest.yml" }
             - { name: YENTE_AUTO_REINDEX, value: {{ .Values.yente.autoReindex | quote }} }
