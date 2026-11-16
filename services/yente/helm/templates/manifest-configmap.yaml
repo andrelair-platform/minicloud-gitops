@@ -1,0 +1,24 @@
+# yente manifest — scopes the engine to the OFFICIAL FREE sanctions lists only (OFAC/EU/UN/UK OFSI),
+# NOT the CC-BY-NC consolidated set (ADR-001 §8 licence decision). The `default` collection groups them so
+# POST /match/default screens against all four at once. Each dataset's index.json is fetched from
+# data.opensanctions.org (the controlled egress in network-policies.yaml). Re-rendered if .Values.lists changes.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yente-manifest
+  labels: { app: yente }
+data:
+  manifest.yml: |
+    catalogs: []
+    datasets:
+      - name: default
+        title: "Sanctions screening — official free lists"
+        datasets:
+{{- range .Values.lists }}
+          - {{ .name }}
+{{- end }}
+{{- range .Values.lists }}
+      - name: {{ .name }}
+        title: {{ .title | quote }}
+        url: "https://data.opensanctions.org/datasets/latest/{{ .name }}/index.json"
+{{- end }}
