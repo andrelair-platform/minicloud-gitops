@@ -1,8 +1,9 @@
 # dev — Harbor image, ns platform-demo-dev.
 minicloud-app-deployment:
   image:
-    repository: harbor.10.0.0.200.nip.io/library/platform-demo
+    repository: ghcr.io/andrelair-platform/platform-demo
     tag: 247d821
+  imagePullSecrets: [{name: ghcr-pull}]   # Internal ghcr pkg (Harbor retirement)
   scaledObject:
     http:
       hosts:
@@ -21,3 +22,4 @@ tlsCert:
 appConfig:
   APP_ENV: development
   LOG_LEVEL: debug
+createGhcrPullSecret: true   # renders the dev-only ghcr-pull ES (Vault platform/ghcr)

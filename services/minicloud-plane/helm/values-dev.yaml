@@ -10,8 +10,9 @@
 # (always-on, 2 replicas) — see values-prod.yaml.
 minicloud-app-deployment:
   image:
-    repository: harbor.10.0.0.200.nip.io/library/minicloud-plane
+    repository: ghcr.io/andrelair-platform/minicloud-plane
     tag: bdffa92
+  imagePullSecrets: [{name: ghcr-pull}]   # Internal ghcr pkg (Harbor retirement)
   workload:
     replicas: 1
     rollout:
@@ -29,3 +30,5 @@ minicloud-app-deployment:
           start: "0 8 * * 1-5"
           end: "0 19 * * 1-5"
           desiredReplicas: "1"
+ghcrPull:
+  enabled: true        # dev: render the ghcr-pull ES (Internal pkg; Harbor retirement)

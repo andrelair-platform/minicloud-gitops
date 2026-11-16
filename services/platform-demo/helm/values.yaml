@@ -18,7 +18,7 @@ minicloud-app-deployment:
     app: platform-demo
 
   image:
-    repository: harbor.10.0.0.200.nip.io/library/platform-demo   # dev; values-prod overrides to ghcr
+    repository: ghcr.io/andrelair-platform/platform-demo   # dev; values-prod overrides to ghcr
 
   workload:
     kind: Rollout

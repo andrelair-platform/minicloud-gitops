@@ -18,7 +18,7 @@ minicloud-app-deployment:
   podLabels:
     app: minicloud-agent
   image:
-    repository: harbor.10.0.0.200.nip.io/library/minicloud-agent
+    repository: ghcr.io/andrelair-platform/minicloud-agent
   ports:
     - { name: http, containerPort: 8080, protocol: TCP }
   service:
