@@ -1,7 +1,7 @@
 # ERPNext v16.28.0 — Phase 79 — HR source of truth + ERP-1/DSN French IS config
 # Chart: erpnext/erpnext 8.0.67
 # Namespace: erp | URL: https://erp.devandre.sbs
-# Custom image: harbor.10.0.0.200.nip.io/library/erpnext-ktayl
+# Custom image: ghcr.io/andrelair-platform/erpnext-ktayl
 #   adds: factur-x, pypdf, erpnext_facturx, erpnext_dsn
 #
 # Site name = domain — ERPNext routes requests by $host header to the right site.
@@ -14,7 +14,7 @@
 # siret, company_name). Injected as env vars to gunicorn + worker pods.
 
 image:
-  repository: harbor.10.0.0.200.nip.io/library/erpnext-ktayl
+  repository: ghcr.io/andrelair-platform/erpnext-ktayl
   tag: "v16.28.0-facturx-5eee7b9"
   pullPolicy: IfNotPresent
 
