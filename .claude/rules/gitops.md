@@ -176,15 +176,28 @@ CI validates the dep-free charts with a `helm template → kubeconform` step in 
 cd services/<svc>/helm && helm dependency update . && helm template <svc> . -f values-dev.yaml
 ```
 
-## Hybrid container registry — dev→Harbor, prod→ghcr (the standard since 2026-08-27)
+## Container registry — ghcr.io ONLY (Harbor decommissioned 2026-11-16)
 
-To keep the controller disk bounded, prod images live in **ghcr.io** (free, durable, off local disk); Harbor is a **dev-only** registry (retention keep-10 + daily GC).
+**ghcr.io is the single registry for dev AND prod.** The former dev→Harbor / prod→ghcr **hybrid is
+retired** — Harbor (`harbor.10.0.0.200.nip.io`) was fully torn down (ArgoCD app removed, 48Gi PVCs
+reclaimed, all 6 nodes cut off its pull-through proxy, `HARBOR_*` org secrets deleted). Full playbook +
+gotchas: [[reference_harbor_to_ghcr_decommission]]. (The fleet CI migration is in progress — some older
+repos' CI may still carry dead Harbor-login steps; strip them, don't re-add Harbor.)
 
-- **CI dual-push:** on `main`, build + push to **both** Harbor (dev/prod tag) and `ghcr.io/andrelair-platform/<repo>:<sha>`; sign (keyless cosign) + attach SBOM to the ghcr image. The `dev` branch pushes Harbor-only. Reference edits: platform-demo CI (`packages: write`, GHCR login via `GITHUB_TOKEN`, `tags:` from a meta step that appends the ghcr ref only for main).
-- **Prod overlay** repoints the image with kustomize `newName: ghcr.io/andrelair-platform/<repo>` + `newTag: <sha>`; dev stays Harbor. **If CI bumps the prod overlay** (agent/crew use the branch=env model where main→prod), its `kustomize edit set image` MUST set the ghcr **name** for prod (`set image harbor..=ghcr..:SHA`) — else the next push reverts `newName`. Services using main→dev + PR→prod (platform-demo/plane) don't have this issue.
-- **Visibility:** demos → **Public** (k3s pulls anonymously, no secret). Real services → **Internal/Private** + an imagePullSecret. **GitHub has NO API to set package visibility** — the org must allow non-Public packages (org Settings→Packages), then flip each package in its UI.
-- **Internal-pull pattern:** a `read:packages` PAT → Vault `secret/platform/ghcr` (`username`,`token`; **write needs the Vault root token**) → an **ESO ExternalSecret** renders a `kubernetes.io/dockerconfigjson` secret `ghcr-pull` (auth = `printf "%s:%s" .username .token | b64enc`) → the pod spec gets `imagePullSecrets: [ghcr-pull]` via a prod-overlay patch. One shared `ghcr-pull` ES per namespace suffices (e.g. one in `ai` for agent+crew, in `platform/ai/`). The app that owns the ES needs the ESO `ignoreDifferences` (see below) if it uses ServerSideApply.
-- **CI-secret trap (recurring):** a stale **repo-level** `HARBOR_USER`/`HARBOR_PASSWORD` **shadows the org-level** secret (repo scope wins) → CI fails at `docker login harbor` with 401. Delete the repo-level ones so the Vault-sourced org secrets govern: `gh secret delete HARBOR_PASSWORD --repo <repo>`. When a build fails at registry login, check BOTH `gh secret list --repo` and `--org`.
+- **CI:** on `main`, build + push **only** to `ghcr.io/andrelair-platform/<repo>:<sha>`; keyless cosign +
+  SBOM. No Tailscale / CA-trust / Harbor steps. **ghcr write-perm gotcha:** a package linked to the
+  service's own repo pushes with the repo-scoped `GITHUB_TOKEN`; a package **linked to minicloud-gitops**
+  (e.g. crane-copied during the decommission) rejects that token (`permission_denied: write_package`) → log
+  in with **`GITOPS_TOKEN`** (a `write:packages` PAT, username `AndreLiar`) which pushes to ANY org package
+  regardless of linkage. There is **no API** to re-link a package or set its visibility — both UI-only.
+- **Visibility:** demos → **Public** (k3s pulls anonymously, no secret). Real services → **Internal/Private**
+  + an imagePullSecret. The org must allow non-Public packages (org Settings→Packages), then flip each in its UI.
+- **Internal-pull pattern:** a `read:packages` PAT → Vault `secret/platform/ghcr` (`username`,`token`) → an
+  **ESO ExternalSecret** renders a `kubernetes.io/dockerconfigjson` secret `ghcr-pull`
+  (auth = `printf "%s:%s" .username .token | b64enc`) → the pod gets `imagePullSecrets: [ghcr-pull]`. One
+  shared `ghcr-pull` ES per namespace (a dev workload in a dedicated `*-dev` namespace needs its OWN
+  dev-gated ES — the shared one lives in the prod ns). The ES-owning app needs the ESO `ignoreDifferences`
+  (below) under ServerSideApply.
 
 Reference: platform-demo (Public), minicloud-plane / minicloud-agent / minicloud-crew-agent (Internal + `ghcr-pull`).
 
