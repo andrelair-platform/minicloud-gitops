@@ -1,0 +1,23 @@
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: dms-classifier
+  namespace: dms-classifier
+spec:
+  # GIT model (not image/NewestBuild): the classifier image is python:3.12-slim-based, whose base layer
+  # carries a REAL (non-epoch) date → NewestBuild can't reliably rank tags and auto-promotion would stall
+  # silently (the gitops.md NewestBuild prerequisite). Keying Freight on the source commit is timestamp-
+  # independent. ktayl-dms is PUBLIC → no git credential needed to read it.
+  interval: 5m
+  freightCreationPolicy: Automatic
+  subscriptions:
+    - git:
+        repoURL: https://github.com/andrelair-platform/ktayl-dms.git
+        branch: main
+        # Phantom-commit guard: the classifier image is only built when classifier/** changes
+        # (ci-classifier.yml paths filter). includePaths is the allowlist mirror of that filter, so
+        # Freight is ONLY created for commits that actually produced a dms-classifier image — a
+        # docs-only or indra-ocr-only commit never yields a Freight whose image was never built.
+        includePaths:
+          - classifier
+          - .github/workflows/ci-classifier.yml

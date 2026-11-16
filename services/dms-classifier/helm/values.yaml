@@ -67,6 +67,16 @@ minicloud-app-deployment:
     - { name: POLICY_LOOKUP_URL, value: "http://ktayl-core.ktayl-core.svc/api/billing/policies" }
     - { name: CONFIDENCE_THRESHOLD, value: "0.7" }
     - { name: ENVIRONMENT, value: "development" }
+    # M2M auth (SEC-03, task #14) — a client-credentials token minted from Authentik, sent on the SoR
+    # lookups; ktayl-core validates it (ADR-016 trusted-issuer allowlist). CLIENT_ID/SECRET are OPTIONAL
+    # secretKeyRefs (the dms-classifier-oidc ESO target): absent ⇒ empty env ⇒ the classifier falls back
+    # to unauthenticated (dev) with ZERO restart churn once the secret appears. Token URL/scope are literals.
+    - { name: OIDC_TOKEN_URL, value: "http://authentik-server.authentik.svc:80/application/o/token/" }
+    - { name: OIDC_SCOPE, value: "" }
+    - name: OIDC_CLIENT_ID
+      valueFrom: { secretKeyRef: { name: dms-classifier-oidc, key: OIDC_CLIENT_ID, optional: true } }
+    - name: OIDC_CLIENT_SECRET
+      valueFrom: { secretKeyRef: { name: dms-classifier-oidc, key: OIDC_CLIENT_SECRET, optional: true } }
     # Langfuse (LLMOps) — keys wired as a follow-up (dedicated project); tracing no-ops until then.
   # The library creates the LiteLLM key secret from Vault (the ghcr-pull ES is a wrapper template).
   externalSecret:
@@ -79,3 +89,28 @@ minicloud-app-deployment:
     enabled: false
   certificate:
     enabled: false
+
+# --- wrapper-local extras (service-specific templates/) ---
+
+# M2M OIDC ExternalSecret (SEC-03, task #14). Gate ON once Vault secret/platform/dms-classifier is
+# populated (oidc-client-id / oidc-client-secret) by the Authentik-provisioning step. OFF ⇒ the
+# optional secretKeyRef env above resolves empty ⇒ unauthenticated dev lookups (no pod churn).
+oidc:
+  enabled: false
+
+# KEDA scale-to-zero on the JetStream consumer lag (task #13). minReplicaCount 0 = the worker sleeps
+# until a doc lands. Because KEDA then owns .spec.replicas, the dev ArgoCD app ignoreDifferences it.
+keda:
+  enabled: true
+  minReplicaCount: 0
+  maxReplicaCount: 3
+  pollingInterval: 15
+  cooldownPeriod: 120
+  natsMonitoringEndpoint: "nats-headless.messaging:8222"
+  stream: "DMS_DOC"
+  consumer: "dms-classifier"
+  lagThreshold: "1"
+
+# Ingress default-deny for the worker (task #13). Egress stays open (Cilium platform convention).
+networkPolicy:
+  enabled: true

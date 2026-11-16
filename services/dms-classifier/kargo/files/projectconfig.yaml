@@ -1,0 +1,13 @@
+# Auto-promotion: Kargo is the sole promoter of dev. New Freight (a classifier-building commit on
+# ktayl-dms main) is auto-promoted into the dev Stage — no manual image.tag bump. There is no prod
+# Stage (DMS is dev-only); add one + its CODEOWNERS prod PR the day a prod DMS exists.
+# ProjectConfig is a singleton per project namespace, named after the Project.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: dms-classifier
+  namespace: dms-classifier
+spec:
+  promotionPolicies:
+    - stage: dev
+      autoPromotionEnabled: true
