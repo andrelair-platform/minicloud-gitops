@@ -1,0 +1,52 @@
+# yente sanctions-list freshness (RC-02 NFR-SCR-03 / SEC-SCR-04). "Freshness is a compliance control, not
+# hygiene" — a screener on stale lists silently passes newly-sanctioned parties. The freshness exporter
+# (services/yente/helm) polls yente /catalog and emits `yente_sanctions_dataset_age_hours` (the stalest
+# loaded list). Alarm if the data goes stale or the catalog is unreachable.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: yente-freshness
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: yente.data-freshness
+      interval: 60s
+      rules:
+        - alert: YenteDatasetStale
+          expr: yente_sanctions_dataset_age_hours > 48
+          for: 15m
+          labels:
+            severity: critical
+            team: compliance
+          annotations:
+            summary: "Sanctions lists are stale (> 48h)"
+            description: >-
+              The stalest loaded OpenSanctions list is {{ $value | printf "%.1f" }} hours old. yente's
+              scheduled reindex likely failed or data.opensanctions.org is unreachable. Screenings run on
+              last-good data but are now flagged stale — NEW sanctions may be missed. Check the yente pod
+              logs + the sanctions egress netpol.
+            runbook_url: "https://grafana.10.0.0.200.nip.io/d/yente-freshness"
+        - alert: YenteDatasetAgingWarning
+          expr: yente_sanctions_dataset_age_hours > 24
+          for: 30m
+          labels:
+            severity: warning
+            team: compliance
+          annotations:
+            summary: "Sanctions lists aging (> 24h — target < 24h)"
+            description: >-
+              Stalest loaded list is {{ $value | printf "%.1f" }} hours old (NFR-SCR-03 target < 24h).
+        - alert: YenteCatalogUnreachable
+          expr: yente_catalog_up == 0
+          for: 10m
+          labels:
+            severity: critical
+            team: compliance
+          annotations:
+            summary: "yente /catalog unreachable — screening-engine health unknown"
+            description: >-
+              The freshness exporter cannot reach yente /catalog. The screening engine may be down; the
+              S1 gate must fail CLOSED (HOLD) in that case (NFR-SCR-02).

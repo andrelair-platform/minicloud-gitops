@@ -1,0 +1,12 @@
+apiVersion: v2
+name: yente
+description: >-
+  yente (OpenSanctions matching API) — the sanctions/PEP screening ENGINE for ktayl-core's `screening`
+  module (RC-02 S0, board #15). A stateful adopted tool: the yente API + a dedicated single-node
+  OpenSearch index + a stdlib freshness exporter, authored directly in templates/ (the stateless library
+  subchart does not fit a PVC-backed datastore — same pattern as ktayl-itsm/GLPI). Dev-only until the
+  consuming `screening` module ships (no prod consumer yet). Planning of record:
+  ktayl-compliance/docs/architecture/rc02-screening-architecture.md + ADR-001 + SPEC.md.
+type: application
+version: 0.1.0
+appVersion: "4.3.1"
