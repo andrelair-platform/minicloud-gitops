@@ -2,7 +2,7 @@
 minicloud-app-deployment:
   image:
     repository: ghcr.io/andrelair-platform/platform-demo
-    tag: 247d821
+    tag: a640c35
   imagePullSecrets: [{name: ghcr-pull}]   # Internal ghcr pkg (Harbor retirement)
   scaledObject:
     http:
