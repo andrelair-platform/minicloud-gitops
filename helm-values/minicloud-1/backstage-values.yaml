@@ -18,10 +18,10 @@ backstage:
     # Registry: ghcr.io (Harbor decommissioned 2026-11-16). The CI bump repoints registry+repository+tag;
     # this still shows harbor until the first ghcr build's bump PR lands (safe — the running image is
     # unaffected). pullSecrets lets the Deployment pull the Internal ghcr package (ghcr-pull ESO).
-    registry: harbor.10.0.0.200.nip.io
-    repository: library/backstage
-    # git SHA: d9b5356 — built 2026-11-15 by CI
-    tag: "d9b5356-amd64"
+    registry: ghcr.io
+    repository: andrelair-platform/minicloud-backstage
+    # git SHA: 0676888 — built 2026-11-16 by CI (first ghcr image)
+    tag: "0676888-amd64"
     pullSecrets:
       - ghcr-pull
 
