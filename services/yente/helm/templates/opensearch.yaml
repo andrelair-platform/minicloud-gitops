@@ -1,0 +1,80 @@
+# Dedicated single-node OpenSearch — yente's backing index (no shared ES/OpenSearch exists on the cluster).
+# discovery.type=single-node SKIPS the bootstrap checks (no vm.max_map_count sysctl / privileged init needed).
+# The security plugin is DISABLED: this is an internal-only index reachable ONLY by the yente pod (netpol +
+# default-deny), never exposed — so TLS/auth here would be ceremony. runAsNonRoot (uid 1000) is enforced by
+# Gatekeeper; readOnlyRootFilesystem is left off (the JVM writes config/logs at runtime — not a hard constraint).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yente-opensearch
+  labels: { app: yente-opensearch }
+spec:
+  selector: { app: yente-opensearch }
+  ports:
+    - { name: http, port: 9200, targetPort: 9200 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: yente-opensearch
+spec:
+  serviceName: yente-opensearch
+  replicas: 1
+  selector:
+    matchLabels: { app: yente-opensearch }
+  template:
+    metadata:
+      labels: { app: yente-opensearch }
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false   # no legacy Docker-link env injection (hygiene)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000          # the opensearch user in the image
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: opensearch
+          image: {{ .Values.opensearch.image }}
+          ports:
+            - containerPort: 9200
+          env:
+            - { name: cluster.name, value: yente }
+            - { name: node.name, value: yente-opensearch-0 }
+            - { name: discovery.type, value: single-node }
+            - { name: bootstrap.memory_lock, value: "false" }
+            - { name: DISABLE_SECURITY_PLUGIN, value: "true" }
+            - { name: DISABLE_INSTALL_DEMO_CONFIG, value: "true" }
+            - { name: OPENSEARCH_JAVA_OPTS, value: "-Xms{{ .Values.opensearch.heap }} -Xmx{{ .Values.opensearch.heap }}" }
+          resources: {{ .Values.opensearch.resources | toYaml | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false   # JVM writes config/logs at runtime; non-root + dropped caps are the enforced controls
+            capabilities: { drop: [ALL] }
+          readinessProbe:
+            httpGet: { path: "/_cluster/health?local=true", port: 9200 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket: { port: 9200 }
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          volumeMounts:
+            - { name: data, mountPath: /usr/share/opensearch/data }
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: longhorn
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: {{ .Values.opensearch.storage }}

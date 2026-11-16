@@ -1,0 +1,70 @@
+# yente — the OpenSanctions matching API. One process serves the API (POST /match/{dataset}, /search,
+# /catalog, /readyz) AND runs the scheduled reindex (YENTE_AUTO_REINDEX + YENTE_SCHEDULE) that pulls the
+# lists from data.opensanctions.org into OpenSearch. The future ktayl-core `screening` module (S1) calls
+# http://yente:8000/match/default in-cluster. Runs non-root; config.yaml + the manifest are read-only mounts.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yente
+  labels: { app: yente }
+spec:
+  selector: { app: yente }
+  ports:
+    - { name: http, port: 8000, targetPort: 8000 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yente
+  labels: { app: yente }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: yente }
+  template:
+    metadata:
+      labels: { app: yente }
+    spec:
+      automountServiceAccountToken: false
+      # K8s injects Docker-link env vars per Service (YENTE_PORT=tcp://<ip>:8000); yente reads YENTE_PORT
+      # as its listen port → int() crash. Disable the legacy service-link injection.
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: yente
+          image: {{ .Values.yente.image }}
+          ports:
+            - containerPort: 8000
+          env:
+            - { name: YENTE_INDEX_URL, value: "http://yente-opensearch:9200" }
+            - { name: YENTE_MANIFEST, value: "/manifest/manifest.yml" }
+            - { name: YENTE_AUTO_REINDEX, value: {{ .Values.yente.autoReindex | quote }} }
+            - { name: YENTE_SCHEDULE, value: {{ .Values.yente.schedule | quote }} }
+            - { name: YENTE_UPDATE_TOKEN, value: "" }   # reindex is schedule-driven, not API-triggered
+          resources: {{ .Values.yente.resources | toYaml | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8000 }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            failureThreshold: 20          # the first index build can take a few minutes
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          volumeMounts:
+            - { name: manifest, mountPath: /manifest, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: manifest
+          configMap: { name: yente-manifest }
+        - { name: tmp, emptyDir: {} }

@@ -1,0 +1,40 @@
+# yente screening engine — common values. Dev-only for S0 (no prod consumer yet).
+opensearch:
+  image: docker.io/opensearchproject/opensearch:2.17.1
+  storage: 8Gi
+  heap: "1g"               # -Xms/-Xmx; keep the container memory limit ~2x the heap
+  resources:
+    requests: { cpu: 250m, memory: 1536Mi }
+    limits:   { cpu: "2", memory: 2560Mi }
+
+yente:
+  image: ghcr.io/opensanctions/yente:4.3.1
+  # The reindex schedule (cron) + auto-reindex keep the loaded lists fresh (NFR-SCR-03). yente serves the
+  # API AND runs the scheduled reindex in one process — one Deployment, the egress is from this pod.
+  autoReindex: "true"
+  schedule: "*/30 * * * *"   # check for list updates every 30 min
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: "1", memory: 1Gi }
+
+# Freshness exporter (NFR-SCR-03 / SEC-SCR-04): a tiny stdlib-only Python shim (ConfigMap-mounted into a
+# stock python image — no built image, no pip) that polls yente /catalog and serves
+# `yente_sanctions_dataset_age_hours` for Prometheus. A ServiceMonitor scrapes it; the PrometheusRule alarms.
+exporter:
+  image: docker.io/library/python:3.12-slim
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits:   { cpu: 100m, memory: 128Mi }
+
+# The official FREE sanctions lists only (licence-clean even in a production-shaped demo — ADR-001 §8):
+# OFAC SDN · EU consolidated · UN SC · UK OFSI. NOT the CC-BY-NC consolidated set.
+lists:
+  - { name: us_ofac_sdn, title: "US OFAC — Specially Designated Nationals" }
+  - { name: eu_fsf,      title: "EU Financial Sanctions Files (consolidated)" }
+  - { name: un_sc_sanctions, title: "UN Security Council Consolidated" }
+  - { name: gb_hmt_sanctions, title: "UK OFSI Consolidated" }
+
+networkPolicy:
+  enabled: true
+serviceMonitor:
+  enabled: true

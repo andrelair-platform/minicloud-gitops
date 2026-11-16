@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: yente-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: minicloud-platform
+  # yente sanctions-screening engine (RC-02 S0, board #15). Standalone stateful chart: yente API +
+  # dedicated single-node OpenSearch + a stdlib freshness exporter. Dev-only until the ktayl-core
+  # `screening` module (S1) consumes it. Pulls the official free lists (OFAC/EU/UN/UK) from
+  # data.opensanctions.org via the controlled egress netpol. First sync: OpenSearch builds the index
+  # (a few min) before yente /readyz goes green.
+  source:
+    repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+    targetRevision: main
+    path: services/yente/helm
+    helm:
+      releaseName: yente
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: yente
+  ignoreDifferences:
+    # Cilium's webhook defaults enableDefaultDeny on CiliumNetworkPolicy specs (never in git) → SSA drift.
+    - group: cilium.io
+      kind: CiliumNetworkPolicy
+      jqPathExpressions:
+        - .spec.enableDefaultDeny
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff: { duration: 15s, factor: 2, maxDuration: 5m }
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
