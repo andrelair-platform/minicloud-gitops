@@ -1,8 +1,8 @@
-# dev — Harbor image (k3s pulls internally), ns itsm. S002: internal host (Tailscale) + public host
+# dev — ghcr image (public pkg, anonymous pull), ns itsm. S002: internal host (Tailscale) + public host
 # (itsm.devandre.sbs via Cloudflare tunnel), gated by GLPI's native Authentik OIDC (singlesignon plugin).
 glpi:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-itsm
-    tag: 32ef4ce-amd64
+    tag: "32ef4ce"   # ghcr tag carries NO -amd64 suffix (that was a Harbor convention); the -amd64 ref 404'd
 host: itsm.10.0.0.200.nip.io
 publicHost: itsm.devandre.sbs
