@@ -2,7 +2,7 @@
 minicloud-app-deployment:
   image:
     repository: ghcr.io/andrelair-platform/minicloud-crew-agent
-    tag: 668ea0e
+    tag: da411b6
   imagePullSecrets: [{name: ghcr-pull}]   # Internal ghcr pkg (Harbor retirement)
   workload:
     replicas: 1
