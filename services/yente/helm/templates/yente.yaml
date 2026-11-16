@@ -28,6 +28,9 @@ spec:
       labels: { app: yente }
     spec:
       automountServiceAccountToken: false
+      # K8s injects Docker-link env vars per Service (YENTE_PORT=tcp://<ip>:8000); yente reads YENTE_PORT
+      # as its listen port → int() crash. Disable the legacy service-link injection.
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
