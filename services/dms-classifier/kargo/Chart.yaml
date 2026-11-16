@@ -1,0 +1,11 @@
+apiVersion: v2
+name: kargo-dms-classifier
+description: >-
+  Kargo promotion pipeline for dms-classifier (Project + git Warehouse + dev Stage + ProjectConfig +
+  git credentials). DEV-ONLY auto-promotion (the platform-demo Option-2 pattern minus the prod Stage):
+  DMS is a dev-only service today, so there is no prod to promote to — Kargo here only removes the manual
+  image.tag bump by auto-promoting the main build into the dev overlay. A prod Stage is added the day a
+  prod DMS exists. The raw Kargo CRs live under files/ and are emitted verbatim by templates/manifests.yaml
+  via .Files.Get (no Helm templating → Kargo ${{ }} expressions pass through untouched).
+type: application
+version: 0.1.0
