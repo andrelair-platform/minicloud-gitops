@@ -1,0 +1,105 @@
+{{- if .Values.tika.enabled }}
+# Phase 3 office-OCR (ADR-001, task #22): Gotenberg (render office→PDF) + Apache Tika (text extract) —
+# the Paperless-native office pipeline that PAPERLESS_TIKA_* points at. Stateless, no PVC. Always-on-tiny
+# (office docs are intermittent but the two pods are cheap; KEDA scale-to-zero is a need-first follow-up).
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dms-gotenberg
+  labels: { app: dms-gotenberg }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: dms-gotenberg }
+  template:
+    metadata:
+      labels: { app: dms-gotenberg }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001          # the gotenberg image's built-in non-root user
+        runAsGroup: 1001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: gotenberg
+          image: {{ .Values.tika.gotenbergImage }}
+          # Chromium sandbox can't run unprivileged in k8s → disable it (Gotenberg renders in-pod only).
+          args: ["gotenberg", "--chromium-disable-javascript=false", "--api-port=3000"]
+          ports:
+            - containerPort: 3000
+          resources: {{ .Values.tika.gotenbergResources | toYaml | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          livenessProbe:
+            httpGet: { path: /health, port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+      volumes:
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dms-gotenberg
+  labels: { app: dms-gotenberg }
+spec:
+  selector: { app: dms-gotenberg }
+  ports:
+    - { name: http, port: 3000, targetPort: 3000 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dms-tika
+  labels: { app: dms-tika }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: dms-tika }
+  template:
+    metadata:
+      labels: { app: dms-tika }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 35002         # Tika is a stateless JVM server; any uid works (writes only to /tmp)
+        runAsGroup: 35002
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: tika
+          image: {{ .Values.tika.tikaImage }}
+          ports:
+            - containerPort: 9998
+          resources: {{ .Values.tika.tikaResources | toYaml | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          livenessProbe:
+            tcpSocket: { port: 9998 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+      volumes:
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dms-tika
+  labels: { app: dms-tika }
+spec:
+  selector: { app: dms-tika }
+  ports:
+    - { name: http, port: 9998, targetPort: 9998 }
+{{- end }}

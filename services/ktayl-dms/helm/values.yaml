@@ -21,6 +21,20 @@ redis:
     requests: { cpu: 10m, memory: 32Mi }
     limits:   { cpu: 100m, memory: 128Mi }
 
+# Phase 3 office-OCR (task #22): Gotenberg + Tika, the Paperless-native office pipeline (docx/xlsx/…).
+# enabled ⇒ renders the two Deployments + Services AND sets PAPERLESS_TIKA_* on Paperless. Fully-qualified
+# images (docker.io/…) for the allowed-registries Gatekeeper policy. Stateless, no PVC.
+tika:
+  enabled: true
+  gotenbergImage: docker.io/gotenberg/gotenberg:8.11.1
+  tikaImage: docker.io/apache/tika:2.9.2.1
+  gotenbergResources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: "1", memory: 1Gi }
+  tikaResources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+
 cnpg:
   instances: 1             # dev; prod raises + enables R2 backup
   storageSize: 5Gi
