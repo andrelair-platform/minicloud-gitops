@@ -11,16 +11,19 @@ metadata:
   labels: { app: yente }
 data:
   manifest.yml: |
-    catalogs: []
+    # yente's native mechanism (matches its bundled default.yml): read the main catalog — whose per-dataset
+    # resources carry ABSOLUTE artifact URLs (no 307 redirect, unlike /datasets/latest/<name>/entities.ftm.json)
+    # — and scope to each official free list by name. A `default` collection groups them for /match/default.
+    catalogs:
+{{- range .Values.lists }}
+      - url: "https://data.opensanctions.org/datasets/latest/index.json"
+        scope: {{ .name }}
+        resource_name: entities.ftm.json
+{{- end }}
     datasets:
       - name: default
         title: "Sanctions screening — official free lists"
         datasets:
 {{- range .Values.lists }}
           - {{ .name }}
-{{- end }}
-{{- range .Values.lists }}
-      - name: {{ .name }}
-        title: {{ .title | quote }}
-        entities_url: "https://data.opensanctions.org/datasets/latest/{{ .name }}/entities.ftm.json"
 {{- end }}
