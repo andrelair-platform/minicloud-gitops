@@ -1,0 +1,30 @@
+# KEDA scale-to-zero for the classifier (task #13). The worker is woken by pending messages on the
+# JetStream durable consumer `dms-classifier` (stream DMS_DOC) and scaled back to zero on idle — the
+# whole point of the event-driven design (a doc lands → KEDA wakes 0→1 → drain → back to 0).
+#
+# NOTE: because KEDA owns `.spec.replicas`, the ArgoCD Application (apps/is/dms/dms-classifier-dev.yaml)
+# adds `.spec.replicas` to ignoreDifferences + RespectIgnoreDifferences so selfHeal doesn't fight KEDA.
+{{- if .Values.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: dms-classifier
+  labels:
+    app.kubernetes.io/name: dms-classifier
+spec:
+  scaleTargetRef:
+    name: dms-classifier
+  minReplicaCount: {{ .Values.keda.minReplicaCount | default 0 }}
+  maxReplicaCount: {{ .Values.keda.maxReplicaCount | default 3 }}
+  pollingInterval: {{ .Values.keda.pollingInterval | default 15 }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod | default 120 }}
+  triggers:
+    - type: nats-jetstream
+      metadata:
+        natsServerMonitoringEndpoint: {{ .Values.keda.natsMonitoringEndpoint | default "nats-headless.messaging:8222" | quote }}
+        account: "$G"
+        stream: {{ .Values.keda.stream | default "DMS_DOC" | quote }}
+        consumer: {{ .Values.keda.consumer | default "dms-classifier" | quote }}
+        lagThreshold: {{ .Values.keda.lagThreshold | default "1" | quote }}
+        activationLagThreshold: "0"   # any pending message wakes the worker from zero
+{{- end }}
