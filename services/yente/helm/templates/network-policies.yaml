@@ -1,0 +1,89 @@
+# yente network posture (SEC-SCR-03). Ingress default-deny + explicit allows; egress default-deny + DNS +
+# cluster-internal (yente↔opensearch, exporter↔yente, future screening-module→yente) + controlled EXTERNAL
+# HTTPS (yente pulls the lists from data.opensanctions.org). Mirrors the proven minicloud-agent-dev pattern
+# (Cilium entity rules are what actually permit pod-to-pod + kubelet probes under default-deny) + the
+# open-webui external-egress precedent. NOTE: a tight Cilium toFQDNs(data.opensanctions.org) is the hardening
+# follow-up; no toFQDNs policy exists on the cluster yet (DNS-proxy not in use), so :443 is scoped by port here.
+{{- if .Values.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-same-namespace }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress: [{ from: [{ podSelector: {} }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-monitoring-scrape }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: observability } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-egress }
+spec: { podSelector: {}, policyTypes: [Egress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-dns-egress }
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } } }]
+      ports: [{ port: 53, protocol: UDP }, { port: 53, protocol: TCP }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-cluster-internal-egress }
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress: [{ to: [{ ipBlock: { cidr: 10.0.0.0/8 } }] }]
+---
+# External HTTPS so yente's indexer can pull the official lists from data.opensanctions.org.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-yente-sanctions-egress }
+spec:
+  podSelector: { matchLabels: { app: yente } }
+  policyTypes: [Egress]
+  egress:
+    - ports: [{ port: 443, protocol: TCP }, { port: 80, protocol: TCP }]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: { name: allow-node-entities }
+spec:
+  endpointSelector: {}
+  ingress: [{ fromEntities: [host, remote-node] }]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: { name: allow-cluster-egress }
+spec:
+  endpointSelector: {}
+  egress: [{ toEntities: [cluster] }]
+---
+# The yente pod specifically may also egress to the world (the list sources) — Cilium identity form.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: { name: allow-yente-world-egress }
+spec:
+  endpointSelector: { matchLabels: { app: yente } }
+  egress:
+    - toEntities: [world]
+      toPorts: [{ ports: [{ port: "443", protocol: TCP }, { port: "80", protocol: TCP }] }]
+{{- end }}

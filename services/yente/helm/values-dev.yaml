@@ -1,0 +1,5 @@
+# dev overlay — ns yente. Single-node OpenSearch, modest resources. No ingress (internal engine; the
+# future screening module reaches it in-cluster at http://yente:8000).
+opensearch:
+  storage: 8Gi
+yente: {}

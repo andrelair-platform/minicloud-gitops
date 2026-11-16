@@ -1,0 +1,123 @@
+# Freshness monitor (NFR-SCR-03 / SEC-SCR-04): "how do you know the lists were current when you screened?"
+# A ~40-line STDLIB-ONLY python shim (no pip, no built image — mounted into a stock python image, the same
+# class as Paperless's post-consume script) polls yente /catalog on each scrape and serves
+# `yente_sanctions_dataset_age_hours` (the stalest loaded dataset). The PrometheusRule alarms if it exceeds
+# the window; a Grafana panel renders it. NOTE: single-brace Prometheus labels + %-formatting on purpose —
+# doubled curly braces would collide with Helm's template delimiters (Helm parses comments too).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yente-freshness-exporter
+  labels: { app: yente-freshness }
+data:
+  exporter.py: |
+    import json, urllib.request
+    from datetime import datetime, timezone
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    CATALOG = "http://yente:8000/catalog"
+    TS_FIELDS = ("last_export", "last_change", "updated_at", "index_timestamp", "version")
+
+    def _parse(s):
+        if not s:
+            return None
+        s = str(s).replace("Z", "+00:00")
+        try:
+            dt = datetime.fromisoformat(s)
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            return None
+
+    def collect():
+        try:
+            with urllib.request.urlopen(CATALOG, timeout=10) as r:
+                cat = json.load(r)
+        except Exception:
+            return "yente_catalog_up 0\n"
+        now = datetime.now(timezone.utc)
+        out, ages = [], []
+        for ds in cat.get("datasets", []):
+            name = ds.get("name", "unknown")
+            ts = next((_parse(ds.get(f)) for f in TS_FIELDS if _parse(ds.get(f))), None)
+            if ts:
+                age = (now - ts).total_seconds() / 3600.0
+                ages.append(age)
+                out.append('yente_dataset_age_hours{dataset="%s"} %.3f' % (name, age))
+        out.append("yente_sanctions_dataset_age_hours %.3f" % (max(ages) if ages else -1))
+        out.append("yente_catalog_datasets %d" % len(cat.get("datasets", [])))
+        out.append("yente_catalog_up 1")
+        return "\n".join(out) + "\n"
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = (collect() if self.path == "/metrics" else "ok\n").encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    HTTPServer(("0.0.0.0", 9000), H).serve_forever()
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yente-freshness
+  labels: { app: yente-freshness }
+spec:
+  selector: { app: yente-freshness }
+  ports:
+    - { name: metrics, port: 9000, targetPort: 9000 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yente-freshness
+  labels: { app: yente-freshness }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: yente-freshness }
+  template:
+    metadata:
+      labels: { app: yente-freshness }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534          # nobody — the shim only does HTTP + reads a mounted script
+        runAsGroup: 65534
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: exporter
+          image: {{ .Values.exporter.image }}
+          command: ["python", "/app/exporter.py"]
+          ports:
+            - { name: metrics, containerPort: 9000 }
+          resources: {{ .Values.exporter.resources | toYaml | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: script, mountPath: /app, readOnly: true }
+      volumes:
+        - name: script
+          configMap: { name: yente-freshness-exporter }
+{{- if .Values.serviceMonitor.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: yente-freshness
+  labels: { app: yente-freshness, release: kps }
+spec:
+  selector:
+    matchLabels: { app: yente-freshness }
+  endpoints:
+    - port: metrics
+      interval: 60s
+      path: /metrics
+{{- end }}
