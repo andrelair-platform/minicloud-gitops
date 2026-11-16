@@ -62,13 +62,6 @@ data:
         tagstyle: is-warning
         url: http://100.88.123.8:5240/MAAS
         target: _blank
-      - name: Harbor
-        icon: fas fa-anchor
-        subtitle: "Sovereign container registry — proxy caches + library project"
-        tag: Tailscale
-        tagstyle: is-warning
-        url: https://harbor.10.0.0.200.nip.io
-        target: _blank
       - name: MinIO
         icon: fas fa-database
         subtitle: "S3 object store — Velero backup target"

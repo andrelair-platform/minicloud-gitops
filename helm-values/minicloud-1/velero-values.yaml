@@ -83,11 +83,9 @@ schedules:
         - backup-test
         # Expendable or re-buildable PV data — excluded to prevent disk exhaustion:
         # Prometheus: ephemeral metrics, rebuilt automatically on restart
-        # Harbor: container images, re-pushable from source registries
         # ai: vLLM model cache is 12Gi of HuggingFace weights — re-downloadable,
         #     filled kopia repo to 22GiB and caused disk exhaustion 2026-08-07
         # langfuse: ClickHouse grew kopia repo to 14GiB — recover from DB dump if needed
         - monitoring
-        - harbor
         - ai
         - langfuse
