@@ -96,7 +96,7 @@ minicloud-app-deployment:
 # populated (oidc-client-id / oidc-client-secret) by the Authentik-provisioning step. OFF ⇒ the
 # optional secretKeyRef env above resolves empty ⇒ unauthenticated dev lookups (no pod churn).
 oidc:
-  enabled: false
+  enabled: true
 
 # KEDA scale-to-zero on the JetStream consumer lag (task #13). minReplicaCount 0 = the worker sleeps
 # until a doc lands. Because KEDA then owns .spec.replicas, the dev ArgoCD app ignoreDifferences it.
