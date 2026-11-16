@@ -84,7 +84,16 @@ spec:
             - { name: PAPERLESS_CSRF_TRUSTED_ORIGINS, value: "https://{{ .Values.host }}{{ if .Values.publicHost }},https://{{ .Values.publicHost }}{{ end }}" }
             - { name: PAPERLESS_PORT, value: "8000" }
             - { name: PAPERLESS_OCR_LANGUAGE, value: {{ .Values.paperless.ocrLanguage | quote }} }
+            {{- if .Values.tika.enabled }}
+            # Phase 3 office-OCR (ADR-001): Paperless routes office docs (docx/xlsx/pptx/odt…) through
+            # Tika (text extract) + Gotenberg (render-to-PDF) — the Paperless-native office pipeline
+            # (NOT Docling, which isn't a Paperless consumer). Scans/images keep the built-in Tesseract.
+            - { name: PAPERLESS_TIKA_ENABLED, value: "true" }
+            - { name: PAPERLESS_TIKA_ENDPOINT, value: "http://dms-tika:9998" }
+            - { name: PAPERLESS_TIKA_GOTENBERG_ENDPOINT, value: "http://dms-gotenberg:3000" }
+            {{- else }}
             - { name: PAPERLESS_TIKA_ENABLED, value: "false" }   # Phase 1: no office-doc OCR (PDF/image OCR is built-in)
+            {{- end }}
             - { name: PAPERLESS_TIME_ZONE, value: {{ .Values.paperless.timezone | quote }} }
             # --- bootstrap superuser (break-glass; SSO is the normal path) ---
             - { name: PAPERLESS_ADMIN_USER, value: admin }
