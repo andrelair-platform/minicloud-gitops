@@ -85,6 +85,7 @@ spec:
       labels: { app: yente-freshness }
     spec:
       automountServiceAccountToken: false
+      enableServiceLinks: false   # no legacy Docker-link env injection (hygiene)
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534          # nobody — the shim only does HTTP + reads a mounted script

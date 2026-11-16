@@ -28,6 +28,7 @@ spec:
       labels: { app: yente-opensearch }
     spec:
       automountServiceAccountToken: false
+      enableServiceLinks: false   # no legacy Docker-link env injection (hygiene)
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000          # the opensearch user in the image
