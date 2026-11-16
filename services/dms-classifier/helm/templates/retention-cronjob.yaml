@@ -1,0 +1,62 @@
+# Archive-only document retention (DMS Phase 3, #24; policy = ktayl-dms/docs/retention-policy.md). Runs the
+# classifier image (12-factor #12 admin-process) with `python -m app.retention`: copies every DMS document
+# to R2 classified by retention class + keep-until, idempotent via an `archived` tag. NO delete path;
+# DRY-RUN by default. Gated OFF by default — the owner enables it after reviewing the policy + a dry-run.
+{{- if .Values.retention.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dms-retention
+  labels: { app: dms-retention }
+spec:
+  schedule: {{ .Values.retention.schedule | default "30 2 * * *" | quote }}   # daily 02:30
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: {{ .Values.retention.activeDeadlineSeconds | default 1800 }}
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels: { app: dms-retention }
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: retention
+              image: "{{ index .Values "minicloud-app-deployment" "image" "repository" }}:{{ index .Values "minicloud-app-deployment" "image" "tag" }}"
+              command: ["python", "-m", "app.retention"]
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: [ALL] }
+              env:
+                - { name: HOME, value: /tmp }
+                - { name: PAPERLESS_URL, value: "http://paperless:80" }
+                - { name: PAPERLESS_ADMIN_USER, value: "admin" }
+                - name: PAPERLESS_ADMIN_PASSWORD
+                  valueFrom: { secretKeyRef: { name: paperless-secrets, key: admin-password } }
+                # ARCHIVE-ONLY + DRY-RUN by default (set retention.dryRun=false to actually upload).
+                - { name: RETENTION_DRY_RUN, value: {{ .Values.retention.dryRun | default true | quote }} }
+                - { name: R2_BUCKET, value: {{ .Values.retention.r2Bucket | default "dms-archive" | quote }} }
+                - { name: ARCHIVE_PREFIX, value: {{ .Values.retention.archivePrefix | default "dms-archive" | quote }} }
+                - name: R2_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: dms-retention-r2, key: R2_ENDPOINT, optional: true } }
+                - name: R2_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: dms-retention-r2, key: R2_ACCESS_KEY, optional: true } }
+                - name: R2_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: dms-retention-r2, key: R2_SECRET_KEY, optional: true } }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+              resources:
+                requests: { cpu: 50m, memory: 192Mi }
+                limits:   { cpu: 500m, memory: 512Mi }
+          volumes:
+            - { name: tmp, emptyDir: {} }
+{{- end }}
