@@ -8,34 +8,6 @@ metadata:
     release: kps
 spec:
   groups:
-    - name: harbor
-      rules:
-        - alert: HarborHighErrorRate
-          expr: |
-            sum(rate(harbor_core_http_request_total{code=~"5.."}[5m])) /
-            sum(rate(harbor_core_http_request_total[5m])) > 0.01
-          for: 5m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Harbor 5xx error rate above 1%"
-            description: |
-              Harbor core error rate is {{ $value | humanizePercentage }} over the last 5m.
-              Check: kubectl logs -n harbor deploy/harbor-core --tail=50
-              Common causes: registry unreachable, database connection exhausted.
-
-        - alert: HarborJobServiceErrors
-          expr: |
-            sum(rate(harbor_jobservice_task_total{status="Error"}[10m])) > 0
-          for: 10m
-          labels:
-            severity: warning
-          annotations:
-            summary: "Harbor job service tasks failing"
-            description: |
-              Harbor job service has errored tasks: {{ $value | printf "%.1f" }}/s over the last 10m.
-              Check: kubectl logs -n harbor deploy/harbor-jobservice --tail=50
-
     - name: nats
       rules:
         - alert: NATSSlowConsumers

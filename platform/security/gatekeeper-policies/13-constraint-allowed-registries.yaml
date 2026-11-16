@@ -57,7 +57,6 @@ spec:
   parameters:
     registries:
       # Private registry — platform images
-      - "harbor.10.0.0.200.nip.io/"
       - "harbor.devandre.sbs/"
       # Curated public registries — known trusted sources only
       - "docker.io/"

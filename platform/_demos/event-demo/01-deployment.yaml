@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: harbor.10.0.0.200.nip.io/docker-hub/natsio/nats-box:latest
+          image: docker.io/natsio/nats-box:latest
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh"]
           args:
