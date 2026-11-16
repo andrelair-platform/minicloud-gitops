@@ -133,11 +133,18 @@ backstage:
             # resolver (email local-part → user, groups claim → ownership). Referencing the built-in
             # named resolvers would fail ("resolver not available") since the stock module is removed.
     # RBAC (IDP #5) — Admin / Developer / read-only by Authentik group. rbacPolicy.ts reads these.
-    # SAFE DEFAULT: adminRefs EMPTY → policy allows all (enforcement OFF). Set adminRefs to turn it on.
+    # ENFORCEMENT ON. Admin via EITHER path (resolver slugs email local-part → user ref; Authentik
+    # groups → group:default/<slug>):
+    #   - group:default/platform-admins  (owner 100001 kanmegnea@devandre.sbs is a member)
+    #   - user:default/kanmegnea         (fallback — covers 100001 AND the akadmin break-glass,
+    #                                     both have email local-part 'kanmegnea')
+    # Revert adminRefs to [] to fall back to allow-all if anything is off.
     permission:
       enabled: true
       rbac:
-        adminRefs: []
+        adminRefs:
+          - group:default/platform-admins
+          - user:default/kanmegnea
         developerGroups:
           - group:default/developers
     integrations:
