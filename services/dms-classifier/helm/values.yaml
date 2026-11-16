@@ -114,3 +114,14 @@ keda:
 # Ingress default-deny for the worker (task #13). Egress stays open (Cilium platform convention).
 networkPolicy:
   enabled: true
+
+# Archive-only document retention CronJob (task #22; policy = ktayl-dms/docs/retention-policy.md). Runs the
+# classifier image with `python -m app.retention`. OFF by default — the owner enables it after reviewing the
+# retention policy + a dry-run. dryRun: true = REPORT ONLY (no uploads); there is NO delete path at all.
+retention:
+  enabled: false
+  schedule: "30 2 * * *"      # daily 02:30
+  dryRun: true                # report what would be archived; flip to false to actually upload to R2
+  r2Bucket: "dms-archive"
+  archivePrefix: "dms-archive"
+  activeDeadlineSeconds: 1800
