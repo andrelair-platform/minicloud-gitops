@@ -85,6 +85,14 @@ spec:
               kubernetes.io/metadata.name: messaging
       ports:
         - { protocol: TCP, port: 4222 }
+    # yente sanctions-screening engine (RC-02 S1): the screening module's YenteClient calls
+    # http://yente.yente.svc:8000/match|catalog. Service `yente` lives in ns `yente`.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: yente
+      ports:
+        - { protocol: TCP, port: 8000 }
     # public TLS (Stripe test mode / external APIs); private ranges excluded (handled by the rules above)
     - to:
         - ipBlock:
