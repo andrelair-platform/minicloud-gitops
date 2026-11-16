@@ -125,11 +125,21 @@ backstage:
             clientSecret: ${AUTH_OIDC_CLIENT_SECRET}
             callbackUrl: https://backstage.10.0.0.200.nip.io/api/auth/oidc/handler/frame
             prompt: login
-            additionalScopes: []
-            signIn:
-              resolvers:
-                - resolver: emailMatchingUserEntityProfileEmail
-                - resolver: emailLocalPartMatchingUserEntityName
+            # Request the Authentik groups claim (emitted by the 'Backstage groups' scope-mapping) so
+            # the custom sign-in resolver (oidcGroupsProvider.ts) can map it to ownership refs.
+            additionalScopes:
+              - groups
+            # NO signIn.resolvers here — the custom oidc provider module registers its own sign-in
+            # resolver (email local-part → user, groups claim → ownership). Referencing the built-in
+            # named resolvers would fail ("resolver not available") since the stock module is removed.
+    # RBAC (IDP #5) — Admin / Developer / read-only by Authentik group. rbacPolicy.ts reads these.
+    # SAFE DEFAULT: adminRefs EMPTY → policy allows all (enforcement OFF). Set adminRefs to turn it on.
+    permission:
+      enabled: true
+      rbac:
+        adminRefs: []
+        developerGroups:
+          - group:default/developers
     integrations:
       github:
         - host: github.com
