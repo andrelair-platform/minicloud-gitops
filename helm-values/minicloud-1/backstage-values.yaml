@@ -14,9 +14,9 @@ backstage:
     backstage.io/kubernetes-id: backstage
 
   image:
-    # Phase 24 custom image — built from andrelair-platform/minicloud-backstage
-    registry: harbor.10.0.0.200.nip.io
-    repository: library/backstage
+    # Phase 24 custom image — built from andrelair-platform/minicloud-backstage (ghcr, public pkg)
+    registry: ghcr.io
+    repository: andrelair-platform/backstage
     # git SHA: d9b5356 — built 2026-11-15 by CI
     tag: "d9b5356-amd64"
 
