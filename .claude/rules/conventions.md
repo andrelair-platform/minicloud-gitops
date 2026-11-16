@@ -240,6 +240,7 @@ Every repo must have these three files at the root:
 - [ ] `CONTRIBUTING.md` — branch rules, commit style, PR requirements
 - [ ] **If the repo owns a relational schema:** `.tbls.yml` + committed `docs/data-model/` baseline + the `schema-erd-drift` CI job (`schema-erd.md`) — it then auto-appears on the central ERD index (no extra step). **Mandatory for DB repos.**
 - [ ] Central docs site (`minicloud-platform-docs`) — overview + pointer page for the service (**mandatory**, `documentation.md`)
+- [ ] **Capability register** — add the service's deployed system(s) as a `SYS-` (vendor) / `APP-` (custom) row in `minicloud-platform-docs/data/capability-register.csv` (**mandatory for any deployed tool, built or adopted**, `capability-register.md`)
 - [ ] Docusaurus `website/` — **OPTIONAL** (opt-in for flagship products only; see Per-repo static documentation section above). If created: GitHub Pages enabled — `gh api repos/.../pages --method POST -f "build_type=workflow"`
 - [ ] Release automation — see Automated releases section below
 
