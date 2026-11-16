@@ -58,9 +58,13 @@ minicloud-app-deployment:
     - name: LITELLM_API_KEY
       valueFrom: { secretKeyRef: { name: dms-classifier-litellm, key: master-key } }
     - { name: CLASSIFIER_MODEL, value: "tier-economy" }
-    # Systems of record (validate the candidate) — confirm the exact dev routes at QA time.
-    - { name: CLAIMS_LOOKUP_URL, value: "http://ktayl-claims.ktayl-claims.svc:8080/api/claims" }
-    - { name: POLICY_LOOKUP_URL, value: "http://ktayl-core.ktayl-core.svc:8080/api/billing/policies" }
+    # Systems of record (validate the candidate). DEV targets confirmed live at QA time (2026-11-16):
+    #   claims dev = svc ktayl-claims in ns `claims`, port 80 (container 8080); real claims exist.
+    #   core  dev = svc ktayl-core  in ns `ktayl-core`, port 80; GET-by-policy requires M2M auth (401) —
+    #     policy validation stays HITL (needs-review) until LOOKUP_BEARER is wired (precursor story).
+    # NOTE: dev-only service today; when a prod DMS is built, override these per-env (claims-prod / ktayl-core-prod).
+    - { name: CLAIMS_LOOKUP_URL, value: "http://ktayl-claims.claims.svc/api/claims" }
+    - { name: POLICY_LOOKUP_URL, value: "http://ktayl-core.ktayl-core.svc/api/billing/policies" }
     - { name: CONFIDENCE_THRESHOLD, value: "0.7" }
     - { name: ENVIRONMENT, value: "development" }
     # Langfuse (LLMOps) — keys wired as a follow-up (dedicated project); tracing no-ops until then.

@@ -50,6 +50,28 @@ spec:
       ports:
         - { protocol: TCP, port: 8080 }
 ---
+# DMS classifier (ns ktayl-dms) → the claims read API (:8080) to VALIDATE a candidate claim#
+# (FR-02, read-only). The classifier is a known consumer of the claims system-of-record; without this
+# its lookup from ns ktayl-dms is default-denied → times out → every doc is forced to needs-review.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-dms-classifier
+  labels:
+    app.kubernetes.io/name: ktayl-claims
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: ktayl-claims
+      app.kubernetes.io/name: minicloud-app-deployment
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ktayl-dms }
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
 # monitoring scrape (Actuator /actuator/prometheus on :8080)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
