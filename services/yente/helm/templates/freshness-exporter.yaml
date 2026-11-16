@@ -16,14 +16,22 @@ data:
     from http.server import BaseHTTPRequestHandler, HTTPServer
 
     CATALOG = "http://yente:8000/catalog"
-    TS_FIELDS = ("last_export", "last_change", "updated_at", "index_timestamp", "version")
+    # yente /catalog exposes the data recency as a COMPACT version string (version=YYYYMMDDHHMMSS,
+    # index_version=YYYYMMDDHHMMSS-suffix) — NOT an ISO timestamp. Prefer those, fall back to ISO fields.
+    TS_FIELDS = ("version", "index_version", "last_export", "last_change", "updated_at")
 
     def _parse(s):
         if not s:
             return None
-        s = str(s).replace("Z", "+00:00")
+        s = str(s)
+        digits = "".join(c for c in s if c.isdigit())
+        if len(digits) >= 14:  # compact OpenSanctions version YYYYMMDDHHMMSS[-suffix]
+            try:
+                return datetime.strptime(digits[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+            except Exception:
+                pass
         try:
-            dt = datetime.fromisoformat(s)
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
             return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
         except Exception:
             return None
