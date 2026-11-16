@@ -13,7 +13,7 @@ minicloud-app-deployment:
   selectorLabels:
     app: minicloud-plane
   image:
-    repository: harbor.10.0.0.200.nip.io/library/minicloud-plane
+    repository: ghcr.io/andrelair-platform/minicloud-plane
   workload:
     kind: Rollout
     rollout:

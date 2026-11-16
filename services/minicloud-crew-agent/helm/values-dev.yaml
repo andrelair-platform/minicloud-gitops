@@ -1,9 +1,11 @@
 # dev — Harbor image, 1 replica, ns minicloud-crew-agent-dev, no PDB, no ingress/cert.
 minicloud-app-deployment:
   image:
-    repository: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
+    repository: ghcr.io/andrelair-platform/minicloud-crew-agent
     tag: 668ea0e
+  imagePullSecrets: [{name: ghcr-pull}]   # Internal ghcr pkg (Harbor retirement)
   workload:
     replicas: 1
   podDisruptionBudget:
     enabled: false
+createGhcrPullSecret: true   # renders the dev-only ghcr-pull ES (Vault platform/ghcr)

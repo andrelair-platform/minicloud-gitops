@@ -13,7 +13,7 @@
 # → footprint is ~1 pod at 100m/64Mi: negligible when a preview exists, zero when none do.
 minicloud-app-deployment:
   image:
-    repository: harbor.10.0.0.200.nip.io/library/platform-demo
+    repository: ghcr.io/andrelair-platform/platform-demo
     # tag is injected per-PR by the Application's helm.valuesObject (pr-<n>-<sha>)
 
   # Plain Deployment — no canary Rollout (the AnalysisTemplate wrapper template still renders but is

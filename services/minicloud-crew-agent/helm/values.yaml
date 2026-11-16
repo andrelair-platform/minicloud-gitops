@@ -15,7 +15,7 @@ minicloud-app-deployment:
   podLabels:
     app: minicloud-crew-agent          # ai-ns allow-crew-agent-internet-egress selects this
   image:
-    repository: harbor.10.0.0.200.nip.io/library/minicloud-crew-agent
+    repository: ghcr.io/andrelair-platform/minicloud-crew-agent
   ports:
     - { name: http, containerPort: 8081, protocol: TCP }
   service:
