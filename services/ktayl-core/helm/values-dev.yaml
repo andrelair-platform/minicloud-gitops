@@ -24,5 +24,11 @@ minicloud-app-deployment:
         secretKeyRef: { name: ktayl-core-cnpg-app, key: password }
     - name: BILLING_NATS_URL
       value: ""
+    # Multi-issuer allowlist (ADR-016) — override the application.yml default to ADD the dms-classifier
+    # M2M issuer alongside the existing ktayl-core (SSO) + ktayl-underwriting (bind) issuers, so the DMS
+    # classifier's client-credentials token is accepted on the policy-lookup GET (task #14). Harmless
+    # ahead of the Authentik `dms-classifier` provider existing — it's just an extra allowed issuer.
+    - name: AUTHENTIK_TRUSTED_ISSUERS
+      value: "https://auth.devandre.sbs/application/o/ktayl-core/,http://authentik-server.authentik.svc:80/application/o/ktayl-underwriting/,http://authentik-server.authentik.svc:80/application/o/dms-classifier/"
 tlsCert:
   dnsName: ktayl-core.10.0.0.200.nip.io
