@@ -14,11 +14,16 @@ backstage:
     backstage.io/kubernetes-id: backstage
 
   image:
-    # Phase 24 custom image — built from andrelair-platform/minicloud-backstage
+    # Phase 24 custom image — built from andrelair-platform/minicloud-backstage.
+    # Registry: ghcr.io (Harbor decommissioned 2026-11-16). The CI bump repoints registry+repository+tag;
+    # this still shows harbor until the first ghcr build's bump PR lands (safe — the running image is
+    # unaffected). pullSecrets lets the Deployment pull the Internal ghcr package (ghcr-pull ESO).
     registry: harbor.10.0.0.200.nip.io
     repository: library/backstage
     # git SHA: d9b5356 — built 2026-11-15 by CI
     tag: "d9b5356-amd64"
+    pullSecrets:
+      - ghcr-pull
 
   resources:
     requests: { cpu: 100m, memory: 384Mi }

@@ -19,6 +19,11 @@ spec:
     - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
       targetRevision: main
       ref: values
+    # Extra manifests: the ghcr-pull imagePullSecret (ESO) so the Deployment can pull the custom
+    # backstage image from ghcr.io after the Harbor decommission.
+    - repoURL: https://github.com/andrelair-platform/minicloud-gitops.git
+      targetRevision: main
+      path: platform/shared-services/backstage
   destination:
     server: https://kubernetes.default.svc
     namespace: backstage
@@ -29,3 +34,12 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
