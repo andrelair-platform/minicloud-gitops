@@ -9,10 +9,15 @@ spec:
   # ktayl-policy-service trap, gitops.md) → auto-promotion would stall. Keying Freight on the git COMMIT
   # is timestamp-independent → immune. Stages pin image.tag = commitFrom(...).ID[0:7] (== the CI 7-char
   # short-SHA tag). Public source repo → no git credential for the subscription.
-  # Phantom-commit guard via INCLUDEPATHS (allowlist) — the EXACT mirror of the CI `code` paths-filter
-  # (the set that triggers build-and-push). Freight is created ONLY for commits that actually build an
-  # image, so a tests-/docs-/api-only commit never phantom-promotes a non-existent tag. (A denylist
-  # excludePaths can't mirror an allowlist filter — it missed tests/ → 7db08ea ErrImagePull, 2026-11-14.)
+  # Phantom-commit guard via EXCLUDEPATHS (denylist). NOTE (2026-11-17): the Kargo admission webhook in
+  # this version does NOT honor `includePaths` — it reverts the git subscription to `excludePaths`, leaving
+  # the Warehouse perpetually OutOfSync (ArgoCD applies includePaths → webhook reverts → loop). So the
+  # 2026-11-14 switch to includePaths was COSMETIC (git-only); the live Warehouse kept the old excludePaths
+  # that did NOT list `api/` → the docs-only OpenAPI commit bcbc574 produced phantom Freight → ImagePullBackOff
+  # on dev (never-built tag). Fix: use the honored model (excludePaths) and EXCLUDE every non-image path.
+  # Over-excluding is SAFE (a docs-only commit that happens to rebuild an identical image just isn't
+  # promoted); UNDER-excluding is the dangerous direction (promotes a never-built tag). So exclude all
+  # docs/config surfaces: docs, bmad, catalog-info.yaml, api (OpenAPI), website, and every *.md.
   interval: 5m
   freightCreationPolicy: Automatic
   subscriptions:
@@ -20,11 +25,10 @@ spec:
         repoURL: https://github.com/andrelair-platform/ktayl-core.git
         branch: main
         commitSelectionStrategy: NewestFromBranch
-        includePaths:
-          - src
-          - pom.xml
-          - Dockerfile
-          - .github/workflows/ci.yml
-          - .tbls.yml
-          - .trivyignore
-          - docs/data-model
+        excludePaths:
+          - docs
+          - bmad
+          - catalog-info.yaml
+          - api
+          - website
+          - "regex:.*\\.md$"
