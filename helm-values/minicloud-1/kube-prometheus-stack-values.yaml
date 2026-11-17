@@ -555,6 +555,16 @@ kubeControllerManager:
   enabled: false
 kubeScheduler:
   enabled: false
+# coreDns + kubeProxy default to enabled:true and render Services INTO kube-system
+# (kps-coredns / kps-kube-proxy). The minicloud-platform AppProject denies kube-system
+# (!kube-system guardrail), so those two tasks fail → the whole app sync is invalid and
+# aborts (blocking every other change). Disabled here to keep the guardrail intact; the
+# low-value k3s control-plane scrape targets are the accepted cost (same pattern as the
+# three components above). The pre-existing orphaned Services were deleted out-of-band.
+coreDns:
+  enabled: false
+kubeProxy:
+  enabled: false
 
 kube-state-metrics:
   resources:
