@@ -109,6 +109,11 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
+        # SUB-02: ktayl-core's submission module hands a routed submission off to POST /v1/submissions.
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ktayl-core }
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ktayl-core-prod }
       ports:
         - { protocol: TCP, port: 8000 }
 ---
