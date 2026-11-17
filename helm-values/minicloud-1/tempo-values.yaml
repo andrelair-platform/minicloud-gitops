@@ -23,7 +23,7 @@ tempo:
         - ALL
     readOnlyRootFilesystem: false
 
-  retention: 336h
+  retention: 72h   # 14d→3d (2026-11-17 right-sizing) — traces are high-volume; 3d is ample for a lab, reclaims storage
 
   # OTLP gRPC (4317) + HTTP (4318) receivers.
   # The OTel Collector DaemonSet (in this same namespace) will export traces
