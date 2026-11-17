@@ -117,7 +117,13 @@ spec:
               # funded + EU, so the SAME model serves dev and prod (DORA-clean).
               # Cost is bounded — the VLM is called only at ingest, only for figures
               # that pass the pre-filter (never per chat/request).
-              DEV_FREE="[\"onprem\",\"eu\",\"ollama-cloud\",\"nvidia-embed\",\"nvidia-nano-30b\",\"nvidia-vision-90b\",\"nvidia-content-safety\",\"azure-gpt-4.1-mini\",${ALIASES}]"
+              # claude-haiku (Claude Haiku 4.5) is the SECOND deliberate paid exception:
+              # the free US/CN generation tier collapsed — ollama-cloud ran out of credits
+              # (402) and the nvidia-nano-30b fallback is EOL (410, retired 2026-09-01), so
+              # the dev backend's chat path (/health/detailed llm.responsive) went down and
+              # blocked every dev→prod promotion. Haiku 4.5 is the cheapest Claude model the
+              # funded ANTHROPIC key can reach; cost is bounded by this team's $5/30d budget.
+              DEV_FREE="[\"onprem\",\"eu\",\"ollama-cloud\",\"nvidia-embed\",\"nvidia-nano-30b\",\"nvidia-vision-90b\",\"nvidia-content-safety\",\"azure-gpt-4.1-mini\",\"claude-haiku\",${ALIASES}]"
 
               seed_team "open-webui"   "Open WebUI Users"       100000  60  10 "${GOVERNED}"
               seed_team "agents"       "Agent Runtimes"         150000  90  15 "${GOVERNED}"
