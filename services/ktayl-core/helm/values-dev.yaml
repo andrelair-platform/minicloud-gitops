@@ -31,11 +31,12 @@ minicloud-app-deployment:
     # Multi-issuer allowlist (ADR-016) — override the application.yml default to ADD the dms-classifier
     # M2M issuer alongside the existing ktayl-core (SSO) + ktayl-underwriting (bind) issuers, so the DMS
     # classifier's client-credentials token is accepted on the policy-lookup GET (task #14).
-    # EXACT-MATCH gotcha (verified live 2026-11-16): Authentik stamps `iss` from the request Host header,
-    # which drops the default :80 → the token's iss is `…authentik.svc/application/o/dms-classifier/`
-    # (NO :80). ktayl-core's TrustedIssuerValidator does an exact string match, so the allowlist entry
-    # MUST be the no-:80 form. (The :80 on the ktayl-underwriting entry is pre-existing; left untouched.)
+    # EXACT-MATCH gotcha (verified live 2026-11-16/17): Authentik stamps `iss` from the request Host header,
+    # which drops the default :80 → an in-cluster M2M token's iss is `…authentik.svc/application/o/<app>/`
+    # (NO :80). ktayl-core's TrustedIssuerValidator does an exact string match, so EVERY internal-host entry
+    # MUST be the no-:80 form. (The ktayl-underwriting :80 was fixed 2026-11-17 — it had silently broken
+    # underwriting binding on prod, caught by the live prod bind-gate test.)
     - name: AUTHENTIK_TRUSTED_ISSUERS
-      value: "https://auth.devandre.sbs/application/o/ktayl-core/,http://authentik-server.authentik.svc:80/application/o/ktayl-underwriting/,http://authentik-server.authentik.svc/application/o/dms-classifier/"
+      value: "https://auth.devandre.sbs/application/o/ktayl-core/,http://authentik-server.authentik.svc/application/o/ktayl-underwriting/,http://authentik-server.authentik.svc/application/o/dms-classifier/"
 tlsCert:
   dnsName: ktayl-core.10.0.0.200.nip.io
