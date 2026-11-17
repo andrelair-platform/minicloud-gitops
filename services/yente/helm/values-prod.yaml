@@ -1,0 +1,7 @@
+# prod overlay — ns yente-prod. The dedicated PROD sanctions engine consumed by ktayl-core-prod's
+# screening module (S1/S2/S4) — a prod compliance control must NOT depend on the dev yente. Single-node
+# OpenSearch (same shape as dev; the lists are identical public data, so no extra capacity needed); the
+# screening module reaches it in-cluster at http://yente.yente-prod.svc:8000. No ingress (internal engine).
+opensearch:
+  storage: 8Gi
+yente: {}

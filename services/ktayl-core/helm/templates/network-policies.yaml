@@ -85,12 +85,17 @@ spec:
               kubernetes.io/metadata.name: messaging
       ports:
         - { protocol: TCP, port: 4222 }
-    # yente sanctions-screening engine (RC-02 S1): the screening module's YenteClient calls
-    # http://yente.yente.svc:8000/match|catalog. Service `yente` lives in ns `yente`.
+    # yente sanctions-screening engine (RC-02 S1/S2/S4): the screening module's YenteClient calls
+    # http://yente.<ns>.svc:8000/match|catalog. dev → ns `yente`, prod → ns `yente-prod` (a prod
+    # compliance control must not depend on the dev engine). Both allowed here (common template, both
+    # envs); each env's SCREENING_YENTE_BASE_URL points at its own engine, so the other is simply unused.
     - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: yente
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: yente-prod
       ports:
         - { protocol: TCP, port: 8000 }
     # public TLS (Stripe test mode / external APIs); private ranges excluded (handled by the rules above)
