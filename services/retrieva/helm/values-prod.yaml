@@ -32,7 +32,7 @@ worker:
 backend:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-backend
-    tag: 372b620
+    tag: 63022d0
   workload:
     replicas: 2
   env:
