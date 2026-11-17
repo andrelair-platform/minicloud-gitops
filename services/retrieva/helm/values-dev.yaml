@@ -51,12 +51,12 @@ backend:
     - { name: OLLAMA_BASE_URL, value: "http://litellm.ai.svc.cluster.local:4000" }
     - { name: AZURE_OPENAI_ENDPOINT, value: "http://litellm.ai.svc.cluster.local:4000" }
     - { name: AZURE_OPENAI_API_KEY, valueFrom: { secretKeyRef: { name: retrieva-secrets, key: litellm-api-key } } }
-    - { name: AZURE_OPENAI_LLM_DEPLOYMENT, value: "ollama-cloud" }      # dev free tier
+    - { name: AZURE_OPENAI_LLM_DEPLOYMENT, value: "claude-haiku" }      # dev chat: Claude Haiku 4.5 (free tier ollama-cloud ran out of credits)
     - { name: AZURE_OPENAI_EMBEDDING_DEPLOYMENT, value: "nvidia-embed" }
     - { name: AZURE_OPENAI_API_VERSION, value: "2024-02-15-preview" }
-    - { name: LLM_MODEL, value: "ollama-cloud" }
+    - { name: LLM_MODEL, value: "claude-haiku" }
     - { name: EMBEDDING_MODEL, value: "nvidia-embed" }
-    - { name: JUDGE_LLM_MODEL, value: "ollama-cloud" }
+    - { name: JUDGE_LLM_MODEL, value: "claude-haiku" }
     # #618 — LLM reranker isolates the on-topic clause before the judge (dev: 0.500 -> 0.583, free).
     # Off in prod until validated there; fail-open so it can never make an assessment worse.
     - { name: ASSESSMENT_RERANK_ENABLED, value: "false" }  # off: full-doc A/B showed the weak-model LLM reranker net-NEGATIVE (0.556->0.444), drops the relevant chunk
