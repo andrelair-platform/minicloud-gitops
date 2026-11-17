@@ -16,6 +16,14 @@ minicloud-app-deployment:
   service:
     ports:
       - { name: http, port: 80, targetPort: http }
+  # Metrics (ADR-012 observability triad): scrape Micrometer's /actuator/prometheus. The endpoint is
+  # exposed (management.endpoints) + permitted unauthenticated in SecurityConfig; the library renders a
+  # ServiceMonitor the platform Prometheus discovers (empty serviceMonitorSelector = selects all).
+  serviceMonitor:
+    enabled: true
+    path: /actuator/prometheus
+    port: http
+    interval: 30s
   # JVM (Spring Boot) — heavier than the Go services; give it real headroom.
   resources:
     requests: { cpu: 250m, memory: 640Mi }

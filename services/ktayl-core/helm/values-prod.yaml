@@ -57,6 +57,11 @@ minicloud-app-deployment:
       value: "4111 - Clients - Ventes de biens ou de prestations de services - KS"
     - name: LEDGER_ERPNEXT_PARTY
       value: "Ktayl Policyholders"
+    # RC-02 screening (S1/S2/S4): prod screens against the PROD yente engine (ns yente-prod), NEVER the
+    # dev one — a prod sanctions control must not depend on a dev-namespace workload. The screening module
+    # fails CLOSED, so this MUST resolve to a healthy yente-prod before promotion (yente-prod stood up first).
+    - name: SCREENING_YENTE_BASE_URL
+      value: "http://yente.yente-prod.svc:8000"
 tlsCert:
   dnsName: ktayl-core-prod.10.0.0.200.nip.io
 # Stripe payment (BILL-013) — prod is where the live test-mode PSP + the public webhook route run.

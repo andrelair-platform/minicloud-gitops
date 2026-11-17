@@ -1,0 +1,35 @@
+---
+# yente-prod namespace (RC-02): the dedicated PROD sanctions engine — single-node OpenSearch (the heavy,
+# JVM) + the yente API + the freshness exporter. Consumed by ktayl-core-prod's screening module. Same
+# footprint as dev (identical public-list data; no extra capacity needed).
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: yente-prod-quota
+  namespace: yente-prod
+spec:
+  hard:
+    requests.cpu: "1"
+    limits.cpu: "4"
+    requests.memory: 2560Mi
+    limits.memory: 6Gi
+    count/pods: "8"
+    persistentvolumeclaims: "2"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: yente-prod-limits
+  namespace: yente-prod
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 1Gi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      max:
+        cpu: "2"
+        memory: 3Gi
