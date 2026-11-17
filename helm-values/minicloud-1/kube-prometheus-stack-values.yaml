@@ -102,8 +102,11 @@ prometheus:
       - exemplar-storage
       - memory-snapshot-on-shutdown
     walCompression: true
-    retention: 10d
-    retentionSize: 27GB
+    # Right-sized for a resource-constrained lab (2026-11-17): 10d→7d trims the TSDB (disk + index/
+    # compaction memory). The real memory lever is active-series cardinality — see the kubelet
+    # cAdvisorMetricRelabelings drop block below. Reversible: raise if history is needed.
+    retention: 7d
+    retentionSize: 20GB
     resources:
       requests:
         cpu: 500m
@@ -561,6 +564,19 @@ kubeScheduler:
 # aborts (blocking every other change). Disabled here to keep the guardrail intact; the
 # low-value k3s control-plane scrape targets are the accepted cost (same pattern as the
 # three components above). The pre-existing orphaned Services were deleted out-of-band.
+# Cardinality control (2026-11-17): cAdvisor is by far the largest active-series source, and Prometheus
+# memory is driven by active series. Drop the high-cardinality, rarely-dashboarded container_* metrics
+# (network/udp/tcp usage, tasks_state, fs granular counters, blkio-per-device, memory_failures, swap,
+# spec_*). The metrics the standard k8s dashboards use — container_cpu_usage_seconds_total,
+# container_memory_working_set_bytes, container_network_(receive|transmit)_bytes_total — are KEPT.
+# This cuts Prometheus RSS materially without breaking the golden-signal views. Reversible: remove to
+# restore full cardinality. (Well-established kube-prometheus-stack reduction list.)
+kubelet:
+  serviceMonitor:
+    cAdvisorMetricRelabelings:
+      - sourceLabels: [__name__]
+        action: drop
+        regex: container_(network_tcp_usage_total|network_udp_usage_total|tasks_state|cpu_load_average_10s|memory_failures_total|memory_mapped_file|memory_swap|fs_reads_merged_total|fs_writes_merged_total|fs_read_seconds_total|fs_write_seconds_total|fs_io_current|fs_io_time_seconds_total|fs_io_time_weighted_seconds_total|blkio_device_usage_total|spec_memory_.*|spec_cpu_.*)
 coreDns:
   enabled: false
 kubeProxy:
