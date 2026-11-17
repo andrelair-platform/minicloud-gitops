@@ -9,15 +9,17 @@ spec:
   # ktayl-policy-service trap, gitops.md) → auto-promotion would stall. Keying Freight on the git COMMIT
   # is timestamp-independent → immune. Stages pin image.tag = commitFrom(...).ID[0:7] (== the CI 7-char
   # short-SHA tag). Public source repo → no git credential for the subscription.
-  # Phantom-commit guard via EXCLUDEPATHS (denylist). NOTE (2026-11-17): the Kargo admission webhook in
-  # this version does NOT honor `includePaths` — it reverts the git subscription to `excludePaths`, leaving
-  # the Warehouse perpetually OutOfSync (ArgoCD applies includePaths → webhook reverts → loop). So the
-  # 2026-11-14 switch to includePaths was COSMETIC (git-only); the live Warehouse kept the old excludePaths
-  # that did NOT list `api/` → the docs-only OpenAPI commit bcbc574 produced phantom Freight → ImagePullBackOff
-  # on dev (never-built tag). Fix: use the honored model (excludePaths) and EXCLUDE every non-image path.
-  # Over-excluding is SAFE (a docs-only commit that happens to rebuild an identical image just isn't
-  # promoted); UNDER-excluding is the dangerous direction (promotes a never-built tag). So exclude all
-  # docs/config surfaces: docs, bmad, catalog-info.yaml, api (OpenAPI), website, and every *.md.
+  # Phantom-commit guard via EXCLUDEPATHS (denylist). ROOT CAUSE (2026-11-17, corrected): this Warehouse
+  # was once configured with `excludePaths`; the 2026-11-14 switch to `includePaths` in git never applied
+  # IN PLACE — the kargo-ktayl-core app sat OutOfSync (a path-filter change on an existing git subscription
+  # doesn't converge via SSA), so the LIVE Warehouse kept the old excludePaths that did NOT list `api/` →
+  # the docs-only OpenAPI commit bcbc574 produced phantom Freight → ImagePullBackOff on dev (never-built
+  # tag). (The webhook DOES honor includePaths on a FRESH Warehouse — dms-classifier uses includePaths
+  # live+Synced; the earlier "webhook ignores includePaths" note was wrong.) Fix applied: delete+recreate
+  # the Warehouse so git wins (gitops.md pattern), with a comprehensive denylist. Over-excluding is SAFE
+  # (a docs-only commit that rebuilds an identical image just isn't promoted); UNDER-excluding is the
+  # dangerous direction (promotes a never-built tag). Exclude all docs/config surfaces:
+  # docs, bmad, catalog-info.yaml, api (OpenAPI), website, and every *.md.
   interval: 5m
   freightCreationPolicy: Automatic
   subscriptions:
