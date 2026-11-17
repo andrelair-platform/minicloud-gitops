@@ -10,7 +10,7 @@ minicloud-app-deployment:
     # bcbc574 (OpenAPI PR #66, CI skipped the image build) during the control-plane-wedge incident
     # (2026-11-17) → :bcbc574 was never pushed → ImagePullBackOff. Reverted to the last real image.
     # Follow-up: fix the git-Warehouse so a docs-only commit can't produce freight + delete that freight.
-    tag: f9c87b6
+    tag: 604c7d3
   podLabels:
     app: ktayl-core
   workload:
