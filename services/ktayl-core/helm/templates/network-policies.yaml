@@ -98,6 +98,19 @@ spec:
               kubernetes.io/metadata.name: yente-prod
       ports:
         - { protocol: TCP, port: 8000 }
+    # underwriting service (SUB-02 handoff): the submission module hands a ROUTED submission off to the
+    # `ktayl-underwriting` FastAPI backend's `POST /v1/submissions` (Service :80 → pod :8000). dev → ns
+    # `underwriting`, prod → ns `underwriting-prod`. Netpols match the POD port (8000), not the Service
+    # port — same as the ktayl-core ingress rule (dms-classifier → :8080, the pod port).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: underwriting
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: underwriting-prod
+      ports:
+        - { protocol: TCP, port: 8000 }
     # public TLS (Stripe test mode / external APIs); private ranges excluded (handled by the rules above)
     - to:
         - ipBlock:
