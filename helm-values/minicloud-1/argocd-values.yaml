@@ -182,6 +182,16 @@ configs:
       g, Direction IT / SI, role:admin
       g, Direction Cybersécurité, role:readonly
       g, Direction Audit Interne, role:readonly
+      # ktayl-iam RBAC (platform-access-matrix wave 1; SoR = access-role-model.md). Additive.
+      # deployer = readonly + app sync (the DevOps "sync + read" tier).
+      p, role:deployer, applications, sync, */*, allow
+      g, role:deployer, role:readonly
+      g, ktayl-admin, role:admin
+      g, ktayl-argocd-admin, role:admin
+      g, ktayl-devops, role:deployer
+      g, ktayl-argocd-readonly, role:readonly
+      g, ktayl-developer, role:readonly
+      g, ktayl-sre, role:readonly
     scopes: '[groups]'
 
 server:

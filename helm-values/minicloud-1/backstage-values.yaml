@@ -142,11 +142,13 @@ backstage:
     permission:
       enabled: true
       rbac:
+        # ktayl-iam canonical groups (SoR = access-role-model.md). user:default/kanmegnea kept as
+        # break-glass fallback so the owner stays admin even if the group claim path is off.
         adminRefs:
-          - group:default/platform-admins
+          - group:default/ktayl-admin
           - user:default/kanmegnea
         developerGroups:
-          - group:default/developers
+          - group:default/ktayl-developer
     integrations:
       github:
         - host: github.com
