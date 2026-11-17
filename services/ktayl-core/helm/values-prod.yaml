@@ -62,6 +62,13 @@ minicloud-app-deployment:
     # fails CLOSED, so this MUST resolve to a healthy yente-prod before promotion (yente-prod stood up first).
     - name: SCREENING_YENTE_BASE_URL
       value: "http://yente.yente-prod.svc:8000"
+    # Trusted-issuer allowlist (ADR-016). The app.yml DEFAULT lists ktayl-underwriting WITH `:80`, but
+    # Authentik stamps `iss` from the request Host and DROPS the default `:80` → the underwriting M2M
+    # token's iss is the NO-`:80` form → exact-match fails → 401 (underwriting bind on prod was broken).
+    # Override here with the correct no-`:80` underwriting issuer (+ keep the ktayl-core SSO issuer).
+    # (Root cause is the `:80` in the app.yml default — a ktayl-core follow-up; this unblocks prod now.)
+    - name: AUTHENTIK_TRUSTED_ISSUERS
+      value: "https://auth.devandre.sbs/application/o/ktayl-core/,http://authentik-server.authentik.svc/application/o/ktayl-underwriting/"
 tlsCert:
   dnsName: ktayl-core-prod.10.0.0.200.nip.io
 # Stripe payment (BILL-013) — prod is where the live test-mode PSP + the public webhook route run.
