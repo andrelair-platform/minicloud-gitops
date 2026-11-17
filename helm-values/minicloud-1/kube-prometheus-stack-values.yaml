@@ -356,6 +356,13 @@ grafana:
   #                 Réassurance, Juridique, Opérations, Audit
   #   (no access):  Direction Commercial, RH, Services Généraux — blocked at Authentik binding layer
   # Local admin account (~/.grafana-admin) preserved as emergency fallback.
+  #
+  # Wave 1 — ktayl-iam RBAC (platform-access-matrix enforcement). The access model's SoR is the
+  # ktayl-iam catalog (access-role-model.md); this maps its canonical groups → Grafana roles:
+  #   GrafanaAdmin: ktayl-admin (break-glass persona)
+  #   Admin (org):  ktayl-observability-admin, ktayl-devops, ktayl-sre
+  #   Viewer:       ktayl-observability-viewer, ktayl-developer (fall through to the Viewer default)
+  # Additive — the Phase-33 department groups above are kept (no lockout).
   grafana.ini:
     server:
       # Grafana is Tailscale-only (operator tool, gitops#1180) — root_url MUST be
@@ -384,9 +391,13 @@ grafana:
       role_attribute_path: >-
         contains(groups[*], 'authentik Admins') && 'GrafanaAdmin'
         || contains(groups[*], 'Platform Admins') && 'GrafanaAdmin'
+        || contains(groups[*], 'ktayl-admin') && 'GrafanaAdmin'
         || contains(groups[*], 'Direction IT / SI') && 'GrafanaAdmin'
         || contains(groups[*], 'Direction Cybersécurité') && 'GrafanaAdmin'
         || contains(groups[*], 'Direction Data & Analytics') && 'GrafanaAdmin'
+        || contains(groups[*], 'ktayl-observability-admin') && 'Admin'
+        || contains(groups[*], 'ktayl-devops') && 'Admin'
+        || contains(groups[*], 'ktayl-sre') && 'Admin'
         || 'Viewer'
       role_attribute_strict: false
   envFromSecret: grafana-oidc
@@ -543,6 +554,16 @@ kubeEtcd:
 kubeControllerManager:
   enabled: false
 kubeScheduler:
+  enabled: false
+# coreDns + kubeProxy default to enabled:true and render Services INTO kube-system
+# (kps-coredns / kps-kube-proxy). The minicloud-platform AppProject denies kube-system
+# (!kube-system guardrail), so those two tasks fail → the whole app sync is invalid and
+# aborts (blocking every other change). Disabled here to keep the guardrail intact; the
+# low-value k3s control-plane scrape targets are the accepted cost (same pattern as the
+# three components above). The pre-existing orphaned Services were deleted out-of-band.
+coreDns:
+  enabled: false
+kubeProxy:
   enabled: false
 
 kube-state-metrics:
