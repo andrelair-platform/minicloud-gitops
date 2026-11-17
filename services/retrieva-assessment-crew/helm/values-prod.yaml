@@ -5,7 +5,7 @@ prodExtras:
 minicloud-app-deployment:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-assessment-crew
-    tag: 89b174a
+    tag: 775c8bb
   imagePullSecrets: [{ name: ghcr-pull }]
   workload:
     replicas: 1
