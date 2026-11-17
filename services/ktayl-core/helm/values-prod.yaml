@@ -69,6 +69,27 @@ minicloud-app-deployment:
     # (Root cause is the `:80` in the app.yml default — a ktayl-core follow-up; this unblocks prod now.)
     - name: AUTHENTIK_TRUSTED_ISSUERS
       value: "https://auth.devandre.sbs/application/o/ktayl-core/,http://authentik-server.authentik.svc/application/o/ktayl-underwriting/"
+    # SUB-02 prod handoff — the submission module hands a ROUTED submission off to the underwriting (#12)
+    # FastAPI backend (POST /v1/submissions). prod → the PROD underwriting (ns underwriting-prod); Service
+    # `ktayl-underwriting:80` → pod :8000 (the netpol allows the pod port 8000). dev has no override → the
+    # app.yml default points at the dev underwriting service.
+    - name: UNDERWRITING_BASE_URL
+      value: "http://ktayl-underwriting.underwriting-prod.svc:80"
+    # Underwriting's API auth is ON in prod → ktayl-core mints an Authentik client-credentials token scoped
+    # `underwriting:write` (client `ktayl-core-uw-m2m`). TOKEN_URI = the Authentik INGRESS host (NOT the direct
+    # authentik.svc) so the existing ingress-nginx:443 + 10.0.0.200/32 egress rule covers it — no netpol change
+    # (underwriting validates signature + scope, not iss, so the issuer host is irrelevant). CLIENT_ID/SECRET
+    # come from the ktayl-core-underwriting ESO secret (Vault secret/platform/ktayl-core-underwriting);
+    # `optional` so the pod stays up (handoff → 502, submission ROUTED + retryable) until the secret syncs.
+    # client-id non-blank is what ENABLES the token provider → dev (no env) stays unauthenticated.
+    - name: UNDERWRITING_OAUTH_TOKEN_URI
+      value: "https://auth.devandre.sbs/application/o/token/"
+    - name: UNDERWRITING_OAUTH_CLIENT_ID
+      valueFrom:
+        secretKeyRef: { name: ktayl-core-underwriting, key: client-id, optional: true }
+    - name: UNDERWRITING_OAUTH_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef: { name: ktayl-core-underwriting, key: client-secret, optional: true }
 tlsCert:
   dnsName: ktayl-core-prod.10.0.0.200.nip.io
 # Stripe payment (BILL-013) — prod is where the live test-mode PSP + the public webhook route run.
@@ -79,6 +100,10 @@ stripe:
 ledger:
   enabled: true
   vaultPath: platform/erpnext
+# SUB-02 prod handoff OAuth2 (ktayl-core → underwriting) — renders the ktayl-core-underwriting ESO secret.
+underwritingOauth:
+  enabled: true
+  vaultPath: platform/ktayl-core-underwriting
 cnpg:
   instances: 2
   storageSize: 5Gi

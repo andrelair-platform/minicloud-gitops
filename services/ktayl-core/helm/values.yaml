@@ -91,3 +91,8 @@ stripe:
 ledger:
   enabled: false
   vaultPath: platform/erpnext
+# SUB-02 underwriting handoff OAuth2 (prod-only). dev leaves it disabled → no ESO secret, no oauth env →
+# the TokenProvider stays disabled → the dev handoff calls underwriting UNAUTHENTICATED (dev auth is OFF).
+underwritingOauth:
+  enabled: false
+  vaultPath: platform/ktayl-core-underwriting
