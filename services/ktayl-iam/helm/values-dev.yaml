@@ -20,6 +20,11 @@ backend:
     # S003 directory + manager resolution
     - { name: AUTHENTIK_API_URL, value: "https://auth.devandre.sbs/api/v3" }
     - { name: FALLBACK_APPROVER, value: "100001" }
+    # SECURITY_APPROVER (IGA-06) — the service-account "Security" approval leg. MUST differ from the
+    # requester (100001/admin), else a self-filed service-account request deadlocks four-eyes (the leg
+    # falls back to FALLBACK_APPROVER=the requester → no-self-approval blocks it). Distinct on dev so the
+    # governed flow is demoable with ALLOW_APPROVER_OVERRIDE.
+    - { name: SECURITY_APPROVER, value: "100002" }
     - { name: ERPNEXT_URL, value: "https://erp.devandre.sbs" }
     # ERPNEXT_API_KEY/SECRET come from the ktayl-iam-secret (Vault) → live manager lookup (AC-2).
     # S004/S005/S007 workflow + sync (dev):
