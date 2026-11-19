@@ -54,17 +54,19 @@ spec:
         - { name: home, emptyDir: {} }
         - { name: instance-config, configMap: { name: dagster-instance } }
       containers:
+        # --- webserver: the asset-graph + lineage UI ---
         - name: dagster
-          image: ghcr.io/andrelair-platform/ktayl-data-platform-orchestration:64e952b
-          securityContext:
+          image: &img ghcr.io/andrelair-platform/ktayl-data-platform-orchestration:beaf78b
+          securityContext: &sc
             allowPrivilegeEscalation: false
             capabilities: { drop: ["ALL"] }
           # Copy the Postgres-storage dagster.yaml into the writable DAGSTER_HOME, then start the webserver.
           command: ["sh", "-c", "cp /config/dagster.yaml \"$DAGSTER_HOME/dagster.yaml\" && exec dagster-webserver -h 0.0.0.0 -p 3000 -w /app/workspace.yaml"]
           ports:
             - { containerPort: 3000, name: http }
-          env:
+          env: &dagenv
             - { name: DAGSTER_HOME, value: "/home/dagster" }
+            - { name: DP_SCHEDULE_CRON, value: "0 2 * * *" } # daily_refresh schedule (02:00 UTC); the daemon runs it
             - { name: DAGSTER_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
             - { name: DAGSTER_PG_DB,   value: "dagster" }
             - { name: DAGSTER_PG_USERNAME, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
@@ -79,7 +81,7 @@ spec:
             - { name: ANALYTICS_PG_DB,   value: "analytics" }
             - { name: ANALYTICS_PG_USER,     valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
             - { name: ANALYTICS_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
-          volumeMounts:
+          volumeMounts: &vm
             - { name: home, mountPath: /home/dagster }
             - { name: instance-config, mountPath: /config, readOnly: true }
           readinessProbe:
@@ -89,6 +91,17 @@ spec:
           resources:
             requests: { cpu: "100m", memory: "200Mi" }
             limits: { cpu: "1", memory: "768Mi" }
+        # --- daemon: runs schedules/sensors + launches scheduled runs (ADR-011). Shares the CNPG instance
+        #     + the io_manager storage (the `home` emptyDir). Runs the graph in-process (DefaultRunLauncher). ---
+        - name: daemon
+          image: *img
+          securityContext: *sc
+          command: ["sh", "-c", "cp /config/dagster.yaml \"$DAGSTER_HOME/dagster.yaml\" && exec dagster-daemon run -w /app/workspace.yaml"]
+          env: *dagenv
+          volumeMounts: *vm
+          resources:
+            requests: { cpu: "150m", memory: "300Mi" }
+            limits: { cpu: "1500m", memory: "1200Mi" } # headroom to run the dlt→dbt→ML graph in-process
 ---
 apiVersion: v1
 kind: Service
