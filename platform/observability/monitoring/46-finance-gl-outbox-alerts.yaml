@@ -1,0 +1,45 @@
+# FINCLOSE-03 — GL outbox-drift alerting for the ktayl-core finance close.
+# Fires on the billing GL outbox gauges (ledger_outbox_* on /actuator/prometheus, scraped via the
+# ktayl-core ServiceMonitor). SCOPED TO PROD: on dev the drainer no-ops (no ERPNext key configured) so the
+# outbox accumulates forever — scoping to namespace="ktayl-core-prod" keeps the dev backlog from false-firing.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: finance-gl-outbox-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: finance-gl-outbox
+      rules:
+        - alert: FinanceGLOutboxDrift
+          # Postings attempted at least once and still unposted = the GL (ERPNext) is rejecting or unreachable.
+          expr: ledger_outbox_failed{namespace="ktayl-core-prod"} > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Finance GL outbox: {{ $value | printf \"%.0f\" }} stuck posting(s) (prod)"
+            description: |
+              {{ $value | printf "%.0f" }} GL posting(s) have failed at least one post attempt and are still
+              unposted — billing's double-entry Journal Entries are not reaching the ERPNext ledger, so the
+              subledger and the GL will diverge (the finance reconciliation will show drift).
+              Likely: ERPNext down/rejecting, or a credentials/chart-of-accounts mismatch.
+              Check:   kubectl logs -n ktayl-core-prod deploy/ktayl-core | grep -i 'GL post failed'
+              Reconcile: GET /api/finance/periods/<YYYY-MM>/reconciliation  (driftMinor + failedCount)
+              The outbox is retried automatically; billing is never blocked. Clear ERPNext → drains on next tick.
+        - alert: FinanceGLOutboxStale
+          # A posting pending for > 1h = the drainer isn't clearing the outbox (ERPNext unreachable).
+          expr: ledger_outbox_oldest_pending_age_seconds{namespace="ktayl-core-prod"} > 3600
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Finance GL outbox: oldest posting unposted {{ $value | printf \"%.0f\" }}s (prod)"
+            description: |
+              The oldest unposted GL posting has been pending for over an hour — the async drainer is not
+              clearing the ledger outbox. Almost always ERPNext is unreachable (the drainer no-ops when the
+              ledger client is unavailable) or a posting is stuck.
+              Check ERPNext health + the drainer: kubectl logs -n ktayl-core-prod deploy/ktayl-core | grep -i ledger
