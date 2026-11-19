@@ -42,7 +42,10 @@ backend:
     - { name: STALWART_JMAP_URL, value: "http://stalwart.mail.svc:8080/jmap" }
     - { name: STALWART_ADMIN_USER, value: "admin" }
     - { name: MAIL_DOMAIN, value: "devandre.sbs" }
-    # HR_LIFECYCLE_SIGNING_KEY + STALWART_ADMIN_SECRET come from ktayl-iam-secret (Vault, envFrom below)
+    # ADR-013 — emit the signed `onboarded` event to the n8n webhook (DEV ONLY for now; prod stays blank
+    # until the dev→prod callback routing is added to the event). IAM_SERVICE_KEY comes from the secret (ESO).
+    - { name: N8N_ONBOARD_WEBHOOK_URL, value: "http://n8n.automation.svc:5678/webhook/iam-collaborator-onboarded" }
+    # HR_LIFECYCLE_SIGNING_KEY + STALWART_ADMIN_SECRET + IAM_SERVICE_KEY come from ktayl-iam-secret (Vault, envFrom below)
   # secrets (DATABASE_PASSWORD · SESSION_SECRET · AUTHENTIK_CLIENT_ID/SECRET · AUTHENTIK_API_TOKEN
   #          · HR_LIFECYCLE_SIGNING_KEY · STALWART_ADMIN_SECRET)
   envFrom:

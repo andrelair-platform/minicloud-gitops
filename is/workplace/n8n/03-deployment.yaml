@@ -67,6 +67,12 @@ spec:
             - secretRef:
                 name: n8n-hr-glpi
                 optional: true
+            # ADR-013 — ktayl-iam↔ERPNext integration creds (ERPNEXT_API_KEY/SECRET + IAM_SERVICE_KEY),
+            # from Vault platform/ktayl-iam-integration via the n8n-iam-integration ExternalSecret.
+            # The external-collaborator onboarding workflow reads them as $env.
+            - secretRef:
+                name: n8n-iam-integration
+                optional: true
           volumeMounts:
             - name: data
               mountPath: /home/node/.n8n
