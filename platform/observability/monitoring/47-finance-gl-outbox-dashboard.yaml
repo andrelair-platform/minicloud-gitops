@@ -1,0 +1,59 @@
+# FINCLOSE-03 — Grafana dashboard for the ktayl-core finance GL outbox health (billing's ledger_outbox_*
+# gauges). Picked up by the Grafana sidecar via the grafana_dashboard label. Prod-scoped expressions
+# (dev's drainer no-ops → the dev outbox accumulates and would be noise).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: finance-gl-outbox-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  finance-gl-outbox-dashboard.json: |
+    {
+      "id": null,
+      "uid": "finance-gl-outbox",
+      "title": "Finance — GL Outbox Health (ktayl-core)",
+      "tags": ["finance", "ktayl-core", "gl", "billing"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "1m",
+      "time": {"from": "now-24h", "to": "now"},
+      "templating": {"list": [
+        {"current": {"text": "", "value": "${DS_PROMETHEUS}", "selected": true},
+         "includeAll": false, "label": "Datasource", "name": "datasource", "options": [],
+         "query": "prometheus", "refresh": 1, "regex": "", "type": "datasource"}
+      ]},
+      "panels": [
+        {"type": "stat", "id": 1, "title": "Stuck GL postings (prod)",
+         "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null}, {"color": "red", "value": 1}]}}},
+         "targets": [{"expr": "ledger_outbox_failed{namespace=\"ktayl-core-prod\"}", "refId": "A",
+            "datasource": {"type": "prometheus", "uid": "${datasource}"}}]},
+        {"type": "stat", "id": 2, "title": "Oldest unposted age (prod)",
+         "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null}, {"color": "red", "value": 3600}]}}},
+         "targets": [{"expr": "ledger_outbox_oldest_pending_age_seconds{namespace=\"ktayl-core-prod\"}",
+            "refId": "A", "datasource": {"type": "prometheus", "uid": "${datasource}"}}]},
+        {"type": "timeseries", "id": 3, "title": "GL outbox backlog (pending vs failed)",
+         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "targets": [
+            {"expr": "ledger_outbox_pending{namespace=\"ktayl-core-prod\"}", "refId": "A",
+             "legendFormat": "pending", "datasource": {"type": "prometheus", "uid": "${datasource}"}},
+            {"expr": "ledger_outbox_failed{namespace=\"ktayl-core-prod\"}", "refId": "B",
+             "legendFormat": "failed", "datasource": {"type": "prometheus", "uid": "${datasource}"}}]},
+        {"type": "timeseries", "id": 4, "title": "Oldest unposted age (seconds)",
+         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+         "fieldConfig": {"defaults": {"unit": "s"}},
+         "targets": [{"expr": "ledger_outbox_oldest_pending_age_seconds{namespace=\"ktayl-core-prod\"}",
+            "refId": "A", "legendFormat": "oldest age",
+            "datasource": {"type": "prometheus", "uid": "${datasource}"}}]}
+      ]
+    }
