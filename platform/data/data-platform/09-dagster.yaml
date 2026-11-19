@@ -101,7 +101,7 @@ spec:
           volumeMounts: *vm
           resources:
             requests: { cpu: "150m", memory: "300Mi" }
-            limits: { cpu: "1500m", memory: "1200Mi" } # headroom to run the dlt→dbt→ML graph in-process
+            limits: { cpu: "1", memory: "1200Mi" } # headroom to run the dlt→dbt→ML graph in-process (I/O-bound)
 ---
 apiVersion: v1
 kind: Service
