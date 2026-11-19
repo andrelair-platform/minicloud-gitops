@@ -1,0 +1,24 @@
+# ADR-013 — allow the ktayl-iam (dev) backend to POST the external-collaborator `onboarded` event to the
+# n8n webhook (n8n :5678). The automation ns default-denies ingress, so IAM's in-cluster webhook call
+# (http://n8n.automation.svc:5678) needs this explicit allow — mirrors the existing allow-erp-to-n8n-webhook.
+# n8n reaches ERPNext + IAM back via the 10.0.0.200 ingress (ingress-nginx already allowed), so no other
+# netpol is needed. (prod ns ktayl-iam-prod is intentionally omitted — prod doesn't emit webhooks yet.)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-iam-to-n8n-webhook
+  namespace: automation
+spec:
+  podSelector:
+    matchLabels:
+      app: n8n
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ktayl-iam
+      ports:
+        - port: 5678
+          protocol: TCP
