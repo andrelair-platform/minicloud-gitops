@@ -1,0 +1,69 @@
+# Dagster — orchestration + asset lineage UI over the dlt + dbt + ML graph (ADR-010). The webserver
+# serves the asset graph + lets you materialize runs; code is baked in the image
+# (ghcr.io/andrelair-platform/ktayl-data-platform-orchestration, built from ktayl-data-platform/orchestration).
+# Reuses the data-platform CNPG creds (dp-analytics-role) + the ktayl-core source creds (dp-core-source).
+#
+# STATUS: minimal proof on dev (ADR-010 is need-first/trigger-gated). Webserver-only + in-process runs +
+# SQLite storage (emptyDir). Prod graduation: own namespace, the dagster-daemon (schedules/sensors), CNPG
+# run storage (dagster-postgres), K8sRunLauncher, SSO ingress. Image tag bumped by CI/Kargo on change.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dagster
+  namespace: data-platform
+  labels: { app: dagster }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: dagster } }
+  strategy: { type: Recreate }
+  template:
+    metadata:
+      labels: { app: dagster }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - { name: home, emptyDir: {} }
+      containers:
+        - name: dagster
+          image: ghcr.io/andrelair-platform/ktayl-data-platform-orchestration:64e952b
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3000", "-w", "/app/workspace.yaml"]
+          ports:
+            - { containerPort: 3000, name: http }
+          env:
+            - { name: DAGSTER_HOME, value: "/home/dagster" }
+            - { name: DBT_PROFILES_DIR, value: "/app/dbt_demo" }
+            - { name: MLFLOW_TRACKING_URI, value: "http://mlflow.ai.svc.cluster.local:5000" }
+            - { name: SOURCE_PG_HOST, value: "ktayl-core-cnpg-rw.ktayl-core-prod.svc.cluster.local" }
+            - { name: SOURCE_PG_DB,   value: "ktayl_core" }
+            - { name: SOURCE_PG_USER,     valueFrom: { secretKeyRef: { name: dp-core-source, key: POLICY_PG_USER } } }
+            - { name: SOURCE_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-core-source, key: POLICY_PG_PASSWORD } } }
+            - { name: ANALYTICS_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
+            - { name: ANALYTICS_PG_DB,   value: "analytics" }
+            - { name: ANALYTICS_PG_USER,     valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
+            - { name: ANALYTICS_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
+          readinessProbe:
+            httpGet: { path: /server_info, port: 3000 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "100m", memory: "200Mi" }
+            limits: { cpu: "1", memory: "768Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dagster
+  namespace: data-platform
+  labels: { app: dagster }
+spec:
+  selector: { app: dagster }
+  ports:
+    - { name: http, port: 3000, targetPort: 3000 }
