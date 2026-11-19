@@ -96,7 +96,7 @@ crewA2A:
 frontend:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-frontend
-    tag: 47ff393
+    tag: 5750c2f
   workload:
     replicas: 2
   env:
