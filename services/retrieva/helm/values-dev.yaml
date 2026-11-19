@@ -157,7 +157,7 @@ vendorResearch:
 frontend:
   image:
     repository: ghcr.io/andrelair-platform/retrieva-frontend
-    tag: f534cb0
+    tag: e0df880
   workload:
     replicas: 1
   env:
