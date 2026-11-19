@@ -1,0 +1,106 @@
+# Cube — semantic layer over the Data Platform gold marts (ADR-009). Governed metric definitions
+# (ktayl-data-platform/semantic/model) served to Metabase via Cube's Postgres-wire SQL API (:15432) and to
+# apps/AI via REST/GraphQL (:4000). Cube queries CNPG analytics.lake read-only (dp-analytics-role). The
+# model is CODE → cloned from ktayl-data-platform at pod start (deploy-vs-code split, same as the lake jobs).
+#
+# STATUS: minimal proof on dev (ADR-009 is trigger-gated). Single pod + in-memory cache/queue driver (no
+# Cube Store) — fine for one replica; the triggered production build adds a Cube Store + HA + SSO ingress.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: dp-cube
+  namespace: data-platform
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { name: vault-backend, kind: ClusterSecretStore }
+  target:
+    name: dp-cube
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: CUBEJS_API_SECRET
+      remoteRef: { key: platform/data-platform, property: cube-api-secret }
+    - secretKey: CUBEJS_SQL_PASSWORD
+      remoteRef: { key: platform/data-platform, property: cube-sql-password }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cube
+  namespace: data-platform
+  labels: { app: cube }
+spec:
+  replicas: 1 # in-memory cache/queue driver → single-instance only (proof). Cube Store for HA (prod).
+  selector: { matchLabels: { app: cube } }
+  strategy: { type: Recreate }
+  template:
+    metadata:
+      labels: { app: cube }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - { name: model, emptyDir: {} }
+      initContainers:
+        - name: clone-model
+          image: docker.io/alpine/git:2.45.2
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          env:
+            - { name: GIT_USER,  valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_USER } } }
+            - { name: GIT_TOKEN, valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_TOKEN } } }
+          command: ["sh", "-c", "git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/ktayl-data-platform.git /tmp/r && cp -r /tmp/r/semantic/model/. /model/"]
+          volumeMounts: [{ name: model, mountPath: /model }]
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "500m", memory: "256Mi" }
+      containers:
+        - name: cube
+          image: docker.io/cubejs/cube:v1.8.28
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          ports:
+            - { containerPort: 4000, name: api }
+            - { containerPort: 15432, name: sql }
+          env:
+            - { name: CUBEJS_DEV_MODE, value: "false" }
+            - { name: CUBEJS_CACHE_AND_QUEUE_DRIVER, value: "memory" } # single-pod proof; Cube Store for prod
+            - { name: CUBEJS_DB_TYPE, value: "postgres" }
+            - { name: CUBEJS_DB_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
+            - { name: CUBEJS_DB_PORT, value: "5432" }
+            - { name: CUBEJS_DB_NAME, value: "analytics" }
+            - { name: CUBEJS_DB_USER,      valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
+            - { name: CUBEJS_DB_PASS,      valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
+            - { name: CUBEJS_API_SECRET,   valueFrom: { secretKeyRef: { name: dp-cube, key: CUBEJS_API_SECRET } } }
+            - { name: CUBEJS_PG_SQL_PORT, value: "15432" }
+            - { name: CUBEJS_SQL_USER,    value: "cube" }
+            - { name: CUBEJS_SQL_PASSWORD, valueFrom: { secretKeyRef: { name: dp-cube, key: CUBEJS_SQL_PASSWORD } } }
+            - { name: CUBEJS_SCHEMA_PATH, value: "model" }
+            - { name: CUBEJS_TELEMETRY,   value: "false" }
+          volumeMounts:
+            - { name: model, mountPath: /cube/conf/model }
+          readinessProbe:
+            httpGet: { path: /readyz, port: 4000 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits: { cpu: "1", memory: "768Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cube
+  namespace: data-platform
+  labels: { app: cube }
+spec:
+  selector: { app: cube }
+  ports:
+    - { name: api, port: 4000, targetPort: 4000 }
+    - { name: sql, port: 15432, targetPort: 15432 }
