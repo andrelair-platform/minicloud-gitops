@@ -15,12 +15,9 @@ metadata:
   name: dp-lake-land-policy
   namespace: data-platform
 spec:
-  # SUSPENDED until the policy source is repointed. The data-platform source (ktayl-prod policy DB) went
-  # dead when policy folded into ktayl-core (ADR-014/015); prod ktayl-core has no policy data yet. The
-  # keyless producer path is PROVEN (Vault STS → DuckDB → Parquet → S3, verified via SELFTEST). Flip
-  # suspend:false + repoint POLICY_PG_HOST/DB/SRC_SCHEMA at ktayl-core once prod policy data exists.
-  suspend: true
-  schedule: "15 1 * * *" # lands raw Parquet to S3 ahead of the Postgres ingest/dbt build
+  # Repointed at ktayl-core (policy folded in — ADR-014/015): reads policy.policy via the analytics_ro
+  # role (dp-core-source), lands it to S3 as Parquet. Verified end-to-end live (11 rows → S3 → DuckDB → CNPG).
+  schedule: "15 1 * * *" # lands raw Parquet to S3 ahead of the DuckDB transform
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -31,6 +28,14 @@ spec:
         spec:
           serviceAccountName: dp-ingest
           restartPolicy: Never
+          # DuckDB needs AVX2 — swift-mac (2012 MacBook) lacks it → "Illegal instruction". Require the
+          # capability label (scheduling.md: a capability label, never a hostname pin — 5/6 nodes qualify).
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - { key: minicloud.io/cpu-avx2, operator: In, values: ["true"] }
           securityContext:
             runAsNonRoot: true
             runAsUser: 65532
@@ -69,14 +74,15 @@ spec:
                 - { name: LAKE_BUCKET, value: "minicloud-data-lake-625830750465" }
                 - { name: AWS_REGION, value: "eu-west-1" }
                 - { name: DOMAIN, value: "policy" }
-                - { name: TABLES, value: "policies,coverages,premiums" }
-                - { name: POLICY_PG_HOST, value: "ktayl-cnpg-rw.ktayl-prod.svc.cluster.local" }
-                - { name: POLICY_PG_DB,   value: "ktayl_policy" }
-                - { name: POLICY_PG_USER,     valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_USER } } }
-                - { name: POLICY_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_PASSWORD } } }
+                - { name: TABLES, value: "policy" }
+                - { name: SRC_SCHEMA, value: "policy" }
+                - { name: POLICY_PG_HOST, value: "ktayl-core-cnpg-rw.ktayl-core-prod.svc.cluster.local" }
+                - { name: POLICY_PG_DB,   value: "ktayl_core" }
+                - { name: POLICY_PG_USER,     valueFrom: { secretKeyRef: { name: dp-core-source, key: POLICY_PG_USER } } }
+                - { name: POLICY_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-core-source, key: POLICY_PG_PASSWORD } } }
               volumeMounts:
                 - { name: repo, mountPath: /repo }
                 - { name: home, mountPath: /home }
               resources:
-                requests: { cpu: "200m", memory: "512Mi" }
-                limits: { cpu: "1", memory: "1Gi" }
+                requests: { cpu: "200m", memory: "256Mi" }
+                limits: { cpu: "1", memory: "512Mi" }
