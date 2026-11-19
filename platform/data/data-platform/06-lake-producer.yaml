@@ -1,0 +1,82 @@
+# S3 raw-lake PRODUCER (ADR-008) — lands the policy domain's tables into the S3 lake as Parquet.
+# Keyless auth: the dp-ingest ServiceAccount logs into Vault (role=data-lake-writer) and reads
+# short-lived STS write creds (aws/sts/data-lake-write, scoped to s3:PutObject on raw/*). The code is
+# cloned from ktayl-data-platform (deployment-vs-code rule). Egress is open in this ns (Ingress-only
+# netpols), so Vault + S3 + source DB + pip/duckdb-extension repos are reachable with no new netpol.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dp-ingest
+  namespace: data-platform
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dp-lake-land-policy
+  namespace: data-platform
+spec:
+  # SUSPENDED until the policy source is repointed. The data-platform source (ktayl-prod policy DB) went
+  # dead when policy folded into ktayl-core (ADR-014/015); prod ktayl-core has no policy data yet. The
+  # keyless producer path is PROVEN (Vault STS → DuckDB → Parquet → S3, verified via SELFTEST). Flip
+  # suspend:false + repoint POLICY_PG_HOST/DB/SRC_SCHEMA at ktayl-core once prod policy data exists.
+  suspend: true
+  schedule: "15 1 * * *" # lands raw Parquet to S3 ahead of the Postgres ingest/dbt build
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: dp-ingest
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            fsGroup: 65532
+            seccompProfile: { type: RuntimeDefault }
+          volumes:
+            - { name: repo, emptyDir: {} }
+            - { name: home, emptyDir: {} }
+          initContainers:
+            - name: clone
+              image: docker.io/alpine/git:2.45.2
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: { drop: ["ALL"] }
+              env:
+                - { name: GIT_USER,  valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_USER } } }
+                - { name: GIT_TOKEN, valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_TOKEN } } }
+              command: ["sh", "-c", "git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/ktayl-data-platform.git /repo"]
+              volumeMounts: [{ name: repo, mountPath: /repo }]
+              resources:
+                requests: { cpu: "50m", memory: "64Mi" }
+                limits: { cpu: "500m", memory: "256Mi" }
+          containers:
+            - name: land
+              image: docker.io/library/python:3.12-slim
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: { drop: ["ALL"] }
+              command: ["sh", "-c", "pip install --quiet --no-cache-dir --user duckdb==1.1.3 && python /repo/lake/producer/land_to_s3.py"]
+              env:
+                - { name: HOME, value: "/home" }
+                - { name: VAULT_ADDR, value: "http://vault.vault.svc.cluster.local:8200" }
+                - { name: VAULT_ROLE, value: "data-lake-writer" }
+                - { name: VAULT_AWS_PATH, value: "aws/sts/data-lake-write" }
+                - { name: LAKE_BUCKET, value: "minicloud-data-lake-625830750465" }
+                - { name: AWS_REGION, value: "eu-west-1" }
+                - { name: DOMAIN, value: "policy" }
+                - { name: TABLES, value: "policies,coverages,premiums" }
+                - { name: POLICY_PG_HOST, value: "ktayl-cnpg-rw.ktayl-prod.svc.cluster.local" }
+                - { name: POLICY_PG_DB,   value: "ktayl_policy" }
+                - { name: POLICY_PG_USER,     valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_USER } } }
+                - { name: POLICY_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_PASSWORD } } }
+              volumeMounts:
+                - { name: repo, mountPath: /repo }
+                - { name: home, mountPath: /home }
+              resources:
+                requests: { cpu: "200m", memory: "512Mi" }
+                limits: { cpu: "1", memory: "1Gi" }

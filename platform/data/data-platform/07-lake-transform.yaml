@@ -1,0 +1,79 @@
+# S3 raw-lake DuckDB TRANSFORM (ADR-008) — the OLAP-engine half: read Parquet from S3 (reader role),
+# transform (vectorized columnar), materialise the serving result into CNPG (what Metabase reads).
+#   S3 raw (Parquet) → DuckDB (read+transform) → CNPG analytics.<schema>.<table> → Metabase
+# Keyless auth: dp-duckdb SA logs into Vault (role=data-lake-reader) → short-lived STS read creds.
+# VERIFIED end-to-end via a probe object (10 rows: S3 → DuckDB → CNPG). SUSPENDED until the producer has
+# a live source (see 06-lake-producer.yaml) so there is real raw Parquet to transform.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dp-duckdb
+  namespace: data-platform
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dp-lake-transform-policy
+  namespace: data-platform
+spec:
+  suspend: true # flip to false once 06-lake-producer is live and landing raw/policy Parquet
+  schedule: "45 1 * * *" # after the producer lands raw Parquet (01:15), before the Postgres dbt build
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: dp-duckdb
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            fsGroup: 65532
+            seccompProfile: { type: RuntimeDefault }
+          volumes:
+            - { name: repo, emptyDir: {} }
+            - { name: home, emptyDir: {} }
+          initContainers:
+            - name: clone
+              image: docker.io/alpine/git:2.45.2
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: { drop: ["ALL"] }
+              env:
+                - { name: GIT_USER,  valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_USER } } }
+                - { name: GIT_TOKEN, valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_TOKEN } } }
+              command: ["sh", "-c", "git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/ktayl-data-platform.git /repo"]
+              volumeMounts: [{ name: repo, mountPath: /repo }]
+              resources:
+                requests: { cpu: "50m", memory: "64Mi" }
+                limits: { cpu: "500m", memory: "256Mi" }
+          containers:
+            - name: transform
+              image: docker.io/library/python:3.12-slim
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: { drop: ["ALL"] }
+              command: ["sh", "-c", "pip install --quiet --no-cache-dir --user duckdb==1.1.3 && python /repo/lake/transform/transform_s3_to_cnpg.py"]
+              env:
+                - { name: HOME, value: "/home" }
+                - { name: VAULT_ADDR, value: "http://vault.vault.svc.cluster.local:8200" }
+                - { name: VAULT_ROLE, value: "data-lake-reader" }
+                - { name: VAULT_AWS_PATH, value: "aws/sts/data-lake-read" }
+                - { name: AWS_REGION, value: "eu-west-1" }
+                - { name: SOURCE_GLOB, value: "s3://minicloud-data-lake-625830750465/raw/policy/policies/*/policies.parquet" }
+                - { name: DEST_SCHEMA, value: "lake" }
+                - { name: DEST_TABLE, value: "policies" }
+                - { name: ANALYTICS_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
+                - { name: ANALYTICS_PG_DB,   value: "analytics" }
+                - { name: ANALYTICS_PG_USER,     valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
+                - { name: ANALYTICS_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
+              volumeMounts:
+                - { name: repo, mountPath: /repo }
+                - { name: home, mountPath: /home }
+              resources:
+                requests: { cpu: "200m", memory: "512Mi" }
+                limits: { cpu: "1", memory: "1Gi" }
