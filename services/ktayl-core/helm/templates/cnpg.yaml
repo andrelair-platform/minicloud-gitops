@@ -70,6 +70,14 @@ spec:
         - podSelector: {}
       ports:
         - { protocol: TCP, port: 5432 }
+    # Data Platform analytics puller (ADR-008): the S3-lake producer reads policy.policy read-only via the
+    # dedicated analytics_ro role → lands it to the lake. Scoped to the data-platform namespace, :5432.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-platform
+      ports:
+        - { protocol: TCP, port: 5432 }
 {{- if .Values.cnpg.backup.enabled }}
 ---
 # R2 credentials for the barmanObjectStore backup (Vault platform/cloudflare). Prod-only (backup.enabled).
