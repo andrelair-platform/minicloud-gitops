@@ -53,3 +53,14 @@ spec:
   ingress:
     - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } } }]
       ports: [{ protocol: TCP, port: 3000 }]
+---
+# Dagster lineage UI (ADR-010) — reachable via ingress-nginx (Authentik forward-auth SSO at the edge).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-ingress-dagster, namespace: data-platform }
+spec:
+  podSelector: { matchLabels: { app: dagster } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } } }]
+      ports: [{ protocol: TCP, port: 3000 }]

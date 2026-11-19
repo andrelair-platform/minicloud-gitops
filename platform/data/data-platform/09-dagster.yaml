@@ -3,9 +3,33 @@
 # (ghcr.io/andrelair-platform/ktayl-data-platform-orchestration, built from ktayl-data-platform/orchestration).
 # Reuses the data-platform CNPG creds (dp-analytics-role) + the ktayl-core source creds (dp-core-source).
 #
-# STATUS: minimal proof on dev (ADR-010 is need-first/trigger-gated). Webserver-only + in-process runs +
-# SQLite storage (emptyDir). Prod graduation: own namespace, the dagster-daemon (schedules/sensors), CNPG
-# run storage (dagster-postgres), K8sRunLauncher, SSO ingress. Image tag bumped by CI/Kargo on change.
+# STATUS: PRODUCTION-ADOPTED, right-sized (ADR-010). Webserver + in-process runs, PERSISTENT run/event/
+# schedule storage on CNPG (the `dagster` DB), behind an Authentik-SSO ingress. Kept single-pod; the
+# dagster-daemon + K8sRunLauncher + HA are deferred to the automation/scale trigger (no scheduled retrain
+# yet). Image built by CI (orchestration-image.yml → ghcr), bumped on change.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dagster-instance
+  namespace: data-platform
+data:
+  dagster.yaml: |
+    # Persistent run/event/schedule storage on CNPG (survives pod restarts). Creds via DAGSTER_PG_* env.
+    storage:
+      postgres:
+        postgres_db:
+          username:
+            env: DAGSTER_PG_USERNAME
+          password:
+            env: DAGSTER_PG_PASSWORD
+          hostname:
+            env: DAGSTER_PG_HOST
+          db_name:
+            env: DAGSTER_PG_DB
+          port: 5432
+    telemetry:
+      enabled: false
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,17 +52,23 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       volumes:
         - { name: home, emptyDir: {} }
+        - { name: instance-config, configMap: { name: dagster-instance } }
       containers:
         - name: dagster
           image: ghcr.io/andrelair-platform/ktayl-data-platform-orchestration:64e952b
           securityContext:
             allowPrivilegeEscalation: false
             capabilities: { drop: ["ALL"] }
-          command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3000", "-w", "/app/workspace.yaml"]
+          # Copy the Postgres-storage dagster.yaml into the writable DAGSTER_HOME, then start the webserver.
+          command: ["sh", "-c", "cp /config/dagster.yaml \"$DAGSTER_HOME/dagster.yaml\" && exec dagster-webserver -h 0.0.0.0 -p 3000 -w /app/workspace.yaml"]
           ports:
             - { containerPort: 3000, name: http }
           env:
             - { name: DAGSTER_HOME, value: "/home/dagster" }
+            - { name: DAGSTER_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
+            - { name: DAGSTER_PG_DB,   value: "dagster" }
+            - { name: DAGSTER_PG_USERNAME, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
+            - { name: DAGSTER_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
             - { name: DBT_PROFILES_DIR, value: "/app/dbt_demo" }
             - { name: MLFLOW_TRACKING_URI, value: "http://mlflow.ai.svc.cluster.local:5000" }
             - { name: SOURCE_PG_HOST, value: "ktayl-core-cnpg-rw.ktayl-core-prod.svc.cluster.local" }
@@ -49,6 +79,9 @@ spec:
             - { name: ANALYTICS_PG_DB,   value: "analytics" }
             - { name: ANALYTICS_PG_USER,     valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
             - { name: ANALYTICS_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
+          volumeMounts:
+            - { name: home, mountPath: /home/dagster }
+            - { name: instance-config, mountPath: /config, readOnly: true }
           readinessProbe:
             httpGet: { path: /server_info, port: 3000 }
             initialDelaySeconds: 15
@@ -67,3 +100,56 @@ spec:
   selector: { app: dagster }
   ports:
     - { name: http, port: 3000, targetPort: 3000 }
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: { name: dagster-tls, namespace: data-platform }
+spec:
+  secretName: dagster-tls
+  issuerRef: { name: minicloud-ca, kind: ClusterIssuer }
+  privateKey: { algorithm: ECDSA, size: 256 } # Vault PKI role requires EC keys
+  dnsNames: ["dagster.10.0.0.200.nip.io"]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dagster
+  namespace: data-platform
+  annotations:
+    # Authentik forward-auth (embedded outpost) — Dagster OSS has no native auth. Provider
+    # "dagster-forward-auth", gated to the Platform Admins group. Same pattern as metabase.
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      auth_request /outpost.goauthentik.io/auth/nginx;
+      error_page 401 = @goauthentik_proxy_signin;
+      auth_request_set $auth_cookie $upstream_http_set_cookie;
+      add_header Set-Cookie $auth_cookie;
+      auth_request_set $authentik_username $upstream_http_x_authentik_username;
+      auth_request_set $authentik_groups $upstream_http_x_authentik_groups;
+      proxy_set_header X-authentik-username $authentik_username;
+      proxy_set_header X-authentik-groups $authentik_groups;
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location /outpost.goauthentik.io {
+        proxy_pass              http://authentik-server.authentik.svc.cluster.local/outpost.goauthentik.io;
+        proxy_set_header        Host $host;
+        proxy_set_header        X-Original-URL $scheme://$http_host$request_uri;
+        add_header              Set-Cookie $auth_cookie;
+        auth_request_set        $auth_cookie $upstream_http_set_cookie;
+        proxy_pass_request_body off;
+        proxy_set_header        Content-Length "";
+      }
+      error_page 401 @goauthentik_proxy_signin;
+      location @goauthentik_proxy_signin {
+        internal;
+        add_header Set-Cookie $auth_cookie;
+        return 302 /outpost.goauthentik.io/start?rd=$request_uri;
+      }
+spec:
+  ingressClassName: nginx
+  tls: [{ hosts: ["dagster.10.0.0.200.nip.io"], secretName: dagster-tls }]
+  rules:
+    - host: dagster.10.0.0.200.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: dagster, port: { number: 3000 } } }
