@@ -1,0 +1,20 @@
+# Allow the Data Platform (Dagster ML assets, ADR-010) to reach MLflow's tracking API. The ai namespace
+# is default-deny-ingress; the dlt→dbt→Dagster→sklearn asset graph logs + registers models to MLflow, so
+# the data-platform namespace needs ingress to mlflow:5000.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-data-platform-to-mlflow
+  namespace: ai
+spec:
+  podSelector:
+    matchLabels:
+      app: mlflow
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-platform
+      ports:
+        - { protocol: TCP, port: 5000 }
