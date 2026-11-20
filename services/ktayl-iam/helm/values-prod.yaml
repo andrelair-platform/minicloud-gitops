@@ -2,7 +2,7 @@
 backend:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-iam-backend
-    tag: 4b6448f
+    tag: 2465f07
   # prod pulls the Internal ghcr package → needs the shared ghcr-pull secret
   imagePullSecrets: [{ name: ghcr-pull }]
   env:
@@ -36,7 +36,7 @@ backend:
 frontend:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-iam-frontend
-    tag: 4b6448f
+    tag: 2465f07
   imagePullSecrets: [{ name: ghcr-pull }]
 
 postgres:
