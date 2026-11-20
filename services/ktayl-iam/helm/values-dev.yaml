@@ -1,7 +1,7 @@
 # ktayl-iam — DEV overlay (ns ktayl-iam). Kargo updates backend/frontend .image.tag.
 backend:
   image:
-    tag: 2465f07
+    tag: fc03222
   env:
     - { name: PORT, value: "3000" }
     - { name: NODE_ENV, value: "production" }
@@ -54,7 +54,7 @@ backend:
 
 frontend:
   image:
-    tag: 2465f07
+    tag: fc03222
 
 postgres:
   enabled: true
