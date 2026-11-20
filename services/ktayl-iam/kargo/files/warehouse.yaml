@@ -19,8 +19,12 @@ spec:
         repoURL: https://github.com/andrelair-platform/ktayl-iam.git
         branch: main
         commitSelectionStrategy: NewestFromBranch
-        excludePaths:
-          - docs
-          - bmad
-          - catalog-info.yaml
-          - "regex:.*\\.md$"
+        # Phantom-commit guard (gitops.md): Freight only for commits that actually BUILD an image, else a
+        # docs/integration-only commit points at an unbuilt SHA → ImagePullBackOff. The CI build triggers on
+        # `paths: [backend/**, frontend/**, .github/workflows/ci.yml]`, so MIRROR that as includePaths — a
+        # superset would be unsafe the other way. (The old excludePaths {docs,bmad,*.md} missed `integration/`
+        # → the 2026-11-20 b4621b8 ImagePullBackOff incident on a docs-only PR #119.)
+        includePaths:
+          - backend
+          - frontend
+          - .github/workflows/ci.yml
