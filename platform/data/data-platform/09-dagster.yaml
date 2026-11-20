@@ -100,8 +100,11 @@ spec:
           env: *dagenv
           volumeMounts: *vm
           resources:
-            requests: { cpu: "150m", memory: "300Mi" }
-            limits: { cpu: "1", memory: "1200Mi" } # headroom to run the dlt→dbt→ML graph in-process (I/O-bound)
+            requests: { cpu: "150m", memory: "400Mi" }
+            # The nightly schedule runs the whole dlt→dbt→ML graph IN-PROCESS (DefaultRunLauncher) — the
+            # code server + dlt/dbt/sklearn/mlflow + the run peak >1.2Gi (OOMKilled at 1200Mi). Bumped to
+            # 1800Mi. When runs grow heavier, the K8sRunLauncher (ADR-011) moves each run to its own pod.
+            limits: { cpu: "1", memory: "1800Mi" }
 ---
 apiVersion: v1
 kind: Service
