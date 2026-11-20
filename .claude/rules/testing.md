@@ -4,7 +4,7 @@
 
 | Layer | What it checks | Speed | When it runs |
 |---|---|---|---|
-| **L0 — Static** | Lint, format, types, YAML schema | < 1 min | Every push, every branch |
+| **L0 — Static** | Lint, format, types, YAML schema — **incl. the `clean-code.md` deterministic floor** (complexity/length/naming/error-handling rules, not just formatting) | < 1 min | Every push, every branch |
 | **L1 — Unit** | Pure logic, no external deps, mocks everything | < 5 min | Every push |
 | **L2 — Integration** | Real DB, real queue, mocked HTTP | < 15 min | PR to `main` |
 | **L3 — Contract** | API shape matches what consumers expect | < 5 min | PR to `main` |
