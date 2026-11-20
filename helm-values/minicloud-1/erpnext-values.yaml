@@ -15,7 +15,7 @@
 
 image:
   repository: ghcr.io/andrelair-platform/erpnext-ktayl
-  tag: "v16.28.0-facturx-5eee7b9"
+  tag: "v16.28.0-facturx-19391d1"
   pullPolicy: IfNotPresent
 
 nginx:
