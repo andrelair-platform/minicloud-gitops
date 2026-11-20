@@ -1,6 +1,7 @@
 ---
-# Read token to clone the (private) gitops repo so both jobs run the in-repo code (no drift, no
-# baked image). Reuses the Kargo git creds (Vault platform/kargo git-username/git-token).
+# Read token to clone the (private) gitops repo so the lake jobs + Cube + Dagster run the in-repo code
+# (no drift, no baked image). Reuses the Kargo git creds (Vault platform/kargo git-username/git-token).
+# SHARED — consumed by 06-lake-producer, 07-lake-transform, 08-cube, 09-dagster. Keep.
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata: { name: dp-git-token, namespace: data-platform }
@@ -13,97 +14,13 @@ spec:
       remoteRef: { key: platform/kargo, property: git-username }
     - secretKey: GIT_TOKEN
       remoteRef: { key: platform/kargo, property: git-token }
----
-# Ingestion — full-refresh COPY of the 3 policy tables → analytics.raw.* (daily 02:00 UTC).
-apiVersion: batch/v1
-kind: CronJob
-metadata: { name: dp-ingest-policy, namespace: data-platform }
-spec:
-  schedule: "0 2 * * *"
-  concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 3
-  jobTemplate:
-    spec:
-      activeDeadlineSeconds: 900
-      template:
-        spec:
-          restartPolicy: OnFailure
-          securityContext: { runAsNonRoot: true, runAsUser: 65532, fsGroup: 65532, seccompProfile: { type: RuntimeDefault } }
-          volumes: [{ name: repo, emptyDir: {} }]
-          initContainers:
-            - name: clone
-              image: docker.io/alpine/git:2.45.2
-              env:
-                - { name: GIT_USER,  valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_USER } } }
-                - { name: GIT_TOKEN, valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_TOKEN } } }
-              command: ["sh","-c","git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/ktayl-data-platform.git /repo"]
-              volumeMounts: [{ name: repo, mountPath: /repo }]
-              securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: false }
-          containers:
-            - name: ingest
-              image: docker.io/library/postgres:16-alpine
-              # Slice 2: run BOTH sources — policy (slice 1) then underwriting (slice 2) → analytics.raw.*
-              command: ["sh","-c","sh /repo/ingest/ingest_policy.sh && sh /repo/ingest/ingest_underwriting.sh"]
-              env:
-                - { name: ANALYTICS_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
-                - { name: ANALYTICS_PG_DB,   value: "analytics" }
-                - { name: ANALYTICS_PG_USER, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
-                - { name: ANALYTICS_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
-                # host+db are NOT secrets → plain env (version-controlled, self-healing). The CNPG
-                # migration left a stale POLICY_PG_HOST in Vault (ktayl-postgres.ktayl-prod, a dead host)
-                # → raw.policies silently loaded 0. Source of truth is now the live CNPG rw service.
-                - { name: POLICY_PG_HOST,     value: "ktayl-cnpg-rw.ktayl-prod.svc.cluster.local" }
-                - { name: POLICY_PG_DB,       value: "ktayl_policy" }
-                - { name: POLICY_PG_USER,     valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_USER } } }
-                - { name: POLICY_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-policy-source, key: POLICY_PG_PASSWORD } } }
-                - { name: UW_PG_HOST,         valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_HOST } } }
-                - { name: UW_PG_USER,         valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_USER } } }
-                - { name: UW_PG_PASSWORD,     valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_PASSWORD } } }
-                - { name: UW_PG_DB,           valueFrom: { secretKeyRef: { name: dp-underwriting-source, key: UW_PG_DB } } }
-              volumeMounts: [{ name: repo, mountPath: /repo }]
-              securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: true }
-              resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 256Mi } }
----
-# dbt transforms + tests — staging→marts on the analytics DB (daily 02:30 UTC, after ingest).
-apiVersion: batch/v1
-kind: CronJob
-metadata: { name: dp-dbt-build, namespace: data-platform }
-spec:
-  schedule: "30 2 * * *"
-  concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 3
-  jobTemplate:
-    spec:
-      activeDeadlineSeconds: 900
-      template:
-        spec:
-          restartPolicy: OnFailure
-          securityContext: { runAsNonRoot: true, runAsUser: 65532, fsGroup: 65532, seccompProfile: { type: RuntimeDefault } }
-          volumes: [{ name: repo, emptyDir: {} }, { name: dbt-home, emptyDir: {} }]
-          initContainers:
-            - name: clone
-              image: docker.io/alpine/git:2.45.2
-              env:
-                - { name: GIT_USER,  valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_USER } } }
-                - { name: GIT_TOKEN, valueFrom: { secretKeyRef: { name: dp-git-token, key: GIT_TOKEN } } }
-              command: ["sh","-c","git clone --depth 1 https://$GIT_USER:$GIT_TOKEN@github.com/andrelair-platform/ktayl-data-platform.git /repo"]
-              volumeMounts: [{ name: repo, mountPath: /repo }]
-              securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: false }
-          containers:
-            - name: dbt
-              image: ghcr.io/dbt-labs/dbt-postgres:1.8.2
-              workingDir: /repo/dbt
-              command: ["sh","-c","dbt build --profiles-dir . --project-dir ."]
-              env:
-                - { name: DBT_PROFILES_DIR, value: "/repo/dbt" }
-                - { name: HOME, value: "/tmp" }
-                - { name: ANALYTICS_PG_HOST, value: "dp-postgres-rw.data-platform.svc.cluster.local" }
-                - { name: ANALYTICS_PG_PORT, value: "5432" }
-                - { name: ANALYTICS_PG_DB,   value: "analytics" }
-                - { name: ANALYTICS_PG_USER, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: username } } }
-                - { name: ANALYTICS_PG_PASSWORD, valueFrom: { secretKeyRef: { name: dp-analytics-role, key: password } } }
-              volumeMounts: [{ name: repo, mountPath: /repo }, { name: dbt-home, mountPath: /tmp }]
-              securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: false }
-              resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: "1", memory: 512Mi } }
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
+# RETIRED 2026-11-20 — the old direct-COPY Postgres pipeline (dp-ingest-policy + dp-dbt-build).
+# It landed ktayl-policy-service → analytics.raw → business.policy_portfolio via dbt-postgres. Superseded
+# by the S3-lake pipeline (ADR-008/010): dlt → S3 → DuckDB/dbt → CNPG lake.* → Cube → Metabase. Its source
+# (ktayl-cnpg-rw.ktayl-prod) DIED in the policy fold to ktayl-core, so both CronJobs failed every night
+# (business.policy_portfolio = 0 rows) and ArgoCD's CronJob health marked the app Degraded. The go-forward
+# pipeline is 06-lake-producer + 07-lake-transform (repointed at ktayl-core). Removed, not suspended, so
+# they stop failing + free namespace quota. dp-policy-source / dp-underwriting-source ES remain in
+# 01-secrets.yaml (harmless; usable if a Postgres-path job is ever reinstated).
+# ─────────────────────────────────────────────────────────────────────────────────────────────────────
