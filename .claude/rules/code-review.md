@@ -26,6 +26,11 @@ gate** (`qa-gate.md`), the **test pyramid** (`testing.md`), and the **docs DoD g
   an ADR) — a stalled CL helps no one.
 
 ## What to look for (the reviewer checklist — in priority order)
+
+> **The definition of "clean" (naming, complexity, SRP/YAGNI/DRY, comments-explain-why, error handling) is
+> `clean-code.md`** — the measurable rules there are enforced deterministically at **`testing.md` L0**
+> (linters fail CI); the rows below are where this review judges the *non-mechanical* ones.
+
 | Focus | What to check | Our hook |
 |---|---|---|
 | **Design** (most important) | do the pieces fit? does this belong here vs a module/library? boundary-crossing? | SA artefact set; `architecture-strategy.md` (module vs new service); the governance gate |
@@ -129,6 +134,7 @@ Review (this) + **CI** (`testing.md` L0–L4) + the **live QA gate** (`qa-gate.m
 (the merge enforcement) are **distinct** evidence — none replaces another. This file governs *human/AI
 judgement*; CI + Gatekeeper + CODEOWNERS are the *deterministic* enforcement (`agentic-guardrails.md`).
 
-Related: `bmad-compliance.md` (the 3 review layers + path sizing), `gitops.md` (CODEOWNERS gate),
-`qa-gate.md`, `testing.md`, `documentation.md`, `ai-native-engineering.md` (comprehension > green check),
-`architecture-strategy.md`. Upstream: Google eng-practices reviewer + CL-author guides.
+Related: `clean-code.md` (the definition of "clean" + the deterministic linter floor), `bmad-compliance.md`
+(the 3 review layers + path sizing), `gitops.md` (CODEOWNERS gate), `qa-gate.md`, `testing.md`,
+`documentation.md`, `ai-native-engineering.md` (comprehension > green check), `architecture-strategy.md`.
+Upstream: Google eng-practices reviewer + CL-author guides.
