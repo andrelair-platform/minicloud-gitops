@@ -29,7 +29,11 @@ backend:
     - { name: STALWART_JMAP_URL, value: "http://stalwart.mail.svc:8080/jmap" }
     - { name: STALWART_ADMIN_USER, value: "admin" }
     - { name: MAIL_DOMAIN, value: "devandre.sbs" }
-    # HR_LIFECYCLE_SIGNING_KEY + STALWART_ADMIN_SECRET arrive via ktayl-iam-secret (shared ESO template).
+    # ADR-013b — prod enablement: emit to the (single) n8n webhook + stamp the PROD callback base-URL so n8n
+    # binds back to prod IAM. IAM_SERVICE_KEY is already on both envs via the shared ESO template.
+    - { name: N8N_ONBOARD_WEBHOOK_URL, value: "http://n8n.automation.svc:5678/webhook/iam-collaborator-onboarded" }
+    - { name: IAM_CALLBACK_BASE_URL, value: "https://iam.10.0.0.200.nip.io" }
+    # HR_LIFECYCLE_SIGNING_KEY + STALWART_ADMIN_SECRET + IAM_SERVICE_KEY arrive via ktayl-iam-secret (shared ESO template).
   envFrom:
     - secretRef: { name: ktayl-iam-secret }
 
