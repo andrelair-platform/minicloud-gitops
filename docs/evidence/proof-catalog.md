@@ -11,7 +11,7 @@ extend as you build. Status: ✅ proven · 🏗️ in progress · ⬜ planned.
 | Distributed systems | Durable JetStream ingest (ktayl-core Billing, ADR-003) | stream `UNDERWRITING_EVENTS` live; ack/term/nak consumer | ✅ |
 | Event-driven architecture | HR J/M/L seam ERPNext→NATS→ktayl-iam | 98 tests; live dev+prod; one-durable discipline | ✅ |
 | Backend / DDD | ktayl-core modular monolith (Spring Modulith) | `ApplicationModules.verify()` green in CI | ✅ |
-| Backend / money domain | Billing premium→cash→GL (integer minor-units, outbox) | BILL-010/011 live; L1+L3 contract tests | 🏗️ |
+| Backend / money domain | Billing premium→cash→GL, incl. [gross/net/commission split](https://github.com/andrelair-platform/ktayl-core/blob/main/docs/evidence/case-studies/bill-012b-premium-commission-split.md) ([ADR-020](https://github.com/andrelair-platform/ktayl-core/blob/main/docs/architecture/adr/ADR-020-premium-gross-net-commission-split.md)) | full chain live on prod; 3-leg JE `ACC-JV-2026-00007` balanced; integer minor-units + outbox; dev QA 22/22 | ✅ |
 | Idempotency | policy_number / client_key / webhook dedupe | replay = no-op (tested) | ✅ |
 | Security / SoD | ktayl-iam four-eyes dual-approval + append-only audit | self-approval rejected; DB rewrite-rule audit | ✅ |
 | Security / supply chain | cosign + SBOM + Trivy CRITICAL gate | gate **rejected** a stale Spring Boot (real catch) | ✅ |
