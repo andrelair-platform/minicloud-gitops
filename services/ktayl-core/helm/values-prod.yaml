@@ -6,7 +6,7 @@ minicloud-app-deployment:
     app: ktayl-core
   image:
     repository: ghcr.io/andrelair-platform/ktayl-core
-    tag: 82d03d8
+    tag: 771e6dd
   workload:
     replicas: 2
   podDisruptionBudget:
