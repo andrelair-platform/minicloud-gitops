@@ -52,14 +52,19 @@ erp/MariaDB, ktayl-iam-dev, langfuse-clickhouse).
 > the prod-gated `managed.roles[].passwordSecret` + `<cluster>-role` ExternalSecret were added → CNPG
 > re-applied the identical password (no change). **Order matters: seed Vault first, then the manifest**
 > (else ESO renders an empty secret → CNPG sets an empty password → outage). Mirror `retrieva-cnpg`.
-> **SSA gotcha:** CNPG defaults `connectionLimit`/`inherit` on the role → add the
-> `.spec.managed.roles[].connectionLimit`/`.inherit` ArgoCD `ignoreDifferences` (gitops #2363). A
-> ServerSideApply app may still show a benign cosmetic `OutOfSync` on the Cluster (sync Succeeded, Healthy).
+> **Two gotchas (gitops #2366):** (1) **nil-guard** — Go-template `and` short-circuits on the FIRST falsy
+> arg, so the flag-guard must put the nil-check FIRST: `and .X.vaultRole .X.vaultRole.enabled`, NOT
+> `and .X.enabled .X.vaultRole.enabled` (the latter evaluates `.vaultRole.enabled` on a nil `vaultRole`
+> whenever `.enabled` is true → `nil pointer`, breaks the un-flagged env's render). (2) **CNPG defaults**
+> `connectionLimit`/`inherit` on the role → add the `.spec.managed.roles[].connectionLimit`/`.inherit`
+> ArgoCD `ignoreDifferences` (#2363). A **ServerSideApply** app may still phantom-flag the Cluster
+> `OutOfSync` (its client-side diff disagrees with a clean server-side diff) → add
+> `argocd.argoproj.io/compare-options: ServerSideDiff=true` (needed for ktayl-dms-dev; the insurance apps
+> didn't). Always render-check **both** envs capturing stderr (a `2>/dev/null` hid the nil-pointer once).
 
-**Remaining (acceptable):** the **dev** instances of `claims`/`ktayl-core`/`underwriting` keep the
-operator-generated app password (regenerable, low-stakes) — prod was the priority and is done. **Revisit
-trigger:** a dev cluster needs Vault-backed rotation → seed `platform/<dev-ns>` + flip `vaultRole.enabled`
-in its `values-dev.yaml` (the prod-gated flag is already wired).
+**Fully done (2026-11-21, #2366):** the **dev** instances of `ktayl-core`/`claims`/`underwriting` are now
+Vault-sourced too (same procedure, `vaultPath: platform/<dev-ns>`). Every CNPG cluster on the platform now
+sources its credential from Vault.
 
 ## Don't
 - Don't treat the CNPG operator-generated `-app` password as a source of truth — it's a copy with no origin.
