@@ -134,6 +134,9 @@ postgres:
   enabled: true
   instances: 2
   storageSize: 5Gi
+  vaultRole:                 # DB credential sourced from Vault (db-credentials.md) — prod only
+    enabled: true
+    vaultPath: platform/underwriting-prod
   backup:
     enabled: true            # PROD gets backup (dev does not) → bucket cnpg-underwriting-prod (from base)
 # No migration Job — the app self-migrates on startup (see values.yaml).

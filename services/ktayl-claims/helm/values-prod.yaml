@@ -107,6 +107,9 @@ postgres:
   enabled: true
   instances: 1
   storageSize: 1Gi
+  vaultRole:                 # DB credential sourced from Vault (db-credentials.md) — prod only
+    enabled: true
+    vaultPath: platform/claims-prod
   backup:
     enabled: true            # PROD gets backup (dev does not)
     bucket: cnpg-claims-prod

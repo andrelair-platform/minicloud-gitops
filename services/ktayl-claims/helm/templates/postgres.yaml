@@ -21,6 +21,19 @@ spec:
     limits:   { cpu: "1",  memory: 512Mi }
   monitoring:
     enablePodMonitor: true
+{{- if and .Values.postgres.vaultRole .Values.postgres.vaultRole.enabled }}
+  # DB credential sourced from Vault (db-credentials.md): CNPG manages the `claims` role password from the
+  # ESO-rendered `claims-postgres-role` secret — seeded = the current `-app` value → no-op at adoption,
+  # Vault becomes source of truth. Prod-only (dev keeps the operator-generated app pw).
+  managed:
+    roles:
+      - name: claims
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: claims-postgres-role
+{{- end }}
   bootstrap:
     initdb:
       database: claims
@@ -77,4 +90,32 @@ spec:
   backupOwnerReference: self
   cluster:
     name: claims-postgres
+{{- end }}
+{{- if and .Values.postgres.enabled .Values.postgres.vaultRole.enabled }}
+---
+# Vault-sourced password for the `claims` CNPG role (db-credentials.md). Seeded = the current -app value →
+# adoption is a no-op; future rotations go through Vault.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: claims-postgres-role
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: claims-postgres-role
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: "claims"
+        password: "{{ `{{ .pgpass }}` }}"
+  data:
+    - secretKey: pgpass
+      remoteRef:
+        key: {{ .Values.postgres.vaultRole.vaultPath }}
+        property: postgres-password
 {{- end }}

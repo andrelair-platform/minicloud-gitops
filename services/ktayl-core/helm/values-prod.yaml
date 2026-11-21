@@ -116,6 +116,9 @@ underwritingOauth:
 cnpg:
   instances: 2
   storageSize: 5Gi
+  vaultRole:                       # DB credential sourced from Vault (db-credentials.md) — prod only
+    enabled: true
+    vaultPath: platform/ktayl-core-prod
   backup:
     enabled: true
     retentionPolicy: "14d"
