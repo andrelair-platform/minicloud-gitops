@@ -9,7 +9,7 @@
 minicloud-app-deployment:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-claims
-    tag: 5682d5b
+    tag: 1d70b4e
   workload:
     replicas: 1
   env:
@@ -38,7 +38,7 @@ minicloud-app-deployment:
 frontend:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-claims-frontend
-    tag: 5682d5b
+    tag: 1d70b4e
   workload:
     replicas: 1
   ingress:
