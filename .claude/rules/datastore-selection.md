@@ -38,6 +38,52 @@ single-instance is acceptable (no HA need) · low-stakes/short-lived/demo · you
 *(or)* a vendor chart bundles its own PG and external-DB wiring isn't worth it yet. **Record the
 exception** (one line in the app's docs/PR — why it's not CNPG).
 
+## Shared vs dedicated cluster — database isolation ≠ operational isolation (the SECOND axis)
+
+The CNPG-vs-STS choice above is *how* a Postgres runs. A **second, orthogonal** decision is *how many apps
+share one cluster*: a **shared** CNPG cluster hosting **one database + one role per app** (consolidation),
+or a **dedicated** cluster per app. Don't conflate the two kinds of isolation they give:
+
+| | **Database isolation** (separate DB + role on a shared cluster) | **Operational isolation** (a dedicated cluster) |
+|---|---|---|
+| Controls | **access** — what each app can read/write (role scoped to its own DB) | **blast radius** — CPU/mem/**storage-I/O**, a cluster-wide outage/upgrade, **and the physical backup/PITR boundary** |
+| Apps on the same cluster still share | CPU, memory, storage I/O, the outage/upgrade blast radius, **and one backup/PITR recovery boundary** | — (that's the point) |
+
+**The recovery-boundary consequence (the one people miss):** a CNPG physical backup + PITR restores the
+**whole cluster**, not one database. Recovering only `litellm` to yesterday = restore the cluster to a
+**temporary** instance → `pg_dump`/extract the `litellm` DB → load it back. Separate DBs do **not** give
+separate recovery; a dedicated cluster does.
+
+**The default (low-risk/dev):** **one DB + one role per app on a SHARED CNPG cluster**, each role scoped to
+its DB, **with per-role `connectionLimit`** so one app can't exhaust the cluster's connections. The shared
+cluster is still **CNPG** (so the consolidated DBs inherit HA + PITR) — *not* a plain STS. (Today's shared
+`postgresql-ai` is a plain STS → a CNPG migration candidate before more workloads land on it.)
+
+**Go dedicated when the app needs independent *operational* isolation:** independent recovery/upgrade
+cadence, a different performance profile, or it is **recovery-critical** (its outage blocks recovering the
+rest). Per-workload calls:
+
+| Workload | Placement | Why |
+|---|---|---|
+| Open WebUI · Flowise · LiteLLM · MLflow | **Shared** AI CNPG cluster (DB + role per app, connection limits) | low-risk, share capacity/maintenance; isolate access, not operations |
+| Retrieva · `ragdb` | Shared if indexing is light; **dedicated** if measured contention or a distinct recovery policy | bulk ingest + vector-index builds compete for CPU/mem/disk-I/O |
+| Backstage (13 plugin DBs) | **One** cluster for all its plugin DBs; may share with other internal tools | keep separate if the dev portal must stay up during an AI/workplace DB incident |
+| **Authentik** | **Dedicated** | an auth outage blocks many services and makes incident recovery harder |
+| **Vaultwarden** | **Dedicated** (off the AI cluster) | break-glass creds must have a recovery path independent of AI workloads |
+| Claims · Underwriting | **Dedicated** (already) | preserves the lab where a single business service is recovered independently |
+
+**Correction to a common mental model:** one Postgres **instance accepts many logins**, and a CNPG cluster
+has a **primary + replicas**. For shared hosting, give **each app its own role scoped to its DB**; use a
+**separate admin login** (the superuser) in DBeaver only when you need to browse across databases. (A
+shared server showing many databases — `postgresql-ai` = 6, `backstage` = 13 per-plugin — is this pattern;
+`db-credentials.md` covers the credential/DBeaver side.)
+
+**First move before expanding the pattern:** consolidate the lightweight **dev** DBs onto the shared AI
+cluster, then **prove a single-app restore** — restore `litellm` into a *temporary* cluster and verify you
+can recover it **while the live shared cluster keeps serving** the others (a `run-game-day` drill). Measure
+the **Longhorn PVC + replica footprint actually eliminated** (that's the real win on the rebuild-bottleneck
+cluster) — that result, not the number of databases, tells you whether to move more workloads on.
+
 ## The sweet spot for THIS cluster — CNPG 2-instance + Longhorn RF=1
 Flaky storage inverts the usual "single STS is fine" advice: the storage layer is exactly what fails here.
 But naïve CNPG HA (2–3 instances × Longhorn RF=3) also *multiplies* the replica churn that wedges volumes.
