@@ -40,6 +40,9 @@ cnpg:
   storageSize: 5Gi
   db: paperless
   owner: paperless
+  vaultRole:               # DB credential sourced from Vault (db-credentials.md); single live instance
+    enabled: true
+    vaultPath: platform/ktayl-dms
 
 # per-env (values-dev.yaml / values-prod.yaml)
 host: ""                   # e.g. paperless.10.0.0.200.nip.io

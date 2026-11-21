@@ -22,6 +22,20 @@ spec:
     limits:   { cpu: 500m, memory: 512Mi }
   monitoring:
     enablePodMonitor: true
+{{- if and .Values.cnpg.vaultRole .Values.cnpg.vaultRole.enabled }}
+  # DB credential sourced from Vault (db-credentials.md discipline). CNPG manages the `ktayl_core` role's
+  # password from the ESO-rendered `ktayl-core-cnpg-role` secret — seeded with the SAME value as the
+  # operator-generated `-app` secret at adoption → CNPG re-applies the identical password (no change,
+  # no downtime), and Vault becomes the source of truth. Prod-only (dev keeps the operator-generated app pw).
+  managed:
+    roles:
+      - name: ktayl_core
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: ktayl-core-cnpg-role
+{{- end }}
   bootstrap:
     initdb:
       database: ktayl_core
@@ -109,4 +123,33 @@ spec:
   backupOwnerReference: self
   cluster:
     name: ktayl-core-cnpg
+{{- end }}
+{{- if and .Values.cnpg.vaultRole .Values.cnpg.vaultRole.enabled }}
+---
+# Vault-sourced password for the `ktayl_core` CNPG role (db-credentials.md). basic-auth secret consumed by
+# the Cluster's managed.roles[].passwordSecret above. `postgres-password` was seeded = the current -app
+# value, so adoption is a no-op; future rotations go through Vault.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ktayl-core-cnpg-role
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: ktayl-core-cnpg-role
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: "ktayl_core"
+        password: "{{ `{{ .pgpass }}` }}"
+  data:
+    - secretKey: pgpass
+      remoteRef:
+        key: {{ .Values.cnpg.vaultRole.vaultPath }}
+        property: postgres-password
 {{- end }}
