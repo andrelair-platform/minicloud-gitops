@@ -91,7 +91,7 @@ spec:
   cluster:
     name: underwriting-postgres
 {{- end }}
-{{- if and .Values.postgres.enabled .Values.postgres.vaultRole.enabled }}
+{{- if and .Values.postgres.enabled .Values.postgres.vaultRole .Values.postgres.vaultRole.enabled }}
 ---
 # Vault-sourced password for the `underwriting` CNPG role (db-credentials.md). Seeded = the current -app
 # value → adoption is a no-op; future rotations go through Vault.

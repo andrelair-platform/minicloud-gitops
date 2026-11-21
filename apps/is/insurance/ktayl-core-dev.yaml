@@ -26,6 +26,21 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: ktayl-core
+  ignoreDifferences:
+    # dev DB cred now Vault-sourced (db-credentials.md): the ESO -role ExternalSecret + CNPG-defaulted
+    # managed.roles fields (connectionLimit/inherit) are not in git.
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[].remoteRef.conversionStrategy
+        - .spec.data[].remoteRef.decodingStrategy
+        - .spec.data[].remoteRef.metadataPolicy
+        - .spec.target.deletionPolicy
+    - group: postgresql.cnpg.io
+      kind: Cluster
+      jqPathExpressions:
+        - .spec.managed.roles[].connectionLimit
+        - .spec.managed.roles[].inherit
   syncPolicy:
     automated:
       prune: true

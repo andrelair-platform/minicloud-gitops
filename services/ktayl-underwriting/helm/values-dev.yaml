@@ -30,3 +30,6 @@ postgres:
   enabled: true
   instances: 1
   storageSize: 2Gi
+  vaultRole:               # DB credential sourced from Vault (db-credentials.md) — dev too
+    enabled: true
+    vaultPath: platform/underwriting
