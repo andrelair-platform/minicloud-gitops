@@ -53,6 +53,15 @@ minicloud-app-deployment:
       value: "706 - Prestations de services - KS"
     - name: LEDGER_ACC_CASH
       value: "5121 - Comptes en euros - KS"
+    # BILL-012b commission split — the CR Commission Payable leg of the 3-leg premium JE. A dedicated
+    # Liability leaf under 408 (Fournisseurs - Factures non parvenues) = accrued broker commission the
+    # intermediary hasn't invoiced yet; NO account_type → the leg posts without a party (unlike the receivable).
+    - name: LEDGER_ACC_COMMISSION_PAYABLE
+      value: "4086 - Commissions de courtage à payer - KS"
+    # Per-LOB commission schedule (basis points) — a Map can't bind from underscore env vars, so inject it
+    # as Spring JSON (highest precedence). default 15%; COMM_PROP 15% (live LOB) · MARINE 10% · ENGINEERING 12.5%.
+    - name: SPRING_APPLICATION_JSON
+      value: '{"billing":{"commission":{"default-bps":1500,"rates":{"COMM_PROP":1500,"MARINE":1000,"ENGINEERING":1250}}}}'
     - name: LEDGER_ERPNEXT_PARTY_ACCOUNT
       value: "4111 - Clients - Ventes de biens ou de prestations de services - KS"
     - name: LEDGER_ERPNEXT_PARTY
