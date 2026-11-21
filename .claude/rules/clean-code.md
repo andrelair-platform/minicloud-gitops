@@ -43,7 +43,16 @@ tighten them, and may loosen a specific rule only with an inline justification (
 | **Python** | **ruff** | `C901` (mccabe), `PLR` (pylint-refactor: too-many-args/branches/statements/returns), `N` (pep8-naming), `SIM` (flatten/simplify), `RET` (early-return), `ARG` (unused args), `B` (bugbear), `TRY`/`BLE` (no blind `except`), `ERA` (no commented-out code) | `mccabe.max-complexity = 10`; `pylint.max-args = 6`; `pylint.max-branches = 12` |
 | **Go** | **golangci-lint** | `gocyclo`/`gocognit` (complexity), `funlen`, `revive` (naming), `errcheck` + `wrapcheck` (handle+wrap errors), `ineffassign`, `unparam`, `unused`, `nestif` | `gocyclo.min-complexity: 15`; `funlen: 80 lines/40 stmts`; `nestif.min-complexity: 5` |
 | **TypeScript** | **eslint** (+ `tsc` strict) | `complexity`, `max-lines-per-function`, `max-params`, `max-depth`, `@typescript-eslint/naming-convention`, `@typescript-eslint/no-floating-promises` (error handling), `no-console` (use the logger), `eqeqeq` | `complexity: 10`; `max-params: 4`; `max-depth: 4`; `max-lines-per-function: 80` |
+| **Java** | **Checkstyle + PMD** (+ optional **SpotBugs**), bound to Maven `verify` | `CyclomaticComplexity`/`NPathComplexity` (complexity), `MethodLength` (length), naming checks (`MethodName`/`*VariableName`), `NestedIfDepth` (early-return), `EmptyCatchBlock`/`IllegalCatch`/`ExceptionAsFlowControl` (no blind/abused catch → error handling), `UnusedImports`/`UnusedLocalVariable` (delete-don't-accumulate), `MagicNumber` | `CyclomaticComplexity max=10`; `MethodLength max=80`; `ParameterNumber max=6`; `NestedIfDepth max=4` |
 | **YAML/Helm** | yamllint + kubeconform | consistency/indent (already L0) | — |
+
+**Framework ≠ language — the floor keys on the *language the linter runs on*, not the framework.** NestJS,
+Express and Next.js are all **TypeScript** → the `eslint` row covers every one of them (there is no
+per-framework row — a linter lints a *language*). **Spring Modulith's `ApplicationModules.verify()` is NOT
+this floor** — it enforces *module boundaries* (the `architecture-strategy.md` twin), not function-level
+complexity/naming/error-handling, so a Java service (`ktayl-core`, `ktayl-claims`) still needs the
+Checkstyle+PMD row above. A **.NET** service (none today → **need-first**, `tech-stack-selection.md`) adds its
+row the day it lands: `dotnet format` + Roslyn analyzers / StyleCop, same four measurable axes.
 
 **The rest stays judgement** (SRP intent, is-this-the-right-abstraction, is-this-name-good, does-a-comment-
 explain-why) — caught at the `code-review.md` fresh-context pass + the human review, labelled with the
