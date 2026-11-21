@@ -1,0 +1,63 @@
+# ktayl-core / Claims GL (CLM-FIN-01/02, ADR-021) — the JetStream stream that DURABLY captures the claim
+# FINANCIAL event. ktayl-claims publishes (JetStream) to `insurance.claims.financial` when a reserve or
+# settlement moves (CLM-FIN-02, prod-only via claims.events.enabled); the ktayl-core `claimsgl` module's
+# durable consumer (prod, gated on CLAIMS_NATS_URL) reads from here and posts the GL. Deploying the stream
+# means it starts capturing claim movements immediately, so the consumer can replay anything emitted before
+# it went live. Same idempotent create-if-absent plain-Job pattern as the UNDERWRITING_EVENTS init.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: claims-events-stream-init
+  namespace: ktayl-core
+  labels:
+    app.kubernetes.io/name: ktayl-core
+    app.kubernetes.io/component: stream-init
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ktayl-core
+        app.kubernetes.io/component: stream-init
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false   # talks only to NATS; no kube-API access (CKV_K8S_38)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: stream-init
+          image: docker.io/natsio/nats-box:0.14.5   # fully-qualified: Gatekeeper denies a bare name
+          workingDir: /tmp
+          env:
+            - { name: HOME, value: /tmp }
+            - { name: XDG_CONFIG_HOME, value: /tmp }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits:   { cpu: 100m, memory: 64Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -eu
+              S=nats://nats.messaging.svc:4222
+              ST=CLAIMS_EVENTS
+              SUBJ="insurance.claims.>"
+              if nats --no-context -s "$S" stream info "$ST" >/dev/null 2>&1; then
+                echo "$ST already exists"
+              else
+                nats --no-context -s "$S" stream add "$ST" --subjects "$SUBJ" --defaults
+              fi
+              nats --no-context -s "$S" stream info "$ST"
+      volumes:
+        - name: tmp
+          emptyDir: {}

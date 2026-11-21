@@ -25,6 +25,19 @@ minicloud-app-deployment:
         secretKeyRef: { name: ktayl-core-cnpg-app, key: password }
     - name: BILLING_NATS_URL
       value: "nats://nats.messaging.svc:4222"   # prod = the authoritative ingest consumer (NATS svc `nats` in ns `messaging`)
+    # Claims GL seam (CLM-FIN-01/04, ADR-021): prod is the authoritative claimsgl consumer of
+    # insurance.claims.financial (the CLAIMS_EVENTS stream). dev leaves CLAIMS_NATS_URL blank → consumer off
+    # (one consumer, no double-post). Same NATS svc as billing (ns `messaging`).
+    - name: CLAIMS_NATS_URL
+      value: "nats://nats.messaging.svc:4222"
+    # Claims GL account map (French PCG, company Ktayl Solutions) — reserve movement → DR Claims incurred /
+    # CR Outstanding claims provision; loss payment → DR provision / CR cash (5121, reused from billing).
+    - name: CLAIMS_ACC_INCURRED
+      value: "6561 - Charges de sinistres (prestations payées) - KS"
+    - name: CLAIMS_ACC_PROVISION
+      value: "4675 - Sinistres à payer - KS"
+    - name: CLAIMS_ACC_CASH
+      value: "5121 - Comptes en euros - KS"
     # Stripe (BILL-013) — from the ktayl-core-stripe ESO secret (Vault secret/platform/ktayl-core). `optional`
     # so the pod stays up (payment → 503) until the Vault secret exists; a rollout then picks the keys up.
     - name: BILLING_STRIPE_SECRET_KEY
