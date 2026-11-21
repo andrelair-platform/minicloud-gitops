@@ -39,22 +39,27 @@ The `*-cnpg-r2` secrets you see next to a CNPG cluster are **R2 backup** credent
 - **New-DB Definition of Done** (pairs with `conventions.md` / `schema-erd.md`): the credential ES from
   Vault exists, the runtime Secret renders, and the password is **not** operator-only.
 
-## Current state (verified 2026-11-21) — and the gap to backfill
+## Current state (verified 2026-11-21)
 
 **✅ Vault-sourced (`managed.roles[].passwordSecret` → ESO → Vault):** `authentik`, `synapse (chat)`,
-`dp-postgres (data-platform)`, `ktayl-iam` (prod), `langfuse`, `nextcloud`, `retrieva` — plus **all
-plain/vendor DBs** (ai, backstage, temporal, bookstack, itsm/GLPI, erp/MariaDB, ktayl-iam-dev,
-langfuse-clickhouse).
+`dp-postgres (data-platform)`, `ktayl-iam` (prod), `langfuse`, `nextcloud`, `retrieva`, **+ (backfilled
+2026-11-21, gitops #2362) the former gap: `ktayl-core` (prod), `claims` (prod), `underwriting` (prod),
+`paperless (ktayl-dms)`** — plus **all plain/vendor DBs** (ai, backstage, temporal, bookstack, itsm/GLPI,
+erp/MariaDB, ktayl-iam-dev, langfuse-clickhouse).
 
-**⚠️ Operator-generated only — the gap (password lives *only* in `<cluster>-app`, not in Vault):**
-`claims` (+prod), `ktayl-core` (+prod), `underwriting` (+prod), `paperless (ktayl-dms)`.
+> **The backfill (reference procedure — no-outage):** Vault was **break-glass-seeded with the CURRENT
+> `-app` password** (checksum-verified equal) at `secret/platform/<ns>` property `postgres-password`, THEN
+> the prod-gated `managed.roles[].passwordSecret` + `<cluster>-role` ExternalSecret were added → CNPG
+> re-applied the identical password (no change). **Order matters: seed Vault first, then the manifest**
+> (else ESO renders an empty secret → CNPG sets an empty password → outage). Mirror `retrieva-cnpg`.
+> **SSA gotcha:** CNPG defaults `connectionLimit`/`inherit` on the role → add the
+> `.spec.managed.roles[].connectionLimit`/`.inherit` ArgoCD `ignoreDifferences` (gitops #2363). A
+> ServerSideApply app may still show a benign cosmetic `OutOfSync` on the Cluster (sync Succeeded, Healthy).
 
-These are **accepted-with-revisit**, not an emergency — but three of them are **prod insurance domains**
-(claims/underwriting/ktayl-core), so they rank first for backfill. **Backfill = opportunistic** (do it the
-next time you touch the cluster, or as a small dedicated PR): add a `<cluster>-cnpg-role` ExternalSecret
-from Vault + wire `spec.managed.roles[].passwordSecret` (mirror `retrieva-cnpg` / `langfuse-postgres`),
-then the `-app` password traces to Vault. **Revisit trigger:** any of these needs a credential rotation, a
-restore-from-Vault drill, or a DORA secret-management assertion → backfill it then, at the latest.
+**Remaining (acceptable):** the **dev** instances of `claims`/`ktayl-core`/`underwriting` keep the
+operator-generated app password (regenerable, low-stakes) — prod was the priority and is done. **Revisit
+trigger:** a dev cluster needs Vault-backed rotation → seed `platform/<dev-ns>` + flip `vaultRole.enabled`
+in its `values-dev.yaml` (the prod-gated flag is already wired).
 
 ## Don't
 - Don't treat the CNPG operator-generated `-app` password as a source of truth — it's a copy with no origin.
