@@ -35,7 +35,7 @@ platform/                  # (cluster-scoped resources live WITHIN a layer: quot
   data/                    # CNPG operator + shared data engine (kafka/clickhouse)   [per-app DBs stay with the app]
   automation/              # temporal (durable, code-first workflow/orchestration engine)
   ai/                      # litellm, qdrant, langfuse(+base), open-webui
-  shared-services/         # authentik(+ldap-outpost, cnpg-authentik), adminer, homer, ghproj-exporter,
+  shared-services/         # authentik(+ldap-outpost, cnpg-authentik), homer, ghproj-exporter,
                            #   nats (shared eventing bus), keda (event/metric-driven scaling)
   _demos/                  # non-prod examples/validation: whoami, podinfo, event-demo, chaos-engineering
                            #   (sanctioned, kept — all live/Synced; a working demo of a path, not a 1st-class layer)

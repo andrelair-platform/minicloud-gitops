@@ -536,7 +536,7 @@ spec:
 # or fabricated full spec. Same house pattern as litellm-api / minicloud-plane-api.
 # Deliberately NOT registered: GLPI (we integrate via LDAP, not its REST API),
 # Matrix/Temporal (async/gRPC → AsyncAPI later), and the no-integration UIs
-# (BookStack/Docuseal/Vaultwarden/Adminer/Homer/SearXNG/Metabase/Jitsi/OnlyOffice).
+# (BookStack/Docuseal/Vaultwarden/Homer/SearXNG/Metabase/Jitsi/OnlyOffice).
 # ----------------------------------------------------------------------------
 ---
 apiVersion: backstage.io/v1alpha1
