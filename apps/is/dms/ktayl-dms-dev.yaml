@@ -40,6 +40,8 @@ spec:
         - .spec.bootstrap.initdb.encoding
         - .spec.bootstrap.initdb.localeCType
         - .spec.bootstrap.initdb.localeCollate
+        - .spec.managed.roles[].connectionLimit
+        - .spec.managed.roles[].inherit
   syncPolicy:
     automated:
       prune: true
