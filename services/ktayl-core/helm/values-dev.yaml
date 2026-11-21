@@ -40,3 +40,7 @@ minicloud-app-deployment:
       value: "https://auth.devandre.sbs/application/o/ktayl-core/,http://authentik-server.authentik.svc/application/o/ktayl-underwriting/,http://authentik-server.authentik.svc/application/o/dms-classifier/"
 tlsCert:
   dnsName: ktayl-core.10.0.0.200.nip.io
+cnpg:
+  vaultRole:               # DB credential sourced from Vault (db-credentials.md) — dev too
+    enabled: true
+    vaultPath: platform/ktayl-core

@@ -54,4 +54,7 @@ debezium:
 # `readmodel` profile (+ datasource env) in a follow-up once the DB + the Slice-D image are live.
 postgres:
   enabled: true
+  vaultRole:               # DB credential sourced from Vault (db-credentials.md) — dev too
+    enabled: true
+    vaultPath: platform/claims
   # No backup in dev (prod-only rule) — base sets backup.enabled:false.

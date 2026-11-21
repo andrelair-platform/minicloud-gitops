@@ -3,6 +3,10 @@ kind: Application
 metadata:
   name: ktayl-dms-dev
   namespace: argocd
+  annotations:
+    # SSA app + CNPG-mutated managed.roles → ArgoCD's client-side diff phantom-flags the Cluster OutOfSync
+    # (kubectl server-side diff is clean). ServerSideDiff makes ArgoCD diff via a server dry-run → accurate.
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
