@@ -34,6 +34,12 @@ spec:
         - .spec.data[].remoteRef.metadataPolicy
         - .spec.target.deletionPolicy
         - .spec.target.template
+    # CNPG defaults connectionLimit/inherit on managed.roles → not in git (db-credentials Vault-source)
+    - group: postgresql.cnpg.io
+      kind: Cluster
+      jqPathExpressions:
+        - .spec.managed.roles[].connectionLimit
+        - .spec.managed.roles[].inherit
   syncPolicy:
     # Git-gated automated production (CODEOWNERS on apps/ + services/*/helm). Git owns replicas (2).
     automated:
