@@ -26,6 +26,10 @@ minicloud-app-deployment:
   env:
     - { name: SPRING_PROFILES_ACTIVE, value: "soap,readmodel" }
     - { name: GLOBALCORE_SOAP_URL, value: "http://10.0.0.1:8080/ws" }   # the shared off-cluster legacy
+    # CLM-FIN-04 (ADR-021): PROD is the authoritative claim-financial-event emitter. Enables the outbox
+    # publisher → NATS JetStream insurance.claims.financial (CLAIMS_EVENTS stream) which ktayl-core's
+    # claimsgl module consumes to post the GL. dev stays false (one producer; no dev→prod-GL leak).
+    - { name: CLAIMS_EVENTS_ENABLED, value: "true" }
     # Datasource from the prod CNPG (claims-postgres-app secret in claims-prod), via $(VAR) expansion.
     - name: PGHOST
       valueFrom: { secretKeyRef: { name: claims-postgres-app, key: host } }
