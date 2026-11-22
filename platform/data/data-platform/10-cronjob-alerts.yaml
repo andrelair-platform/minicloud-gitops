@@ -1,0 +1,53 @@
+# DataOps monitoring (ktayl-data-platform ADR-015) — close the SILENT-FAILURE gap for the nightly lake
+# pipeline with the house Prometheus/Alertmanager stack (no new service). One staleness rule per CronJob:
+# "last successful run >25h ago" catches BOTH a failed job AND a job that never ran (= the freshness
+# signal). Mirrors platform/storage/backup-dr/00-prometheusrule.yaml. Guarded by kube_cronjob_spec_suspend
+# so an intentionally-suspended job (e.g. during a source repoint) does NOT false-alarm.
+#
+# Notification path (ADR-015, deliberate): severity=warning → Alertmanager UI + webhook-logger, NOT
+# email/Slack (that channel is reserved for `critical` infra). A stale *derived* analytics pipeline is
+# warning-grade (RPO 24h is acceptable — the data is rebuildable). Escalate later by bumping severity or
+# adding a data-platform warning route, if it proves too quiet.
+#
+# Lives in the `monitoring` namespace (house standard for PrometheusRule; the minicloud-platform AppProject
+# allows all namespaces, so the data-platform ArgoCD app syncs it here — same as backup-dr).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: data-platform-cronjobs
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kps
+spec:
+  groups:
+    - name: data-platform-pipeline
+      rules:
+        - alert: DataPlatformLandStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="dp-lake-land-policy", namespace="data-platform"}) / 3600 > 25
+            and on(cronjob, namespace)
+            kube_cronjob_spec_suspend{cronjob="dp-lake-land-policy", namespace="data-platform"} == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Data lake producer (dp-lake-land-policy) has not succeeded in >25h"
+            description: |
+              The nightly S3 lake producer (schedule 01:15 UTC) last succeeded {{ $value | printf "%.1f" }}h ago.
+              Raw Parquet is not landing → the DuckDB transform + Metabase Policy Portfolio will go stale.
+              Check: kubectl -n data-platform get job | grep dp-lake-land-policy  (and the Dagster run history).
+        - alert: DataPlatformTransformStale
+          expr: |
+            (time() - kube_cronjob_status_last_successful_time{cronjob="dp-lake-transform-policy", namespace="data-platform"}) / 3600 > 25
+            and on(cronjob, namespace)
+            kube_cronjob_spec_suspend{cronjob="dp-lake-transform-policy", namespace="data-platform"} == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Data lake transform (dp-lake-transform-policy) has not succeeded in >25h"
+            description: |
+              The nightly DuckDB→CNPG transform (schedule 01:45 UTC) last succeeded {{ $value | printf "%.1f" }}h ago.
+              The served marts (analytics.lake.*) are stale → Metabase shows old data.
+              Check: kubectl -n data-platform get job | grep dp-lake-transform-policy  (and the Dagster run history).
