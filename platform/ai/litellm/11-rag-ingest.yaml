@@ -21,12 +21,12 @@ spec:
           type: RuntimeDefault
       containers:
         - name: rag-ingest
-          # Qdrant-backed image (matches Open WebUI VECTOR_DB=qdrant). Rolled back from
-          # cfd957d-amd64 (2026-09-26), which was a half-finished pgvector rewrite that wrote
-          # INSERT INTO document_chunk in ragdb — but ragdb has no pgvector extension / no such
-          # table, and Open WebUI reads Qdrant, so it crashlooped (KeyError PG_HOST) and its RAG
-          # path was incoherent. Keep on Qdrant until an intended pgvector migration is planned.
-          image: ghcr.io/andrelair-platform/rag-ingest:dev-6d249b5-amd64
+          # Qdrant-backed image (matches Open WebUI VECTOR_DB=qdrant), now built from `main`.
+          # The Qdrant migration (rag-ingest 6d249b5) ran in prod off the dev branch and was pinned
+          # here as dev-6d249b5-amd64 while main still held the rolled-back pgvector rewrite; main was
+          # reconciled to Qdrant in rag-ingest#8, so this now tracks the main build (same Qdrant code).
+          # Tag is pinned by hand (no auto-bump since the Harbor decommission) — bump via a gitops PR.
+          image: ghcr.io/andrelair-platform/rag-ingest:a90bf70-amd64
           ports:
             - containerPort: 8001
           env:
