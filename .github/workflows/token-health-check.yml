@@ -1,0 +1,86 @@
+name: GITOPS_TOKEN health check
+
+# Early-warning for the #9 class of failure (minicloud-rag-ingest#9, 2026-11-22): the org GITOPS_TOKEN
+# silently drifted to an old, under-scoped value → every repo's ghcr push / gitops bump went red.
+# This runs weekly, inspects the token the way CI uses it, and opens an alert issue BEFORE a build breaks.
+# The alert is raised with the job's own GITHUB_TOKEN (independent of the subject GITOPS_TOKEN), so the
+# warning still fires even when GITOPS_TOKEN is dead. Remediation = re-sync from Vault: scripts/set-org-secrets.sh.
+
+on:
+  schedule:
+    - cron: "0 8 * * 1" # Mondays 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write # the alert issue — via GITHUB_TOKEN, NOT the token being checked
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect GITOPS_TOKEN (validity · write:packages · expiry)
+        env:
+          SUBJECT_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          problems=""
+          if [ -z "$SUBJECT_TOKEN" ]; then
+            problems="GITOPS_TOKEN org secret is EMPTY (not set, or not inherited by this repo)."
+          else
+            hdr=$(curl -sS -D - -o /dev/null -H "Authorization: Bearer $SUBJECT_TOKEN" https://api.github.com/ || true)
+            status=$(printf '%s' "$hdr" | head -1 | tr -d '\r')
+            scopes=$(printf '%s' "$hdr" | grep -i '^x-oauth-scopes:' | cut -d: -f2- | tr -d '\r' | tr -d ' ')
+            expires=$(printf '%s' "$hdr" | grep -i '^github-authentication-token-expiration:' | cut -d: -f2- | sed 's/^[[:space:]]*//' | tr -d '\r')
+            echo "status : $status"
+            echo "scopes : $scopes"
+            echo "expiry : ${expires:-none (classic PAT, no expiry)}"
+            case "$status" in
+              *" 200"*) : ;;
+              *) problems="${problems} GITOPS_TOKEN is INVALID (HTTP: ${status:-no response})." ;;
+            esac
+            case "$scopes" in
+              *write:packages*) : ;;
+              *) problems="${problems} GITOPS_TOKEN is missing the write:packages scope (ghcr push will fail — the #9 root cause)." ;;
+            esac
+            if [ -n "$expires" ]; then
+              exp_epoch=$(date -u -d "$expires" +%s 2>/dev/null || echo 0)
+              now=$(date -u +%s)
+              if [ "$exp_epoch" -gt 0 ]; then
+                days=$(( (exp_epoch - now) / 86400 ))
+                echo "days to expiry : $days"
+                [ "$days" -lt 21 ] && problems="${problems} GITOPS_TOKEN expires in ${days} days — rotate soon."
+              fi
+            fi
+          fi
+
+          if [ -z "$problems" ]; then
+            echo "✓ GITOPS_TOKEN is healthy."
+            exit 0
+          fi
+
+          echo "::error::$problems"
+          {
+            echo "The scheduled **GITOPS_TOKEN health check** failed:"
+            echo
+            echo "> $problems"
+            echo
+            echo "**Impact:** org-wide CI — ghcr pushes and gitops image bumps — will fail (the #9 class)."
+            echo
+            echo "**Remediation (fastest — re-sync from Vault, no minting):**"
+            echo '```'
+            echo 'bash scripts/set-org-secrets.sh    # streams the current Vault token → the org secret'
+            echo '```'
+            echo "If Vault's copy is itself bad: mint a classic PAT with **repo + write:packages + read:packages + project + workflow** (NOT admin:org), store it in Vault \`secret/platform/ci-secrets:gitops-token\`, then run the script above."
+            echo
+            echo "_Auto-raised by \`.github/workflows/token-health-check.yml\`._"
+          } > /tmp/body.md
+
+          TITLE="⚠️ GITOPS_TOKEN health check failed"
+          existing=$(gh issue list --repo "$REPO" --state open --search "$TITLE in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$REPO" --body-file /tmp/body.md
+          else
+            gh issue create --repo "$REPO" --title "$TITLE" --body-file /tmp/body.md
+          fi
+          exit 1
