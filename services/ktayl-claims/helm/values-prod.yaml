@@ -10,7 +10,7 @@ minicloud-app-deployment:
     repository: ghcr.io/andrelair-platform/ktayl-claims
     # Seeded to the current dev-VERIFIED freight for the initial prod bring-up (== what Kargo's prod
     # stage would promote). Kargo (git-Warehouse) owns all FUTURE prod bumps via the CODEOWNERS PR.
-    tag: "b567ab0"
+    tag: 2cd8d41
   # ghcr package is PUBLIC → k3s pulls anonymously; no imagePullSecret needed.
   workload:
     replicas: 2
@@ -55,7 +55,7 @@ minicloud-app-deployment:
 frontend:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-claims-frontend
-    tag: "5243b5c"   # seeded; Kargo (git-Warehouse prod stage) owns future bumps via the CODEOWNERS PR
+    tag: 2cd8d41
   workload:
     replicas: 2
   podDisruptionBudget:
