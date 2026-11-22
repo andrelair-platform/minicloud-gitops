@@ -26,7 +26,7 @@ spec:
           # here as dev-6d249b5-amd64 while main still held the rolled-back pgvector rewrite; main was
           # reconciled to Qdrant in rag-ingest#8, so this now tracks the main build (same Qdrant code).
           # Tag is pinned by hand (no auto-bump since the Harbor decommission) — bump via a gitops PR.
-          image: ghcr.io/andrelair-platform/rag-ingest:a90bf70-amd64
+          image: ghcr.io/andrelair-platform/rag-ingest:d39d607-amd64
           ports:
             - containerPort: 8001
           env:
