@@ -9,7 +9,7 @@
 minicloud-app-deployment:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-underwriting
-    tag: "6550019"
+    tag: 6d4e083
   workload:
     replicas: 1
   ingress:
@@ -17,7 +17,7 @@ minicloud-app-deployment:
 frontend:
   image:
     repository: ghcr.io/andrelair-platform/ktayl-underwriting-frontend
-    tag: "6550019"
+    tag: 6d4e083
   workload:
     replicas: 1
   ingress:
