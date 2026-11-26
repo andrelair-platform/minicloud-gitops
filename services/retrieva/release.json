@@ -5,11 +5,11 @@
   "components": {
     "backend": {
       "repository": "ghcr.io/andrelair-platform/retrieva-backend",
-      "tag": "a9054b8"
+      "tag": "01cea1f"
     },
     "frontend": {
       "repository": "ghcr.io/andrelair-platform/retrieva-frontend",
-      "tag": "5750c2f"
+      "tag": "f534cb0"
     },
     "assessment-crew": {
       "repository": "ghcr.io/andrelair-platform/retrieva-assessment-crew",
