@@ -73,8 +73,12 @@ minicloud-app-deployment:
       value: "4086 - Commissions de courtage à payer - KS"
     # Per-LOB commission schedule (basis points) — a Map can't bind from underscore env vars, so inject it
     # as Spring JSON (highest precedence). default 15%; COMM_PROP 15% (live LOB) · MARINE 10% · ENGINEERING 12.5%.
+    # Injected as Spring JSON (highest precedence) to sidestep relaxed-binding ambiguity on hyphenated keys.
+    # billing: per-LOB commission schedule (bps). reserving (FIN-03): the IBNR GL accounts — the ERPNext
+    # account NAME includes the company abbr (" - KS"), so the factory's bare defaults must be overridden to
+    # the live French-PCG leaf accounts: Change in IBNR (dotation, under 681) / IBNR Provision (under 151).
     - name: SPRING_APPLICATION_JSON
-      value: '{"billing":{"commission":{"default-bps":1500,"rates":{"COMM_PROP":1500,"MARINE":1000,"ENGINEERING":1250}}}}'
+      value: '{"billing":{"commission":{"default-bps":1500,"rates":{"COMM_PROP":1500,"MARINE":1000,"ENGINEERING":1250}}},"reserving":{"ledger":{"accounts":{"change-in-ibnr":"Change in IBNR - KS","ibnr-provision":"IBNR Provision - KS"}}}}'
     - name: LEDGER_ERPNEXT_PARTY_ACCOUNT
       value: "4111 - Clients - Ventes de biens ou de prestations de services - KS"
     - name: LEDGER_ERPNEXT_PARTY
